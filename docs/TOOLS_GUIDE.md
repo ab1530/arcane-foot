@@ -35,7 +35,7 @@ git checkout -b feature/add-match-scoring
 # ...
 
 # Commit avec conventional commits
-git add .
+git add "YOUR_CHANGE"
 git commit -m "feat: add match scoring system"
 
 # Push ta branch
