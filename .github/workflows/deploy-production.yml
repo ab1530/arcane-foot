@@ -1,0 +1,134 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend to Railway/Render
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        if: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy to Render (alternative)
+        if: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+
+      - name: Run database migrations
+        run: |
+          echo "Running Prisma migrations on production..."
+          # Use Railway CLI or direct connection to run migrations
+          # railway run npx prisma migrate deploy
+
+      - name: Notify deployment
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Backend deployment completed'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  deploy-web:
+    name: Deploy Flutter Web to Vercel
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+
+      - name: Get dependencies
+        working-directory: ./mobile
+        run: flutter pub get
+
+      - name: Build Flutter web
+        working-directory: ./mobile
+        run: flutter build web --release --web-renderer canvaskit
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./mobile/build/web
+          vercel-args: '--prod'
+
+  deploy-mobile:
+    name: Deploy Mobile to Stores
+    runs-on: macos-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+
+      - name: Get dependencies
+        working-directory: ./mobile
+        run: flutter pub get
+
+      - name: Build iOS IPA
+        working-directory: ./mobile
+        run: |
+          flutter build ios --release --no-codesign
+          # Add code signing and IPA creation here
+
+      - name: Upload to TestFlight
+        if: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          # Use fastlane or xcrun altool to upload to TestFlight
+          echo "Uploading to TestFlight..."
+
+      - name: Build Android AAB
+        working-directory: ./mobile
+        run: flutter build appbundle --release
+
+      - name: Upload to Google Play Console
+        if: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          packageName: com.arcane.app
+          releaseFiles: mobile/build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

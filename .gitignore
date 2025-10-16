@@ -1,0 +1,126 @@
+# =======================================
+# ARCANE PLATFORM - GITIGNORE
+# =======================================
+
+# ===== NODE / NESTJS =====
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ===== ENVIRONMENT =====
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+
+# ===== PRISMA =====
+prisma/migrations/**/migration.sql.bak
+
+# ===== FLUTTER / DART =====
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+coverage/
+*.freezed.dart
+*.g.dart
+*.mocks.dart
+
+# iOS
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/Flutter.framework
+mobile/ios/Flutter/Flutter.podspec
+mobile/ios/.generated/
+
+# Android
+mobile/android/.gradle/
+mobile/android/captures/
+mobile/android/local.properties
+mobile/android/**/GeneratedPluginRegistrant.java
+mobile/android/.cxx/
+mobile/android/app/debug
+mobile/android/app/profile
+mobile/android/app/release
+
+# Web
+mobile/web/.dart_tool/
+
+# ===== IDE / EDITORS =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.history/
+*.sublime-project
+*.sublime-workspace
+
+# ===== DOCKER =====
+docker-compose.override.yml
+.dockerignore
+
+# ===== TESTING =====
+coverage/
+.nyc_output/
+test-results/
+junit.xml
+
+# ===== BUILD ARTIFACTS =====
+*.class
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ===== SECRETS & KEYS =====
+*.pem
+*.key
+*.p12
+*.jks
+credentials.json
+service-account.json
+firebase-adminsdk-*.json
+
+# ===== LOGS =====
+logs/
+*.log
+combined.log
+error.log
+
+# ===== TEMP FILES =====
+tmp/
+temp/
+*.tmp
+*.cache
+.cache/
+
+# ===== BACKUP FILES =====
+*.bak
+*.backup
+backup/
+
+# ===== OS FILES =====
+Thumbs.db
+desktop.ini
+
+# ===== NEXTJS (Admin Dashboard) =====
+admin-dashboard/.next/
+admin-dashboard/out/
+admin-dashboard/.vercel
+
+# ===== MISC =====
+.turbo/
+storybook-static/
