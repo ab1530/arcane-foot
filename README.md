@@ -2,8 +2,8 @@
 
 **Arcane** is a comprehensive football agency management platform built with modern tech stack, designed for agents, scouts, analysts, players, and clubs.
 
-[![Backend CI](https://github.com/YOUR_USERNAME/arcane-platform/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/arcane-platform/actions/workflows/backend-ci.yml)
-[![Mobile CI](https://github.com/YOUR_USERNAME/arcane-platform/actions/workflows/mobile-ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/arcane-platform/actions/workflows/mobile-ci.yml)
+[![Backend CI](https://github.com/ab1530/arcane-foot/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/ab1530/arcane-foot/actions/workflows/backend-ci.yml)
+[![Mobile CI](https://github.com/ab1530/arcane-foot/actions/workflows/mobile-ci.yml/badge.svg)](https://github.com/ab1530/arcane-foot/actions/workflows/mobile-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
@@ -113,8 +113,8 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/arcane-platform.git
-cd arcane-platform
+git clone https://github.com/ab1530/arcane-foot.git
+cd arcane-foot
 ```
 
 ### 2. Setup Backend (NestJS)
@@ -416,8 +416,8 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 ## 📞 Support
 
 - **Documentation:** [Coming Soon]
-- **Issues:** [GitHub Issues](https://github.com/YOUR_USERNAME/arcane-platform/issues)
-- **Email:** support@arcane.com
+- **Issues:** [GitHub Issues](https://github.com/ab1530/arcane-foot/issues)
+- **Email:** abdallah.lakhdari@epitech.eu
 
 ---
 
