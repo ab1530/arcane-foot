@@ -1,0 +1,528 @@
+// =======================================
+// ARCANE PLATFORM - PRISMA SCHEMA
+// =======================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =======================================
+// ENUMS
+// =======================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  AGENT
+  SCOUT
+  ANALYST
+  PLAYER
+  CLUB_CONTACT
+  PUBLIC
+}
+
+enum PlayerStatus {
+  ACTIVE
+  INJURED
+  SUSPENDED
+  RETIRED
+  PROSPECT
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  APPROVED
+  REJECTED
+}
+
+enum ClubRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  NEGOTIATING
+  COMPLETED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  AUDIO
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  TRIAL
+  PAST_DUE
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// =======================================
+// MODELS
+// =======================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  role          UserRole  @default(PUBLIC)
+  emailVerified Boolean   @default(false)
+  isActive      Boolean   @default(true)
+
+  // OAuth
+  googleId      String?   @unique
+  appleId       String?   @unique
+
+  // Metadata
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  player              Player?
+  scoutingReports     ScoutingReport[]     @relation("ScoutCreated")
+  assignedMatches     Match[]              @relation("ScoutAssigned")
+  tasks               Task[]               @relation("TaskAssignee")
+  createdTasks        Task[]               @relation("TaskCreator")
+  comments            Comment[]
+  notifications       Notification[]
+  subscription        Subscription?
+  clubContact         Club?                @relation("ClubContact")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Player {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Info sportive
+  clubId          String?
+  club            Club?         @relation(fields: [clubId], references: [id])
+  position        String
+  preferredFoot   String?
+  jerseyNumber    Int?
+
+  // Physique
+  height          Float?
+  weight          Float?
+  dateOfBirth     DateTime
+  nationality     String
+
+  // Metadata
+  status          PlayerStatus  @default(PROSPECT)
+  marketValue     Float?
+  contractUntil   DateTime?
+  biography       String?       @db.Text
+
+  // Stats
+  statsJson       Json?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  scoutingReports ScoutingReport[]
+  media           Media[]
+  clubRequests    ClubRequest[]
+  campParticipations CampParticipation[]
+
+  @@index([clubId])
+  @@index([status])
+  @@index([position])
+  @@map("players")
+}
+
+model Club {
+  id            String    @id @default(cuid())
+  name          String
+  shortName     String?
+  logo          String?
+  country       String
+  city          String?
+  stadium       String?
+  founded       Int?
+  website       String?
+
+  // Contact
+  contactUserId String?   @unique
+  contactUser   User?     @relation("ClubContact", fields: [contactUserId], references: [id])
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  players       Player[]
+  homeMatches   Match[]   @relation("HomeClub")
+  awayMatches   Match[]   @relation("AwayClub")
+  clubRequests  ClubRequest[]
+  camps         Camp[]
+
+  @@index([country])
+  @@map("clubs")
+}
+
+model Match {
+  id            String      @id @default(cuid())
+  homeClubId    String
+  awayClubId    String
+  homeClub      Club        @relation("HomeClub", fields: [homeClubId], references: [id])
+  awayClub      Club        @relation("AwayClub", fields: [awayClubId], references: [id])
+
+  scheduledAt   DateTime
+  venue         String?
+  competition   String
+  season        String
+
+  status        MatchStatus @default(SCHEDULED)
+
+  // Scores
+  homeScore     Int?
+  awayScore     Int?
+
+  // Scout assignment
+  scoutId       String?
+  scout         User?       @relation("ScoutAssigned", fields: [scoutId], references: [id])
+
+  // Metadata
+  notes         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  scoutingReports ScoutingReport[]
+  media           Media[]
+
+  @@index([scheduledAt])
+  @@index([scoutId])
+  @@index([status])
+  @@map("matches")
+}
+
+model ScoutingReport {
+  id            String        @id @default(cuid())
+  matchId       String
+  playerId      String
+  scoutId       String
+
+  match         Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player        Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  scout         User          @relation("ScoutCreated", fields: [scoutId], references: [id])
+
+  // Report content
+  status        ReportStatus  @default(DRAFT)
+  overallRating Int?
+  summary       String?       @db.Text
+  strengths     String?       @db.Text
+  weaknesses    String?       @db.Text
+
+  // Structured notes
+  notesJson     Json?
+
+  // Metadata
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  submittedAt   DateTime?
+  reviewedAt    DateTime?
+
+  // Relations
+  notes         ScoutingNote[]
+  media         Media[]
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([scoutId])
+  @@index([status])
+  @@map("scouting_reports")
+}
+
+model ScoutingNote {
+  id            String          @id @default(cuid())
+  reportId      String
+  report        ScoutingReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  minute        Int?
+  category      String
+  content       String          @db.Text
+  rating        Int?
+
+  createdAt     DateTime        @default(now())
+
+  @@index([reportId])
+  @@map("scouting_notes")
+}
+
+model Media {
+  id            String      @id @default(cuid())
+  type          MediaType
+  url           String
+  thumbnailUrl  String?
+
+  // Metadata
+  filename      String
+  mimeType      String
+  size          Int
+  duration      Int?
+  width         Int?
+  height        Int?
+
+  // Relations
+  playerId      String?
+  matchId       String?
+  reportId      String?
+
+  player        Player?           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  match         Match?            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  report        ScoutingReport?   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  // Metadata
+  uploadedAt    DateTime    @default(now())
+  processedAt   DateTime?
+
+  @@index([playerId])
+  @@index([matchId])
+  @@index([reportId])
+  @@index([type])
+  @@map("media")
+}
+
+model ClubRequest {
+  id            String              @id @default(cuid())
+  clubId        String
+  playerId      String
+
+  club          Club                @relation(fields: [clubId], references: [id])
+  player        Player              @relation(fields: [playerId], references: [id])
+
+  status        ClubRequestStatus   @default(PENDING)
+  requestType   String
+
+  // Détails
+  message       String?             @db.Text
+  offerAmount   Float?
+
+  // Metadata
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  respondedAt   DateTime?
+
+  @@index([clubId])
+  @@index([playerId])
+  @@index([status])
+  @@map("club_requests")
+}
+
+model Subscription {
+  id            String              @id @default(cuid())
+  userId        String              @unique
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tier          SubscriptionTier    @default(FREE)
+  status        SubscriptionStatus  @default(TRIAL)
+
+  // Stripe
+  stripeCustomerId      String?     @unique
+  stripeSubscriptionId  String?     @unique
+  stripePriceId         String?
+
+  // Période
+  startDate     DateTime            @default(now())
+  endDate       DateTime?
+  trialEndsAt   DateTime?
+  cancelAt      DateTime?
+
+  // Metadata
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([status])
+  @@index([tier])
+  @@map("subscriptions")
+}
+
+model Camp {
+  id            String      @id @default(cuid())
+  name          String
+  description   String?     @db.Text
+
+  clubId        String?
+  club          Club?       @relation(fields: [clubId], references: [id])
+
+  location      String
+  startDate     DateTime
+  endDate       DateTime
+
+  capacity      Int?
+  ageMin        Int?
+  ageMax        Int?
+
+  // Metadata
+  isPublic      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  participants  CampParticipation[]
+
+  @@index([startDate])
+  @@index([clubId])
+  @@map("camps")
+}
+
+model CampParticipation {
+  id            String      @id @default(cuid())
+  campId        String
+  playerId      String
+
+  camp          Camp        @relation(fields: [campId], references: [id], onDelete: Cascade)
+  player        Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  registeredAt  DateTime    @default(now())
+  status        String      @default("REGISTERED")
+
+  notes         String?     @db.Text
+
+  @@unique([campId, playerId])
+  @@index([campId])
+  @@index([playerId])
+  @@map("camp_participations")
+}
+
+model Task {
+  id            String        @id @default(cuid())
+  title         String
+  description   String?       @db.Text
+
+  status        TaskStatus    @default(TODO)
+  priority      TaskPriority  @default(MEDIUM)
+
+  // Assignment
+  assigneeId    String?
+  assignee      User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  creatorId     String
+  creator       User          @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  // Dates
+  dueDate       DateTime?
+  completedAt   DateTime?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  comments      Comment[]
+
+  @@index([assigneeId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([priority])
+  @@map("tasks")
+}
+
+model Comment {
+  id            String      @id @default(cuid())
+  content       String      @db.Text
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+
+  taskId        String?
+  task          Task?       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([taskId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Notification {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title         String
+  body          String      @db.Text
+  type          String
+
+  isRead        Boolean     @default(false)
+  readAt        DateTime?
+
+  // FCM
+  fcmMessageId  String?
+
+  // Data payload
+  dataJson      Json?
+
+  createdAt     DateTime    @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  userId        String?
+  action        String
+  entityType    String
+  entityId      String?
+
+  changes       Json?
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt     DateTime    @default(now())
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
