@@ -50,7 +50,7 @@ jobs:
 
       - name: Lint code
         working-directory: ./backend
-        run: npm run lint
+        run: npm run eslint
 
       - name: Check formatting
         working-directory: ./backend
