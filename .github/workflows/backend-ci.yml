@@ -8,7 +8,7 @@ on:
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [main, develop, staging]
-
+#no path to execute all workflow for all the PR not only backend
 jobs:
   lint-and-test:
     name: Lint & Test Backend
