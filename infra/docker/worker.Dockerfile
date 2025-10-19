@@ -2,7 +2,7 @@
 # ARCANE VIDEO WORKER - DOCKERFILE
 # =======================================
 
-FROM node:20-alpine
+FROM node:25-alpine
 
 WORKDIR /app
 
