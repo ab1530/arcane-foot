@@ -20,6 +20,8 @@ lerna-debug.log*
 .env.production
 .env.test
 *.env
+.env.railway.template
+*.backup
 
 # ===== PRISMA =====
 prisma/migrations/**/migration.sql.bak
@@ -124,3 +126,4 @@ admin-dashboard/.vercel
 # ===== MISC =====
 .turbo/
 storybook-static/
+.github/SECRETS.txt
