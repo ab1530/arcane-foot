@@ -1,20 +1,26 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { PlayersService } from './players.service';
+import { CreatePlayerDto } from './dto/create-player.dto';
+import { UpdatePlayerDto } from './dto/update-player.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
 
 @Controller('players')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class PlayersController {
   constructor(private readonly playersService: PlayersService) {}
 
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  create(@Body() createPlayerDto: CreatePlayerDto) {
+    return this.playersService.create(createPlayerDto);
+  }
+
   @Get()
-  @Roles('ADMIN', 'AGENT', 'SCOUT', 'ANALYST')
-  async findAll(
+  findAll(
     @Query('position') position?: string,
     @Query('status') status?: string,
     @Query('nationality') nationality?: string,
+    @Query('clubId') clubId?: string,
+    @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -22,14 +28,37 @@ export class PlayersController {
       position,
       status,
       nationality,
+      clubId,
+      search,
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,
     });
   }
 
   @Get(':id')
-  @Roles('ADMIN', 'AGENT', 'SCOUT', 'ANALYST', 'PLAYER')
-  async findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string) {
     return this.playersService.findOne(id);
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard)
+  update(@Param('id') id: string, @Body() updatePlayerDto: UpdatePlayerDto) {
+    return this.playersService.update(id, updatePlayerDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  remove(@Param('id') id: string) {
+    return this.playersService.remove(id);
+  }
+
+  @Get(':id/stats')
+  getStats(@Param('id') id: string) {
+    return this.playersService.getStats(id);
+  }
+
+  @Get(':id/reports')
+  getReports(@Param('id') id: string) {
+    return this.playersService.getReports(id);
   }
 }

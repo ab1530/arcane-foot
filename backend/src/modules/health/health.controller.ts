@@ -19,4 +19,9 @@ export class HealthController {
   async live() {
     return this.healthService.getLiveness();
   }
+
+  @Get('/debug-sentry')
+  getError() {
+    throw new Error('My first Sentry error!');
+  }
 }

@@ -1,22 +1,14 @@
+// Import Sentry instrumentation FIRST, before any other imports
+import './instrument';
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression from 'compression';
-import * as Sentry from '@sentry/node';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  // Initialize Sentry for error tracking
-  if (process.env.SENTRY_DSN) {
-    Sentry.init({
-      dsn: process.env.SENTRY_DSN,
-      environment: process.env.NODE_ENV || 'development',
-      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    });
-    console.log('✅ Sentry initialized');
-  }
 
   // Security headers with Helmet
   app.use(

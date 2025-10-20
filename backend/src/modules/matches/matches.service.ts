@@ -1,0 +1,368 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateMatchDto } from './dto/create-match.dto';
+import { UpdateMatchDto } from './dto/update-match.dto';
+import { MatchStatus } from '@prisma/client';
+
+@Injectable()
+export class MatchesService {
+  constructor(private prisma: PrismaService) {}
+
+  /**
+   * Create a new match
+   */
+  async create(createMatchDto: CreateMatchDto) {
+    // Validate clubs exist
+    const [homeClub, awayClub] = await Promise.all([
+      this.prisma.club.findUnique({ where: { id: createMatchDto.homeClubId } }),
+      this.prisma.club.findUnique({ where: { id: createMatchDto.awayClubId } }),
+    ]);
+
+    if (!homeClub) {
+      throw new NotFoundException(`Home club with ID ${createMatchDto.homeClubId} not found`);
+    }
+    if (!awayClub) {
+      throw new NotFoundException(`Away club with ID ${createMatchDto.awayClubId} not found`);
+    }
+    if (createMatchDto.homeClubId === createMatchDto.awayClubId) {
+      throw new BadRequestException('Home and away clubs must be different');
+    }
+
+    return this.prisma.match.create({
+      data: {
+        ...createMatchDto,
+        scheduledAt: new Date(createMatchDto.scheduledAt),
+      },
+      include: {
+        homeClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        awayClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        scout: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Find all matches with filters and pagination
+   */
+  async findAll(params: {
+    status?: MatchStatus;
+    clubId?: string;
+    scoutId?: string;
+    competition?: string;
+    season?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const { status, clubId, scoutId, competition, season, from, to, page = 1, limit = 20 } = params;
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (scoutId) where.scoutId = scoutId;
+    if (competition) where.competition = competition;
+    if (season) where.season = season;
+
+    if (clubId) {
+      where.OR = [{ homeClubId: clubId }, { awayClubId: clubId }];
+    }
+
+    if (from || to) {
+      where.scheduledAt = {};
+      if (from) where.scheduledAt.gte = new Date(from);
+      if (to) where.scheduledAt.lte = new Date(to);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [matches, total] = await Promise.all([
+      this.prisma.match.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          homeClub: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logo: true,
+            },
+          },
+          awayClub: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logo: true,
+            },
+          },
+          scout: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          _count: {
+            select: {
+              scoutingReports: true,
+            },
+          },
+        },
+        orderBy: { scheduledAt: 'desc' },
+      }),
+      this.prisma.match.count({ where }),
+    ]);
+
+    return {
+      data: matches,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Find one match by ID
+   */
+  async findOne(id: string) {
+    const match = await this.prisma.match.findUnique({
+      where: { id },
+      include: {
+        homeClub: true,
+        awayClub: true,
+        scout: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+          },
+        },
+        scoutingReports: {
+          include: {
+            player: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+            scout: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+        media: true,
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${id} not found`);
+    }
+
+    return match;
+  }
+
+  /**
+   * Update a match
+   */
+  async update(id: string, updateMatchDto: UpdateMatchDto) {
+    const match = await this.prisma.match.findUnique({ where: { id } });
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${id} not found`);
+    }
+
+    const updateData: any = { ...updateMatchDto };
+    if (updateMatchDto.scheduledAt) {
+      updateData.scheduledAt = new Date(updateMatchDto.scheduledAt);
+    }
+
+    return this.prisma.match.update({
+      where: { id },
+      data: updateData,
+      include: {
+        homeClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        awayClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        scout: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Delete a match
+   */
+  async remove(id: string) {
+    const match = await this.prisma.match.findUnique({ where: { id } });
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${id} not found`);
+    }
+
+    return this.prisma.match.delete({ where: { id } });
+  }
+
+  /**
+   * Assign scout to match
+   */
+  async assignScout(id: string, scoutId: string) {
+    const match = await this.prisma.match.findUnique({ where: { id } });
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${id} not found`);
+    }
+
+    const scout = await this.prisma.user.findUnique({
+      where: { id: scoutId },
+    });
+    if (!scout) {
+      throw new NotFoundException(`Scout with ID ${scoutId} not found`);
+    }
+    if (scout.role !== 'SCOUT' && scout.role !== 'ADMIN' && scout.role !== 'SUPER_ADMIN') {
+      throw new BadRequestException('User is not a scout');
+    }
+
+    return this.prisma.match.update({
+      where: { id },
+      data: { scoutId },
+      include: {
+        homeClub: true,
+        awayClub: true,
+        scout: true,
+      },
+    });
+  }
+
+  /**
+   * Update match score
+   */
+  async updateScore(id: string, homeScore: number, awayScore: number) {
+    const match = await this.prisma.match.findUnique({ where: { id } });
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${id} not found`);
+    }
+
+    return this.prisma.match.update({
+      where: { id },
+      data: {
+        homeScore,
+        awayScore,
+        status: MatchStatus.COMPLETED,
+      },
+      include: {
+        homeClub: true,
+        awayClub: true,
+      },
+    });
+  }
+
+  /**
+   * Get upcoming matches
+   */
+  async getUpcoming(limit: number = 10) {
+    return this.prisma.match.findMany({
+      where: {
+        scheduledAt: { gte: new Date() },
+        status: MatchStatus.SCHEDULED,
+      },
+      take: limit,
+      include: {
+        homeClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        awayClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        scout: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { scheduledAt: 'asc' },
+    });
+  }
+
+  /**
+   * Get live matches
+   */
+  async getLive() {
+    return this.prisma.match.findMany({
+      where: { status: MatchStatus.LIVE },
+      include: {
+        homeClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        awayClub: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+      },
+    });
+  }
+}
