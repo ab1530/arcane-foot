@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Arcane Platform Backend..."
+echo "[START] Starting Arcane Platform Backend..."
 
-echo "📦 Running Prisma migrations..."
-npx prisma migrate deploy
+echo "[DB] Syncing database schema..."
+npx prisma db push --accept-data-loss
 
-echo "✅ Migrations completed!"
+echo "[OK] Database schema synced!"
 
-echo "🎯 Starting application..."
+echo "[APP] Starting application..."
 npm run start:prod
