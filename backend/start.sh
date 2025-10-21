@@ -1,19 +1,23 @@
 #!/bin/bash
-set -e
 
 echo "[START] Starting Arcane Platform Backend..."
 
 echo "[DB] Running Prisma migrations..."
 
-# Check if _prisma_migrations table exists
-if npx prisma migrate status 2>&1 | grep -q "not been created"; then
-  echo "[DB] Baselining existing database..."
-  # Mark the initial migration as applied without running it
-  npx prisma migrate resolve --applied "20251016180531_init"
-fi
+# Capture migration output and exit code
+npx prisma migrate deploy 2>&1 | tee /tmp/migrate.log || MIGRATE_EXIT_CODE=$?
 
-# Apply any pending migrations
-npx prisma migrate deploy
+# Check if migration failed with P3005 (database not empty)
+if [ ! -z "$MIGRATE_EXIT_CODE" ] && grep -q "P3005" /tmp/migrate.log; then
+  echo "[DB] Database schema exists but not baselined"
+  echo "[DB] Marking initial migration '20251016180531_init' as applied..."
+
+  # Mark the initial migration as applied
+  npx prisma migrate resolve --applied "20251016180531_init"
+
+  echo "[DB] Running migrations again..."
+  npx prisma migrate deploy
+fi
 
 echo "[OK] Migrations completed!"
 
