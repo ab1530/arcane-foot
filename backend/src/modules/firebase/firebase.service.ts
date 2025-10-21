@@ -11,10 +11,36 @@ export class FirebaseService implements OnModuleInit {
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    const serviceAccountPath = this.configService.get<string>('FIREBASE_ADMIN_SDK_JSON_PATH');
-    const projectId = this.configService.get<string>('FCM_PROJECT_ID');
+    // Try environment variables first (for Railway/production)
+    const projectId = this.configService.get<string>('FIREBASE_PROJECT_ID');
+    const clientEmail = this.configService.get<string>('FIREBASE_CLIENT_EMAIL');
+    const privateKey = this.configService.get<string>('FIREBASE_PRIVATE_KEY');
 
-    if (!serviceAccountPath || !projectId) {
+    if (projectId && clientEmail && privateKey) {
+      try {
+        // Replace literal \n with actual newlines
+        const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            clientEmail,
+            privateKey: formattedPrivateKey,
+          }),
+        });
+
+        this.logger.log('✅ Firebase Admin SDK initialized');
+        return;
+      } catch (error) {
+        this.logger.error('Failed to initialize Firebase with env vars', error);
+      }
+    }
+
+    // Fallback to JSON file (for local development)
+    const serviceAccountPath = this.configService.get<string>('FIREBASE_ADMIN_SDK_JSON_PATH');
+    const fcmProjectId = this.configService.get<string>('FCM_PROJECT_ID');
+
+    if (!serviceAccountPath || !fcmProjectId) {
       this.logger.warn('Firebase credentials not configured');
       return;
     }
@@ -31,10 +57,10 @@ export class FirebaseService implements OnModuleInit {
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId,
+        projectId: fcmProjectId,
       });
 
-      this.logger.log('Firebase Admin SDK initialized');
+      this.logger.log('✅ Firebase Admin SDK initialized from file');
     } catch (error) {
       this.logger.error('Failed to initialize Firebase Admin SDK', error);
     }
