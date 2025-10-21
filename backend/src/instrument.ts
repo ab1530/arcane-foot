@@ -16,6 +16,6 @@ Sentry.init({
 });
 
 console.log(
-  '✅ Sentry initialized for',
+  '[OK] Sentry initialized for',
   process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
 );

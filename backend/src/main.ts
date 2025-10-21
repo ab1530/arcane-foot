@@ -42,10 +42,10 @@ async function bootstrap() {
   const port = process.env.API_PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 Arcane API running on: http://localhost:${port}/api`);
-  console.log(`🏥 Health check: http://localhost:${port}/api/health`);
-  console.log(`🛡️  Security: Helmet enabled`);
-  console.log(`⚡ Compression: Enabled`);
+  console.log(`[START] Arcane API running on: http://localhost:${port}/api`);
+  console.log(`[HEALTH] Health check: http://localhost:${port}/api/health`);
+  console.log(`[SECURITY] Helmet enabled`);
+  console.log(`[PERF] Compression enabled`);
 }
 
 bootstrap();

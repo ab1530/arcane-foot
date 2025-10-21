@@ -29,7 +29,7 @@ export class FirebaseService implements OnModuleInit {
           }),
         });
 
-        this.logger.log('✅ Firebase Admin SDK initialized');
+        this.logger.log('[FIREBASE] Admin SDK initialized');
         return;
       } catch (error) {
         this.logger.error('Failed to initialize Firebase with env vars', error);
@@ -60,7 +60,7 @@ export class FirebaseService implements OnModuleInit {
         projectId: fcmProjectId,
       });
 
-      this.logger.log('✅ Firebase Admin SDK initialized from file');
+      this.logger.log('[FIREBASE] Admin SDK initialized from file');
     } catch (error) {
       this.logger.error('Failed to initialize Firebase Admin SDK', error);
     }
