@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
 import { ArkaneMatchController } from './arkane-match.controller';
 import { ArkaneMatchService } from './arkane-match.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ChatDto, ChatResponseDto, IntentType } from './dto/chat.dto';
 
 describe('ArkaneMatchController', () => {
@@ -78,6 +79,17 @@ describe('ArkaneMatchController', () => {
             getConversation: jest.fn(),
             clearConversation: jest.fn(),
             getInfo: jest.fn(),
+          },
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
           },
         },
       ],
