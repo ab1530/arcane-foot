@@ -293,13 +293,18 @@ describe('KanbanService', () => {
       const result = await service.createColumn('board-123', createColumnDto);
 
       expect(prismaService.kanban_boards.findUnique).toHaveBeenCalled();
-      expect(prismaService.kanban_columns.create).toHaveBeenCalledWith({
-        data: {
-          ...createColumnDto,
-          boardId: 'board-123',
-        },
-        include: { cards: true },
-      });
+      expect(prismaService.kanban_columns.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: createColumnDto.name,
+            color: createColumnDto.color,
+            type: createColumnDto.type,
+            position: createColumnDto.position,
+            boardId: 'board-123',
+          }),
+          include: { kanban_cards: true },
+        }),
+      );
       expect(result).toEqual(mockColumn);
     });
 
@@ -336,7 +341,7 @@ describe('KanbanService', () => {
       expect(prismaService.kanban_columns.update).toHaveBeenCalledWith({
         where: { id: 'col-123' },
         data: updateData,
-        include: { cards: true },
+        include: { kanban_cards: true },
       });
       expect(result.name).toBe(updateData.name);
     });

@@ -55,20 +55,20 @@ describe('HealthService', () => {
 
     it('should return unhealthy status when database is down', async () => {
       mockPrismaService.$queryRaw.mockRejectedValue(new Error('DB Error'));
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
+      const loggerErrorSpy = jest
+        .spyOn(service['logger'], 'error')
         .mockImplementation();
 
       const result = await service.getHealth();
 
       expect(result.status).toBe('unhealthy');
       expect(result.checks.database).toBe('down');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
         'Database health check failed:',
         expect.any(Error),
       );
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore();
     });
 
     it('should include response time in result', async () => {
@@ -105,8 +105,8 @@ describe('HealthService', () => {
 
     it('should return not ready status when database is down', async () => {
       mockPrismaService.$queryRaw.mockRejectedValue(new Error('DB Error'));
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
+      const loggerErrorSpy = jest
+        .spyOn(service['logger'], 'error')
         .mockImplementation();
 
       const result = await service.getReadiness();
@@ -118,7 +118,7 @@ describe('HealthService', () => {
         database: 'down',
       });
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore();
     });
 
     it('should include timestamp in ISO format', async () => {
@@ -176,19 +176,19 @@ describe('HealthService', () => {
 
     it('should return false when database query fails', async () => {
       mockPrismaService.$queryRaw.mockRejectedValue(new Error('DB Error'));
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
+      const loggerErrorSpy = jest
+        .spyOn(service['logger'], 'error')
         .mockImplementation();
 
       const result = await (service as any).checkDatabase();
 
       expect(result).toBe(false);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
         'Database health check failed:',
         expect.any(Error),
       );
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore();
     });
   });
 
