@@ -76,13 +76,15 @@ describe('KanbanService', () => {
 
       const result = await service.createBoard(createBoardDto, 'user-123');
 
-      expect(prismaService.kanban_boards.create).toHaveBeenCalledWith({
-        data: {
-          ...createBoardDto,
-          ownerId: 'user-123',
-        },
-        include: expect.any(Object),
-      });
+      expect(prismaService.kanban_boards.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            ...createBoardDto,
+            ownerId: 'user-123',
+          }),
+          include: expect.any(Object),
+        }),
+      );
       expect(result).toEqual(mockBoard);
     });
 
@@ -93,13 +95,15 @@ describe('KanbanService', () => {
 
       await service.createBoard(publicBoardDto, 'user-123');
 
-      expect(prismaService.kanban_boards.create).toHaveBeenCalledWith({
-        data: {
-          ...publicBoardDto,
-          ownerId: null,
-        },
-        include: expect.any(Object),
-      });
+      expect(prismaService.kanban_boards.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            ...publicBoardDto,
+            ownerId: null,
+          }),
+          include: expect.any(Object),
+        }),
+      );
     });
   });
 

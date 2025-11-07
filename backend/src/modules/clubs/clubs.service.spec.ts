@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ClubsService } from './clubs.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheManagerService } from '../../common/interceptors/cache.interceptor';
 
 describe('ClubsService', () => {
   let service: ClubsService;
   let prismaService: PrismaService;
+  let cacheManager: CacheManagerService;
 
   const mockPrismaService = {
     clubs: {
@@ -24,6 +26,13 @@ describe('ClubsService', () => {
     },
   };
 
+  const mockCacheManagerService = {
+    getOrSet: jest.fn((key, cb) => cb()),
+    cacheWithTags: jest.fn(),
+    invalidateByTag: jest.fn(),
+    invalidateByTags: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -32,11 +41,16 @@ describe('ClubsService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: CacheManagerService,
+          useValue: mockCacheManagerService,
+        },
       ],
     }).compile();
 
     service = module.get<ClubsService>(ClubsService);
     prismaService = module.get<PrismaService>(PrismaService);
+    cacheManager = module.get<CacheManagerService>(CacheManagerService);
 
     jest.clearAllMocks();
   });
@@ -69,10 +83,21 @@ describe('ClubsService', () => {
 
       const result = await service.create(createClubDto);
 
-      expect(prismaService.clubs.create).toHaveBeenCalledWith({
-        data: createClubDto,
-        include: expect.any(Object),
-      });
+      expect(prismaService.clubs.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: createClubDto.name,
+            shortName: createClubDto.shortName,
+            country: createClubDto.country,
+            city: createClubDto.city,
+            stadium: createClubDto.stadium,
+            founded: createClubDto.founded,
+            logo: createClubDto.logo,
+            website: createClubDto.website,
+          }),
+          include: expect.any(Object),
+        }),
+      );
       expect(result).toEqual(mockClub);
     });
   });
@@ -83,13 +108,21 @@ describe('ClubsService', () => {
         id: 'club-1',
         name: 'PSG',
         country: 'FR',
-        _count: { players: 25, homeMatches: 10, awayMatches: 12 },
+        _count: {
+          players: 25,
+          matches_matches_homeClubIdToclubs: 10,
+          matches_matches_awayClubIdToclubs: 12
+        },
       },
       {
         id: 'club-2',
         name: 'OM',
         country: 'FR',
-        _count: { players: 23, homeMatches: 11, awayMatches: 9 },
+        _count: {
+          players: 23,
+          matches_matches_homeClubIdToclubs: 11,
+          matches_matches_awayClubIdToclubs: 9
+        },
       },
     ];
 
@@ -177,15 +210,15 @@ describe('ClubsService', () => {
     const mockClub = {
       id: 'club-123',
       name: 'PSG',
-      contactUser: null,
+      users: null,
       players: [],
-      homeMatches: [],
-      awayMatches: [],
+      matches_matches_homeClubIdToclubs: [],
+      matches_matches_awayClubIdToclubs: [],
       _count: {
         players: 0,
-        homeMatches: 0,
-        awayMatches: 0,
-        clubRequests: 0,
+        matches_matches_homeClubIdToclubs: 0,
+        matches_matches_awayClubIdToclubs: 0,
+        club_requests: 0,
         camps: 0,
       },
     };
@@ -225,7 +258,7 @@ describe('ClubsService', () => {
     const mockUpdatedClub = {
       ...mockClub,
       ...updateClubDto,
-      contactUser: null,
+      users: null,
     };
 
     it('should update a club successfully', async () => {
@@ -297,13 +330,13 @@ describe('ClubsService', () => {
         id: 'player-1',
         clubId: 'club-123',
         jerseyNumber: 7,
-        user: { firstName: 'Kylian', lastName: 'Mbappé' },
+        users: { firstName: 'Kylian', lastName: 'Mbappé' },
       },
       {
         id: 'player-2',
         clubId: 'club-123',
         jerseyNumber: 10,
-        user: { firstName: 'Neymar', lastName: 'Jr' },
+        users: { firstName: 'Neymar', lastName: 'Jr' },
       },
     ];
 

@@ -23,50 +23,6 @@ export class ChatDto {
 }
 
 /**
- * DTO for chat response
- */
-export class ChatResponseDto {
-  @ApiProperty({
-    description: 'AI-generated response message',
-    example: 'I found 2 LaLiga specialists who focus on defenders...',
-  })
-  response: string;
-
-  @ApiProperty({
-    description: 'List of matching scouts (if any)',
-    type: Array,
-    required: false,
-  })
-  scouts?: any[];
-
-  @ApiProperty({
-    description: 'Extracted search criteria from user message',
-    required: false,
-  })
-  extractedCriteria?: SearchCriteriaDto;
-
-  @ApiProperty({
-    description: 'Follow-up questions to help refine search',
-    type: [String],
-    required: false,
-  })
-  suggestions?: string[];
-
-  @ApiProperty({
-    description: 'Conversation ID for multi-turn dialogues',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  conversationId: string;
-
-  @ApiProperty({
-    description: 'Intent detected from user message',
-    example: 'SEARCH_SCOUT',
-    required: false,
-  })
-  intent?: string;
-}
-
-/**
  * Extracted search criteria from NLU
  */
 export class SearchCriteriaDto {
@@ -133,6 +89,50 @@ export class SearchCriteriaDto {
   })
   @IsOptional()
   currency?: string;
+}
+
+/**
+ * DTO for chat response
+ */
+export class ChatResponseDto {
+  @ApiProperty({
+    description: 'AI-generated response message',
+    example: 'I found 2 LaLiga specialists who focus on defenders...',
+  })
+  response: string;
+
+  @ApiProperty({
+    description: 'List of matching scouts (if any)',
+    type: Array,
+    required: false,
+  })
+  scouts?: any[];
+
+  @ApiProperty({
+    description: 'Extracted search criteria from user message',
+    required: false,
+  })
+  extractedCriteria?: SearchCriteriaDto;
+
+  @ApiProperty({
+    description: 'Follow-up questions to help refine search',
+    type: [String],
+    required: false,
+  })
+  suggestions?: string[];
+
+  @ApiProperty({
+    description: 'Conversation ID for multi-turn dialogues',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  conversationId: string;
+
+  @ApiProperty({
+    description: 'Intent detected from user message',
+    example: 'SEARCH_SCOUT',
+    required: false,
+  })
+  intent?: string;
 }
 
 /**

@@ -102,12 +102,12 @@ describe('CoachingService', () => {
           id: 'coach-1',
           firstName: 'Jean',
           coachingType: CoachingType.MENTAL_COACHING,
-          bookings: [
+          coaching_bookings: [
             { id: 'b1', userRating: 5 },
             { id: 'b2', userRating: 4 },
           ],
           _count: {
-            bookings: 2,
+            coaching_bookings: 2,
           },
         },
       ];
@@ -147,12 +147,12 @@ describe('CoachingService', () => {
       const mockCoach = {
         id: 'coach-123',
         firstName: 'Jean',
-        bookings: [
+        coaching_bookings: [
           { id: 'b1', userRating: 5 },
           { id: 'b2', userRating: 3 },
         ],
         _count: {
-          bookings: 2,
+          coaching_bookings: 2,
         },
       };
 

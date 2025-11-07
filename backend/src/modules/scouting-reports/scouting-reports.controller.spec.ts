@@ -583,4 +583,329 @@ describe('ScoutingReportsController', () => {
       expect(service.findAll).toHaveBeenCalledWith(complexQuery);
     });
   });
+
+  describe('Additional controller edge cases', () => {
+    it('should handle NotFoundException from service on findOne', async () => {
+      mockScoutingReportsService.findOne.mockRejectedValue(new Error('Report not found'));
+
+      await expect(controller.findOne('non-existent-id')).rejects.toThrow('Report not found');
+    });
+
+    it('should handle concurrent update requests', async () => {
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+
+      const updatePromises = [
+        controller.update('report-123', { summary: 'Update 1' }),
+        controller.update('report-123', { summary: 'Update 2' }),
+        controller.update('report-123', { summary: 'Update 3' }),
+      ];
+
+      await Promise.all(updatePromises);
+
+      expect(service.update).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle rapid submit and review workflow', async () => {
+      mockScoutingReportsService.submit.mockResolvedValue({
+        ...mockReport,
+        status: 'SUBMITTED' as ReportStatus,
+      });
+      mockScoutingReportsService.review.mockResolvedValue({
+        ...mockReport,
+        status: 'APPROVED' as ReportStatus,
+      });
+
+      await controller.submit('report-123');
+      await controller.review('report-123', true, mockRequest);
+
+      expect(service.submit).toHaveBeenCalledWith('report-123');
+      expect(service.review).toHaveBeenCalledWith('report-123', 'scout-123', true);
+    });
+
+    it('should handle empty report ID gracefully', async () => {
+      mockScoutingReportsService.findOne.mockRejectedValue(new Error('Invalid ID'));
+
+      await expect(controller.findOne('')).rejects.toThrow('Invalid ID');
+    });
+
+    it('should handle reports with all optional fields undefined', async () => {
+      const minimalDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+      };
+      mockScoutingReportsService.create.mockResolvedValue(mockReport);
+
+      await controller.create(minimalDto, mockRequest);
+
+      expect(service.create).toHaveBeenCalledWith(minimalDto, 'scout-123');
+    });
+  });
+
+  describe('Status-specific filtering', () => {
+    const allStatuses: ReportStatus[] = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'];
+
+    allStatuses.forEach((status) => {
+      it(`should filter reports by ${status} status`, async () => {
+        mockScoutingReportsService.findAll.mockResolvedValue([mockReport]);
+
+        await controller.findAll({ status });
+
+        expect(service.findAll).toHaveBeenCalledWith({ status });
+      });
+    });
+  });
+
+  describe('Recommendation-specific filtering', () => {
+    const allRecommendations = [
+      'BUY_NOW',
+      'MONITOR',
+      'FOLLOW_UP',
+      'NOT_INTERESTED',
+      'HIGHLY_RECOMMENDED',
+      'RECOMMENDED',
+      'NOT_RECOMMENDED',
+    ];
+
+    allRecommendations.forEach((recommendation) => {
+      it(`should filter reports by ${recommendation} recommendation`, async () => {
+        mockScoutingReportsService.findAll.mockResolvedValue([mockReport]);
+
+        await controller.findAll({ recommendation: recommendation as RecommendationType });
+
+        expect(service.findAll).toHaveBeenCalledWith({ recommendation });
+      });
+    });
+  });
+
+  describe('User context extraction', () => {
+    it('should handle user with only email field', async () => {
+      const requestWithEmail = {
+        user: {
+          email: 'test@example.com',
+        },
+      } as any;
+      mockScoutingReportsService.create.mockResolvedValue(mockReport);
+
+      await controller.create(
+        { matchId: 'match-123', playerId: 'player-123' },
+        requestWithEmail,
+      );
+
+      expect(service.create).toHaveBeenCalledWith(
+        { matchId: 'match-123', playerId: 'player-123' },
+        undefined,
+      );
+    });
+
+    it('should prioritize id over sub for reviewer extraction', async () => {
+      const requestBothIds = {
+        user: {
+          id: 'id-should-win',
+          sub: 'sub-should-lose',
+        },
+      } as any;
+      mockScoutingReportsService.review.mockResolvedValue(mockReport);
+
+      await controller.review('report-123', true, requestBothIds);
+
+      expect(service.review).toHaveBeenCalledWith('report-123', 'id-should-win', true);
+    });
+  });
+
+  describe('Multiple entity fetching', () => {
+    it('should handle fetching reports for multiple players sequentially', async () => {
+      mockScoutingReportsService.getPlayerReports.mockResolvedValue([mockReport]);
+
+      await controller.getPlayerReports('player-1');
+      await controller.getPlayerReports('player-2');
+      await controller.getPlayerReports('player-3');
+
+      expect(service.getPlayerReports).toHaveBeenCalledTimes(3);
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-1');
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-2');
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-3');
+    });
+
+    it('should handle fetching reports for multiple scouts sequentially', async () => {
+      mockScoutingReportsService.getScoutReports.mockResolvedValue([mockReport]);
+
+      await controller.getScoutReports('scout-1');
+      await controller.getScoutReports('scout-2');
+
+      expect(service.getScoutReports).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle fetching reports for multiple matches sequentially', async () => {
+      mockScoutingReportsService.getMatchReports.mockResolvedValue([mockReport]);
+
+      await controller.getMatchReports('match-1');
+      await controller.getMatchReports('match-2');
+
+      expect(service.getMatchReports).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Update operation variants', () => {
+    it('should update only summary field', async () => {
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+
+      await controller.update('report-123', { summary: 'New summary only' });
+
+      expect(service.update).toHaveBeenCalledWith('report-123', { summary: 'New summary only' });
+    });
+
+    it('should update only rating fields', async () => {
+      const ratingsOnly = {
+        technicalRating: 95,
+        physicalRating: 93,
+        mentalRating: 91,
+        tacticalRating: 89,
+      };
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+
+      await controller.update('report-123', ratingsOnly);
+
+      expect(service.update).toHaveBeenCalledWith('report-123', ratingsOnly);
+    });
+
+    it('should update only recommendation fields', async () => {
+      const recommendationOnly = {
+        recommendation: 'BUY_NOW' as RecommendationType,
+        recommendationNotes: 'Must acquire immediately',
+      };
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+
+      await controller.update('report-123', recommendationOnly);
+
+      expect(service.update).toHaveBeenCalledWith('report-123', recommendationOnly);
+    });
+
+    it('should update tags only', async () => {
+      const tagsOnly = { tags: ['new', 'updated', 'tags'] };
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+
+      await controller.update('report-123', tagsOnly);
+
+      expect(service.update).toHaveBeenCalledWith('report-123', tagsOnly);
+    });
+
+    it('should update similar players only', async () => {
+      const similarPlayersOnly = { similarPlayerIds: ['p1', 'p2', 'p3'] };
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+
+      await controller.update('report-123', similarPlayersOnly);
+
+      expect(service.update).toHaveBeenCalledWith('report-123', similarPlayersOnly);
+    });
+  });
+
+  describe('Review workflow scenarios', () => {
+    it('should approve with different reviewer IDs', async () => {
+      mockScoutingReportsService.review.mockResolvedValue(mockReport);
+
+      const reviewer1 = { user: { id: 'reviewer-1' } };
+      const reviewer2 = { user: { id: 'reviewer-2' } };
+      const reviewer3 = { user: { id: 'reviewer-3' } };
+
+      await controller.review('report-1', true, reviewer1);
+      await controller.review('report-2', true, reviewer2);
+      await controller.review('report-3', true, reviewer3);
+
+      expect(service.review).toHaveBeenCalledWith('report-1', 'reviewer-1', true);
+      expect(service.review).toHaveBeenCalledWith('report-2', 'reviewer-2', true);
+      expect(service.review).toHaveBeenCalledWith('report-3', 'reviewer-3', true);
+    });
+
+    it('should reject with different reviewer IDs', async () => {
+      mockScoutingReportsService.review.mockResolvedValue(mockReport);
+
+      const reviewer1 = { user: { id: 'reviewer-1' } };
+      const reviewer2 = { user: { id: 'reviewer-2' } };
+
+      await controller.review('report-1', false, reviewer1);
+      await controller.review('report-2', false, reviewer2);
+
+      expect(service.review).toHaveBeenCalledWith('report-1', 'reviewer-1', false);
+      expect(service.review).toHaveBeenCalledWith('report-2', 'reviewer-2', false);
+    });
+
+    it('should handle review decision as boolean true', async () => {
+      mockScoutingReportsService.review.mockResolvedValue(mockReport);
+
+      await controller.review('report-123', true, mockRequest);
+
+      expect(service.review).toHaveBeenCalledWith('report-123', 'scout-123', true);
+    });
+
+    it('should handle review decision as boolean false', async () => {
+      mockScoutingReportsService.review.mockResolvedValue(mockReport);
+
+      await controller.review('report-123', false, mockRequest);
+
+      expect(service.review).toHaveBeenCalledWith('report-123', 'scout-123', false);
+    });
+  });
+
+  describe('Delete operation scenarios', () => {
+    it('should successfully delete and return message', async () => {
+      const deleteResponse = { message: 'Rapport supprimé avec succès' };
+      mockScoutingReportsService.remove.mockResolvedValue(deleteResponse);
+
+      const result = await controller.remove('report-123');
+
+      expect(result).toEqual(deleteResponse);
+      expect(result.message).toBe('Rapport supprimé avec succès');
+    });
+
+    it('should handle deleting multiple reports sequentially', async () => {
+      const deleteResponse = { message: 'Rapport supprimé avec succès' };
+      mockScoutingReportsService.remove.mockResolvedValue(deleteResponse);
+
+      await controller.remove('report-1');
+      await controller.remove('report-2');
+      await controller.remove('report-3');
+
+      expect(service.remove).toHaveBeenCalledTimes(3);
+      expect(service.remove).toHaveBeenCalledWith('report-1');
+      expect(service.remove).toHaveBeenCalledWith('report-2');
+      expect(service.remove).toHaveBeenCalledWith('report-3');
+    });
+  });
+
+  describe('Service method invocations', () => {
+    it('should call service methods with correct parameters', async () => {
+      mockScoutingReportsService.create.mockResolvedValue(mockReport);
+      mockScoutingReportsService.findAll.mockResolvedValue([mockReport]);
+      mockScoutingReportsService.findOne.mockResolvedValue(mockReport);
+      mockScoutingReportsService.update.mockResolvedValue(mockReport);
+      mockScoutingReportsService.submit.mockResolvedValue(mockReport);
+      mockScoutingReportsService.review.mockResolvedValue(mockReport);
+      mockScoutingReportsService.remove.mockResolvedValue({ message: 'Deleted' });
+      mockScoutingReportsService.getPlayerReports.mockResolvedValue([mockReport]);
+      mockScoutingReportsService.getScoutReports.mockResolvedValue([mockReport]);
+      mockScoutingReportsService.getMatchReports.mockResolvedValue([mockReport]);
+
+      await controller.create({ matchId: 'match-123', playerId: 'player-123' }, mockRequest);
+      await controller.findAll({});
+      await controller.findOne('report-123');
+      await controller.update('report-123', { summary: 'Updated' });
+      await controller.submit('report-123');
+      await controller.review('report-123', true, mockRequest);
+      await controller.remove('report-123');
+      await controller.getPlayerReports('player-123');
+      await controller.getScoutReports('scout-123');
+      await controller.getMatchReports('match-123');
+
+      expect(service.create).toHaveBeenCalled();
+      expect(service.findAll).toHaveBeenCalled();
+      expect(service.findOne).toHaveBeenCalled();
+      expect(service.update).toHaveBeenCalled();
+      expect(service.submit).toHaveBeenCalled();
+      expect(service.review).toHaveBeenCalled();
+      expect(service.remove).toHaveBeenCalled();
+      expect(service.getPlayerReports).toHaveBeenCalled();
+      expect(service.getScoutReports).toHaveBeenCalled();
+      expect(service.getMatchReports).toHaveBeenCalled();
+    });
+  });
 });

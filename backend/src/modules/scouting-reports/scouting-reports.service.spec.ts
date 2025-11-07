@@ -851,4 +851,346 @@ describe('ScoutingReportsService', () => {
       expect(result.reviewedAt).toBeDefined();
     });
   });
+
+  describe('Edge cases and error handling', () => {
+    it('should handle database connection errors on create', async () => {
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockRejectedValue(new Error('Database connection failed'));
+
+      const createDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        status: 'DRAFT' as ReportStatus,
+        overallRating: 85,
+      };
+
+      await expect(service.create(createDto, 'scout-123')).rejects.toThrow('Database connection failed');
+    });
+
+    it('should handle database errors on update', async () => {
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.update.mockRejectedValue(new Error('Update failed'));
+
+      await expect(service.update('report-123', { summary: 'Updated' })).rejects.toThrow('Update failed');
+    });
+
+    it('should handle database errors on delete', async () => {
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.delete.mockRejectedValue(new Error('Delete failed'));
+
+      await expect(service.remove('report-123')).rejects.toThrow('Delete failed');
+    });
+
+    it('should handle empty scoutId', async () => {
+      const createDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+      };
+
+      await expect(service.create(createDto, '')).rejects.toThrow(
+        new BadRequestException('Scout ID is required'),
+      );
+    });
+
+    it('should handle null scoutId', async () => {
+      const createDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+      };
+
+      await expect(service.create(createDto, null as any)).rejects.toThrow(
+        new BadRequestException('Scout ID is required'),
+      );
+    });
+
+    it('should handle undefined scoutId', async () => {
+      const createDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+      };
+
+      await expect(service.create(createDto, undefined as any)).rejects.toThrow(
+        new BadRequestException('Scout ID is required'),
+      );
+    });
+  });
+
+  describe('Rating validations and edge cases', () => {
+    it('should create report with minimum rating values (0)', async () => {
+      const minRatingDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        technicalRating: 0,
+        physicalRating: 0,
+        mentalRating: 0,
+        tacticalRating: 0,
+        overallRating: 0,
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(minRatingDto, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+
+    it('should create report with maximum rating values (100)', async () => {
+      const maxRatingDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        technicalRating: 100,
+        physicalRating: 100,
+        mentalRating: 100,
+        tacticalRating: 100,
+        overallRating: 100,
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(maxRatingDto, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+
+    it('should create report with mixed rating values', async () => {
+      const mixedRatingDto = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        technicalRating: 75,
+        physicalRating: 50,
+        mentalRating: 0,
+        tacticalRating: 100,
+        overallRating: 56,
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(mixedRatingDto, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('Recommendation types coverage', () => {
+    const recommendations = ['BUY_NOW', 'MONITOR', 'FOLLOW_UP', 'NOT_INTERESTED', 'HIGHLY_RECOMMENDED', 'RECOMMENDED', 'NOT_RECOMMENDED'];
+
+    recommendations.forEach((rec) => {
+      it(`should filter by ${rec} recommendation`, async () => {
+        prisma.scouting_reports.findMany.mockResolvedValue([mockReport] as any);
+
+        await service.getReportsByRecommendation(rec);
+
+        expect(prisma.scouting_reports.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { recommendation: rec },
+          }),
+        );
+      });
+    });
+  });
+
+  describe('Player minutes and position edge cases', () => {
+    it('should create report with 0 minutes played', async () => {
+      const dtoWithZeroMinutes = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        playerMinutesPlayed: 0,
+        playerPosition: 'Substitute',
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithZeroMinutes, 'scout-123');
+
+      const createCall = (prisma.scouting_reports.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.playerMinutesPlayed).toBe(0);
+    });
+
+    it('should create report with maximum minutes played (120)', async () => {
+      const dtoWithMaxMinutes = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        playerMinutesPlayed: 120,
+        playerPosition: 'Striker',
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithMaxMinutes, 'scout-123');
+
+      const createCall = (prisma.scouting_reports.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.playerMinutesPlayed).toBe(120);
+    });
+
+    it('should create report without position specified', async () => {
+      const dtoWithoutPosition = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        playerMinutesPlayed: 45,
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithoutPosition, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('Tags and similar players array handling', () => {
+    it('should create report with empty tags array', async () => {
+      const dtoWithEmptyTags = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        tags: [],
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithEmptyTags, 'scout-123');
+
+      const createCall = (prisma.scouting_reports.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.tags).toEqual([]);
+    });
+
+    it('should create report with empty similarPlayerIds array', async () => {
+      const dtoWithEmptySimilar = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        similarPlayerIds: [],
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithEmptySimilar, 'scout-123');
+
+      const createCall = (prisma.scouting_reports.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.similarPlayerIds).toEqual([]);
+    });
+
+    it('should create report with multiple tags', async () => {
+      const dtoWithManyTags = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        tags: ['fast', 'technical', 'creative', 'leader', 'versatile'],
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithManyTags, 'scout-123');
+
+      const createCall = (prisma.scouting_reports.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.tags).toHaveLength(5);
+    });
+
+    it('should create report with multiple similar player IDs', async () => {
+      const dtoWithManySimilar = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        similarPlayerIds: ['player-1', 'player-2', 'player-3', 'player-4', 'player-5'],
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithManySimilar, 'scout-123');
+
+      const createCall = (prisma.scouting_reports.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.similarPlayerIds).toHaveLength(5);
+    });
+  });
+
+  describe('Text field handling', () => {
+    it('should create report with empty strings', async () => {
+      const dtoWithEmptyStrings = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        summary: '',
+        strengths: '',
+        weaknesses: '',
+        recommendationNotes: '',
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithEmptyStrings, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+
+    it('should create report with very long text fields', async () => {
+      const longText = 'A'.repeat(5000);
+      const dtoWithLongText = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        summary: longText,
+        strengths: longText,
+        weaknesses: longText,
+        recommendationNotes: longText,
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithLongText, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+
+    it('should create report with special characters in text', async () => {
+      const specialText = "Special chars: <>&\"'{}[]|\\`~!@#$%^&*()";
+      const dtoWithSpecialChars = {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        summary: specialText,
+        strengths: specialText,
+        weaknesses: specialText,
+      };
+
+      prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
+      prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
+      prisma.users.findUnique.mockResolvedValue(mockScout as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+
+      await service.create(dtoWithSpecialChars, 'scout-123');
+
+      expect(prisma.scouting_reports.create).toHaveBeenCalled();
+    });
+  });
 });

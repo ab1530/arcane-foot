@@ -60,7 +60,7 @@ describe('SubscriptionsService', () => {
         userId: 'user-123',
         tier: SubscriptionTier.BASIC,
         status: SubscriptionStatus.ACTIVE,
-        user: {
+        users: {
           id: 'user-123',
           email: 'test@example.com',
           firstName: 'John',
@@ -76,7 +76,7 @@ describe('SubscriptionsService', () => {
       expect(mockPrismaService.subscriptions.findUnique).toHaveBeenCalledWith({
         where: { userId: 'user-123' },
         include: {
-          user: {
+          users: {
             select: {
               id: true,
               email: true,
@@ -88,12 +88,43 @@ describe('SubscriptionsService', () => {
       });
     });
 
-    it('should throw NotFoundException if subscription not found', async () => {
-      mockPrismaService.subscriptions.findUnique.mockResolvedValue(null);
+    it('should create FREE subscription if subscription not found', async () => {
+      const mockCreatedSubscription = {
+        id: 'sub-new',
+        userId: 'user-123',
+        tier: SubscriptionTier.FREE,
+        status: SubscriptionStatus.ACTIVE,
+        users: {
+          id: 'user-123',
+          email: 'test@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+        },
+      };
 
-      await expect(service.getMySubscription('user-123')).rejects.toThrow(
-        NotFoundException,
-      );
+      mockPrismaService.subscriptions.findUnique.mockResolvedValue(null);
+      mockPrismaService.subscriptions.create.mockResolvedValue(mockCreatedSubscription);
+
+      const result = await service.getMySubscription('user-123');
+
+      expect(result).toEqual(mockCreatedSubscription);
+      expect(mockPrismaService.subscriptions.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-123',
+          tier: SubscriptionTier.FREE,
+          status: SubscriptionStatus.ACTIVE,
+        }),
+        include: {
+          users: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
     });
   });
 

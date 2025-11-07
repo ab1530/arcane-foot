@@ -696,11 +696,11 @@ describe('ArkaneMatchService', () => {
         const loggerSpy = jest.spyOn(service['logger'], 'error');
         marketplaceService.searchListings.mockRejectedValue(new Error('Test error'));
 
-        await expect(
-          service.chat(mockUserId, { message: 'Find scouts' }),
-        ).rejects.toThrow();
+        const result = await service.chat(mockUserId, { message: 'Find scouts' });
 
         expect(loggerSpy).toHaveBeenCalled();
+        expect(result.scouts).toHaveLength(0);
+        expect(result.response).toBeDefined();
       });
 
       it('should throw error for invalid conversation ownership', async () => {
