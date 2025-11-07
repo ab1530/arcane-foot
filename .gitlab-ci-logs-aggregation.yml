@@ -2,15 +2,21 @@
 aggregate_logs:
   stage: logs
   image: alpine:latest
-  extends: .setup_logging
   needs:
     - build_backend
     - build_web
     - unit_test_backend
     - unit_test_web
     - qa_job
-  script:
+  before_script:
     - apk add --no-cache bash coreutils
+    - mkdir -p logs
+    - export LOG_FILE="logs/aggregate_logs_${CI_COMMIT_SHORT_SHA}.log"
+    - echo "=== Job aggregate_logs started ===" | tee -a $LOG_FILE
+    - echo "Pipeline ID: ${CI_PIPELINE_ID}" | tee -a $LOG_FILE
+    - echo "Commit: ${CI_COMMIT_SHORT_SHA}" | tee -a $LOG_FILE
+    - echo "Branch: ${CI_COMMIT_REF_NAME}" | tee -a $LOG_FILE
+  script:
     - mkdir -p aggregated_logs
     - |
       cat > aggregated_logs/pipeline_summary.md << 'SUMMARY'
