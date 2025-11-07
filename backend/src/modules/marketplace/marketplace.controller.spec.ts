@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MarketplaceController } from './marketplace.controller';
 import { MarketplaceService } from './marketplace.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ScoutListingStatus, OfferStatus } from '@prisma/client';
 
 describe('MarketplaceController', () => {
@@ -40,8 +42,22 @@ describe('MarketplaceController', () => {
           provide: MarketplaceService,
           useValue: mockMarketplaceService,
         },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<MarketplaceController>(MarketplaceController);
     service = module.get<MarketplaceService>(MarketplaceService);

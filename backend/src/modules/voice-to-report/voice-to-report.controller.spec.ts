@@ -3,7 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { VoiceToReportController } from './voice-to-report.controller';
 import { VoiceToReportService } from './voice-to-report.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
   ProcessVoiceReportDto,
   SupportedLanguage,

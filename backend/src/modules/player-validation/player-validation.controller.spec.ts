@@ -3,6 +3,9 @@ import { BadRequestException } from '@nestjs/common';
 import { PlayerValidationController } from './player-validation.controller';
 import { PlayerValidationService } from './player-validation.service';
 import { BulkImportService, ImportResult } from './bulk-import.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { VerificationStatus, PlayerType } from '@prisma/client';
 
 describe('PlayerValidationController', () => {
@@ -47,8 +50,24 @@ describe('PlayerValidationController', () => {
           provide: BulkImportService,
           useValue: bulkImportService,
         },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<PlayerValidationController>(PlayerValidationController);
   });

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PerformancePredictorController } from './performance-predictor.controller';
 import { PerformancePredictorService } from './performance-predictor.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
   PerformancePredictionDto,
@@ -30,6 +31,17 @@ describe('PerformancePredictorController', () => {
         {
           provide: PerformancePredictorService,
           useValue: mockPerformancePredictorService,
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
+          },
         },
       ],
     })

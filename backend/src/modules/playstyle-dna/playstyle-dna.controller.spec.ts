@@ -3,7 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PlaystyleDnaController } from './playstyle-dna.controller';
 import { PlaystyleDnaService } from './playstyle-dna.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
   ClassifyPlayerDto,
   ComparePlayersDto,

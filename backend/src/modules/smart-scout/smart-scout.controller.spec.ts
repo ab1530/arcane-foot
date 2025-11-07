@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SmartScoutController } from './smart-scout.controller';
 import { SmartScoutService } from './smart-scout.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -34,6 +35,17 @@ describe('SmartScoutController', () => {
         {
           provide: SmartScoutService,
           useValue: mockSmartScoutService,
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
+          },
         },
       ],
     })
