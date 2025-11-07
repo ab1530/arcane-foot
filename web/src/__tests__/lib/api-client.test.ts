@@ -18,6 +18,12 @@ describe('API Client', () => {
 
       ;(global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: jest.fn((name: string) => {
+            if (name === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: async () => ({ data: mockPlayers }),
       })
 
@@ -37,6 +43,12 @@ describe('API Client', () => {
 
       ;(global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: {
+          get: jest.fn((name: string) => {
+            if (name === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: async () => ({ data: [] }),
       })
 
@@ -56,6 +68,12 @@ describe('API Client', () => {
       ;(global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 500,
+        headers: {
+          get: jest.fn((name: string) => {
+            if (name === 'content-type') return 'application/json'
+            return null
+          }),
+        },
         json: async () => ({ message: 'Server error' }),
       })
 

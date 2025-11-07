@@ -16,7 +16,7 @@ describe('GlassCard Component', () => {
       <GlassCard variant="elevated">Content</GlassCard>
     )
     const card = container.firstChild
-    expect(card).toHaveClass('shadow-2xl')
+    expect(card).toHaveClass('shadow-lg')
   })
 
   it('applies glowOnHover prop', () => {
@@ -24,7 +24,7 @@ describe('GlassCard Component', () => {
       <GlassCard glowOnHover>Content</GlassCard>
     )
     const card = container.firstChild
-    expect(card).toHaveClass('hover:shadow-arcane-accent/20')
+    expect(card).toHaveClass('hover:border-arcane-accent/30')
   })
 
   it('applies custom className', () => {

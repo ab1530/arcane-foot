@@ -34,7 +34,7 @@ describe('Button Component', () => {
     render(<Button disabled>Disabled</Button>)
     const button = screen.getByRole('button')
     expect(button).toBeDisabled()
-    expect(button).toHaveClass('opacity-50')
+    expect(button).toHaveClass('disabled:opacity-50')
   })
 
   it('applies different sizes', () => {
