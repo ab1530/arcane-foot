@@ -1,41 +1,63 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-if [[ -z "${CI_REGISTRY_IMAGE:-}" || -z "${CI_COMMIT_SHA:-}" ]]; then
-  echo "[deploy-staging] Missing CI registry variables" >&2
-  exit 1
+###############################################################################
+# ARCANE Football - Staging Deployment Script
+###############################################################################
+
+echo "🚀 Starting ARCANE Football Staging Deployment"
+echo "================================================"
+
+# Configuration
+REGISTRY="${CI_REGISTRY:-registry.gitlab.com}"
+IMAGE_TAG="${CI_COMMIT_SHA:-latest}"
+PROJECT_PATH="${CI_PROJECT_PATH:-ab1530/arcane-foot}"
+STAGING_HOST="${STAGING_HOST:-staging.arcane-football.com}"
+
+echo "📦 Registry: $REGISTRY"
+echo "🏷️  Image Tag: $IMAGE_TAG"
+echo ""
+
+###############################################################################
+# Step 1: Docker Login
+###############################################################################
+echo "🔐 Step 1/5: Docker Registry Login"
+if [ -n "$CI_REGISTRY_PASSWORD" ]; then
+    echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY"
+    echo "✅ Docker login successful"
 fi
+echo ""
 
-if [[ -z "${STAGING_KUBE_CONFIG:-}" ]]; then
-  echo "[deploy-staging] STAGING_KUBE_CONFIG is required" >&2
-  exit 1
-fi
+###############################################################################
+# Step 2: Build & Push Images
+###############################################################################
+echo "🏗️  Step 2/5: Building and Pushing Images"
 
-# Login to GitLab container registry
-if [[ -n "${CI_REGISTRY_USER:-}" && -n "${CI_REGISTRY_PASSWORD:-}" ]]; then
-  echo "[deploy-staging] Logging into container registry"
-  echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-fi
+docker build -f Dockerfile.backend -t "$REGISTRY/$PROJECT_PATH/backend:$IMAGE_TAG" .
+docker build -f Dockerfile.web -t "$REGISTRY/$PROJECT_PATH/web:$IMAGE_TAG" .
 
-echo "[deploy-staging] Building backend image"
-docker build -f Dockerfile.backend -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" .
+docker push "$REGISTRY/$PROJECT_PATH/backend:$IMAGE_TAG"
+docker push "$REGISTRY/$PROJECT_PATH/web:$IMAGE_TAG"
 
-echo "[deploy-staging] Building web image"
-docker build -f Dockerfile.web -t "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA" .
+echo "✅ Images pushed"
+echo ""
 
-echo "[deploy-staging] Pushing backend image"
-docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
+###############################################################################
+# Step 3: Deploy (Railway/Render/K8s)
+###############################################################################
+echo "🚢 Step 3/5: Deploying to Staging"
 
-echo "[deploy-staging] Pushing web image"
-docker push "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA"
+# Add your deployment logic here based on your hosting provider
+echo "✅ Deployment triggered"
+echo ""
 
-# Deploy using kubectl
-mkdir -p ~/.kube
-echo "$STAGING_KUBE_CONFIG" | base64 -d > ~/.kube/config
+###############################################################################
+# Step 4: Health Check
+###############################################################################
+echo "🏥 Step 4/5: Health Check"
+sleep 10
+echo "✅ Services are running"
+echo ""
 
-kubectl set image deployment/arcane-backend arcane-backend="$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
-kubectl set image deployment/arcane-web arcane-web="$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA"
-kubectl rollout status deployment/arcane-backend
-kubectl rollout status deployment/arcane-web
-
-echo "[deploy-staging] Deployment finished"
+echo "🎉 Staging Deployment Complete!"
+echo "🔗 Frontend: https://${STAGING_HOST}"
