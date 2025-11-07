@@ -38,7 +38,7 @@ const getDailyRotateTransport = (filename: string, level: string) => {
   });
 };
 
-export const createLogger = () => {
+export const createLogger = (): winston.Logger => {
   const isDevelopment = process.env.NODE_ENV !== 'production';
   const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 
@@ -62,7 +62,7 @@ export const createLogger = () => {
     ...(isDevelopment ? [getDailyRotateTransport('debug.log', 'debug')] : []),
   ];
 
-  return WinstonModule.createLogger({
+  return winston.createLogger({
     levels: winston.config.npm.levels,
     format: customFormat,
     transports,
