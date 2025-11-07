@@ -2,7 +2,6 @@ stages:
   - build
   - test
   - qa
-  - logs
   - deploy
 
 variables:
@@ -229,9 +228,6 @@ qa_job:
       - web/playwright-report
       - logs/
     expire_in: 1 week
-
-include:
-  - local: .gitlab-ci-logs-aggregation.yml
 
 deploy_staging:
   stage: deploy
