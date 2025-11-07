@@ -5,6 +5,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { analytics } from "./analytics";
+import { handleSubscriptionError } from "./api-interceptor";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -73,6 +74,23 @@ class ApiClient {
 
       if (!response.ok) {
         const error = new Error(data.message || `HTTP error! status: ${response.status}`);
+
+        // Handle subscription errors (403) with upgrade modal
+        if (response.status === 403) {
+          const currentTier = this.getCurrentTier();
+          const handled = handleSubscriptionError(
+            { status: response.status, message: data.message || error.message, data },
+            endpoint,
+            currentTier
+          );
+
+          // If it's a subscription error, still throw but it's handled by modal
+          if (handled) {
+            this.handleError(error, endpoint, method, response.status, data);
+            throw error;
+          }
+        }
+
         this.handleError(error, endpoint, method, response.status, data);
         throw error;
       }
@@ -90,6 +108,22 @@ class ApiClient {
 
       throw error;
     }
+  }
+
+  private getCurrentTier(): string {
+    if (typeof window === 'undefined') return 'FREE';
+
+    try {
+      const userStr = localStorage.getItem('arcane_user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.subscription?.tier || 'FREE';
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+
+    return 'FREE';
   }
 
   private handleError(error: Error, endpoint: string, method: string, status: number, data?: any) {

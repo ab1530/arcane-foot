@@ -429,4 +429,365 @@ export class AnalyticsService {
       },
     };
   }
+
+  // ==========================================
+  // RBAC MONITORING METHODS
+  // ==========================================
+
+  /**
+   * Track when a feature is blocked due to insufficient tier
+   */
+  async trackFeatureBlocked(userId: string, feature: string, requiredTier: string) {
+    // This is handled by the Sentry interceptor
+    // But we can also track it here for immediate dashboard access
+    const event = await this.prisma.rbac_events.findFirst({
+      where: {
+        userId,
+        feature,
+        eventType: 'FEATURE_BLOCKED',
+        timestamp: {
+          gte: new Date(Date.now() - 60000), // Last minute
+        },
+      },
+    });
+
+    return event ? event.id : null;
+  }
+
+  /**
+   * Track when upgrade modal is shown to user
+   */
+  async trackUpgradeModalShown(userId: string, feature: string) {
+    const modal = await this.prisma.upgrade_modals.create({
+      data: {
+        id: `modal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        feature,
+        trigger: '403_error',
+      },
+    });
+
+    return modal.id;
+  }
+
+  /**
+   * Track when upgrade modal is dismissed
+   */
+  async trackUpgradeModalDismissed(modalId: string, timeShownSeconds: number) {
+    await this.prisma.upgrade_modals.update({
+      where: { id: modalId },
+      data: {
+        dismissedAt: new Date(),
+        timeShownSeconds,
+      },
+    });
+  }
+
+  /**
+   * Track when upgrade modal CTA is clicked
+   */
+  async trackUpgradeModalCtaClicked(modalId: string) {
+    await this.prisma.upgrade_modals.update({
+      where: { id: modalId },
+      data: {
+        ctaClickedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Track subscription upgrade/conversion
+   */
+  async trackUpgradeConversion(
+    userId: string,
+    fromTier: string,
+    toTier: string,
+    source: string = 'unknown',
+    feature?: string,
+    revenue?: number,
+  ) {
+    const tierPricing = {
+      FREE: 0,
+      BASIC: 19.99,
+      PRO: 39.99,
+      GOLD: 49.99,
+      ENTERPRISE: 99.99,
+    };
+
+    const calculatedRevenue = revenue || tierPricing[toTier] || 0;
+
+    await this.prisma.subscription_conversions.create({
+      data: {
+        id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        fromTier,
+        toTier,
+        source,
+        feature,
+        revenue: calculatedRevenue,
+        currency: 'EUR',
+      },
+    });
+  }
+
+  /**
+   * Get 403 error rate for a date range
+   */
+  async get403Rate(startDate: Date, endDate: Date) {
+    const total403s = await this.prisma.rbac_events.count({
+      where: {
+        eventType: 'FEATURE_BLOCKED',
+        timestamp: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    // Estimate total requests (we'd need a request log for this)
+    // For now, use a simplified calculation
+    const totalUsers = await this.prisma.users.count({
+      where: {
+        lastLoginAt: {
+          gte: startDate,
+        },
+      },
+    });
+
+    // Rough estimate: each active user makes ~100 requests per session
+    const estimatedTotalRequests = totalUsers * 100;
+    const rate = estimatedTotalRequests > 0 ? (total403s / estimatedTotalRequests) * 100 : 0;
+
+    return {
+      total403Errors: total403s,
+      estimatedTotalRequests,
+      rate403Percentage: Math.round(rate * 100) / 100,
+    };
+  }
+
+  /**
+   * Get conversion rate for a date range
+   */
+  async getConversionRate(startDate: Date, endDate: Date) {
+    const [totalBlocked, totalConversions] = await Promise.all([
+      this.prisma.rbac_events.count({
+        where: {
+          eventType: 'FEATURE_BLOCKED',
+          timestamp: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      }),
+      this.prisma.subscription_conversions.count({
+        where: {
+          convertedAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      }),
+    ]);
+
+    const rate = totalBlocked > 0 ? (totalConversions / totalBlocked) * 100 : 0;
+
+    return {
+      totalBlocked,
+      totalConversions,
+      conversionRatePercentage: Math.round(rate * 100) / 100,
+    };
+  }
+
+  /**
+   * Get comprehensive RBAC metrics for dashboard
+   */
+  async getRbacMetrics(days: number = 7) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const endDate = new Date();
+
+    // Run all queries in parallel
+    const [
+      total403Events,
+      mostBlockedFeatures,
+      modalStats,
+      conversions,
+      conversionsBySource,
+      totalRevenue,
+      rateData,
+    ] = await Promise.all([
+      // Total 403 errors
+      this.prisma.rbac_events.count({
+        where: {
+          eventType: 'FEATURE_BLOCKED',
+          timestamp: { gte: startDate },
+        },
+      }),
+
+      // Most blocked features
+      this.prisma.rbac_events.groupBy({
+        by: ['feature'],
+        where: {
+          eventType: 'FEATURE_BLOCKED',
+          timestamp: { gte: startDate },
+        },
+        _count: true,
+        orderBy: {
+          _count: {
+            feature: 'desc',
+          },
+        },
+        take: 10,
+      }),
+
+      // Modal stats
+      this.prisma.upgrade_modals.findMany({
+        where: {
+          shownAt: { gte: startDate },
+        },
+        select: {
+          id: true,
+          dismissedAt: true,
+          ctaClickedAt: true,
+        },
+      }),
+
+      // Conversions
+      this.prisma.subscription_conversions.findMany({
+        where: {
+          convertedAt: { gte: startDate },
+        },
+        select: {
+          fromTier: true,
+          toTier: true,
+          revenue: true,
+          source: true,
+          feature: true,
+        },
+      }),
+
+      // Conversions by source
+      this.prisma.subscription_conversions.groupBy({
+        by: ['source'],
+        where: {
+          convertedAt: { gte: startDate },
+        },
+        _count: true,
+        _sum: {
+          revenue: true,
+        },
+      }),
+
+      // Total revenue
+      this.prisma.subscription_conversions.aggregate({
+        where: {
+          convertedAt: { gte: startDate },
+        },
+        _sum: {
+          revenue: true,
+        },
+      }),
+
+      // Get 403 rate
+      this.get403Rate(startDate, endDate),
+    ]);
+
+    // Calculate modal stats
+    const totalModalsShown = modalStats.length;
+    const totalDismissed = modalStats.filter((m) => m.dismissedAt).length;
+    const totalCtaClicked = modalStats.filter((m) => m.ctaClickedAt).length;
+    const ctr = totalModalsShown > 0 ? (totalCtaClicked / totalModalsShown) * 100 : 0;
+
+    // Calculate conversion stats
+    const freeToGoldConversions = conversions.filter(
+      (c) => c.fromTier === 'FREE' && c.toTier === 'GOLD',
+    ).length;
+
+    const conversionRate = total403Events > 0 ? (conversions.length / total403Events) * 100 : 0;
+
+    return {
+      period: `last_${days}_days`,
+      dateRange: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+      },
+      total_403_errors: total403Events,
+      '403_rate': rateData.rate403Percentage,
+      most_blocked_features: mostBlockedFeatures.map((f) => ({
+        feature: f.feature,
+        count: f._count,
+      })),
+      conversions: {
+        free_to_gold: freeToGoldConversions,
+        total: conversions.length,
+        conversion_rate: Math.round(conversionRate * 100) / 100,
+        revenue_generated: totalRevenue._sum.revenue || 0,
+        by_tier: conversions.reduce((acc, c) => {
+          const key = `${c.fromTier}_to_${c.toTier}`;
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {}),
+        by_source: conversionsBySource.map((s) => ({
+          source: s.source,
+          count: s._count,
+          revenue: s._sum.revenue || 0,
+        })),
+      },
+      upgrade_modal: {
+        shown: totalModalsShown,
+        dismissed: totalDismissed,
+        cta_clicked: totalCtaClicked,
+        ctr: Math.round(ctr * 100) / 100,
+        dismiss_rate: totalModalsShown > 0 ? Math.round((totalDismissed / totalModalsShown) * 10000) / 100 : 0,
+      },
+      recommendations: this.generateRecommendations(
+        rateData.rate403Percentage,
+        conversionRate,
+        ctr,
+      ),
+    };
+  }
+
+  /**
+   * Generate recommendations based on metrics
+   */
+  private generateRecommendations(
+    rate403: number,
+    conversionRate: number,
+    ctr: number,
+  ): string[] {
+    const recommendations: string[] = [];
+
+    if (rate403 > 10) {
+      recommendations.push(
+        'HIGH 403 RATE ALERT: Over 10% of requests are being blocked. Consider reviewing feature access tiers or improving messaging.',
+      );
+    }
+
+    if (conversionRate < 5) {
+      recommendations.push(
+        'LOW CONVERSION RATE: Less than 5% of blocked users are upgrading. Review pricing, value proposition, and upgrade flow.',
+      );
+    }
+
+    if (ctr < 10) {
+      recommendations.push(
+        'LOW MODAL CTR: Less than 10% click-through rate on upgrade modals. Consider improving modal design and messaging.',
+      );
+    }
+
+    if (rate403 < 5 && conversionRate > 15 && ctr > 20) {
+      recommendations.push(
+        'EXCELLENT PERFORMANCE: All metrics are within healthy ranges. Current RBAC strategy is working well.',
+      );
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push(
+        'MODERATE PERFORMANCE: Metrics are within acceptable ranges but there is room for improvement.',
+      );
+    }
+
+    return recommendations;
+  }
 }
