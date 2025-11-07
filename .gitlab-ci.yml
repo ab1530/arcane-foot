@@ -206,18 +206,8 @@ qa_job:
     - echo "Running Jest tests..." | tee -a ../$LOG_FILE
     - npm run test:ci 2>&1 | tee -a ../$LOG_FILE
     - cd ..
-    - mkdir -p tests/output
-    - echo "# QA Report" > tests/output/qa_report.md
-    - echo "" >> tests/output/qa_report.md
-    - echo "## Pipeline Information" >> tests/output/qa_report.md
-    - echo "- Pipeline ID: ${CI_PIPELINE_ID}" >> tests/output/qa_report.md
-    - echo "- Commit: ${CI_COMMIT_SHORT_SHA}" >> tests/output/qa_report.md
-    - echo "- Branch: ${CI_COMMIT_REF_NAME}" >> tests/output/qa_report.md
-    - echo "- Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> tests/output/qa_report.md
-    - echo "" >> tests/output/qa_report.md
-    - echo "## Test Results" >> tests/output/qa_report.md
-    - echo "- Playwright E2E: PASS" >> tests/output/qa_report.md
-    - echo "- Jest Unit Tests: PASS" >> tests/output/qa_report.md
+    - chmod +x scripts/generate-qa-report.sh
+    - ./scripts/generate-qa-report.sh
     - echo "QA completed successfully" | tee -a $LOG_FILE
   artifacts:
     when: always
