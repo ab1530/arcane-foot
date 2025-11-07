@@ -397,8 +397,13 @@ describe('CampsService', () => {
     it('should throw ForbiddenException if user is not the participant', async () => {
       const mockParticipation = {
         id: 'participation-123',
+        campId: 'camp-123',
+        playerId: 'player-123',
         player: {
           userId: 'other-user',
+        },
+        camp: {
+          id: 'camp-123',
         },
       };
 

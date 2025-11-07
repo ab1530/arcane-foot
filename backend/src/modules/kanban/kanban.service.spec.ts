@@ -485,7 +485,7 @@ describe('KanbanService', () => {
       const limitedColumn = {
         ...mockColumn,
         cardLimit: 5,
-        cards: new Array(5),
+        cards: Array.from({ length: 5 }, (_, i) => ({ id: `card-${i}` })),
       };
       mockPrismaService.kanban_columns.findUnique.mockResolvedValue(limitedColumn);
 
@@ -686,7 +686,7 @@ describe('KanbanService', () => {
       const limitedColumn = {
         ...mockTargetColumn,
         cardLimit: 1,
-        cards: [{ id: 'card-1' }],
+        cards: Array.from({ length: 1 }, (_, i) => ({ id: `card-${i}` })),
       };
       mockPrismaService.kanban_columns.findUnique.mockResolvedValue(limitedColumn);
 
