@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { VoiceToReportController } from './voice-to-report.controller';
 import { VoiceToReportService } from './voice-to-report.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   ProcessVoiceReportDto,
   SupportedLanguage,
@@ -77,8 +79,22 @@ describe('VoiceToReportController', () => {
           provide: VoiceToReportService,
           useValue: mockService,
         },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<VoiceToReportController>(VoiceToReportController);
     service = module.get(VoiceToReportService) as jest.Mocked<VoiceToReportService>;

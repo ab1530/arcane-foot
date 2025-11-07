@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PlaystyleDnaController } from './playstyle-dna.controller';
 import { PlaystyleDnaService } from './playstyle-dna.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   ClassifyPlayerDto,
   ComparePlayersDto,
@@ -106,8 +108,22 @@ describe('PlaystyleDnaController', () => {
           provide: PlaystyleDnaService,
           useValue: mockService,
         },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getMySubscription: jest.fn(),
+            hasMinimumTier: jest.fn().mockResolvedValue(true),
+            createOrUpdateSubscription: jest.fn(),
+            cancelSubscription: jest.fn(),
+            reactivateSubscription: jest.fn(),
+            changeTier: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<PlaystyleDnaController>(PlaystyleDnaController);
     service = module.get(PlaystyleDnaService) as jest.Mocked<PlaystyleDnaService>;
