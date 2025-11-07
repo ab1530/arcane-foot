@@ -122,9 +122,9 @@ qa_job:
     - npm run test:ci
     - cd ..
     - mkdir -p tests/output
-    - printf "# QA Report\n" > tests/output/qa_report.md
-    - printf "- Playwright: PASS\n" >> tests/output/qa_report.md
-    - printf "- Jest: PASS\n" >> tests/output/qa_report.md
+    - echo "# QA Report" > tests/output/qa_report.md
+    - echo "- Playwright PASS" >> tests/output/qa_report.md
+    - echo "- Jest PASS" >> tests/output/qa_report.md
   artifacts:
     when: always
     paths:
