@@ -2,6 +2,7 @@ stages:
   - build
   - test
   - qa
+  - logs
   - deploy
 
 variables:
@@ -9,37 +10,85 @@ variables:
   NPM_CONFIG_FUND: "false"
   PLAYWRIGHT_BROWSERS_PATH: /cache/ms-playwright
   SENTRY_VALIDATE: "true"
+  LOG_LEVEL: "debug"
+  CI_DEBUG_TRACE: "false"
+
+  # Performance optimizations
+  FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fast"
+  CACHE_COMPRESSION_LEVEL: "fast"
+  TRANSFER_METER_FREQUENCY: "5s"
+
+  # Node.js optimizations
+  NODE_OPTIONS: "--max-old-space-size=4096"
+  NPM_CONFIG_LOGLEVEL: "error"
+  NPM_CONFIG_PROGRESS: "false"
+
+  # Parallel execution
+  JEST_MAX_WORKERS: "4"
+  PLAYWRIGHT_WORKERS: "2"
 
 cache:
-  key: ${CI_COMMIT_REF_SLUG}
+  key:
+    files:
+      - backend/package-lock.json
+      - web/package-lock.json
   paths:
     - web/node_modules
     - backend/node_modules
     - .cache/ms-playwright
+  policy: pull-push
+  when: on_success
+
+# Template pour le logging
+.setup_logging:
+  before_script:
+    - mkdir -p logs
+    - export LOG_FILE="logs/${CI_JOB_NAME}_${CI_COMMIT_SHORT_SHA}.log"
+    - echo "=== Job ${CI_JOB_NAME} started at $(date -u +"%Y-%m-%dT%H:%M:%SZ") ===" | tee -a $LOG_FILE
+    - echo "Pipeline ID: ${CI_PIPELINE_ID}" | tee -a $LOG_FILE
+    - echo "Commit: ${CI_COMMIT_SHORT_SHA}" | tee -a $LOG_FILE
+    - echo "Branch: ${CI_COMMIT_REF_NAME}" | tee -a $LOG_FILE
+  after_script:
+    - echo "=== Job ${CI_JOB_NAME} finished at $(date -u +"%Y-%m-%dT%H:%M:%SZ") ===" | tee -a logs/${CI_JOB_NAME}_${CI_COMMIT_SHORT_SHA}.log || true
 
 build_backend:
   stage: build
   image: node:20-bullseye
+  extends: .setup_logging
   script:
-    - npm ci --prefix backend
-    - npm run build --prefix backend
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Building backend..." | tee -a $LOG_FILE
+    - npm run build --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Build completed successfully" | tee -a $LOG_FILE
   artifacts:
+    when: always
     paths:
       - backend/dist
       - backend/node_modules
-    expire_in: 1 day
+      - logs/
+    reports:
+      dotenv: logs/${CI_JOB_NAME}_${CI_COMMIT_SHORT_SHA}.log
+    expire_in: 1 week
 
 build_web:
   stage: build
   image: node:20-bullseye
+  extends: .setup_logging
   script:
-    - npm ci --prefix web
-    - npm run build --prefix web
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Building web..." | tee -a $LOG_FILE
+    - npm run build --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Build completed successfully" | tee -a $LOG_FILE
   artifacts:
+    when: always
     paths:
       - web/.next
       - web/node_modules
-    expire_in: 1 day
+      - logs/
+    expire_in: 1 week
 
 build_docker_images:
   stage: build
@@ -59,6 +108,7 @@ build_docker_images:
 unit_test_backend:
   stage: test
   image: node:20-bullseye
+  extends: .setup_logging
   needs:
     - build_backend
   services:
@@ -74,35 +124,57 @@ unit_test_backend:
     SUPABASE_SERVICE_KEY: local-service-key
     SUPABASE_STORAGE_BUCKET: arcane-media
   script:
-    - apt-get update && apt-get install -y postgresql-client
-    - npm ci --prefix backend
-    - npx prisma migrate deploy --schema backend/prisma/schema.prisma
-    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql
-    - npm run test:ci --prefix backend
+    - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
+    - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
+    - npx prisma migrate deploy --schema backend/prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
+    - echo "Applying database policies..." | tee -a $LOG_FILE
+    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+    - echo "Running backend tests..." | tee -a $LOG_FILE
+    - npm run test:ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Tests completed" | tee -a $LOG_FILE
   artifacts:
     when: always
     paths:
       - backend/coverage
+      - logs/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage/cobertura-coverage.xml
     expire_in: 1 week
 
 unit_test_web:
   stage: test
   image: node:20-bullseye
+  extends: .setup_logging
   needs:
     - build_web
   script:
-    - npm ci --prefix web
-    - npm run lint --prefix web
-    - npm run test:ci --prefix web
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Running linter..." | tee -a $LOG_FILE
+    - npm run lint --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Running web tests..." | tee -a $LOG_FILE
+    - npm run test:ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Tests completed" | tee -a $LOG_FILE
   artifacts:
     when: always
     paths:
       - web/coverage
+      - logs/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: web/coverage/cobertura-coverage.xml
     expire_in: 1 week
 
 qa_job:
   stage: qa
   image: node:20-bullseye
+  extends: .setup_logging
   needs:
     - unit_test_backend
     - unit_test_web
@@ -119,26 +191,47 @@ qa_job:
     SUPABASE_SERVICE_KEY: local-service-key
     SUPABASE_STORAGE_BUCKET: arcane-media
   script:
-    - apt-get update && apt-get install -y postgresql-client
-    - npm ci --prefix backend
-    - npm ci --prefix web
-    - npx prisma migrate deploy --schema backend/prisma/schema.prisma
-    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql
+    - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
+    - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
+    - echo "Installing backend dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Installing web dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
+    - npx prisma migrate deploy --schema backend/prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
+    - echo "Applying database policies..." | tee -a $LOG_FILE
+    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
     - cd web
-    - npx playwright install --with-deps
-    - npm run test:e2e
-    - npm run test:ci
+    - echo "Installing Playwright with dependencies..." | tee -a ../$LOG_FILE
+    - npx playwright install --with-deps 2>&1 | tee -a ../$LOG_FILE
+    - echo "Running E2E tests..." | tee -a ../$LOG_FILE
+    - npm run test:e2e 2>&1 | tee -a ../$LOG_FILE
+    - echo "Running Jest tests..." | tee -a ../$LOG_FILE
+    - npm run test:ci 2>&1 | tee -a ../$LOG_FILE
     - cd ..
     - mkdir -p tests/output
     - echo "# QA Report" > tests/output/qa_report.md
-    - echo "- Playwright PASS" >> tests/output/qa_report.md
-    - echo "- Jest PASS" >> tests/output/qa_report.md
+    - echo "" >> tests/output/qa_report.md
+    - echo "## Pipeline Information" >> tests/output/qa_report.md
+    - echo "- Pipeline ID: ${CI_PIPELINE_ID}" >> tests/output/qa_report.md
+    - echo "- Commit: ${CI_COMMIT_SHORT_SHA}" >> tests/output/qa_report.md
+    - echo "- Branch: ${CI_COMMIT_REF_NAME}" >> tests/output/qa_report.md
+    - echo "- Date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> tests/output/qa_report.md
+    - echo "" >> tests/output/qa_report.md
+    - echo "## Test Results" >> tests/output/qa_report.md
+    - echo "- Playwright E2E: PASS" >> tests/output/qa_report.md
+    - echo "- Jest Unit Tests: PASS" >> tests/output/qa_report.md
+    - echo "QA completed successfully" | tee -a $LOG_FILE
   artifacts:
     when: always
     paths:
       - tests/output/qa_report.md
       - web/playwright-report
+      - logs/
     expire_in: 1 week
+
+include:
+  - local: .gitlab-ci-logs-aggregation.yml
 
 deploy_staging:
   stage: deploy

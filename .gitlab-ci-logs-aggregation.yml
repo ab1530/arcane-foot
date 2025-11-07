@@ -1,0 +1,65 @@
+# Job pour agréger tous les logs du pipeline
+aggregate_logs:
+  stage: logs
+  image: alpine:latest
+  extends: .setup_logging
+  needs:
+    - build_backend
+    - build_web
+    - unit_test_backend
+    - unit_test_web
+    - qa_job
+  script:
+    - apk add --no-cache bash coreutils
+    - mkdir -p aggregated_logs
+    - |
+      cat > aggregated_logs/pipeline_summary.md << 'SUMMARY'
+      # Pipeline Logs Summary
+
+      ## Pipeline Information
+      - **Pipeline ID**: ${CI_PIPELINE_ID}
+      - **Commit**: ${CI_COMMIT_SHORT_SHA} (${CI_COMMIT_REF_NAME})
+      - **Author**: ${CI_COMMIT_AUTHOR}
+      - **Triggered by**: ${GITLAB_USER_NAME}
+      - **Started**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+      ## Jobs Overview
+      SUMMARY
+    - echo "" >> aggregated_logs/pipeline_summary.md
+    - echo "### Build Stage" >> aggregated_logs/pipeline_summary.md
+    - ls -lh logs/build_*.log 2>/dev/null | awk '{print "- " $9 " (" $5 ")"}' >> aggregated_logs/pipeline_summary.md || echo "No build logs found" >> aggregated_logs/pipeline_summary.md
+    - echo "" >> aggregated_logs/pipeline_summary.md
+    - echo "### Test Stage" >> aggregated_logs/pipeline_summary.md
+    - ls -lh logs/unit_test_*.log 2>/dev/null | awk '{print "- " $9 " (" $5 ")"}' >> aggregated_logs/pipeline_summary.md || echo "No test logs found" >> aggregated_logs/pipeline_summary.md
+    - echo "" >> aggregated_logs/pipeline_summary.md
+    - echo "### QA Stage" >> aggregated_logs/pipeline_summary.md
+    - ls -lh logs/qa_*.log 2>/dev/null | awk '{print "- " $9 " (" $5 ")"}' >> aggregated_logs/pipeline_summary.md || echo "No QA logs found" >> aggregated_logs/pipeline_summary.md
+    - echo "" >> aggregated_logs/pipeline_summary.md
+    - echo "## Log Files" >> aggregated_logs/pipeline_summary.md
+    - echo "All log files are available in the artifacts." >> aggregated_logs/pipeline_summary.md
+    - echo "Download and extract to analyze detailed logs for each job." >> aggregated_logs/pipeline_summary.md
+    - cp -r logs/* aggregated_logs/ 2>/dev/null || true
+    - |
+      if [ -d "tests/output" ]; then
+        cp -r tests/output/* aggregated_logs/ 2>/dev/null || true
+      fi
+    - |
+      if [ -d "backend/coverage" ]; then
+        mkdir -p aggregated_logs/coverage
+        cp -r backend/coverage/* aggregated_logs/coverage/ 2>/dev/null || true
+      fi
+    - |
+      if [ -d "web/coverage" ]; then
+        mkdir -p aggregated_logs/coverage
+        cp -r web/coverage/* aggregated_logs/coverage/ 2>/dev/null || true
+      fi
+    - echo "Log aggregation completed" | tee -a $LOG_FILE
+    - cat aggregated_logs/pipeline_summary.md
+  artifacts:
+    when: always
+    name: "pipeline-logs-${CI_PIPELINE_ID}-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - aggregated_logs/
+    expire_in: 2 weeks
+  rules:
+    - when: always
