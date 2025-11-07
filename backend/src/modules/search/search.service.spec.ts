@@ -218,7 +218,7 @@ describe('SearchService', () => {
 
       expect(mockPrismaService.players.findMany).toHaveBeenCalledWith({
         where: {
-          user: {
+          users: {
             OR: [
               { firstName: { contains: 'john', mode: 'insensitive' } },
               { lastName: { contains: 'john', mode: 'insensitive' } },
@@ -228,8 +228,8 @@ describe('SearchService', () => {
         },
         take: 10,
         include: expect.objectContaining({
-          user: expect.any(Object),
-          club: expect.any(Object),
+          users: expect.any(Object),
+          clubs: expect.any(Object),
         }),
         orderBy: { createdAt: 'desc' },
       });
@@ -244,7 +244,7 @@ describe('SearchService', () => {
       expect(mockPrismaService.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
                 firstName: true,
@@ -253,7 +253,7 @@ describe('SearchService', () => {
                 avatar: true,
               },
             },
-            club: {
+            clubs: {
               select: {
                 id: true,
                 name: true,
@@ -312,8 +312,8 @@ describe('SearchService', () => {
           _count: expect.objectContaining({
             select: {
               players: true,
-              homeMatches: true,
-              awayMatches: true,
+              matches_matches_homeClubIdToclubs: true,
+              matches_matches_awayClubIdToclubs: true,
             },
           }),
         }),
@@ -333,8 +333,8 @@ describe('SearchService', () => {
             _count: {
               select: {
                 players: true,
-                homeMatches: true,
-                awayMatches: true,
+                matches_matches_homeClubIdToclubs: true,
+                matches_matches_awayClubIdToclubs: true,
               },
             },
           }),
@@ -374,16 +374,16 @@ describe('SearchService', () => {
           OR: [
             { competitionOld: { contains: 'ligue', mode: 'insensitive' } },
             { venueOld: { contains: 'ligue', mode: 'insensitive' } },
-            { homeClub: { name: { contains: 'ligue', mode: 'insensitive' } } },
-            { awayClub: { name: { contains: 'ligue', mode: 'insensitive' } } },
+            { clubs_matches_homeClubIdToclubs: { name: { contains: 'ligue', mode: 'insensitive' } } },
+            { clubs_matches_awayClubIdToclubs: { name: { contains: 'ligue', mode: 'insensitive' } } },
           ],
         },
         take: 10,
         include: expect.objectContaining({
-          homeClub: expect.any(Object),
-          awayClub: expect.any(Object),
+          clubs_matches_homeClubIdToclubs: expect.any(Object),
+          clubs_matches_awayClubIdToclubs: expect.any(Object),
           _count: expect.objectContaining({
-            select: { scoutingReports: true },
+            select: { scouting_reports: true },
           }),
         }),
         orderBy: { scheduledAt: 'desc' },
@@ -457,17 +457,17 @@ describe('SearchService', () => {
       expect(mockPrismaService.scouting_reports.findMany).toHaveBeenCalledWith({
         where: {
           OR: [
-            { player: { user: { firstName: { contains: 'john', mode: 'insensitive' } } } },
-            { player: { user: { lastName: { contains: 'john', mode: 'insensitive' } } } },
-            { scout: { firstName: { contains: 'john', mode: 'insensitive' } } },
-            { scout: { lastName: { contains: 'john', mode: 'insensitive' } } },
+            { players: { users: { firstName: { contains: 'john', mode: 'insensitive' } } } },
+            { players: { users: { lastName: { contains: 'john', mode: 'insensitive' } } } },
+            { users: { firstName: { contains: 'john', mode: 'insensitive' } } },
+            { users: { lastName: { contains: 'john', mode: 'insensitive' } } },
           ],
         },
         take: 10,
         include: expect.objectContaining({
-          player: expect.any(Object),
-          scout: expect.any(Object),
-          match: expect.any(Object),
+          players: expect.any(Object),
+          users: expect.any(Object),
+          matches: expect.any(Object),
         }),
         orderBy: { createdAt: 'desc' },
       });
@@ -482,9 +482,9 @@ describe('SearchService', () => {
       expect(mockPrismaService.scouting_reports.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: {
-            player: {
+            players: {
               include: {
-                user: {
+                users: {
                   select: {
                     id: true,
                     firstName: true,
@@ -494,14 +494,14 @@ describe('SearchService', () => {
                 },
               },
             },
-            scout: {
+            users: {
               select: {
                 id: true,
                 firstName: true,
                 lastName: true,
               },
             },
-            match: expect.any(Object),
+            matches: expect.any(Object),
           },
         }),
       );

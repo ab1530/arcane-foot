@@ -180,6 +180,10 @@ describe('CampsService', () => {
         playerId: 'player-123',
         status: ParticipationStatus.REGISTERED,
         hasPaid: true,
+        players: {
+          id: 'player-123',
+          userId: 'user-123',
+        },
       };
 
       mockPrismaService.camps.findUnique.mockResolvedValue(mockCamp);
@@ -364,6 +368,10 @@ describe('CampsService', () => {
         id: 'participation-123',
         campId: 'camp-123',
         playerId: 'player-123',
+        players: {
+          id: 'player-123',
+          userId: 'user-123',
+        },
         player: {
           userId: 'user-123',
         },
@@ -399,6 +407,10 @@ describe('CampsService', () => {
         id: 'participation-123',
         campId: 'camp-123',
         playerId: 'player-123',
+        players: {
+          id: 'player-123',
+          userId: 'other-user',
+        },
         player: {
           userId: 'other-user',
         },

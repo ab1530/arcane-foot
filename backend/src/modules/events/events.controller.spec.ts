@@ -770,7 +770,7 @@ describe('EventsController', () => {
 
   describe('API Documentation', () => {
     it('should have ApiTags decorator', () => {
-      const tags = Reflect.getMetadata('swagger/apiTags', EventsController);
+      const tags = Reflect.getMetadata('swagger/apiUseTags', EventsController);
       expect(tags).toBeDefined();
     });
 
