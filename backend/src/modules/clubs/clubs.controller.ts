@@ -11,6 +11,8 @@ import { ClubsService } from './clubs.service';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Clubs')
 @Controller('clubs')
@@ -18,12 +20,14 @@ export class ClubsController {
   constructor(private readonly clubsService: ClubsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new club', description: 'Creates a new club profile' })
+  @ApiOperation({ summary: 'Create a new club', description: 'Creates a new club profile. Requires SCOUT, ADMIN, or SUPER_ADMIN role.' })
   @ApiResponse({ status: 201, description: 'Club successfully created' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   create(@Body() createClubDto: CreateClubDto) {
     return this.clubsService.create(createClubDto);
   }
@@ -62,25 +66,29 @@ export class ClubsController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN', 'CLUB_CONTACT')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Update club', description: 'Update club information' })
+  @ApiOperation({ summary: 'Update club', description: 'Update club information. Requires SCOUT, ADMIN, SUPER_ADMIN, or CLUB_CONTACT role.' })
   @ApiParam({ name: 'id', description: 'Club ID', example: 'clxxxxxxxxxxxxxx' })
   @ApiResponse({ status: 200, description: 'Club successfully updated' })
   @ApiResponse({ status: 404, description: 'Club not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   update(@Param('id') id: string, @Body() updateClubDto: UpdateClubDto) {
     return this.clubsService.update(id, updateClubDto);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Delete club', description: 'Delete a club profile' })
+  @ApiOperation({ summary: 'Delete club', description: 'Delete a club profile. Requires ADMIN or SUPER_ADMIN role.' })
   @ApiParam({ name: 'id', description: 'Club ID', example: 'clxxxxxxxxxxxxxx' })
   @ApiResponse({ status: 200, description: 'Club successfully deleted' })
   @ApiResponse({ status: 404, description: 'Club not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires ADMIN or SUPER_ADMIN role' })
   remove(@Param('id') id: string) {
     return this.clubsService.remove(id);
   }

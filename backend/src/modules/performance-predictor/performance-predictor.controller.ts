@@ -2,6 +2,9 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PerformancePredictorService } from './performance-predictor.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
+import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { SubscriptionTier } from '@prisma/client';
 import {
   PerformancePredictionDto,
   PredictionRequestDto,
@@ -13,21 +16,23 @@ import {
 
 @ApiTags('Performance Predictor')
 @Controller('performance-predictor')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionTierGuard)
 @ApiBearerAuth()
 export class PerformancePredictorController {
   constructor(private readonly predictorService: PerformancePredictorService) {}
 
   @Post('predict/:playerId/:matchId')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Predict player performance for upcoming match',
-    description: 'Uses ML model to predict player rating, confidence intervals, and provide recommendations'
+    summary: 'Predict player performance for upcoming match (GOLD+)',
+    description: 'Uses ML model to predict player rating, confidence intervals, and provide recommendations. Requires GOLD subscription or higher.'
   })
   @ApiResponse({
     status: 200,
     description: 'Performance prediction generated',
     type: PerformancePredictionDto
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   @ApiResponse({ status: 404, description: 'Player or match not found' })
   @ApiResponse({ status: 503, description: 'Prediction service unavailable' })
   async predictPerformance(
@@ -38,15 +43,17 @@ export class PerformancePredictorController {
   }
 
   @Post('batch-predict/:matchId')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Predict performance for all players in match',
-    description: 'Batch prediction for both teams'
+    summary: 'Predict performance for all players in match (GOLD+)',
+    description: 'Batch prediction for both teams. Requires GOLD subscription or higher.'
   })
   @ApiResponse({
     status: 200,
     description: 'Batch predictions generated',
     type: [PerformancePredictionDto]
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   async batchPredictForMatch(
     @Param('matchId') matchId: string,
   ): Promise<PerformancePredictionDto[]> {
@@ -54,15 +61,17 @@ export class PerformancePredictorController {
   }
 
   @Get('accuracy')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Get historical prediction accuracy',
-    description: 'Retrieve accuracy metrics for model performance tracking'
+    summary: 'Get historical prediction accuracy (GOLD+)',
+    description: 'Retrieve accuracy metrics for model performance tracking. Requires GOLD subscription or higher.'
   })
   @ApiResponse({
     status: 200,
     description: 'Accuracy metrics retrieved',
     type: [AccuracyMetricsDto]
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   async getAccuracy(
     @Query('playerId') playerId?: string,
     @Query('dateRange') dateRange?: string,
@@ -71,15 +80,17 @@ export class PerformancePredictorController {
   }
 
   @Get('feature-importance')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Get feature importance from model',
-    description: 'Shows which features matter most in predictions'
+    summary: 'Get feature importance from model (GOLD+)',
+    description: 'Shows which features matter most in predictions. Requires GOLD subscription or higher.'
   })
   @ApiResponse({
     status: 200,
     description: 'Feature importance retrieved',
     type: [FeatureImportanceDto]
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   async getFeatureImportance(): Promise<FeatureImportanceDto[]> {
     return this.predictorService.getFeatureImportance();
   }

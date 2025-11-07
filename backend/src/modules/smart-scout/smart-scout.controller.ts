@@ -17,7 +17,10 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { SubscriptionTier } from '@prisma/client';
 import { SmartScoutService } from './smart-scout.service';
 import { PartialReportDto } from './dto/partial-report.dto';
 import { ReportContextDto } from './dto/report-context.dto';
@@ -29,18 +32,19 @@ import {
 
 @ApiTags('SmartScout AI')
 @Controller('smart-scout')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionTierGuard)
 @ApiBearerAuth()
 export class SmartScoutController {
   constructor(private readonly smartScoutService: SmartScoutService) {}
 
   @Post('suggestions')
   @Roles('SCOUT', 'ANALYST', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get intelligent suggestions for report completion',
+    summary: 'Get intelligent suggestions for report completion (GOLD+)',
     description:
-      'Analyzes partial report data and returns similar reports with AI-powered suggestions to help complete the report. Uses vector embeddings when available, falls back to rule-based matching.',
+      'Analyzes partial report data and returns similar reports with AI-powered suggestions to help complete the report. Uses vector embeddings when available, falls back to rule-based matching. Requires GOLD subscription or higher.',
   })
   @ApiBody({
     description: 'Partial report data and context',
@@ -74,11 +78,12 @@ export class SmartScoutController {
 
   @Post('autocomplete')
   @Roles('SCOUT', 'ANALYST', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Smart autocomplete for report fields',
+    summary: 'Smart autocomplete for report fields (GOLD+)',
     description:
-      'Provides intelligent autocomplete suggestions for report fields based on historical data and context. Supports both structured fields (position, foot) and text fields (strengths, weaknesses).',
+      'Provides intelligent autocomplete suggestions for report fields based on historical data and context. Supports both structured fields (position, foot) and text fields (strengths, weaknesses). Requires GOLD subscription or higher.',
   })
   @ApiBody({ type: AutocompleteRequestDto })
   @ApiResponse({
@@ -101,10 +106,11 @@ export class SmartScoutController {
 
   @Get('insights/:playerId')
   @Roles('SCOUT', 'ANALYST', 'ADMIN', 'SUPER_ADMIN', 'AGENT', 'CLUB_CONTACT')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Generate AI insights for player',
+    summary: 'Generate AI insights for player (GOLD+)',
     description:
-      'Analyzes all historical scouting reports for a player and generates AI-powered insights about performance trends, scout consensus, and development recommendations. Uses GPT-4 when available.',
+      'Analyzes all historical scouting reports for a player and generates AI-powered insights about performance trends, scout consensus, and development recommendations. Uses GPT-4 when available. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,

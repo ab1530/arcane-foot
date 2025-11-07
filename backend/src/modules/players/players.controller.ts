@@ -12,6 +12,8 @@ import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
 import { FilterPlayersDto } from './dto/filter-players.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Players')
 @Controller('players')
@@ -19,12 +21,14 @@ export class PlayersController {
   constructor(private readonly playersService: PlayersService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new player', description: 'Creates a new player profile' })
+  @ApiOperation({ summary: 'Create a new player', description: 'Creates a new player profile. Requires SCOUT, ADMIN, or SUPER_ADMIN role.' })
   @ApiResponse({ status: 201, description: 'Player successfully created' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   create(@Body() createPlayerDto: CreatePlayerDto) {
     return this.playersService.create(createPlayerDto);
   }
@@ -49,25 +53,29 @@ export class PlayersController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Update player', description: 'Update player information' })
+  @ApiOperation({ summary: 'Update player', description: 'Update player information. Requires SCOUT, ADMIN, or SUPER_ADMIN role.' })
   @ApiParam({ name: 'id', description: 'Player ID', example: 'clxxxxxxxxxxxxxx' })
   @ApiResponse({ status: 200, description: 'Player successfully updated' })
   @ApiResponse({ status: 404, description: 'Player not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   update(@Param('id') id: string, @Body() updatePlayerDto: UpdatePlayerDto) {
     return this.playersService.update(id, updatePlayerDto);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Delete player', description: 'Delete a player profile' })
+  @ApiOperation({ summary: 'Delete player', description: 'Delete a player profile. Requires ADMIN or SUPER_ADMIN role.' })
   @ApiParam({ name: 'id', description: 'Player ID', example: 'clxxxxxxxxxxxxxx' })
   @ApiResponse({ status: 200, description: 'Player successfully deleted' })
   @ApiResponse({ status: 404, description: 'Player not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires ADMIN or SUPER_ADMIN role' })
   remove(@Param('id') id: string) {
     return this.playersService.remove(id);
   }

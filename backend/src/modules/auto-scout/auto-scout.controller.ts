@@ -13,7 +13,10 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { SubscriptionTier } from '@prisma/client';
 import { AutoScoutService } from './auto-scout.service';
 import {
   GenerateReportDto,
@@ -25,17 +28,18 @@ import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('auto-scout')
 @Controller('auto-scout')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionTierGuard)
 @ApiBearerAuth()
 export class AutoScoutController {
   constructor(private readonly autoScoutService: AutoScoutService) {}
 
   @Post('generate')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 reports per hour
   @ApiOperation({
-    summary: 'Generate AI scouting report',
-    description: 'Generate a comprehensive scouting report using GPT-4 based on player statistics and performance data.',
+    summary: 'Generate AI scouting report (GOLD+)',
+    description: 'Generate a comprehensive scouting report using GPT-4 based on player statistics and performance data. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -75,11 +79,12 @@ export class AutoScoutController {
   }
 
   @Post('bulk-generate')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 bulk operations per hour
   @ApiOperation({
-    summary: 'Generate multiple AI scouting reports',
-    description: 'Generate reports for multiple players at once (max 50 players). Admin/Director only.',
+    summary: 'Generate multiple AI scouting reports (GOLD+)',
+    description: 'Generate reports for multiple players at once (max 50 players). Admin only. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -108,11 +113,12 @@ export class AutoScoutController {
   }
 
   @Post('enhance/:reportId')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 15, ttl: 3600000 } }) // 15 enhancements per hour
   @ApiOperation({
-    summary: 'Enhance existing scouting report',
-    description: 'Add AI-generated insights and improvements to an existing scouting report.',
+    summary: 'Enhance existing scouting report (GOLD+)',
+    description: 'Add AI-generated insights and improvements to an existing scouting report. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
@@ -132,10 +138,11 @@ export class AutoScoutController {
   }
 
   @Get('templates')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Get available report templates',
-    description: 'Retrieve list of predefined report templates for different use cases.',
+    summary: 'Get available report templates (GOLD+)',
+    description: 'Retrieve list of predefined report templates for different use cases. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
@@ -152,11 +159,12 @@ export class AutoScoutController {
   }
 
   @Post('custom')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 custom reports per hour
   @ApiOperation({
-    summary: 'Generate report with custom template',
-    description: 'Generate a report using a custom template. Admin/Director only.',
+    summary: 'Generate report with custom template (GOLD+)',
+    description: 'Generate a report using a custom template. Admin only. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -181,11 +189,12 @@ export class AutoScoutController {
   }
 
   @Get('preview/:playerId')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 previews per hour
   @ApiOperation({
-    summary: 'Preview report without saving',
-    description: 'Generate a quick preview report without saving to database or consuming API quota.',
+    summary: 'Preview report without saving (GOLD+)',
+    description: 'Generate a quick preview report without saving to database or consuming API quota. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
@@ -212,10 +221,10 @@ export class AutoScoutController {
   }
 
   @Get('analytics')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiOperation({
     summary: 'Get AutoScout analytics',
-    description: 'Retrieve analytics about AI report generation usage, costs, and quality metrics.',
+    description: 'Retrieve analytics about AI report generation usage, costs, and quality metrics. Admin only.',
   })
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'endDate', required: false, type: String })
@@ -243,7 +252,7 @@ export class AutoScoutController {
   }
 
   @Get('player/:playerId/history')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({
     summary: 'Get AI report history for player',
     description: 'Retrieve all AI-generated reports for a specific player.',
@@ -261,7 +270,7 @@ export class AutoScoutController {
   }
 
   @Get('cost-estimate')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({
     summary: 'Estimate cost for report generation',
     description: 'Get cost estimate before generating a report.',
@@ -296,11 +305,12 @@ export class AutoScoutController {
   }
 
   @Post('regenerate/:reportId')
-  @Roles('SCOUT', 'ADMIN', 'DIRECTOR')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 10, ttl: 3600000 } })
   @ApiOperation({
-    summary: 'Regenerate existing report',
-    description: 'Regenerate an AI report with different parameters (e.g., different temperature).',
+    summary: 'Regenerate existing report (GOLD+)',
+    description: 'Regenerate an AI report with different parameters (e.g., different temperature). Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,

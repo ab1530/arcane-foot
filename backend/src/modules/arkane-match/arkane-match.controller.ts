@@ -18,6 +18,9 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
+import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { SubscriptionTier } from '@prisma/client';
 import { ArkaneMatchService } from './arkane-match.service';
 import { ChatDto, ChatResponseDto } from './dto/chat.dto';
 import { Throttle } from '@nestjs/throttler';
@@ -29,7 +32,7 @@ import { Throttle } from '@nestjs/throttler';
  */
 @ApiTags('ArkaneMatch')
 @Controller('arkane-match')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionTierGuard)
 @ApiBearerAuth()
 export class ArkaneMatchController {
   constructor(private readonly arkaneMatchService: ArkaneMatchService) {}
@@ -44,11 +47,12 @@ export class ArkaneMatchController {
    * - "Looking for a scout who knows center backs and speaks German"
    */
   @Post('chat')
+  @MinTier(SubscriptionTier.GOLD)
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
-    summary: 'Chat with ArkaneMatch AI to find scouts',
-    description: 'Send natural language queries to find matching scouts. Supports multi-turn conversations.',
+    summary: 'Chat with ArkaneMatch AI to find scouts (GOLD+)',
+    description: 'Send natural language queries to find matching scouts. Supports multi-turn conversations. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
@@ -62,6 +66,10 @@ export class ArkaneMatchController {
   @ApiResponse({
     status: 401,
     description: 'Unauthorized - Invalid or missing JWT token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
   })
   @ApiResponse({
     status: 429,

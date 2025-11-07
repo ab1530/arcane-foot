@@ -20,6 +20,9 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
+import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { SubscriptionTier } from '@prisma/client';
 import { VoiceToReportService } from './voice-to-report.service';
 import {
   ProcessVoiceReportDto,
@@ -33,12 +36,13 @@ import {
 
 @Controller('voice-to-report')
 @ApiTags('Voice to Report')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionTierGuard)
 @ApiBearerAuth()
 export class VoiceToReportController {
   constructor(private readonly voiceToReportService: VoiceToReportService) {}
 
   @Post('process')
+  @MinTier(SubscriptionTier.GOLD)
   @UseInterceptors(
     FileInterceptor('audio', {
       limits: {
@@ -58,9 +62,9 @@ export class VoiceToReportController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Process voice recording into scouting report',
+    summary: 'Process voice recording into scouting report (GOLD+)',
     description:
-      'Upload an audio file (mp3, wav, webm, m4a, ogg) containing a spoken scouting report. The system will transcribe the audio using OpenAI Whisper and extract structured scouting report data using AI.',
+      'Upload an audio file (mp3, wav, webm, m4a, ogg) containing a spoken scouting report. The system will transcribe the audio using OpenAI Whisper and extract structured scouting report data using AI. Requires GOLD subscription or higher.',
   })
   @ApiBody({
     schema: {
@@ -102,6 +106,10 @@ export class VoiceToReportController {
   @ApiResponse({
     status: 400,
     description: 'Invalid audio file or format',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
   })
   @ApiResponse({
     status: 413,
@@ -168,11 +176,12 @@ export class VoiceToReportController {
   }
 
   @Post('test-transcription')
+  @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   @ApiOperation({
-    summary: 'Test data extraction from text',
+    summary: 'Test data extraction from text (GOLD+)',
     description:
-      'Test the NLU extraction without uploading audio. Useful for development and testing.',
+      'Test the NLU extraction without uploading audio. Useful for development and testing. Requires GOLD subscription or higher.',
   })
   @ApiBody({
     schema: {

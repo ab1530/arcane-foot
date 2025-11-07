@@ -1,20 +1,24 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
+import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { SubscriptionTier } from '@prisma/client';
 import { PlaystyleDnaService } from './playstyle-dna.service';
 import { ClassifyPlayerDto, ComparePlayersDto, FindSimilarPlayersDto } from './dto/playstyle-dna.dto';
 
 @ApiTags('PlayStyle DNA (ML Classification)')
 @Controller('playstyle-dna')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionTierGuard)
 @ApiBearerAuth('JWT-auth')
 export class PlaystyleDnaController {
   constructor(private readonly playstyleDnaService: PlaystyleDnaService) {}
 
   @Post('classify')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Classify player playing style',
-    description: 'Use ML to classify a player into one of 12 playing styles based on their attributes',
+    summary: 'Classify player playing style (GOLD+)',
+    description: 'Use ML to classify a player into one of 12 playing styles based on their attributes. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -43,30 +47,34 @@ export class PlaystyleDnaController {
       },
     },
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   @ApiResponse({ status: 404, description: 'Player not found' })
   classifyPlayer(@Body() dto: ClassifyPlayerDto) {
     return this.playstyleDnaService.classifyPlayer(dto.playerId);
   }
 
   @Get('profile/:playerId')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Get player DNA profile',
-    description: 'Get complete PlayStyle DNA profile for a player',
+    summary: 'Get player DNA profile (GOLD+)',
+    description: 'Get complete PlayStyle DNA profile for a player. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({
     status: 200,
     description: 'DNA profile retrieved successfully',
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   @ApiResponse({ status: 404, description: 'Player not found' })
   getDNAProfile(@Param('playerId') playerId: string) {
     return this.playstyleDnaService.calculateDNAProfile(playerId);
   }
 
   @Get('similar/:playerId')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Find similar players',
-    description: 'Find players with similar playing styles based on DNA profile',
+    summary: 'Find similar players (GOLD+)',
+    description: 'Find players with similar playing styles based on DNA profile. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Reference player ID' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of results (default: 10, max: 50)' })
@@ -88,6 +96,7 @@ export class PlaystyleDnaController {
       },
     },
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   @ApiResponse({ status: 404, description: 'Player not found' })
   findSimilarPlayers(
     @Param('playerId') playerId: string,
@@ -97,9 +106,10 @@ export class PlaystyleDnaController {
   }
 
   @Post('compare')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Compare two players',
-    description: 'Compare playing styles and attributes of two players',
+    summary: 'Compare two players (GOLD+)',
+    description: 'Compare playing styles and attributes of two players. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -129,15 +139,17 @@ export class PlaystyleDnaController {
       },
     },
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
   @ApiResponse({ status: 404, description: 'One or both players not found' })
   comparePlayers(@Body() dto: ComparePlayersDto) {
     return this.playstyleDnaService.comparePlayers(dto.player1Id, dto.player2Id);
   }
 
   @Get('radar/:playerId')
+  @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
-    summary: 'Get radar chart data',
-    description: 'Get radar chart data for player visualization',
+    summary: 'Get radar chart data (GOLD+)',
+    description: 'Get radar chart data for player visualization. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({
