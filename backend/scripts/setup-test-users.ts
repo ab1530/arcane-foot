@@ -193,11 +193,12 @@ async function setupTestUsers() {
           data: {
             id: randomUUID(),
             email: userData.email,
-            password: hashedPassword,
+            passwordHash: hashedPassword,
             firstName: userData.firstName,
             lastName: userData.lastName,
             role: userData.role,
             createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
 

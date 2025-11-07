@@ -6,6 +6,7 @@ import { AiService } from './ai.service';
 import { PlayersModule } from '../players/players.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MatchesModule } from '../matches/matches.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MatchesModule } from '../matches/matches.module';
     PlayersModule,
     PrismaModule,
     MatchesModule,
+    SubscriptionsModule,
     HttpModule.register({
       timeout: 30000,
       maxRedirects: 5,

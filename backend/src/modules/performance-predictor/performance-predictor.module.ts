@@ -3,6 +3,7 @@ import { HttpModule } from '@nestjs/axios';
 import { PerformancePredictorController } from './performance-predictor.controller';
 import { PerformancePredictorService } from './performance-predictor.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { PrismaModule } from '../prisma/prisma.module';
       maxRedirects: 5,
     }),
     PrismaModule,
+    SubscriptionsModule,
   ],
   controllers: [PerformancePredictorController],
   providers: [PerformancePredictorService],

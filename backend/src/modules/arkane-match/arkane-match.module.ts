@@ -5,6 +5,7 @@ import { ArkaneMatchController } from './arkane-match.controller';
 import { ArkaneMatchService } from './arkane-match.service';
 import { MarketplaceModule } from '../marketplace/marketplace.module';
 import { CacheModule } from '../cache/cache.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 /**
  * ArkaneMatch Module
@@ -24,6 +25,7 @@ import { CacheModule } from '../cache/cache.module';
     HttpModule,
     MarketplaceModule, // For searching scouts
     CacheModule, // For conversation storage
+    SubscriptionsModule, // For subscription tier checks
   ],
   controllers: [ArkaneMatchController],
   providers: [ArkaneMatchService],

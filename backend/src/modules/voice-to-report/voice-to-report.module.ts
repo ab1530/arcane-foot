@@ -5,6 +5,7 @@ import { VoiceToReportController } from './voice-to-report.controller';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { ScoutingReportsModule } from '../scouting-reports/scouting-reports.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     SupabaseModule,
     ScoutingReportsModule,
     PrismaModule,
+    SubscriptionsModule,
   ],
   controllers: [VoiceToReportController],
   providers: [VoiceToReportService],
