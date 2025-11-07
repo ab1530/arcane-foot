@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenService } from './services/refresh-token.service';
+import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -10,11 +12,12 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private refreshTokenService: RefreshTokenService,
   ) {}
 
   async signup(dto: SignupDto) {
     // Check if user exists
-    const existing = await this.prisma.user.findUnique({
+    const existing = await this.prisma.users.findUnique({
       where: { email: dto.email },
     });
 
@@ -26,14 +29,16 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     // Create user
-    const user = await this.prisma.user.create({
+    const user = await this.prisma.users.create({
       data: {
+        id: randomUUID(),
         email: dto.email,
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
         role: dto.role || 'PUBLIC',
+        updatedAt: new Date(),
       },
       select: {
         id: true,
@@ -47,23 +52,23 @@ export class AuthService {
       },
     });
 
-    // Generate JWT
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    // Generate access and refresh tokens
+    const tokens = await this.refreshTokenService.generateTokens(
+      user.id,
+      user.email,
+      user.role,
+    );
 
     return {
       user,
-      accessToken,
+      ...tokens,
       tokenType: 'Bearer',
     };
   }
 
   async login(dto: LoginDto) {
     // Find user
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { email: dto.email },
     });
 
@@ -84,17 +89,17 @@ export class AuthService {
     }
 
     // Update last login
-    await this.prisma.user.update({
+    await this.prisma.users.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
 
-    // Generate JWT
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    // Generate access and refresh tokens
+    const tokens = await this.refreshTokenService.generateTokens(
+      user.id,
+      user.email,
+      user.role,
+    );
 
     return {
       user: {
@@ -106,13 +111,13 @@ export class AuthService {
         phone: user.phone,
         avatar: user.avatar,
       },
-      accessToken,
+      ...tokens,
       tokenType: 'Bearer',
     };
   }
 
   async validateUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -121,6 +126,11 @@ export class AuthService {
         lastName: true,
         role: true,
         isActive: true,
+        clubs: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 

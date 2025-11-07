@@ -1,0 +1,1019 @@
+# 🤖 ARCANE QA AUTONOMY REPORT
+
+**Date**: 2025-11-04T19:27:19.992Z
+**Durée**: 1.22 minutes
+**Mode**: local
+
+## 📊 Résumé Global
+
+| Métrique | Valeur |
+|----------|--------|
+| Tests exécutés | 198 |
+| Tests passés | ✅ 7 (3.5%) |
+| Tests échoués | ❌ 191 (96.5%) |
+| Erreurs détectées | 213 |
+| Corrections appliquées | 0 |
+| Taux de correction auto | 0.0% |
+
+## 🤖 Résultats par Agent
+
+### ✅ QA Agent (Universal Tester)
+
+- **Durée**: 34.38s
+- **Tests**: 0/0 passés
+- **Erreurs détectées**: 0
+- **Corrections**: 0/0
+
+### ✅ Fix Agent (Auto-Repair)
+
+- **Durée**: 0.19s
+- **Tests**: 0/0 passés
+- **Erreurs détectées**: 0
+- **Corrections**: 0/0
+
+### ❌ API Agent (Endpoint Validator)
+
+- **Durée**: 7.36s
+- **Tests**: 0/180 passés
+- **Erreurs détectées**: 180
+- **Corrections**: 0/0
+
+**Erreurs**:
+- [CRITICAL] API_500: POST /api/ai/summary: Unexpected status: got 307, expected 400
+- [CRITICAL] API_500: GET /api/ai/index/:playerId: Unexpected status: got 307, expected 401
+- [CRITICAL] API_500: POST /api/ai/matchmaking: Unexpected status: got 307, expected 400
+- [CRITICAL] API_500: GET /api/ai/player-analysis/:playerId: Unexpected status: got 307, expected 401
+- [CRITICAL] API_500: GET /api/ai/talent-prediction/:playerId: Unexpected status: got 307, expected 401
+- ... et 175 autres erreurs
+
+### ❌ Web Agent (Next.js Validator)
+
+- **Durée**: 38.28s
+- **Tests**: 1/4 passés
+- **Erreurs détectées**: 19
+- **Corrections**: 0/0
+
+**Erreurs**:
+- [LOW] TEST_FAIL: Console
+- [LOW] TEST_FAIL: API Client › getPlayers › fetches players successfully
+- [LOW] TEST_FAIL: API Client › getPlayers › includes auth token when available
+- [LOW] TEST_FAIL: Button Component › renders as disabled
+- [LOW] TEST_FAIL: Console
+- ... et 14 autres erreurs
+
+### ❌ Mobile Agent (Expo/RN Validator)
+
+- **Durée**: 14.80s
+- **Tests**: 1/4 passés
+- **Erreurs détectées**: 8
+- **Corrections**: 0/0
+
+**Erreurs**:
+- [LOW] TEST_FAIL: Console
+- [LOW] TEST_FAIL: Test suite failed to run
+- [LOW] TEST_FAIL: GlobalSearch Component › should navigate to PlayerDetail when a player result is pressed
+- [LOW] TEST_FAIL: Test suite failed to run
+- [LOW] TEST_FAIL: Console
+- ... et 3 autres erreurs
+
+### ❌ AI Agent (FastAPI Validator)
+
+- **Durée**: 0.25s
+- **Tests**: 0/4 passés
+- **Erreurs détectées**: 5
+- **Corrections**: 0/0
+
+**Erreurs**:
+- [MEDIUM] API_404: AI service /health endpoint not found
+- [MEDIUM] API_404: GET /health: got 404, expected 200
+- [MEDIUM] API_404: POST /api/predict: got 404, expected 200 or 422
+- [MEDIUM] API_404: POST /api/analyze: got 404, expected 200 or 422
+- [HIGH] ENV_VAR_MISSING: AI_SERVICE_URL not configured in backend .env
+
+### ❌ DevOps Agent (Infrastructure Validator)
+
+- **Durée**: 0.14s
+- **Tests**: 5/6 passés
+- **Erreurs détectées**: 1
+- **Corrections**: 0/0
+
+**Erreurs**:
+- [MEDIUM] ENV_VAR_MISSING: Required environment variable 'SUPABASE_KEY' not found in backend/.env
+
+### ✅ Reporter Agent (Documentation Generator)
+
+- **Durée**: 0.04s
+- **Tests**: 0/0 passés
+- **Erreurs détectées**: 0
+- **Corrections**: 0/0
+
+## 🔴 Erreurs Critiques
+
+### 1. API_500
+
+- **Message**: POST /api/ai/summary: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 2. API_500
+
+- **Message**: GET /api/ai/index/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 3. API_500
+
+- **Message**: POST /api/ai/matchmaking: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 4. API_500
+
+- **Message**: GET /api/ai/player-analysis/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 5. API_500
+
+- **Message**: GET /api/ai/talent-prediction/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 6. API_500
+
+- **Message**: GET /api/ai/match-recommendation/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 7. API_500
+
+- **Message**: GET /api/ai/suspicious-detection/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 8. API_500
+
+- **Message**: GET /api/analytics/overview: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 9. API_500
+
+- **Message**: GET /api/analytics/players: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 10. API_500
+
+- **Message**: GET /api/analytics/clubs: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 11. API_500
+
+- **Message**: GET /api/analytics/scouting-reports: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 12. API_500
+
+- **Message**: GET /api/analytics/club-requests: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 13. API_500
+
+- **Message**: GET /api/analytics/events: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 14. API_500
+
+- **Message**: GET /api/analytics/activity-trends: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 15. API_500
+
+- **Message**: POST /api/auth/signup: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 16. API_500
+
+- **Message**: POST /api/auth/login: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 17. API_500
+
+- **Message**: GET /api/auth/me: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 18. API_500
+
+- **Message**: POST /api/camps: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 19. API_500
+
+- **Message**: GET /api/camps: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 20. API_500
+
+- **Message**: GET /api/camps/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 21. API_500
+
+- **Message**: PUT /api/camps/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 22. API_500
+
+- **Message**: DELETE /api/camps/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 23. API_500
+
+- **Message**: POST /api/camps/:id/register: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 24. API_500
+
+- **Message**: GET /api/camps/my/registrations: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 25. API_500
+
+- **Message**: DELETE /api/camps/registrations/:participationId: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 26. API_500
+
+- **Message**: GET /api/camps/:id/participants: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 27. API_500
+
+- **Message**: PUT /api/camps/participants/:participationId/evaluate: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 28. API_500
+
+- **Message**: POST /api/club-requests: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 29. API_500
+
+- **Message**: GET /api/club-requests: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 30. API_500
+
+- **Message**: GET /api/club-requests/statistics: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 31. API_500
+
+- **Message**: GET /api/club-requests/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 32. API_500
+
+- **Message**: PATCH /api/club-requests/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 33. API_500
+
+- **Message**: POST /api/club-requests/:id/accept: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 34. API_500
+
+- **Message**: POST /api/club-requests/:id/reject: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 35. API_500
+
+- **Message**: POST /api/club-requests/:id/negotiate: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 36. API_500
+
+- **Message**: POST /api/club-requests/:id/complete: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 37. API_500
+
+- **Message**: DELETE /api/club-requests/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 38. API_500
+
+- **Message**: POST /api/clubs: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 39. API_500
+
+- **Message**: GET /api/clubs: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 40. API_500
+
+- **Message**: GET /api/clubs/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 41. API_500
+
+- **Message**: PUT /api/clubs/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 42. API_500
+
+- **Message**: DELETE /api/clubs/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 43. API_500
+
+- **Message**: GET /api/clubs/:id/players: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 44. API_500
+
+- **Message**: GET /api/clubs/:id/matches: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 45. API_500
+
+- **Message**: POST /api/coaching/coaches: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 46. API_500
+
+- **Message**: GET /api/coaching/coaches: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 47. API_500
+
+- **Message**: GET /api/coaching/coaches/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 48. API_500
+
+- **Message**: PUT /api/coaching/coaches/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 49. API_500
+
+- **Message**: DELETE /api/coaching/coaches/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 50. API_500
+
+- **Message**: GET /api/coaching/coaches/:id/bookings: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 51. API_500
+
+- **Message**: POST /api/coaching/bookings: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 52. API_500
+
+- **Message**: GET /api/coaching/bookings/my: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 53. API_500
+
+- **Message**: GET /api/coaching/bookings/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 54. API_500
+
+- **Message**: DELETE /api/coaching/bookings/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 55. API_500
+
+- **Message**: PUT /api/coaching/bookings/:id/rate: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 56. API_500
+
+- **Message**: PUT /api/coaching/bookings/:id/complete: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 57. API_500
+
+- **Message**: POST /api/data-sync/competitions: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 58. API_500
+
+- **Message**: POST /api/data-sync/clubs: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 59. API_500
+
+- **Message**: POST /api/data-sync/players: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 60. API_500
+
+- **Message**: POST /api/data-sync/matches: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 61. API_500
+
+- **Message**: POST /api/data-sync/full: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 62. API_500
+
+- **Message**: POST /api/events: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 63. API_500
+
+- **Message**: GET /api/events: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 64. API_500
+
+- **Message**: GET /api/events/upcoming: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 65. API_500
+
+- **Message**: GET /api/events/my-events: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 66. API_500
+
+- **Message**: GET /api/events/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 67. API_500
+
+- **Message**: PATCH /api/events/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 68. API_500
+
+- **Message**: DELETE /api/events/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 69. API_500
+
+- **Message**: GET /api/external-apis/openliga/matches: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 70. API_500
+
+- **Message**: GET /api/external-apis/openliga/live: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 71. API_500
+
+- **Message**: GET /api/external-apis/openliga/teams/:season: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 72. API_500
+
+- **Message**: POST /api/external-apis/openliga/sync: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 73. API_500
+
+- **Message**: GET /api/external-apis/sportsdb/team/search: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 74. API_500
+
+- **Message**: GET /api/external-apis/sportsdb/player/search: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 75. API_500
+
+- **Message**: GET /api/external-apis/sportsdb/team/:id/events: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 76. API_500
+
+- **Message**: POST /api/external-apis/sportsdb/sync/logos: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 77. API_500
+
+- **Message**: POST /api/external-apis/sportsdb/sync/players: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 78. API_500
+
+- **Message**: GET /api/external-apis/footballdata/download/:league: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 79. API_500
+
+- **Message**: POST /api/external-apis/footballdata/sync/current: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 80. API_500
+
+- **Message**: GET /api/external-apis/footballdata/stats/:league: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 81. API_500
+
+- **Message**: POST /api/external-apis/sync/all: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 82. API_500
+
+- **Message**: GET /api/gamification/profile: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 83. API_500
+
+- **Message**: GET /api/gamification/achievements: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 84. API_500
+
+- **Message**: GET /api/gamification/badges: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 85. API_500
+
+- **Message**: GET /api/gamification/leaderboard/:category: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 86. API_500
+
+- **Message**: GET /api/gamification/daily-challenge: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 87. API_500
+
+- **Message**: POST /api/gamification/daily-challenge/claim: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 88. API_500
+
+- **Message**: POST /api/gamification/achievement/:id/share: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 89. API_500
+
+- **Message**: POST /api/gamification/badge/:id/pin: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 90. API_500
+
+- **Message**: GET /api/gamification/stats: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 91. API_500
+
+- **Message**: POST /api/gamification/track-action/:action: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 92. API_500
+
+- **Message**: GET /api/health: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 93. API_500
+
+- **Message**: GET /api/health/ready: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 94. API_500
+
+- **Message**: GET /api/health/live: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 95. API_500
+
+- **Message**: GET /api/health//debug-sentry: Unexpected status: got 308, expected 401
+- **Stratégie**: ESCALATE
+
+### 96. API_500
+
+- **Message**: POST /api/kanban/boards: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 97. API_500
+
+- **Message**: GET /api/kanban/boards: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 98. API_500
+
+- **Message**: GET /api/kanban/boards/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 99. API_500
+
+- **Message**: PATCH /api/kanban/boards/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 100. API_500
+
+- **Message**: DELETE /api/kanban/boards/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 101. API_500
+
+- **Message**: POST /api/kanban/boards/:boardId/columns: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 102. API_500
+
+- **Message**: PATCH /api/kanban/columns/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 103. API_500
+
+- **Message**: DELETE /api/kanban/columns/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 104. API_500
+
+- **Message**: POST /api/kanban/cards: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 105. API_500
+
+- **Message**: GET /api/kanban/cards/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 106. API_500
+
+- **Message**: PATCH /api/kanban/cards/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 107. API_500
+
+- **Message**: POST /api/kanban/cards/:id/move: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 108. API_500
+
+- **Message**: DELETE /api/kanban/cards/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 109. API_500
+
+- **Message**: GET /api/kanban/cards/:id/activities: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 110. API_500
+
+- **Message**: POST /api/matches: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 111. API_500
+
+- **Message**: GET /api/matches: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 112. API_500
+
+- **Message**: GET /api/matches/upcoming: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 113. API_500
+
+- **Message**: GET /api/matches/live: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 114. API_500
+
+- **Message**: GET /api/matches/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 115. API_500
+
+- **Message**: PUT /api/matches/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 116. API_500
+
+- **Message**: DELETE /api/matches/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 117. API_500
+
+- **Message**: PATCH /api/matches/:id/assign-scout: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 118. API_500
+
+- **Message**: PATCH /api/matches/:id/score: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 119. API_500
+
+- **Message**: POST /api/media/upload: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 120. API_500
+
+- **Message**: POST /api/media/upload/player/:playerId/avatar: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 121. API_500
+
+- **Message**: POST /api/media/upload/club/:clubId/logo: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 122. API_500
+
+- **Message**: GET /api/media/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 123. API_500
+
+- **Message**: GET /api/media/player/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 124. API_500
+
+- **Message**: GET /api/media/match/:matchId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 125. API_500
+
+- **Message**: GET /api/media/report/:reportId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 126. API_500
+
+- **Message**: GET /api/media/:id/download: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 127. API_500
+
+- **Message**: DELETE /api/media/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 128. API_500
+
+- **Message**: POST /api/notifications/register-device: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 129. API_500
+
+- **Message**: POST /api/notifications/unregister-device: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 130. API_500
+
+- **Message**: POST /api/notifications/send: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 131. API_500
+
+- **Message**: POST /api/notifications/send-multiple: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 132. API_500
+
+- **Message**: POST /api/notifications/send-topic: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 133. API_500
+
+- **Message**: POST /api/notifications/subscribe-topic: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 134. API_500
+
+- **Message**: POST /api/notifications/unsubscribe-topic: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 135. API_500
+
+- **Message**: GET /api/notifications/user/:userId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 136. API_500
+
+- **Message**: PATCH /api/notifications/:id/read: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 137. API_500
+
+- **Message**: PATCH /api/notifications/user/:userId/read-all: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 138. API_500
+
+- **Message**: POST /api/notifications/match/:matchId/reminder: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 139. API_500
+
+- **Message**: POST /api/notifications/report/:reportId/notify: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 140. API_500
+
+- **Message**: POST /api/payments/payment-intent: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 141. API_500
+
+- **Message**: POST /api/payments/subscription: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 142. API_500
+
+- **Message**: DELETE /api/payments/subscription/:userId: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 143. API_500
+
+- **Message**: GET /api/payments/subscription/:userId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 144. API_500
+
+- **Message**: POST /api/payments/webhook: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 145. API_500
+
+- **Message**: GET /api/player-validation/pending-validation: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 146. API_500
+
+- **Message**: GET /api/player-validation/by-status/:status: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 147. API_500
+
+- **Message**: POST /api/player-validation/:id/validate: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 148. API_500
+
+- **Message**: POST /api/player-validation/:id/reject: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 149. API_500
+
+- **Message**: POST /api/player-validation/:id/mark-suspicious: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 150. API_500
+
+- **Message**: POST /api/player-validation/:id/convert-to-agency: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 151. API_500
+
+- **Message**: GET /api/player-validation/verification-stats: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 152. API_500
+
+- **Message**: GET /api/player-validation/:id/validation-history: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 153. API_500
+
+- **Message**: POST /api/player-validation/bulk-import: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 154. API_500
+
+- **Message**: POST /api/player-validation/bulk-import-csv: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 155. API_500
+
+- **Message**: GET /api/player-validation/export-csv: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 156. API_500
+
+- **Message**: POST /api/players: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 157. API_500
+
+- **Message**: GET /api/players: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 158. API_500
+
+- **Message**: GET /api/players/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 159. API_500
+
+- **Message**: PUT /api/players/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 160. API_500
+
+- **Message**: DELETE /api/players/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 161. API_500
+
+- **Message**: GET /api/players/:id/stats: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 162. API_500
+
+- **Message**: GET /api/players/:id/reports: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 163. API_500
+
+- **Message**: POST /api/scouting-reports: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 164. API_500
+
+- **Message**: GET /api/scouting-reports: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 165. API_500
+
+- **Message**: GET /api/scouting-reports/player/:playerId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 166. API_500
+
+- **Message**: GET /api/scouting-reports/scout/:scoutId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 167. API_500
+
+- **Message**: GET /api/scouting-reports/match/:matchId: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 168. API_500
+
+- **Message**: GET /api/scouting-reports/:id: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 169. API_500
+
+- **Message**: PATCH /api/scouting-reports/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 170. API_500
+
+- **Message**: POST /api/scouting-reports/:id/submit: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 171. API_500
+
+- **Message**: POST /api/scouting-reports/:id/review: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 172. API_500
+
+- **Message**: DELETE /api/scouting-reports/:id: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 173. API_500
+
+- **Message**: GET /api/scouting-reports/:id/pdf: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 174. API_500
+
+- **Message**: GET /api/search: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 175. API_500
+
+- **Message**: GET /api/search/quick: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 176. API_500
+
+- **Message**: GET /api/subscriptions/me: Unexpected status: got 307, expected 401
+- **Stratégie**: ESCALATE
+
+### 177. API_500
+
+- **Message**: POST /api/subscriptions: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 178. API_500
+
+- **Message**: PUT /api/subscriptions/cancel: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 179. API_500
+
+- **Message**: PUT /api/subscriptions/reactivate: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+### 180. API_500
+
+- **Message**: PUT /api/subscriptions/change-tier: Unexpected status: got 307, expected 400
+- **Stratégie**: ESCALATE
+
+## 🎯 Recommandations
+
+- ⚠️ Taux de succès < 90% - Vérifier les tests échoués
+- ⚠️ Taux de correction auto < 50% - Améliorer les patterns de fix
+- 🔴 180 erreur(s) critique(s) - Intervention immédiate requise
+
+---
+*Rapport généré automatiquement par Arcane QA Autonomy System*

@@ -9,17 +9,24 @@ export class StripeService {
 
   constructor(private configService: ConfigService) {
     const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-
     if (!stripeSecretKey) {
-      this.logger.warn('Stripe secret key not configured');
-      return;
+      throw new Error(
+        '[Stripe] STRIPE_SECRET_KEY is not configured. Please set it in the environment before starting the application.',
+      );
     }
 
-    this.stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2025-09-30.clover',
-    });
+    const apiVersion = this.configService.get<string>('STRIPE_API_VERSION');
+    const stripeConfig: Stripe.StripeConfig = {};
 
-    this.logger.log('Stripe client initialized');
+    if (apiVersion) {
+      stripeConfig.apiVersion = apiVersion as Stripe.StripeConfig['apiVersion'];
+    }
+
+    this.stripe = new Stripe(stripeSecretKey, stripeConfig);
+
+    this.logger.log(
+      `Stripe client initialized${apiVersion ? ` (API version: ${apiVersion})` : ''}`,
+    );
   }
 
   /**
@@ -100,10 +107,19 @@ export class StripeService {
   /**
    * Cancel a subscription
    * @param subscriptionId - Subscription ID
+   * @param immediately - Cancel immediately or at period end
    * @returns Cancelled subscription
    */
-  async cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-    const subscription = await this.stripe.subscriptions.cancel(subscriptionId);
+  async cancelSubscription(subscriptionId: string, immediately: boolean = false): Promise<Stripe.Subscription> {
+    let subscription: Stripe.Subscription;
+
+    if (immediately) {
+      subscription = await this.stripe.subscriptions.cancel(subscriptionId);
+    } else {
+      subscription = await this.stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      });
+    }
 
     this.logger.log(`Subscription cancelled: ${subscription.id}`);
     return subscription;
@@ -157,5 +173,35 @@ export class StripeService {
     }
 
     return this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+  }
+
+  /**
+   * Update a subscription
+   * @param subscriptionId - Subscription ID
+   * @param params - Update parameters
+   * @returns Updated subscription
+   */
+  async updateSubscription(
+    subscriptionId: string,
+    params: Stripe.SubscriptionUpdateParams,
+  ): Promise<Stripe.Subscription> {
+    const subscription = await this.stripe.subscriptions.update(subscriptionId, params);
+
+    this.logger.log(`Subscription updated: ${subscription.id}`);
+    return subscription;
+  }
+
+  /**
+   * Reactivate a cancelled subscription
+   * @param subscriptionId - Subscription ID
+   * @returns Reactivated subscription
+   */
+  async reactivateSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    const subscription = await this.stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    this.logger.log(`Subscription reactivated: ${subscription.id}`);
+    return subscription;
   }
 }

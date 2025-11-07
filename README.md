@@ -397,6 +397,49 @@ flutter build appbundle --release
 
 ---
 
+## ✅ QA Status & Tooling
+
+- **Statut QA global :** plateforme stable (tests backend & lint web verts), couverture partielle en cours sur IA, Supabase et surfaces web/mobile.
+
+### QA locale rapide
+
+```bash
+# 1. Lancer l’infra locale (Postgres, Redis, AI service, backend, web)
+docker-compose up --build
+
+# 2. Appliquer les migrations Prisma et les policies Supabase
+cd backend
+npx prisma migrate deploy
+psql $DATABASE_URL -f ../supabase/policies.sql
+
+# 3. Exécuter les tests backend
+npm run test -- --runInBand
+
+# 4. Frontend : lint + Playwright (Chromium)
+cd ../web
+npm run lint
+npm run test:e2e
+
+# 5. Générer le rapport QA complet
+npm run test:ci
+```
+
+> ℹ️ Configure les secrets Stripe, Supabase et Sentry avant de lancer les tests. Voir [QA.md](QA.md) pour le détail des variables requises.
+
+### Variables critiques à définir
+
+```env
+SUPABASE_URL=...
+SUPABASE_SERVICE_KEY=...
+STRIPE_SECRET_KEY=...
+SENTRY_DSN=...
+SENTRY_ENVIRONMENT=staging
+SENTRY_VALIDATE=true
+OPENAI_API_KEY=
+```
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository

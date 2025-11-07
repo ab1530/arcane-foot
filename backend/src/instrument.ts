@@ -1,9 +1,12 @@
+import { Logger } from '@nestjs/common';
 import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import * as dotenv from 'dotenv';
 
 // Load environment variables FIRST
 dotenv.config();
+
+const logger = new Logger('Sentry');
 
 // Initialize Sentry as early as possible
 Sentry.init({
@@ -15,7 +18,11 @@ Sentry.init({
   sendDefaultPii: true,
 });
 
-console.log(
-  '[OK] Sentry initialized for',
-  process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+logger.log(
+  '[OK] Sentry initialized for ' +
+  (process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development'),
 );
+
+if (process.env.SENTRY_VALIDATE === 'true') {
+  Sentry.captureException(new Error('Sentry validation heartbeat'));
+}

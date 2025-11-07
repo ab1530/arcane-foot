@@ -1,0 +1,275 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   ARCANE BRAND GLOBALS
+   ======================================== */
+
+/* Font Variables (will be defined in layout.tsx) */
+:root {
+  --font-ananston: "Ananston", "Inter", sans-serif;
+  --font-ananston-expanded: "Ananston Expanded", "Inter", sans-serif;
+}
+
+/* Base Styles - Dark Theme by Default */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-arcane-dark text-white font-inter;
+    @apply min-h-screen;
+    /* Background: #080C1D - Bleu Nuit selon charte graphique */
+  }
+
+  /* Typography Hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-ananstonExpanded tracking-wide;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl font-medium;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl font-medium;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl font-medium;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl font-medium;
+  }
+
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+
+  h6 {
+    @apply text-base md:text-lg;
+  }
+
+  p {
+    @apply text-base leading-relaxed;
+  }
+
+  a {
+    @apply transition-colors duration-200;
+  }
+
+  /* Custom Scrollbar - Arcane Style */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-arcane-darkAlt;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-arcane-grey rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-arcane-accent;
+  }
+}
+
+/* ========================================
+   COLD TONE IMAGE FILTER (ARCANE BRAND)
+   ======================================== */
+@layer components {
+  /* Apply cold tone filter to all images by default */
+  img {
+    @apply filter;
+    filter: grayscale(80%) contrast(110%) brightness(95%) sepia(10%) hue-rotate(180deg);
+  }
+
+  /* Opt-out class for images that should remain normal */
+  img.no-filter,
+  .no-filter img {
+    filter: none !important;
+  }
+
+  /* Alternative: desaturated with blue tint */
+  img.cold-filter {
+    filter: saturate(0.3) contrast(1.1) brightness(0.95) hue-rotate(180deg);
+  }
+
+  /* Video cold tone filter */
+  video {
+    @apply filter;
+    filter: grayscale(60%) contrast(105%) brightness(98%) sepia(8%) hue-rotate(180deg);
+  }
+
+  video.no-filter {
+    filter: none !important;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+@layer utilities {
+  /* Text Gradients */
+  .text-gradient-accent {
+    @apply bg-gradient-to-r from-arcane-accent to-white bg-clip-text text-transparent;
+  }
+
+  /* Container Variants */
+  .container-arcane {
+    @apply max-w-7xl mx-auto px-8 py-12;
+  }
+
+  /* Section Backgrounds - Minimaliste selon charte */
+  .section-dark {
+    @apply bg-arcane-dark;
+  }
+
+  .section-dark-alt {
+    @apply bg-arcane-darkCard;
+  }
+
+  /* Hover Glow Effect */
+  .hover-glow {
+    @apply transition-all duration-300;
+  }
+
+  .hover-glow:hover {
+    @apply shadow-[0_0_20px_rgba(228,255,59,0.3)];
+  }
+
+  /* Border Glow */
+  .border-glow {
+    @apply border border-arcane-accent;
+    box-shadow: 0 0 10px rgba(228, 255, 59, 0.2);
+  }
+
+  /* Uppercase Spacing for Headings */
+  .heading-spacing {
+    @apply uppercase tracking-wide;
+  }
+}
+
+/* ========================================
+   SHADCN UI OVERRIDES
+   ======================================== */
+@layer base {
+  :root {
+    --background: 8 12 29; /* #080C1D */
+    --foreground: 255 255 255; /* #FFFFFF */
+
+    --card: 8 12 29;
+    --card-foreground: 255 255 255;
+
+    --popover: 15 20 37;
+    --popover-foreground: 255 255 255;
+
+    --primary: 228 255 59; /* #E4FF3B */
+    --primary-foreground: 8 12 29;
+
+    --secondary: 27 33 51;
+    --secondary-foreground: 228 255 59;
+
+    --muted: 27 33 51;
+    --muted-foreground: 159 161 169;
+
+    --accent: 228 255 59;
+    --accent-foreground: 8 12 29;
+
+    --destructive: 255 59 59;
+    --destructive-foreground: 255 255 255;
+
+    --border: 27 33 51;
+    --input: 27 33 51;
+    --ring: 228 255 59;
+
+    --radius: 1rem;
+  }
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(228, 255, 59, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(228, 255, 59, 0.4);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 3s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(228, 255, 59, 0.1),
+    transparent
+  );
+  background-size: 1000px 100%;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-gradient {
+  animation: gradient-shift 5s ease infinite;
+  background-size: 200% 200%;
+}

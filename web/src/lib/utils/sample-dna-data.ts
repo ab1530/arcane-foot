@@ -1,0 +1,305 @@
+/**
+ * Sample data for testing the PlayStyle DNA interface
+ * This can be used when the Python service is unavailable
+ */
+
+import type { PlayStyleClassification, StyleDefinition, DNAProfile } from '@/types/playstyle-dna';
+
+export const sampleDNAProfiles: Record<string, DNAProfile> = {
+  playmaker: {
+    Technical: 9.2,
+    Tactical: 8.8,
+    Physical: 6.5,
+    Mental: 8.9,
+    Pace: 7.0,
+    Strength: 6.0,
+    Creativity: 9.5,
+    'Work Rate': 7.5,
+  },
+  physicalEnforcer: {
+    Technical: 6.0,
+    Tactical: 7.0,
+    Physical: 9.5,
+    Mental: 8.0,
+    Pace: 7.5,
+    Strength: 9.8,
+    Creativity: 5.5,
+    'Work Rate': 8.5,
+  },
+  speedDemon: {
+    Technical: 7.5,
+    Tactical: 6.5,
+    Physical: 8.0,
+    Mental: 7.0,
+    Pace: 9.8,
+    Strength: 6.5,
+    Creativity: 8.0,
+    'Work Rate': 8.5,
+  },
+  clinicalFinisher: {
+    Technical: 8.5,
+    Tactical: 8.0,
+    Physical: 7.0,
+    Mental: 9.0,
+    Pace: 7.5,
+    Strength: 7.5,
+    Creativity: 7.0,
+    'Work Rate': 7.0,
+  },
+};
+
+export const sampleClassifications: PlayStyleClassification[] = [
+  {
+    playerId: 'player-1',
+    playerName: 'Kevin De Bruyne',
+    primaryStyle: 'Playmaker',
+    secondaryStyle: 'Creative Dribbler',
+    styleConfidence: 0.89,
+    cluster: 3,
+    dnaProfile: sampleDNAProfiles.playmaker,
+    similarPlayers: [
+      {
+        id: 'player-2',
+        name: 'Luka Modrić',
+        position: 'CM',
+        style: 'Playmaker',
+        similarity: 0.95,
+        dnaProfile: sampleDNAProfiles.playmaker,
+      },
+      {
+        id: 'player-3',
+        name: 'Bruno Fernandes',
+        position: 'CAM',
+        style: 'Playmaker',
+        similarity: 0.91,
+        dnaProfile: sampleDNAProfiles.playmaker,
+      },
+    ],
+    recommendations: [
+      'Focus on vision and passing range to maximize creative output',
+      'Develop set-piece delivery for increased goal contributions',
+      'Work on defensive positioning to balance attacking freedom',
+      'Practice through-ball timing in final third situations',
+    ],
+    realWorldExamples: ['Kevin De Bruyne', 'Luka Modrić', 'Bruno Fernandes', 'Toni Kroos'],
+  },
+];
+
+export const sampleStyleDefinitions: StyleDefinition[] = [
+  {
+    styleName: 'Playmaker',
+    description: 'Creative midfielder who orchestrates attacks with exceptional vision and passing ability',
+    characteristics: {
+      Vision: 9.5,
+      Passing: 9.2,
+      Creativity: 9.0,
+      Technique: 8.8,
+    },
+    examplePlayers: ['Kevin De Bruyne', 'Luka Modrić', 'Bruno Fernandes', 'Toni Kroos'],
+    idealPositions: ['CAM', 'CM', 'RW/LW'],
+    trainingFocus: [
+      'Practice long-range passing and through balls',
+      'Develop vision by studying game situations',
+      'Improve set-piece delivery techniques',
+      'Work on decision-making under pressure',
+    ],
+  },
+  {
+    styleName: 'Physical Enforcer',
+    description: 'Strong, aggressive player who dominates physically and disrupts opposition',
+    characteristics: {
+      Strength: 9.8,
+      Aggression: 9.0,
+      Tackling: 8.5,
+      Heading: 8.8,
+    },
+    examplePlayers: ['Casemiro', 'Fabinho', 'N\'Golo Kanté', 'Declan Rice'],
+    idealPositions: ['CDM', 'CB', 'CM'],
+    trainingFocus: [
+      'Strength and conditioning exercises',
+      'Tactical positioning for interceptions',
+      'Timing of tackles and challenges',
+      'Aerial duel dominance training',
+    ],
+  },
+  {
+    styleName: 'Speed Demon',
+    description: 'Explosive player using pace to beat defenders and create chances',
+    characteristics: {
+      Pace: 9.8,
+      Acceleration: 9.5,
+      Dribbling: 8.5,
+      'Off the Ball': 8.8,
+    },
+    examplePlayers: ['Kylian Mbappé', 'Vinícius Jr', 'Alphonso Davies', 'Adama Traoré'],
+    idealPositions: ['RW/LW', 'ST', 'RWB/LWB'],
+    trainingFocus: [
+      'Sprint technique and explosive acceleration',
+      'Running with ball at high speed',
+      'Timing of runs behind defense',
+      'Quick decision-making in transitions',
+    ],
+  },
+  {
+    styleName: 'Clinical Finisher',
+    description: 'Goal-scorer with exceptional finishing and positioning in the box',
+    characteristics: {
+      Finishing: 9.5,
+      Composure: 9.0,
+      Positioning: 9.2,
+      'Off the Ball': 8.8,
+    },
+    examplePlayers: ['Robert Lewandowski', 'Harry Kane', 'Erling Haaland', 'Mohamed Salah'],
+    idealPositions: ['ST', 'CF', 'RW/LW'],
+    trainingFocus: [
+      'Finishing from various angles and distances',
+      'Movement in the penalty box',
+      'One-touch finishing techniques',
+      'Composure under pressure situations',
+    ],
+  },
+  {
+    styleName: 'Box-to-Box Engine',
+    description: 'Tireless midfielder covering both defensive and attacking duties',
+    characteristics: {
+      Stamina: 9.5,
+      'Work Rate': 9.8,
+      Versatility: 8.5,
+      Tackling: 8.0,
+    },
+    examplePlayers: ['Frank Lampard', 'Steven Gerrard', 'Paul Pogba', 'Jude Bellingham'],
+    idealPositions: ['CM', 'CDM', 'CAM'],
+    trainingFocus: [
+      'Endurance and stamina development',
+      'Transition play both ways',
+      'Versatile tactical understanding',
+      'Recovery runs and positioning',
+    ],
+  },
+  {
+    styleName: 'Tactical Anchor',
+    description: 'Defensive midfielder providing stability and positional discipline',
+    characteristics: {
+      Positioning: 9.2,
+      Tackling: 8.8,
+      'Marking': 8.5,
+      'Defensive Awareness': 9.5,
+    },
+    examplePlayers: ['Sergio Busquets', 'Rodri', 'Joshua Kimmich', 'Fabinho'],
+    idealPositions: ['CDM', 'CM'],
+    trainingFocus: [
+      'Reading the game and anticipation',
+      'Positional discipline and shape',
+      'Interception timing',
+      'Distribution from deep positions',
+    ],
+  },
+  {
+    styleName: 'Creative Dribbler',
+    description: 'Skillful dribbler who takes on defenders and creates opportunities',
+    characteristics: {
+      Dribbling: 9.5,
+      Agility: 9.2,
+      Creativity: 9.0,
+      Flair: 9.8,
+    },
+    examplePlayers: ['Neymar', 'Eden Hazard', 'Jadon Sancho', 'Allan Saint-Maximin'],
+    idealPositions: ['RW/LW', 'CAM', 'ST'],
+    trainingFocus: [
+      'Close control and ball manipulation',
+      '1v1 situations and beating defenders',
+      'Creative decision-making',
+      'Quick changes of direction',
+    ],
+  },
+  {
+    styleName: 'Defensive Wall',
+    description: 'Solid defender prioritizing positioning, tackling, and organization',
+    characteristics: {
+      Tackling: 9.0,
+      Marking: 9.2,
+      Positioning: 9.5,
+      Strength: 8.8,
+    },
+    examplePlayers: ['Virgil van Dijk', 'Rúben Dias', 'Antonio Rüdiger', 'Kim Min-jae'],
+    idealPositions: ['CB', 'CDM'],
+    trainingFocus: [
+      'Defensive positioning and awareness',
+      'Timing tackles and blocks',
+      'Organizing defensive line',
+      'Aerial dominance in both boxes',
+    ],
+  },
+  {
+    styleName: 'Deep-Lying Orchestrator',
+    description: 'Playmaker operating from deep, controlling tempo and distribution',
+    characteristics: {
+      Passing: 9.5,
+      Vision: 9.2,
+      'Tactical Intelligence': 9.8,
+      Composure: 9.0,
+    },
+    examplePlayers: ['Andrea Pirlo', 'Sergio Busquets', 'Jorginho', 'Thiago Alcântara'],
+    idealPositions: ['CDM', 'CM'],
+    trainingFocus: [
+      'Long and short passing accuracy',
+      'Tempo control and game management',
+      'Positional awareness in build-up',
+      'Press resistance under pressure',
+    ],
+  },
+  {
+    styleName: 'Pressing Machine',
+    description: 'High-energy player constantly pressing and winning back possession',
+    characteristics: {
+      'Work Rate': 9.8,
+      Stamina: 9.5,
+      Aggression: 8.5,
+      Tackling: 8.0,
+    },
+    examplePlayers: ['N\'Golo Kanté', 'Marcelo Brozović', 'Thomas Müller', 'Roberto Firmino'],
+    idealPositions: ['CM', 'CDM', 'CF'],
+    trainingFocus: [
+      'High-intensity pressing triggers',
+      'Recovery and repeat sprint ability',
+      'Coordinated team pressing',
+      'Energy management throughout match',
+    ],
+  },
+  {
+    styleName: 'Target Man',
+    description: 'Physical striker who holds up play and brings teammates into attack',
+    characteristics: {
+      Strength: 9.2,
+      Heading: 9.5,
+      'Hold-up Play': 9.8,
+      Positioning: 8.5,
+    },
+    examplePlayers: ['Olivier Giroud', 'Romelu Lukaku', 'Diego Costa', 'Zlatan Ibrahimović'],
+    idealPositions: ['ST', 'CF'],
+    trainingFocus: [
+      'Shielding and protecting the ball',
+      'Aerial ability and heading',
+      'Link-up play with teammates',
+      'Physical presence in the box',
+    ],
+  },
+  {
+    styleName: 'Balanced All-Rounder',
+    description: 'Well-rounded player with no significant weaknesses across all attributes',
+    characteristics: {
+      Technical: 8.0,
+      Physical: 8.0,
+      Mental: 8.0,
+      Tactical: 8.0,
+    },
+    examplePlayers: ['Joshua Kimmich', 'Leon Goretzka', 'Mason Mount', 'Frenkie de Jong'],
+    idealPositions: ['CM', 'CDM', 'CAM', 'RW/LW'],
+    trainingFocus: [
+      'Maintain versatility across all areas',
+      'Develop tactical adaptability',
+      'Consistent performance in all phases',
+      'Team-oriented decision making',
+    ],
+  },
+];

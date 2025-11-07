@@ -11,11 +11,11 @@ export class SupabaseService {
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
-    this.bucketName = this.configService.get<string>('SUPABASE_STORAGE_BUCKET');
+    this.bucketName =
+      this.configService.get<string>('SUPABASE_STORAGE_BUCKET') || 'arcane-media';
 
     if (!supabaseUrl || !supabaseKey) {
-      this.logger.warn('Supabase credentials not configured');
-      return;
+      throw new Error('Supabase credentials missing. Please configure SUPABASE_URL and SUPABASE_SERVICE_KEY.');
     }
 
     this.supabase = createClient(supabaseUrl, supabaseKey);
@@ -69,7 +69,6 @@ export class SupabaseService {
    */
   getPublicUrl(filePath: string): string {
     const { data } = this.supabase.storage.from(this.bucketName).getPublicUrl(filePath);
-
     return data.publicUrl;
   }
 

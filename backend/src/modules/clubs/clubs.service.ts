@@ -1,20 +1,37 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheManagerService } from '../../common/interceptors/cache.interceptor';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ClubsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cacheManager: CacheManagerService,
+  ) {}
 
   /**
    * Create a new club
+   * Invalidates cache on creation
    */
   async create(createClubDto: CreateClubDto) {
-    return this.prisma.club.create({
-      data: createClubDto,
+    const { contactUserId, ...clubData } = createClubDto;
+
+    const club = await this.prisma.clubs.create({
+      data: {
+        id: randomUUID(),
+        ...clubData,
+        updatedAt: new Date(),
+        ...(contactUserId && {
+          users: {
+            connect: { id: contactUserId },
+          },
+        }),
+      },
       include: {
-        contactUser: {
+        users: {
           select: {
             id: true,
             email: true,
@@ -24,10 +41,16 @@ export class ClubsService {
         },
       },
     });
+
+    // Invalidate clubs list cache
+    await this.cacheManager.invalidateByTag('clubs:list');
+
+    return club;
   }
 
   /**
    * Find all clubs with filters and pagination
+   * CACHED: 60s TTL (1 minute) with tag-based invalidation
    */
   async findAll(params: {
     country?: string;
@@ -38,143 +61,166 @@ export class ClubsService {
   }) {
     const { country, city, search, page = 1, limit = 20 } = params;
 
-    const where: any = {};
-    if (country) where.country = country;
-    if (city) where.city = city;
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { shortName: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    // Generate cache key based on query params
+    const cacheKey = `clubs:list:${JSON.stringify(params)}`;
 
-    const skip = (page - 1) * limit;
+    return this.cacheManager.getOrSet(
+      cacheKey,
+      async () => {
+        const where: any = {};
+        if (country) where.country = country;
+        if (city) where.city = city;
+        if (search) {
+          where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { shortName: { contains: search, mode: 'insensitive' } },
+          ];
+        }
 
-    const [clubs, total] = await Promise.all([
-      this.prisma.club.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          contactUser: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
+        const skip = (page - 1) * limit;
+
+        const [clubs, total] = await Promise.all([
+          this.prisma.clubs.findMany({
+            where,
+            skip,
+            take: limit,
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+              _count: {
+                select: {
+                  players: true,
+                  matches_matches_homeClubIdToclubs: true,
+                  matches_matches_awayClubIdToclubs: true,
+                },
+              },
             },
-          },
-          _count: {
-            select: {
-              players: true,
-              homeMatches: true,
-              awayMatches: true,
-            },
-          },
-        },
-        orderBy: { name: 'asc' },
-      }),
-      this.prisma.club.count({ where }),
-    ]);
+            orderBy: { name: 'asc' },
+          }),
+          this.prisma.clubs.count({ where }),
+        ]);
 
-    return {
-      data: clubs,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        return {
+          data: clubs,
+          meta: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+          },
+        };
       },
-    };
+      60, // Cache for 1 minute
+    ).then(async (result) => {
+      // Tag for invalidation
+      await this.cacheManager.cacheWithTags(cacheKey, result, ['clubs:list'], 60);
+      return result;
+    });
   }
 
   /**
    * Find one club by ID
+   * CACHED: 300s TTL (5 minutes) - Heavy query with multiple relations
    */
   async findOne(id: string) {
-    const club = await this.prisma.club.findUnique({
-      where: { id },
-      include: {
-        contactUser: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-          },
-        },
-        players: {
+    const cacheKey = `clubs:detail:${id}`;
+
+    return this.cacheManager.getOrSet(
+      cacheKey,
+      async () => {
+        const club = await this.prisma.clubs.findUnique({
+          where: { id },
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
+                email: true,
                 firstName: true,
                 lastName: true,
-                avatar: true,
+                phone: true,
               },
             },
-          },
-        },
-        homeMatches: {
-          take: 5,
-          orderBy: { scheduledAt: 'desc' },
-          include: {
-            awayClub: {
+            players: {
+              include: {
+                users: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
+            matches_matches_homeClubIdToclubs: {
+              take: 5,
+              orderBy: { scheduledAt: 'desc' },
+              include: {
+                clubs_matches_awayClubIdToclubs: {
+                  select: {
+                    id: true,
+                    name: true,
+                    logo: true,
+                  },
+                },
+              },
+            },
+            matches_matches_awayClubIdToclubs: {
+              take: 5,
+              orderBy: { scheduledAt: 'desc' },
+              include: {
+                clubs_matches_homeClubIdToclubs: {
+                  select: {
+                    id: true,
+                    name: true,
+                    logo: true,
+                  },
+                },
+              },
+            },
+            _count: {
               select: {
-                id: true,
-                name: true,
-                logo: true,
+                players: true,
+                matches_matches_homeClubIdToclubs: true,
+                matches_matches_awayClubIdToclubs: true,
+                club_requests: true,
+                camps: true,
               },
             },
           },
-        },
-        awayMatches: {
-          take: 5,
-          orderBy: { scheduledAt: 'desc' },
-          include: {
-            homeClub: {
-              select: {
-                id: true,
-                name: true,
-                logo: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            players: true,
-            homeMatches: true,
-            awayMatches: true,
-            clubRequests: true,
-            camps: true,
-          },
-        },
+        });
+
+        if (!club) {
+          throw new NotFoundException(`Club with ID ${id} not found`);
+        }
+
+        return club;
       },
-    });
-
-    if (!club) {
-      throw new NotFoundException(`Club with ID ${id} not found`);
-    }
-
-    return club;
+      300, // Cache for 5 minutes
+    );
   }
 
   /**
    * Update a club
+   * Invalidates cache on update
    */
   async update(id: string, updateClubDto: UpdateClubDto) {
-    const club = await this.prisma.club.findUnique({ where: { id } });
+    const club = await this.prisma.clubs.findUnique({ where: { id } });
     if (!club) {
       throw new NotFoundException(`Club with ID ${id} not found`);
     }
 
-    return this.prisma.club.update({
+    const updated = await this.prisma.clubs.update({
       where: { id },
       data: updateClubDto,
       include: {
-        contactUser: {
+        users: {
           select: {
             id: true,
             email: true,
@@ -184,33 +230,44 @@ export class ClubsService {
         },
       },
     });
+
+    // Invalidate both detail and list caches
+    await this.cacheManager.invalidateByTags([`clubs:detail:${id}`, 'clubs:list']);
+
+    return updated;
   }
 
   /**
    * Delete a club
+   * Invalidates cache on deletion
    */
   async remove(id: string) {
-    const club = await this.prisma.club.findUnique({ where: { id } });
+    const club = await this.prisma.clubs.findUnique({ where: { id } });
     if (!club) {
       throw new NotFoundException(`Club with ID ${id} not found`);
     }
 
-    return this.prisma.club.delete({ where: { id } });
+    const deleted = await this.prisma.clubs.delete({ where: { id } });
+
+    // Invalidate both detail and list caches
+    await this.cacheManager.invalidateByTags([`clubs:detail:${id}`, 'clubs:list']);
+
+    return deleted;
   }
 
   /**
    * Get club players
    */
   async getPlayers(id: string) {
-    const club = await this.prisma.club.findUnique({ where: { id } });
+    const club = await this.prisma.clubs.findUnique({ where: { id } });
     if (!club) {
       throw new NotFoundException(`Club with ID ${id} not found`);
     }
 
-    return this.prisma.player.findMany({
+    return this.prisma.players.findMany({
       where: { clubId: id },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -227,7 +284,7 @@ export class ClubsService {
    * Get club matches
    */
   async getMatches(id: string, params: { upcoming?: boolean } = {}) {
-    const club = await this.prisma.club.findUnique({ where: { id } });
+    const club = await this.prisma.clubs.findUnique({ where: { id } });
     if (!club) {
       throw new NotFoundException(`Club with ID ${id} not found`);
     }
@@ -241,24 +298,24 @@ export class ClubsService {
       where.status = { in: ['SCHEDULED'] };
     }
 
-    return this.prisma.match.findMany({
+    return this.prisma.matches.findMany({
       where,
       include: {
-        homeClub: {
+        clubs_matches_homeClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        awayClub: {
+        clubs_matches_awayClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        scout: {
+        users_matches_scoutIdTousers: {
           select: {
             id: true,
             firstName: true,

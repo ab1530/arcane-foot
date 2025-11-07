@@ -9,7 +9,7 @@ describe('MatchesService', () => {
   let prismaService: PrismaService;
 
   const mockPrismaService = {
-    match: {
+    matches: {
       create: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -17,10 +17,10 @@ describe('MatchesService', () => {
       delete: jest.fn(),
       count: jest.fn(),
     },
-    club: {
+    clubs: {
       findUnique: jest.fn(),
     },
-    user: {
+    users: {
       findUnique: jest.fn(),
     },
   };
@@ -69,15 +69,15 @@ describe('MatchesService', () => {
     };
 
     it('should create a match successfully', async () => {
-      mockPrismaService.club.findUnique
+      mockPrismaService.clubs.findUnique
         .mockResolvedValueOnce(mockHomeClub)
         .mockResolvedValueOnce(mockAwayClub);
-      mockPrismaService.match.create.mockResolvedValue(mockMatch);
+      mockPrismaService.matches.create.mockResolvedValue(mockMatch);
 
       const result = await service.create(createMatchDto);
 
-      expect(prismaService.club.findUnique).toHaveBeenCalledTimes(2);
-      expect(prismaService.match.create).toHaveBeenCalledWith({
+      expect(prismaService.clubs.findUnique).toHaveBeenCalledTimes(2);
+      expect(prismaService.matches.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           homeClubId: createMatchDto.homeClubId,
           awayClubId: createMatchDto.awayClubId,
@@ -89,7 +89,7 @@ describe('MatchesService', () => {
     });
 
     it('should throw NotFoundException if home club not found', async () => {
-      mockPrismaService.club.findUnique
+      mockPrismaService.clubs.findUnique
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockAwayClub);
 
@@ -98,11 +98,11 @@ describe('MatchesService', () => {
           `Home club with ID ${createMatchDto.homeClubId} not found`,
         ),
       );
-      expect(prismaService.match.create).not.toHaveBeenCalled();
+      expect(prismaService.matches.create).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if away club not found', async () => {
-      mockPrismaService.club.findUnique
+      mockPrismaService.clubs.findUnique
         .mockResolvedValueOnce(mockHomeClub)
         .mockResolvedValueOnce(null);
 
@@ -111,7 +111,7 @@ describe('MatchesService', () => {
           `Away club with ID ${createMatchDto.awayClubId} not found`,
         ),
       );
-      expect(prismaService.match.create).not.toHaveBeenCalled();
+      expect(prismaService.matches.create).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if home and away clubs are the same', async () => {
@@ -119,14 +119,14 @@ describe('MatchesService', () => {
         ...createMatchDto,
         awayClubId: createMatchDto.homeClubId,
       };
-      mockPrismaService.club.findUnique
+      mockPrismaService.clubs.findUnique
         .mockResolvedValueOnce(mockHomeClub)
         .mockResolvedValueOnce(mockHomeClub);
 
       await expect(service.create(invalidDto)).rejects.toThrow(
         new BadRequestException('Home and away clubs must be different'),
       );
-      expect(prismaService.match.create).not.toHaveBeenCalled();
+      expect(prismaService.matches.create).not.toHaveBeenCalled();
     });
   });
 
@@ -147,13 +147,13 @@ describe('MatchesService', () => {
     ];
 
     it('should return paginated matches', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue(mockMatches);
-      mockPrismaService.match.count.mockResolvedValue(2);
+      mockPrismaService.matches.findMany.mockResolvedValue(mockMatches);
+      mockPrismaService.matches.count.mockResolvedValue(2);
 
       const result = await service.findAll({ page: 1, limit: 20 });
 
-      expect(prismaService.match.findMany).toHaveBeenCalled();
-      expect(prismaService.match.count).toHaveBeenCalled();
+      expect(prismaService.matches.findMany).toHaveBeenCalled();
+      expect(prismaService.matches.count).toHaveBeenCalled();
       expect(result).toEqual({
         data: mockMatches,
         meta: {
@@ -166,8 +166,8 @@ describe('MatchesService', () => {
     });
 
     it('should filter by status', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue([mockMatches[0]]);
-      mockPrismaService.match.count.mockResolvedValue(1);
+      mockPrismaService.matches.findMany.mockResolvedValue([mockMatches[0]]);
+      mockPrismaService.matches.count.mockResolvedValue(1);
 
       await service.findAll({
         status: MatchStatus.SCHEDULED,
@@ -175,7 +175,7 @@ describe('MatchesService', () => {
         limit: 20,
       });
 
-      expect(prismaService.match.findMany).toHaveBeenCalledWith(
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             status: MatchStatus.SCHEDULED,
@@ -185,12 +185,12 @@ describe('MatchesService', () => {
     });
 
     it('should filter by clubId (home or away)', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue(mockMatches);
-      mockPrismaService.match.count.mockResolvedValue(2);
+      mockPrismaService.matches.findMany.mockResolvedValue(mockMatches);
+      mockPrismaService.matches.count.mockResolvedValue(2);
 
       await service.findAll({ clubId: 'club-123', page: 1, limit: 20 });
 
-      expect(prismaService.match.findMany).toHaveBeenCalledWith(
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             OR: [{ homeClubId: 'club-123' }, { awayClubId: 'club-123' }],
@@ -200,8 +200,8 @@ describe('MatchesService', () => {
     });
 
     it('should filter by date range', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue(mockMatches);
-      mockPrismaService.match.count.mockResolvedValue(2);
+      mockPrismaService.matches.findMany.mockResolvedValue(mockMatches);
+      mockPrismaService.matches.count.mockResolvedValue(2);
 
       await service.findAll({
         from: '2025-01-01',
@@ -210,7 +210,7 @@ describe('MatchesService', () => {
         limit: 20,
       });
 
-      expect(prismaService.match.findMany).toHaveBeenCalledWith(
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             scheduledAt: {
@@ -234,11 +234,11 @@ describe('MatchesService', () => {
     };
 
     it('should return a match by ID', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
 
       const result = await service.findOne('match-123');
 
-      expect(prismaService.match.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.matches.findUnique).toHaveBeenCalledWith({
         where: { id: 'match-123' },
         include: expect.any(Object),
       });
@@ -246,7 +246,7 @@ describe('MatchesService', () => {
     });
 
     it('should throw NotFoundException if match not found', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(null);
+      mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne('invalid-id')).rejects.toThrow(
         new NotFoundException('Match with ID invalid-id not found'),
@@ -274,15 +274,15 @@ describe('MatchesService', () => {
     };
 
     it('should update a match successfully', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
-      mockPrismaService.match.update.mockResolvedValue(mockUpdatedMatch);
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.matches.update.mockResolvedValue(mockUpdatedMatch);
 
       const result = await service.update('match-123', updateMatchDto);
 
-      expect(prismaService.match.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.matches.findUnique).toHaveBeenCalledWith({
         where: { id: 'match-123' },
       });
-      expect(prismaService.match.update).toHaveBeenCalledWith({
+      expect(prismaService.matches.update).toHaveBeenCalledWith({
         where: { id: 'match-123' },
         data: expect.objectContaining(updateMatchDto),
         include: expect.any(Object),
@@ -291,14 +291,14 @@ describe('MatchesService', () => {
     });
 
     it('should throw NotFoundException if match not found', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(null);
+      mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
       await expect(
         service.update('invalid-id', updateMatchDto),
       ).rejects.toThrow(
         new NotFoundException('Match with ID invalid-id not found'),
       );
-      expect(prismaService.match.update).not.toHaveBeenCalled();
+      expect(prismaService.matches.update).not.toHaveBeenCalled();
     });
   });
 
@@ -309,27 +309,27 @@ describe('MatchesService', () => {
     };
 
     it('should delete a match successfully', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
-      mockPrismaService.match.delete.mockResolvedValue(mockMatch);
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.matches.delete.mockResolvedValue(mockMatch);
 
       const result = await service.remove('match-123');
 
-      expect(prismaService.match.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.matches.findUnique).toHaveBeenCalledWith({
         where: { id: 'match-123' },
       });
-      expect(prismaService.match.delete).toHaveBeenCalledWith({
+      expect(prismaService.matches.delete).toHaveBeenCalledWith({
         where: { id: 'match-123' },
       });
       expect(result).toEqual(mockMatch);
     });
 
     it('should throw NotFoundException if match not found', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(null);
+      mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
       await expect(service.remove('invalid-id')).rejects.toThrow(
         new NotFoundException('Match with ID invalid-id not found'),
       );
-      expect(prismaService.match.delete).not.toHaveBeenCalled();
+      expect(prismaService.matches.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -350,19 +350,19 @@ describe('MatchesService', () => {
     };
 
     it('should assign scout to match successfully', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
-      mockPrismaService.user.findUnique.mockResolvedValue(mockScout);
-      mockPrismaService.match.update.mockResolvedValue(mockUpdatedMatch);
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.users.findUnique.mockResolvedValue(mockScout);
+      mockPrismaService.matches.update.mockResolvedValue(mockUpdatedMatch);
 
       const result = await service.assignScout('match-123', 'scout-123');
 
-      expect(prismaService.match.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.matches.findUnique).toHaveBeenCalledWith({
         where: { id: 'match-123' },
       });
-      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.users.findUnique).toHaveBeenCalledWith({
         where: { id: 'scout-123' },
       });
-      expect(prismaService.match.update).toHaveBeenCalledWith({
+      expect(prismaService.matches.update).toHaveBeenCalledWith({
         where: { id: 'match-123' },
         data: { scoutId: 'scout-123' },
         include: expect.any(Object),
@@ -371,7 +371,7 @@ describe('MatchesService', () => {
     });
 
     it('should throw NotFoundException if match not found', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(null);
+      mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
       await expect(
         service.assignScout('invalid-id', 'scout-123'),
@@ -381,8 +381,8 @@ describe('MatchesService', () => {
     });
 
     it('should throw NotFoundException if scout not found', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.users.findUnique.mockResolvedValue(null);
 
       await expect(
         service.assignScout('match-123', 'invalid-scout'),
@@ -392,8 +392,8 @@ describe('MatchesService', () => {
     });
 
     it('should throw BadRequestException if user is not a scout', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.users.findUnique.mockResolvedValue({
         ...mockScout,
         role: 'PUBLIC',
       });
@@ -422,15 +422,15 @@ describe('MatchesService', () => {
     };
 
     it('should update match score and mark as completed', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(mockMatch);
-      mockPrismaService.match.update.mockResolvedValue(mockUpdatedMatch);
+      mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
+      mockPrismaService.matches.update.mockResolvedValue(mockUpdatedMatch);
 
       const result = await service.updateScore('match-123', 2, 1);
 
-      expect(prismaService.match.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.matches.findUnique).toHaveBeenCalledWith({
         where: { id: 'match-123' },
       });
-      expect(prismaService.match.update).toHaveBeenCalledWith({
+      expect(prismaService.matches.update).toHaveBeenCalledWith({
         where: { id: 'match-123' },
         data: {
           homeScore: 2,
@@ -443,7 +443,7 @@ describe('MatchesService', () => {
     });
 
     it('should throw NotFoundException if match not found', async () => {
-      mockPrismaService.match.findUnique.mockResolvedValue(null);
+      mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
       await expect(service.updateScore('invalid-id', 2, 1)).rejects.toThrow(
         new NotFoundException('Match with ID invalid-id not found'),
@@ -466,11 +466,11 @@ describe('MatchesService', () => {
     ];
 
     it('should return upcoming matches', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue(mockUpcomingMatches);
+      mockPrismaService.matches.findMany.mockResolvedValue(mockUpcomingMatches);
 
       const result = await service.getUpcoming(10);
 
-      expect(prismaService.match.findMany).toHaveBeenCalledWith({
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith({
         where: {
           scheduledAt: { gte: expect.any(Date) },
           status: MatchStatus.SCHEDULED,
@@ -483,11 +483,11 @@ describe('MatchesService', () => {
     });
 
     it('should use default limit of 10', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue(mockUpcomingMatches);
+      mockPrismaService.matches.findMany.mockResolvedValue(mockUpcomingMatches);
 
       await service.getUpcoming();
 
-      expect(prismaService.match.findMany).toHaveBeenCalledWith(
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           take: 10,
         }),
@@ -506,11 +506,11 @@ describe('MatchesService', () => {
     ];
 
     it('should return live matches', async () => {
-      mockPrismaService.match.findMany.mockResolvedValue(mockLiveMatches);
+      mockPrismaService.matches.findMany.mockResolvedValue(mockLiveMatches);
 
       const result = await service.getLive();
 
-      expect(prismaService.match.findMany).toHaveBeenCalledWith({
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith({
         where: { status: MatchStatus.LIVE },
         include: expect.any(Object),
       });

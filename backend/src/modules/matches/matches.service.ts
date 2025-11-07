@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMatchDto } from './dto/create-match.dto';
 import { UpdateMatchDto } from './dto/update-match.dto';
@@ -14,8 +15,8 @@ export class MatchesService {
   async create(createMatchDto: CreateMatchDto) {
     // Validate clubs exist
     const [homeClub, awayClub] = await Promise.all([
-      this.prisma.club.findUnique({ where: { id: createMatchDto.homeClubId } }),
-      this.prisma.club.findUnique({ where: { id: createMatchDto.awayClubId } }),
+      this.prisma.clubs.findUnique({ where: { id: createMatchDto.homeClubId } }),
+      this.prisma.clubs.findUnique({ where: { id: createMatchDto.awayClubId } }),
     ]);
 
     if (!homeClub) {
@@ -28,27 +29,29 @@ export class MatchesService {
       throw new BadRequestException('Home and away clubs must be different');
     }
 
-    return this.prisma.match.create({
+    return this.prisma.matches.create({
       data: {
+        id: randomUUID(),
         ...createMatchDto,
         scheduledAt: new Date(createMatchDto.scheduledAt),
+        updatedAt: new Date(),
       },
       include: {
-        homeClub: {
+        clubs_matches_homeClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        awayClub: {
+        clubs_matches_awayClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        scout: {
+        users_matches_scoutIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -79,7 +82,7 @@ export class MatchesService {
     const where: any = {};
     if (status) where.status = status;
     if (scoutId) where.scoutId = scoutId;
-    if (competition) where.competition = competition;
+    if (competition) where.competitionOld = competition; // Use legacy field for now
     if (season) where.season = season;
 
     if (clubId) {
@@ -95,12 +98,12 @@ export class MatchesService {
     const skip = (page - 1) * limit;
 
     const [matches, total] = await Promise.all([
-      this.prisma.match.findMany({
+      this.prisma.matches.findMany({
         where,
         skip,
         take: limit,
         include: {
-          homeClub: {
+          clubs_matches_homeClubIdToclubs: {
             select: {
               id: true,
               name: true,
@@ -108,7 +111,7 @@ export class MatchesService {
               logo: true,
             },
           },
-          awayClub: {
+          clubs_matches_awayClubIdToclubs: {
             select: {
               id: true,
               name: true,
@@ -116,7 +119,7 @@ export class MatchesService {
               logo: true,
             },
           },
-          scout: {
+          users_matches_scoutIdTousers: {
             select: {
               id: true,
               firstName: true,
@@ -125,13 +128,13 @@ export class MatchesService {
           },
           _count: {
             select: {
-              scoutingReports: true,
+              scouting_reports: true,
             },
           },
         },
         orderBy: { scheduledAt: 'desc' },
       }),
-      this.prisma.match.count({ where }),
+      this.prisma.matches.count({ where }),
     ]);
 
     return {
@@ -149,12 +152,12 @@ export class MatchesService {
    * Find one match by ID
    */
   async findOne(id: string) {
-    const match = await this.prisma.match.findUnique({
+    const match = await this.prisma.matches.findUnique({
       where: { id },
       include: {
-        homeClub: true,
-        awayClub: true,
-        scout: {
+        clubs_matches_homeClubIdToclubs: true,
+        clubs_matches_awayClubIdToclubs: true,
+        users_matches_scoutIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -163,11 +166,11 @@ export class MatchesService {
             phone: true,
           },
         },
-        scoutingReports: {
+        scouting_reports: {
           include: {
-            player: {
+            players: {
               include: {
-                user: {
+                users: {
                   select: {
                     id: true,
                     firstName: true,
@@ -176,7 +179,7 @@ export class MatchesService {
                 },
               },
             },
-            scout: {
+            users: {
               select: {
                 id: true,
                 firstName: true,
@@ -200,7 +203,7 @@ export class MatchesService {
    * Update a match
    */
   async update(id: string, updateMatchDto: UpdateMatchDto) {
-    const match = await this.prisma.match.findUnique({ where: { id } });
+    const match = await this.prisma.matches.findUnique({ where: { id } });
     if (!match) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
@@ -210,25 +213,25 @@ export class MatchesService {
       updateData.scheduledAt = new Date(updateMatchDto.scheduledAt);
     }
 
-    return this.prisma.match.update({
+    return this.prisma.matches.update({
       where: { id },
       data: updateData,
       include: {
-        homeClub: {
+        clubs_matches_homeClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        awayClub: {
+        clubs_matches_awayClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        scout: {
+        users_matches_scoutIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -243,24 +246,24 @@ export class MatchesService {
    * Delete a match
    */
   async remove(id: string) {
-    const match = await this.prisma.match.findUnique({ where: { id } });
+    const match = await this.prisma.matches.findUnique({ where: { id } });
     if (!match) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
 
-    return this.prisma.match.delete({ where: { id } });
+    return this.prisma.matches.delete({ where: { id } });
   }
 
   /**
    * Assign scout to match
    */
   async assignScout(id: string, scoutId: string) {
-    const match = await this.prisma.match.findUnique({ where: { id } });
+    const match = await this.prisma.matches.findUnique({ where: { id } });
     if (!match) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
 
-    const scout = await this.prisma.user.findUnique({
+    const scout = await this.prisma.users.findUnique({
       where: { id: scoutId },
     });
     if (!scout) {
@@ -270,13 +273,13 @@ export class MatchesService {
       throw new BadRequestException('User is not a scout');
     }
 
-    return this.prisma.match.update({
+    return this.prisma.matches.update({
       where: { id },
       data: { scoutId },
       include: {
-        homeClub: true,
-        awayClub: true,
-        scout: true,
+        clubs_matches_homeClubIdToclubs: true,
+        clubs_matches_awayClubIdToclubs: true,
+        users_matches_scoutIdTousers: true,
       },
     });
   }
@@ -285,12 +288,12 @@ export class MatchesService {
    * Update match score
    */
   async updateScore(id: string, homeScore: number, awayScore: number) {
-    const match = await this.prisma.match.findUnique({ where: { id } });
+    const match = await this.prisma.matches.findUnique({ where: { id } });
     if (!match) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
 
-    return this.prisma.match.update({
+    return this.prisma.matches.update({
       where: { id },
       data: {
         homeScore,
@@ -298,8 +301,8 @@ export class MatchesService {
         status: MatchStatus.COMPLETED,
       },
       include: {
-        homeClub: true,
-        awayClub: true,
+        clubs_matches_homeClubIdToclubs: true,
+        clubs_matches_awayClubIdToclubs: true,
       },
     });
   }
@@ -308,28 +311,28 @@ export class MatchesService {
    * Get upcoming matches
    */
   async getUpcoming(limit: number = 10) {
-    return this.prisma.match.findMany({
+    return this.prisma.matches.findMany({
       where: {
         scheduledAt: { gte: new Date() },
         status: MatchStatus.SCHEDULED,
       },
       take: limit,
       include: {
-        homeClub: {
+        clubs_matches_homeClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        awayClub: {
+        clubs_matches_awayClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        scout: {
+        users_matches_scoutIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -345,17 +348,17 @@ export class MatchesService {
    * Get live matches
    */
   async getLive() {
-    return this.prisma.match.findMany({
+    return this.prisma.matches.findMany({
       where: { status: MatchStatus.LIVE },
       include: {
-        homeClub: {
+        clubs_matches_homeClubIdToclubs: {
           select: {
             id: true,
             name: true,
             logo: true,
           },
         },
-        awayClub: {
+        clubs_matches_awayClubIdToclubs: {
           select: {
             id: true,
             name: true,

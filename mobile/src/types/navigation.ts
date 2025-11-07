@@ -1,0 +1,48 @@
+export type AppStackParamList = {
+  MainTabs: undefined;
+  Dashboard: undefined;
+  Analytics: undefined;
+  Market: undefined;
+  Camps: undefined;
+  AI: undefined;
+  ArcaneGPT: undefined;
+  ArcaneIndex: undefined;
+  ArkaneMatch: undefined;
+  SmartScout: undefined;
+  AutoScout: undefined;
+  AutoScoutHistory: undefined;
+  MarketValue: { playerId?: string };
+  MarketValueDetail: { playerId: string };
+  PlayerDetail: { playerId: string };
+  PlayerPassport: { playerId: string; player?: any };
+  Matches: undefined;
+  Kanban: undefined;
+  CreateReport: { playerId?: string };
+  CampDetail: { id: string };
+  CreateCamp: undefined;
+  ClubDetail: { clubId: string };
+  Clubs: undefined;
+  Reports: undefined;
+  Calendar: undefined;
+  ReportDetail: { reportId: string };
+  Membership: undefined;
+  About: undefined;
+  Contact: undefined;
+  Services: undefined;
+  Passport: undefined;
+  Settings: undefined;
+  ScoutingReports: undefined;
+  CreateScoutingReport: undefined;
+  PlayerComparison: undefined;
+  Marketplace: undefined;
+  ScoutDetail: { listingId: string };
+  CreateOffer: { listingId: string };
+};
+
+export type MainTabParamList = {
+  Dashboard: undefined;
+  Players: undefined;
+  Analytics: undefined;
+  Market: undefined;
+  Profile: undefined;
+};

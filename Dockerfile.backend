@@ -1,0 +1,25 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci
+
+COPY backend/prisma ./prisma
+COPY backend/tsconfig*.json ./
+COPY backend/src ./src
+
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/dist ./dist
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma
+
+EXPOSE 3000
+
+CMD ["node", "dist/src/main"]

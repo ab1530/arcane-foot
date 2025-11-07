@@ -1,12 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { StripeService } from '../stripe/stripe.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { CreateStripeSubscriptionDto } from './dto/create-subscription.dto';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { SubscriptionStatus } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private stripeService: StripeService,
     private prisma: PrismaService,
@@ -16,9 +19,9 @@ export class PaymentsService {
    * Create or get Stripe customer for user
    */
   async getOrCreateStripeCustomer(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { id: userId },
-      include: { subscription: true },
+      include: { subscriptions: true },
     });
 
     if (!user) {
@@ -26,8 +29,8 @@ export class PaymentsService {
     }
 
     // If user already has a Stripe customer ID, return it
-    if (user.subscription?.stripeCustomerId) {
-      return user.subscription.stripeCustomerId;
+    if (user.subscriptions?.stripeCustomerId) {
+      return user.subscriptions.stripeCustomerId;
     }
 
     // Create new Stripe customer
@@ -38,16 +41,18 @@ export class PaymentsService {
     );
 
     // Update or create subscription record with Stripe customer ID
-    if (user.subscription) {
-      await this.prisma.subscription.update({
-        where: { id: user.subscription.id },
+    if (user.subscriptions) {
+      await this.prisma.subscriptions.update({
+        where: { id: user.subscriptions.id },
         data: { stripeCustomerId: stripeCustomer.id },
       });
     } else {
-      await this.prisma.subscription.create({
+      await this.prisma.subscriptions.create({
         data: {
+          id: randomUUID(),
           userId: user.id,
           stripeCustomerId: stripeCustomer.id,
+          updatedAt: new Date(),
         },
       });
     }
@@ -82,19 +87,19 @@ export class PaymentsService {
   /**
    * Create a subscription
    */
-  async createSubscription(createSubscriptionDto: CreateSubscriptionDto) {
+  async createSubscription(createSubscriptionDto: CreateStripeSubscriptionDto) {
     const { userId, tier, priceId } = createSubscriptionDto;
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { id: userId },
-      include: { subscription: true },
+      include: { subscriptions: true },
     });
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    if (user.subscription?.status === SubscriptionStatus.ACTIVE) {
+    if (user.subscriptions?.status === SubscriptionStatus.ACTIVE) {
       throw new BadRequestException('User already has an active subscription');
     }
 
@@ -108,9 +113,10 @@ export class PaymentsService {
     });
 
     // Update local subscription record
-    const subscription = await this.prisma.subscription.upsert({
+    const subscription = await this.prisma.subscriptions.upsert({
       where: { userId },
       create: {
+        id: randomUUID(),
         userId,
         tier,
         status: SubscriptionStatus.ACTIVE,
@@ -119,6 +125,7 @@ export class PaymentsService {
         stripePriceId: priceId,
         startDate: new Date(),
         endDate: new Date((stripeSubscription as any).current_period_end * 1000),
+        updatedAt: new Date(),
       },
       update: {
         tier,
@@ -129,7 +136,7 @@ export class PaymentsService {
         endDate: new Date((stripeSubscription as any).current_period_end * 1000),
       },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
             email: true,
@@ -150,7 +157,7 @@ export class PaymentsService {
    * Cancel a subscription
    */
   async cancelSubscription(userId: string) {
-    const subscription = await this.prisma.subscription.findUnique({
+    const subscription = await this.prisma.subscriptions.findUnique({
       where: { userId },
     });
 
@@ -166,7 +173,7 @@ export class PaymentsService {
     await this.stripeService.cancelSubscription(subscription.stripeSubscriptionId);
 
     // Update local record
-    return this.prisma.subscription.update({
+    return this.prisma.subscriptions.update({
       where: { userId },
       data: {
         status: SubscriptionStatus.CANCELLED,
@@ -179,10 +186,10 @@ export class PaymentsService {
    * Get user subscription
    */
   async getUserSubscription(userId: string) {
-    const subscription = await this.prisma.subscription.findUnique({
+    const subscription = await this.prisma.subscriptions.findUnique({
       where: { userId },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
             email: true,
@@ -221,14 +228,14 @@ export class PaymentsService {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        this.logger.log(`Unhandled event type: ${event.type}`);
     }
 
     return { received: true };
   }
 
   private async handleSubscriptionUpdate(subscription: any) {
-    const localSubscription = await this.prisma.subscription.findUnique({
+    const localSubscription = await this.prisma.subscriptions.findUnique({
       where: { stripeSubscriptionId: subscription.id },
     });
 
@@ -251,7 +258,7 @@ export class PaymentsService {
         status = SubscriptionStatus.ACTIVE;
     }
 
-    await this.prisma.subscription.update({
+    await this.prisma.subscriptions.update({
       where: { id: localSubscription.id },
       data: {
         status,
@@ -261,12 +268,12 @@ export class PaymentsService {
   }
 
   private async handlePaymentSucceeded(invoice: any) {
-    const subscription = await this.prisma.subscription.findUnique({
+    const subscription = await this.prisma.subscriptions.findUnique({
       where: { stripeSubscriptionId: invoice.subscription },
     });
 
     if (subscription) {
-      await this.prisma.subscription.update({
+      await this.prisma.subscriptions.update({
         where: { id: subscription.id },
         data: { status: SubscriptionStatus.ACTIVE },
       });
@@ -274,12 +281,12 @@ export class PaymentsService {
   }
 
   private async handlePaymentFailed(invoice: any) {
-    const subscription = await this.prisma.subscription.findUnique({
+    const subscription = await this.prisma.subscriptions.findUnique({
       where: { stripeSubscriptionId: invoice.subscription },
     });
 
     if (subscription) {
-      await this.prisma.subscription.update({
+      await this.prisma.subscriptions.update({
         where: { id: subscription.id },
         data: { status: SubscriptionStatus.PAST_DUE },
       });

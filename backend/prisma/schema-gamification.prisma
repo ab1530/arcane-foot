@@ -1,0 +1,243 @@
+// =======================================
+// GAMIFICATION SYSTEM - À AJOUTER AU SCHEMA PRINCIPAL
+// =======================================
+
+enum AchievementCategory {
+  PLAYER_MILESTONE    // Jalons joueurs
+  SCOUT_EXPERTISE     // Expertise scout
+  CLUB_ACHIEVEMENT    // Réalisations club
+  SOCIAL_ENGAGEMENT   // Engagement social
+  PERFORMANCE         // Performance
+}
+
+enum AchievementRarity {
+  COMMON      // Commun (bronze)
+  UNCOMMON    // Peu commun (argent)
+  RARE        // Rare (or)
+  EPIC        // Épique (platine)
+  LEGENDARY   // Légendaire (diamant)
+}
+
+enum BadgeType {
+  VERIFIED_PLAYER     // Joueur vérifié
+  RISING_STAR         // Étoile montante
+  ELITE_PLAYER        // Joueur élite
+  GOLDEN_EYE          // Œil d'or (scout)
+  MASTER_SCOUT        // Maître scout
+  TEAM_BUILDER        // Bâtisseur d'équipe
+  CHAMPIONSHIP_GLORY  // Gloire du championnat
+  COMMUNITY_HERO      // Héros de la communauté
+}
+
+model Achievement {
+  id              String                @id @default(cuid())
+  code            String                @unique // FIRST_GOAL, TALENT_SPOTTER, etc.
+  name            String
+  description     String
+  icon            String                // URL ou emoji
+  category        AchievementCategory
+  rarity          AchievementRarity
+  points          Int                   // Points XP gagnés
+
+  // Conditions pour débloquer (JSON flexible)
+  condition       Json                  // { type: "goals", value: 10, operator: ">=" }
+
+  // Récompenses
+  rewardBadge     BadgeType?           // Badge débloqué
+  rewardTitle     String?              // Titre spécial
+  rewardBonus     Json?                // Bonus (ex: { type: "premium_days", value: 7 })
+
+  // Stats
+  totalUnlocked   Int                  @default(0)
+  firstUnlockedAt DateTime?
+
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Relations
+  userAchievements UserAchievement[]
+
+  @@index([category])
+  @@index([rarity])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id              String      @id @default(cuid())
+  userId          String
+  achievementId   String
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement     Achievement @relation(fields: [achievementId], references: [id])
+
+  // Détails du déblocage
+  unlockedAt      DateTime    @default(now())
+  progress        Int         @default(100) // Pourcentage de progression
+  metadata        Json?       // Données supplémentaires (ex: match où le but a été marqué)
+
+  // Notifications
+  notified        Boolean     @default(false)
+  sharedOnProfile Boolean     @default(false)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([unlockedAt])
+  @@map("user_achievements")
+}
+
+model UserStats {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Points et niveau
+  totalPoints       Int      @default(0)
+  currentLevel      Int      @default(1)
+  levelProgress     Int      @default(0) // Points vers le prochain niveau
+
+  // Stats globales
+  achievementsCount Int      @default(0)
+  badgesCount       Int      @default(0)
+
+  // Stats spécifiques joueur
+  goalsScored       Int      @default(0)
+  assistsMade       Int      @default(0)
+  matchesPlayed     Int      @default(0)
+  cleanSheets       Int      @default(0)
+
+  // Stats spécifiques scout
+  playersValidated  Int      @default(0)
+  playersRejected   Int      @default(0)
+  reportsSubmitted  Int      @default(0)
+  talentsDiscovered Int      @default(0) // Joueurs convertis en AGENCY
+
+  // Stats engagement
+  daysActive        Int      @default(0)
+  lastActiveAt      DateTime @default(now())
+  loginStreak       Int      @default(0)
+  maxLoginStreak    Int      @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([totalPoints])
+  @@index([currentLevel])
+  @@map("user_stats")
+}
+
+model Leaderboard {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category      String   // WEEKLY_SCOUT, MONTHLY_PLAYER, SEASON_CLUB, etc.
+  subcategory   String?  // Position spécifique, ligue, etc.
+
+  score         Int      // Score/points pour cette période
+  rank          Int      // Rang dans le classement
+  previousRank  Int?     // Rang précédent (pour montrer évolution)
+
+  // Période
+  period        String   // "2024-W45", "2024-11", "2024-Q4", etc.
+  startDate     DateTime
+  endDate       DateTime
+
+  // Récompenses
+  reward        Json?    // { type: "coins", value: 100 }
+  claimed       Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, category, period])
+  @@index([category, period, rank])
+  @@index([userId, category])
+  @@index([score])
+  @@map("leaderboards")
+}
+
+model DailyChallenge {
+  id            String   @id @default(cuid())
+  date          DateTime @unique
+
+  title         String
+  description   String
+  icon          String
+
+  // Challenge details
+  type          String   // "score_goals", "validate_players", "complete_profile"
+  target        Int      // Objectif à atteindre
+  reward        Int      // Points XP en récompense
+
+  // Stats
+  totalAttempts Int      @default(0)
+  totalSuccess  Int      @default(0)
+
+  createdAt     DateTime @default(now())
+
+  // Relations
+  userChallenges UserDailyChallenge[]
+
+  @@index([date])
+  @@map("daily_challenges")
+}
+
+model UserDailyChallenge {
+  id              String         @id @default(cuid())
+  userId          String
+  challengeId     String
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge       DailyChallenge @relation(fields: [challengeId], references: [id])
+
+  // Progress
+  progress        Int            @default(0)
+  completed       Boolean        @default(false)
+  completedAt     DateTime?
+  rewardClaimed   Boolean        @default(false)
+
+  createdAt       DateTime       @default(now())
+
+  @@unique([userId, challengeId])
+  @@index([userId, completed])
+  @@index([challengeId])
+  @@map("user_daily_challenges")
+}
+
+model Badge {
+  id            String    @id @default(cuid())
+  type          BadgeType @unique
+  name          String
+  description   String
+  icon          String    // URL de l'icône
+  color         String    // Couleur hex
+
+  // Conditions
+  requirements  Json      // Conditions pour obtenir le badge
+
+  // Stats
+  totalAwarded  Int       @default(0)
+
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  userBadges    UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id          String   @id @default(cuid())
+  userId      String
+  badgeId     String
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id])
+
+  awardedAt   DateTime @default(now())
+  displayOrder Int     @default(0) // Ordre d'affichage sur le profil
+  isPinned    Boolean  @default(false) // Badge épinglé sur le profil
+
+  @@unique([userId, badgeId])
+  @@index([userId, isPinned])
+  @@map("user_badges")
+}

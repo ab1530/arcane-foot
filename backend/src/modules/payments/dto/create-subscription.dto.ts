@@ -1,7 +1,7 @@
 import { IsString, IsEnum } from 'class-validator';
 import { SubscriptionTier } from '@prisma/client';
 
-export class CreateSubscriptionDto {
+export class CreateStripeSubscriptionDto {
   @IsString()
   userId: string;
 

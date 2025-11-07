@@ -25,19 +25,20 @@ export class CreateMatchDto {
   scheduledAt: string;
 
   @ApiPropertyOptional({
-    description: 'Venue or stadium name',
+    description: 'Venue or stadium name (legacy field)',
     example: 'Stade de France',
   })
   @IsString()
   @IsOptional()
-  venue?: string;
+  venueOld?: string;
 
-  @ApiProperty({
-    description: 'Competition name',
+  @ApiPropertyOptional({
+    description: 'Competition name (legacy field)',
     example: 'Ligue 1',
   })
   @IsString()
-  competition: string;
+  @IsOptional()
+  competitionOld?: string;
 
   @ApiProperty({
     description: 'Season identifier',

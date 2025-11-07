@@ -10,6 +10,7 @@ import {
 import { PlayersService } from './players.service';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
+import { FilterPlayersDto } from './dto/filter-players.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('Players')
@@ -29,33 +30,13 @@ export class PlayersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all players', description: 'Retrieve a paginated list of players with optional filters' })
-  @ApiQuery({ name: 'position', required: false, description: 'Filter by position' })
-  @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
-  @ApiQuery({ name: 'nationality', required: false, description: 'Filter by nationality (ISO code)' })
-  @ApiQuery({ name: 'clubId', required: false, description: 'Filter by club ID' })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by name' })
-  @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
-  @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
-  @ApiResponse({ status: 200, description: 'List of players retrieved successfully' })
-  findAll(
-    @Query('position') position?: string,
-    @Query('status') status?: string,
-    @Query('nationality') nationality?: string,
-    @Query('clubId') clubId?: string,
-    @Query('search') search?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return this.playersService.findAll({
-      position,
-      status,
-      nationality,
-      clubId,
-      search,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
-    });
+  @ApiOperation({
+    summary: 'Get all players',
+    description: 'Retrieve a paginated list of players with advanced filters (age, height, weight, market value, etc.)'
+  })
+  @ApiResponse({ status: 200, description: 'Liste des joueurs récupérée avec succès' })
+  findAll(@Query() filters: FilterPlayersDto) {
+    return this.playersService.findAll(filters);
   }
 
   @Get(':id')

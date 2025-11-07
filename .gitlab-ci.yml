@@ -1,0 +1,167 @@
+stages:
+  - build
+  - test
+  - qa
+  - deploy
+
+variables:
+  NODE_ENV: test
+  NPM_CONFIG_FUND: "false"
+  PLAYWRIGHT_BROWSERS_PATH: /cache/ms-playwright
+  SENTRY_VALIDATE: "true"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - web/node_modules
+    - backend/node_modules
+    - .cache/ms-playwright
+
+build_backend:
+  stage: build
+  image: node:20-bullseye
+  script:
+    - npm ci --prefix backend
+    - npm run build --prefix backend
+  artifacts:
+    paths:
+      - backend/dist
+      - backend/node_modules
+    expire_in: 1 day
+
+build_web:
+  stage: build
+  image: node:20-bullseye
+  script:
+    - npm ci --prefix web
+    - npm run build --prefix web
+  artifacts:
+    paths:
+      - web/.next
+      - web/node_modules
+    expire_in: 1 day
+
+build_docker_images:
+  stage: build
+  image: docker:24.0.6
+  services:
+    - docker:24.0.6-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker build -f Dockerfile.backend -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" .
+    - docker build -f Dockerfile.web -t "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA" .
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+unit_test_backend:
+  stage: test
+  image: node:20-bullseye
+  needs:
+    - build_backend
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+  variables:
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+    SUPABASE_URL: http://localhost:9999
+    SUPABASE_SERVICE_KEY: local-service-key
+    SUPABASE_STORAGE_BUCKET: arcane-media
+  script:
+    - apt-get update && apt-get install -y postgresql-client
+    - npm ci --prefix backend
+    - npx prisma migrate deploy --schema backend/prisma/schema.prisma
+    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql
+    - npm run test:ci --prefix backend
+  artifacts:
+    when: always
+    paths:
+      - backend/coverage
+    expire_in: 1 week
+
+unit_test_web:
+  stage: test
+  image: node:20-bullseye
+  needs:
+    - build_web
+  script:
+    - npm ci --prefix web
+    - npm run lint --prefix web
+    - npm run test:ci --prefix web
+  artifacts:
+    when: always
+    paths:
+      - web/coverage
+    expire_in: 1 week
+
+qa_job:
+  stage: qa
+  image: node:20-bullseye
+  needs:
+    - unit_test_backend
+    - unit_test_web
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+  variables:
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+    SUPABASE_URL: http://localhost:9999
+    SUPABASE_SERVICE_KEY: local-service-key
+    SUPABASE_STORAGE_BUCKET: arcane-media
+  script:
+    - apt-get update && apt-get install -y postgresql-client
+    - npm ci --prefix backend
+    - npm ci --prefix web
+    - npx prisma migrate deploy --schema backend/prisma/schema.prisma
+    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql
+    - cd web
+    - npx playwright install --with-deps
+    - npm run test:e2e
+    - npm run test:ci
+    - cd ..
+    - mkdir -p tests/output
+    - printf "# QA Report\n" > tests/output/qa_report.md
+    - printf "- Playwright: PASS\n" >> tests/output/qa_report.md
+    - printf "- Jest: PASS\n" >> tests/output/qa_report.md
+  artifacts:
+    when: always
+    paths:
+      - tests/output/qa_report.md
+      - web/playwright-report
+    expire_in: 1 week
+
+deploy_staging:
+  stage: deploy
+  image: docker:24.0.6
+  services:
+    - docker:24.0.6-dind
+  needs:
+    - qa_job
+  script:
+    - chmod +x scripts/deploy/deploy-staging.sh
+    - ./scripts/deploy/deploy-staging.sh
+  environment:
+    name: staging
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: false
+
+deploy_production:
+  stage: deploy
+  image: docker:24.0.6
+  services:
+    - docker:24.0.6-dind
+  needs:
+    - qa_job
+  script:
+    - chmod +x scripts/deploy/deploy-production.sh
+    - ./scripts/deploy/deploy-production.sh
+  environment:
+    name: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+      allow_failure: false

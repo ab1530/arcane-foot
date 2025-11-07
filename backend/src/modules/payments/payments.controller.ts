@@ -11,7 +11,7 @@ import {
   RawBodyRequest,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { CreateStripeSubscriptionDto } from './dto/create-subscription.dto';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
@@ -27,7 +27,7 @@ export class PaymentsController {
 
   @Post('subscription')
   @UseGuards(JwtAuthGuard)
-  createSubscription(@Body() createSubscriptionDto: CreateSubscriptionDto) {
+  createSubscription(@Body() createSubscriptionDto: CreateStripeSubscriptionDto) {
     return this.paymentsService.createSubscription(createSubscriptionDto);
   }
 

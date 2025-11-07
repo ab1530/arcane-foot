@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { FirebaseService } from '../firebase/firebase.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendNotificationDto } from './dto/send-notification.dto';
@@ -17,7 +18,7 @@ export class NotificationsService {
    * Register a device FCM token for a user
    */
   async registerDevice(userId: string, fcmToken: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.users.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -48,7 +49,7 @@ export class NotificationsService {
   async sendToUser(sendNotificationDto: SendNotificationDto) {
     const { userId, title, body, type, data } = sendNotificationDto;
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.users.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -58,14 +59,16 @@ export class NotificationsService {
 
     if (tokens.length === 0) {
       // No devices to send to, just create notification record
-      const notification = await this.prisma.notification.create({
-        data: {
-          userId,
-          title,
-          body,
-          type,
-          dataJson: data,
-        },
+      const createData: Prisma.notificationsUncheckedCreateInput = {
+        id: crypto.randomUUID(),
+        userId,
+        title,
+        body,
+        type,
+        ...(data && { dataJson: data as Prisma.InputJsonValue }),
+      };
+      const notification = await this.prisma.notifications.create({
+        data: createData,
       });
 
       return { notification, sent: false, message: 'No registered devices' };
@@ -76,14 +79,16 @@ export class NotificationsService {
     const response = await this.firebaseService.sendMulticast(tokens, title, body, fcmData);
 
     // Create notification record
-    const notification = await this.prisma.notification.create({
-      data: {
-        userId,
-        title,
-        body,
-        type,
-        dataJson: data,
-      },
+    const createData: Prisma.notificationsUncheckedCreateInput = {
+      id: crypto.randomUUID(),
+      userId,
+      title,
+      body,
+      type,
+      ...(data && { dataJson: data as Prisma.InputJsonValue }),
+    };
+    const notification = await this.prisma.notifications.create({
+      data: createData,
     });
 
     return {
@@ -192,7 +197,7 @@ export class NotificationsService {
       where.isRead = false;
     }
 
-    return this.prisma.notification.findMany({
+    return this.prisma.notifications.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -203,7 +208,7 @@ export class NotificationsService {
    * Mark notification as read
    */
   async markAsRead(id: string, userId: string) {
-    const notification = await this.prisma.notification.findUnique({
+    const notification = await this.prisma.notifications.findUnique({
       where: { id },
     });
 
@@ -215,7 +220,7 @@ export class NotificationsService {
       throw new NotFoundException(`Notification not found for this user`);
     }
 
-    return this.prisma.notification.update({
+    return this.prisma.notifications.update({
       where: { id },
       data: {
         isRead: true,
@@ -228,7 +233,7 @@ export class NotificationsService {
    * Mark all notifications as read for a user
    */
   async markAllAsRead(userId: string) {
-    return this.prisma.notification.updateMany({
+    return this.prisma.notifications.updateMany({
       where: {
         userId,
         isRead: false,
@@ -244,12 +249,12 @@ export class NotificationsService {
    * Send match reminder notifications
    */
   async sendMatchReminder(matchId: string) {
-    const match = await this.prisma.match.findUnique({
+    const match = await this.prisma.matches.findUnique({
       where: { id: matchId },
       include: {
-        homeClub: true,
-        awayClub: true,
-        scout: true,
+        clubs_matches_homeClubIdToclubs: true,
+        clubs_matches_awayClubIdToclubs: true,
+        users_matches_scoutIdTousers: true,
       },
     });
 
@@ -258,7 +263,7 @@ export class NotificationsService {
     }
 
     const notificationTitle = 'Match Reminder';
-    const notificationBody = `${match.homeClub.name} vs ${match.awayClub.name} starts soon!`;
+    const notificationBody = `${match.clubs_matches_homeClubIdToclubs.name} vs ${match.clubs_matches_awayClubIdToclubs.name} starts soon!`;
     const notificationData = {
       matchId: match.id,
       type: 'match_reminder',
@@ -282,19 +287,19 @@ export class NotificationsService {
    * Send new scouting report notification
    */
   async sendReportNotification(reportId: string) {
-    const report = await this.prisma.scoutingReport.findUnique({
+    const report = await this.prisma.scouting_reports.findUnique({
       where: { id: reportId },
       include: {
-        player: {
+        players: {
           include: {
-            user: true,
+            users: true,
           },
         },
-        scout: true,
-        match: {
+        users: true,
+        matches: {
           include: {
-            homeClub: true,
-            awayClub: true,
+            clubs_matches_homeClubIdToclubs: true,
+            clubs_matches_awayClubIdToclubs: true,
           },
         },
       },

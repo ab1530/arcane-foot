@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaType } from '@prisma/client';
 import { UploadMediaDto } from './dto/upload-media.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     private supabaseService: SupabaseService,
     private prisma: PrismaService,
@@ -19,19 +22,19 @@ export class MediaService {
 
     // Validate entity exists
     if (playerId) {
-      const player = await this.prisma.player.findUnique({ where: { id: playerId } });
+      const player = await this.prisma.players.findUnique({ where: { id: playerId } });
       if (!player) {
         throw new NotFoundException(`Player with ID ${playerId} not found`);
       }
     }
     if (matchId) {
-      const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+      const match = await this.prisma.matches.findUnique({ where: { id: matchId } });
       if (!match) {
         throw new NotFoundException(`Match with ID ${matchId} not found`);
       }
     }
     if (reportId) {
-      const report = await this.prisma.scoutingReport.findUnique({ where: { id: reportId } });
+      const report = await this.prisma.scouting_reports.findUnique({ where: { id: reportId } });
       if (!report) {
         throw new NotFoundException(`Report with ID ${reportId} not found`);
       }
@@ -55,20 +58,21 @@ export class MediaService {
     // Create media record
     const media = await this.prisma.media.create({
       data: {
+        id: randomUUID(),
         type,
         url,
         filename: file.originalname,
         mimeType: file.mimetype,
         size: file.size,
-        playerId,
-        matchId,
-        reportId,
+        ...(playerId && { playerId }),
+        ...(matchId && { matchId }),
+        ...(reportId && { reportId }),
       },
       include: {
-        player: {
+        players: {
           select: {
             id: true,
-            user: {
+            users: {
               select: {
                 firstName: true,
                 lastName: true,
@@ -76,11 +80,11 @@ export class MediaService {
             },
           },
         },
-        match: {
+        matches: {
           select: {
             id: true,
-            homeClub: { select: { name: true } },
-            awayClub: { select: { name: true } },
+            clubs_matches_homeClubIdToclubs: { select: { name: true } },
+            clubs_matches_awayClubIdToclubs: { select: { name: true } },
           },
         },
       },
@@ -93,9 +97,9 @@ export class MediaService {
    * Upload player avatar
    */
   async uploadPlayerAvatar(playerId: string, file: Express.Multer.File) {
-    const player = await this.prisma.player.findUnique({
+    const player = await this.prisma.players.findUnique({
       where: { id: playerId },
-      include: { user: true },
+      include: { users: true },
     });
 
     if (!player) {
@@ -112,7 +116,7 @@ export class MediaService {
     const url = await this.supabaseService.uploadFile(file.buffer, filename, 'avatars');
 
     // Update user avatar
-    await this.prisma.user.update({
+    await this.prisma.users.update({
       where: { id: player.userId },
       data: { avatar: url },
     });
@@ -124,7 +128,7 @@ export class MediaService {
    * Upload club logo
    */
   async uploadClubLogo(clubId: string, file: Express.Multer.File) {
-    const club = await this.prisma.club.findUnique({ where: { id: clubId } });
+    const club = await this.prisma.clubs.findUnique({ where: { id: clubId } });
 
     if (!club) {
       throw new NotFoundException(`Club with ID ${clubId} not found`);
@@ -140,7 +144,7 @@ export class MediaService {
     const url = await this.supabaseService.uploadFile(file.buffer, filename, 'logos');
 
     // Update club logo
-    await this.prisma.club.update({
+    await this.prisma.clubs.update({
       where: { id: clubId },
       data: { logo: url },
     });
@@ -155,9 +159,9 @@ export class MediaService {
     const media = await this.prisma.media.findUnique({
       where: { id },
       include: {
-        player: {
+        players: {
           include: {
-            user: {
+            users: {
               select: {
                 id: true,
                 firstName: true,
@@ -166,16 +170,16 @@ export class MediaService {
             },
           },
         },
-        match: {
+        matches: {
           include: {
-            homeClub: true,
-            awayClub: true,
+            clubs_matches_homeClubIdToclubs: true,
+            clubs_matches_awayClubIdToclubs: true,
           },
         },
-        report: {
+        scouting_reports: {
           include: {
-            player: true,
-            match: true,
+            players: true,
+            matches: true,
           },
         },
       },
@@ -192,7 +196,7 @@ export class MediaService {
    * Get all media for a player
    */
   async getPlayerMedia(playerId: string) {
-    const player = await this.prisma.player.findUnique({ where: { id: playerId } });
+    const player = await this.prisma.players.findUnique({ where: { id: playerId } });
     if (!player) {
       throw new NotFoundException(`Player with ID ${playerId} not found`);
     }
@@ -207,7 +211,7 @@ export class MediaService {
    * Get all media for a match
    */
   async getMatchMedia(matchId: string) {
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.matches.findUnique({ where: { id: matchId } });
     if (!match) {
       throw new NotFoundException(`Match with ID ${matchId} not found`);
     }
@@ -222,7 +226,7 @@ export class MediaService {
    * Get all media for a report
    */
   async getReportMedia(reportId: string) {
-    const report = await this.prisma.scoutingReport.findUnique({ where: { id: reportId } });
+    const report = await this.prisma.scouting_reports.findUnique({ where: { id: reportId } });
     if (!report) {
       throw new NotFoundException(`Report with ID ${reportId} not found`);
     }
@@ -246,7 +250,7 @@ export class MediaService {
     try {
       await this.supabaseService.deleteFile(media.url);
     } catch (error) {
-      console.error('Error deleting file from Supabase:', error);
+      this.logger.error('Error deleting file from Supabase:', error);
       // Continue even if Supabase deletion fails
     }
 

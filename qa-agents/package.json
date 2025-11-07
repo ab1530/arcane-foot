@@ -1,0 +1,39 @@
+{
+  "name": "arcane-qa-autonomy-system",
+  "version": "1.0.0",
+  "description": "Système d'agents autonomes pour la qualité continue du code Arcane Football Platform",
+  "main": "orchestrator.ts",
+  "scripts": {
+    "qa:autonomy": "ts-node orchestrator.ts",
+    "qa:watch": "nodemon --watch ../backend --watch ../web --watch ../mobile --ext ts,tsx,js,jsx --exec 'npm run qa:autonomy'",
+    "qa:test": "jest --config jest.config.js",
+    "qa:lint": "eslint . --ext .ts",
+    "qa:build": "tsc",
+    "qa:clean": "rm -rf logs/*.log reports/QA_AUTONOMY_REPORT.md",
+    "qa:report": "cat reports/QA_AUTONOMY_REPORT.md"
+  },
+  "keywords": [
+    "qa",
+    "automation",
+    "agents",
+    "testing",
+    "autonomous"
+  ],
+  "author": "Arcane Football Platform Team",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "nodemon": "^3.1.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
