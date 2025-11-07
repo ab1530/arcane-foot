@@ -88,6 +88,7 @@ PROD_DATABASE_URL         = postgresql://user:pass@prod-host:5432/db
 JWT_SECRET                = <votre-secret-jwt>
 JWT_EXPIRES_IN            = 7d
 
+
 # Supabase
 SUPABASE_URL              = https://xxx.supabase.co
 SUPABASE_SERVICE_KEY      = <votre-service-key>
