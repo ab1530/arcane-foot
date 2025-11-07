@@ -19,6 +19,7 @@ export interface ErrorContext {
   timestamp?: string;
   component?: string;
   action?: string;
+  [key: string]: any; // Index signature for Sentry compatibility
 }
 
 export interface ErrorHandlerOptions {

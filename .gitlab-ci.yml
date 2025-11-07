@@ -64,6 +64,10 @@ unit_test_backend:
   services:
     - name: postgres:16-alpine
       alias: postgres
+      variables:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: postgres
   variables:
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
@@ -105,6 +109,10 @@ qa_job:
   services:
     - name: postgres:16-alpine
       alias: postgres
+      variables:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: postgres
   variables:
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
