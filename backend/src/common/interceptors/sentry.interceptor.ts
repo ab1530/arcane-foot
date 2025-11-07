@@ -9,6 +9,7 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import * as Sentry from '@sentry/nestjs';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../modules/prisma/prisma.service';
 
 /**
@@ -136,6 +137,7 @@ export class SentryInterceptor implements NestInterceptor {
       try {
         await this.prisma.rbac_events.create({
           data: {
+            id: randomUUID(),
             userId: user.id,
             eventType: 'FEATURE_BLOCKED',
             feature: feature,

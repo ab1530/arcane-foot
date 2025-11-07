@@ -2,9 +2,8 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 COPY backend/package*.json ./
-RUN npm ci
-
 COPY backend/prisma ./prisma
+RUN npm ci
 COPY backend/tsconfig*.json ./
 COPY backend/src ./src
 
