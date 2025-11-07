@@ -42,6 +42,7 @@ describe('AnalyticsService', () => {
       findMany: jest.fn(),
       groupBy: jest.fn(),
     },
+    $queryRaw: jest.fn(),
   };
 
   beforeEach(async () => {
