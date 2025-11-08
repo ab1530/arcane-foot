@@ -178,7 +178,6 @@ unit_test_web:
 qa_job:
   stage: qa
   image: node:20-bullseye
-  extends: .setup_logging
   needs:
     - unit_test_backend
     - unit_test_web
@@ -189,9 +188,19 @@ qa_job:
         POSTGRES_PASSWORD: postgres
         POSTGRES_USER: postgres
         POSTGRES_DB: postgres
-        # Optimize PostgreSQL for CI/test workload
         POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
-      command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=100", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
+      command:
+        - postgres
+        - -c
+        - shared_buffers=256MB
+        - -c
+        - max_connections=100
+        - -c
+        - fsync=off
+        - -c
+        - synchronous_commit=off
+        - -c
+        - full_page_writes=off
   variables:
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
@@ -202,46 +211,15 @@ qa_job:
     JWT_SECRET: test-jwt-secret-for-ci
     JWT_EXPIRES_IN: 7d
     NODE_ENV: test
-    # Resource optimization
     NODE_OPTIONS: "--max-old-space-size=2048"
-    # CI-specific optimizations
     CI: "true"
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"  # Already installed in cache
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+  before_script:
+    - mkdir -p logs
+    - export LOG_FILE="logs/qa_job_${CI_COMMIT_SHORT_SHA}.log"
   script:
-    - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
-    - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
-    - echo "Installing backend dependencies..." | tee -a $LOG_FILE
-    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
-    - echo "Installing web dependencies..." | tee -a $LOG_FILE
-    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
-    - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
-    - npx prisma migrate deploy --schema backend/prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
-    - echo "Note: Prisma Client already generated during npm ci postinstall" | tee -a $LOG_FILE
-    - echo "Applying database policies..." | tee -a $LOG_FILE
-    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE || echo "WARNING - Some policies failed (expected in CI without Supabase auth)"
-    - echo "Seeding database with test data..." | tee -a $LOG_FILE
-    - npx ts-node --project backend/tsconfig.json backend/prisma/seed.ts 2>&1 | tee -a $LOG_FILE
-    - echo "Starting backend server in background..." | tee -a $LOG_FILE
-    - cd backend && npm run start:prod > ../logs/backend.log 2>&1 &
-    - BACKEND_PID=$!
-    - echo "Backend started with PID $BACKEND_PID" | tee -a ../$LOG_FILE
-    - cd ..
-    - echo "Waiting for backend to be ready..." | tee -a $LOG_FILE
-    - timeout 60 bash -c 'until curl -f http://localhost:5000/api/health 2>/dev/null; do echo "Waiting for backend..."; sleep 2; done' || echo "Backend health check timeout"
-    - echo "Backend is ready" | tee -a $LOG_FILE
-    - cd web
-    - echo "Installing Playwright with dependencies..." | tee -a ../$LOG_FILE
-    - npx playwright install --with-deps chromium 2>&1 | tee -a ../$LOG_FILE
-    - echo "Running E2E tests..." | tee -a ../$LOG_FILE
-    - npm run test:e2e 2>&1 | tee -a ../$LOG_FILE
-    - echo "Running Jest tests..." | tee -a ../$LOG_FILE
-    - npm run test:ci 2>&1 | tee -a ../$LOG_FILE
-    - cd ..
-    - echo "Stopping backend server..." | tee -a $LOG_FILE
-    - kill $BACKEND_PID || true
-    - chmod +x scripts/generate-qa-report.sh
-    - ./scripts/generate-qa-report.sh
-    - echo "QA completed successfully" | tee -a $LOG_FILE
+    - chmod +x scripts/ci/run-qa-tests.sh
+    - ./scripts/ci/run-qa-tests.sh
   artifacts:
     when: always
     paths:
