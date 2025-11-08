@@ -14,14 +14,20 @@ export default defineConfig({
   testDir: './test/e2e',
   fullyParallel: true,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
-  reporter: 'html',
+  retries: isCI ? 1 : 0,
+  workers: isCI ? 2 : undefined,
+  reporter: isCI ? [['list'], ['html', { open: 'never' }]] : 'html',
+  timeout: 45000,
+  expect: {
+    timeout: 10000,
+  },
   use: {
     baseURL,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
     launchOptions: {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
@@ -40,5 +46,7 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 120 * 1000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });
