@@ -216,8 +216,7 @@ qa_job:
     - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
     - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
     - npx prisma migrate deploy --schema backend/prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
-    - echo "Regenerating Prisma Client after migrations..." | tee -a $LOG_FILE
-    - npx prisma generate --schema backend/prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
+    - echo "Note: Prisma Client already generated during npm ci postinstall" | tee -a $LOG_FILE
     - echo "Applying database policies..." | tee -a $LOG_FILE
     - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE || echo "⚠️  Some policies failed (expected in CI without Supabase auth)"
     - echo "Seeding database with test data..." | tee -a $LOG_FILE
