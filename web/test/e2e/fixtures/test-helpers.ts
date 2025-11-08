@@ -130,9 +130,15 @@ export async function takeScreenshotOnFailure(page: Page, testInfo: any) {
  */
 export async function clearSession(page: Page) {
   await page.context().clearCookies();
+  // Clear storage using context API - safe to use before navigation
+  await page.context().clearPermissions();
   await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      // Ignore SecurityError if page is not yet navigated
+    }
   });
 }
 
@@ -140,16 +146,20 @@ export async function clearSession(page: Page) {
  * Set auth token in localStorage
  */
 export async function setAuthToken(page: Page, token: string) {
-  await page.evaluate((token) => {
+  // Use addInitScript to ensure it works before navigation
+  await page.addInitScript((token) => {
     localStorage.setItem('auth_token', token);
   }, token);
 }
 
 /**
  * Mock authenticated session
+ * Note: Page must be navigated to a valid URL before calling this function
  */
 export async function mockAuthSession(page: Page) {
-  await page.evaluate(() => {
+  // Use Playwright's context storage API to set localStorage
+  // This works even before navigation and persists across navigations
+  await page.addInitScript(() => {
     const mockUser = {
       id: 'test-user-id',
       email: 'test@example.com',
