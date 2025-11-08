@@ -134,6 +134,9 @@ unit_test_backend:
     - echo "Tests completed" | tee -a $LOG_FILE
     - echo "Generating coverage summary..." | tee -a $LOG_FILE
     - cat backend/coverage/coverage-summary.json 2>&1 | tee -a $LOG_FILE || echo "No coverage summary found"
+    - echo "Generating coverage badge data..." | tee -a $LOG_FILE
+    - chmod +x scripts/generate-coverage-badge.sh
+    - ./scripts/generate-coverage-badge.sh 2>&1 | tee -a $LOG_FILE || echo "Failed to generate badge data"
   artifacts:
     when: always
     paths:
@@ -143,7 +146,9 @@ unit_test_backend:
       coverage_report:
         coverage_format: cobertura
         path: backend/coverage/cobertura-coverage.xml
+      dotenv: backend/coverage/coverage.env
     expire_in: 1 week
+  coverage: '/Total coverage: (\d+\.?\d*)%/'
 
 unit_test_web:
   stage: test
