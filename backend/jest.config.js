@@ -15,6 +15,8 @@ module.exports = {
     '!**/*.dto.ts',
     '!**/*.entity.ts',
     '!**/index.ts',
+    '!**/coverage/**',
+    '!**/coverage-*/**',
   ],
   coverageDirectory: '../coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json-summary', 'cobertura'],
