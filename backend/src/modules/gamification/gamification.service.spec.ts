@@ -1029,6 +1029,7 @@ describe('GamificationService', () => {
 
     it('should track login action and increment streak', async () => {
       const yesterday = new Date();
+      yesterday.setHours(0, 0, 0, 0);
       yesterday.setDate(yesterday.getDate() - 1);
 
       prisma.user_stats.upsert.mockResolvedValue({
@@ -1038,10 +1039,11 @@ describe('GamificationService', () => {
 
       await service.trackUserAction(userId, 'login');
 
+      // When lastLogin is before yesterday's date, streak resets to 1
       expect(prisma.user_stats.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            loginStreak: { increment: 1 },
+            loginStreak: 1, // Reset, not increment
             lastLoginDate: expect.any(Date),
           }),
         }),
