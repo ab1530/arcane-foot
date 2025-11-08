@@ -8,16 +8,24 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting comprehensive database seeding...');
 
-  // Seed achievements first
-  await seedAchievements();
+  // Seed achievements first (skip if table doesn't exist)
+  try {
+    await seedAchievements();
+  } catch (error) {
+    console.log('⏭️  Skipping achievements seeding (table may not exist in this schema version)');
+  }
 
   // Clear existing data (in development only)
   if (process.env.NODE_ENV !== 'production') {
     console.log('🧹 Clearing existing data...');
-    await prisma.players.deleteMany();
-    await prisma.users.deleteMany({ where: { role: 'PLAYER' } });
-    await prisma.clubs.deleteMany();
-    console.log('✅ Existing data cleared');
+    try {
+      await prisma.players.deleteMany();
+      await prisma.users.deleteMany({ where: { role: 'PLAYER' } });
+      await prisma.clubs.deleteMany();
+      console.log('✅ Existing data cleared');
+    } catch (error) {
+      console.log('⚠️  Warning: Could not clear all data, continuing anyway...');
+    }
   }
 
   // Hash a common password for all seed users

@@ -1,0 +1,87 @@
+# Kubernetes Runner Configuration for GitLab CI/CD
+# This file documents the resource limits to apply when migrating to K8s runners
+#
+# To use this configuration:
+# 1. Install GitLab Runner on your Kubernetes cluster
+# 2. Configure runner with these resource limits
+# 3. Uncomment the K8s-specific sections in .gitlab-ci.yml
+
+# Resource limits for different job types
+qa_job_resources:
+  requests:
+    memory: "4Gi"
+    cpu: "2000m"
+  limits:
+    memory: "6Gi"
+    cpu: "3000m"
+
+build_job_resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1000m"
+  limits:
+    memory: "4Gi"
+    cpu: "2000m"
+
+test_job_resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1000m"
+  limits:
+    memory: "3Gi"
+    cpu: "1500m"
+
+# PostgreSQL service for QA
+postgres_service_resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+# Runner configuration template (config.toml)
+# [[runners]]
+#   name = "kubernetes-runner"
+#   url = "https://gitlab.com/"
+#   token = "YOUR_RUNNER_TOKEN"
+#   executor = "kubernetes"
+#   [runners.kubernetes]
+#     image = "node:20-bullseye"
+#     namespace = "gitlab-runner"
+#     privileged = false
+#     cpu_request = "1000m"
+#     cpu_limit = "2000m"
+#     memory_request = "2Gi"
+#     memory_limit = "4Gi"
+#     service_cpu_request = "500m"
+#     service_cpu_limit = "1000m"
+#     service_memory_request = "512Mi"
+#     service_memory_limit = "1Gi"
+#     helper_cpu_request = "100m"
+#     helper_cpu_limit = "500m"
+#     helper_memory_request = "128Mi"
+#     helper_memory_limit = "256Mi"
+#     poll_timeout = 180
+#     [runners.kubernetes.pod_labels]
+#       "app" = "gitlab-runner"
+#       "environment" = "ci"
+#     [runners.kubernetes.node_selector]
+#       "workload" = "ci-cd"
+#     [runners.cache]
+#       Type = "s3"
+#       Shared = true
+#       [runners.cache.s3]
+#         ServerAddress = "s3.amazonaws.com"
+#         BucketName = "gitlab-runner-cache"
+#         BucketLocation = "us-east-1"
+
+# Migration checklist:
+# ☐ Install GitLab Runner on K8s cluster
+# ☐ Configure runner with resource limits above
+# ☐ Set up S3 or compatible cache storage
+# ☐ Tag runner with "kubernetes" in GitLab
+# ☐ Uncomment K8s sections in .gitlab-ci.yml
+# ☐ Test pipeline with K8s runner
+# ☐ Monitor resource usage and adjust limits
+# ☐ Remove local runner registration
