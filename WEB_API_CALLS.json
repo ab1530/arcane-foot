@@ -1,0 +1,1046 @@
+{
+  "apiCalls": [
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["email", "password"],
+      "description": "User authentication"
+    },
+    {
+      "endpoint": "/api/auth/signup",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["fullName", "email", "password", "phone", "dateOfBirth", "accountType"],
+      "description": "User registration"
+    },
+    {
+      "endpoint": "/api/auth/logout",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "User logout"
+    },
+    {
+      "endpoint": "/api/auth/me",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get current authenticated user"
+    },
+    {
+      "endpoint": "/api/auth/profile",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["fullName", "firstName", "lastName", "phone", "location", "organization", "role", "website", "bio"],
+      "description": "Update user profile"
+    },
+    {
+      "endpoint": "/api/players",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["page", "limit", "search"],
+      "description": "Get list of players with pagination and search"
+    },
+    {
+      "endpoint": "/api/players/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single player by ID"
+    },
+    {
+      "endpoint": "/api/players",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["player data"],
+      "description": "Create new player"
+    },
+    {
+      "endpoint": "/api/players/:id",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "player data"],
+      "description": "Update player"
+    },
+    {
+      "endpoint": "/api/players/:id",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Delete player"
+    },
+    {
+      "endpoint": "/api/contact",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["name", "email", "phone", "type", "message"],
+      "description": "Send contact message"
+    },
+    {
+      "endpoint": "/api/membership/plans",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get membership plans"
+    },
+    {
+      "endpoint": "/api/membership/subscribe",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["planId"],
+      "description": "Create subscription"
+    },
+    {
+      "endpoint": "/api/dashboard/stats",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get dashboard statistics"
+    },
+    {
+      "endpoint": "/api/dashboard/matches",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get upcoming matches for dashboard"
+    },
+    {
+      "endpoint": "/api/notifications/user/:userId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["userId"],
+      "description": "Get user notifications"
+    },
+    {
+      "endpoint": "/api/analytics/player/:playerId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerId", "period"],
+      "description": "Get player analytics"
+    },
+    {
+      "endpoint": "/api/analytics/overview",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get analytics overview"
+    },
+    {
+      "endpoint": "/api/analytics/players",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get analytics for players"
+    },
+    {
+      "endpoint": "/api/analytics/clubs",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get analytics for clubs"
+    },
+    {
+      "endpoint": "/api/analytics/scouting-reports",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get analytics for scouting reports"
+    },
+    {
+      "endpoint": "/api/analytics/club-requests",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get analytics for club requests"
+    },
+    {
+      "endpoint": "/api/analytics/events",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get analytics for events"
+    },
+    {
+      "endpoint": "/api/analytics/activity-trends",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["days"],
+      "description": "Get activity trends"
+    },
+    {
+      "endpoint": "/api/matches",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["status", "clubId", "scoutId", "competition", "season", "from", "to", "page", "limit"],
+      "description": "Get matches with filters"
+    },
+    {
+      "endpoint": "/api/matches/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single match by ID"
+    },
+    {
+      "endpoint": "/api/matches",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["homeClubId", "awayClubId", "scheduledAt", "venueOld", "competitionOld", "season", "status", "scoutId", "notes"],
+      "description": "Create new match"
+    },
+    {
+      "endpoint": "/api/matches/:id",
+      "method": "PUT",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "match data"],
+      "description": "Update match"
+    },
+    {
+      "endpoint": "/api/matches/:id",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Delete match"
+    },
+    {
+      "endpoint": "/api/matches/:matchId/assign-scout",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["matchId", "scoutId"],
+      "description": "Assign scout to match"
+    },
+    {
+      "endpoint": "/api/matches/:matchId/score",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["matchId", "homeScore", "awayScore"],
+      "description": "Update match score"
+    },
+    {
+      "endpoint": "/api/matches/upcoming",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["limit"],
+      "description": "Get upcoming matches"
+    },
+    {
+      "endpoint": "/api/matches/live",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get live matches"
+    },
+    {
+      "endpoint": "/api/clubs",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["page", "limit", "search"],
+      "description": "Get clubs with pagination"
+    },
+    {
+      "endpoint": "/api/clubs/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single club by ID"
+    },
+    {
+      "endpoint": "/api/users",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["role", "page", "limit"],
+      "description": "Get users/scouts with filters"
+    },
+    {
+      "endpoint": "/api/scouting-reports",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["status", "playerId", "scoutId", "matchId", "page", "limit"],
+      "description": "Get scouting reports with filters"
+    },
+    {
+      "endpoint": "/api/scouting-reports/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single scouting report by ID"
+    },
+    {
+      "endpoint": "/api/scouting-reports",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["matchId", "playerId", "status", "overallRating", "summary", "strengths", "weaknesses", "technicalRating", "physicalRating", "mentalRating", "tacticalRating", "recommendation", "recommendationNotes", "tags", "similarPlayerIds", "playerMinutesPlayed", "playerPosition"],
+      "description": "Create scouting report"
+    },
+    {
+      "endpoint": "/api/scouting-reports/:id",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "report data"],
+      "description": "Update scouting report"
+    },
+    {
+      "endpoint": "/api/scouting-reports/:id",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Delete scouting report"
+    },
+    {
+      "endpoint": "/api/scouting-reports/:id/submit",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Submit scouting report for review"
+    },
+    {
+      "endpoint": "/api/scouting-reports/:id/review",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "approved"],
+      "description": "Review scouting report (approve/reject)"
+    },
+    {
+      "endpoint": "/api/scouting-reports/player/:playerId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerId"],
+      "description": "Get reports for a specific player"
+    },
+    {
+      "endpoint": "/api/scouting-reports/scout/:scoutId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["scoutId"],
+      "description": "Get reports by a specific scout"
+    },
+    {
+      "endpoint": "/api/scouting-reports/match/:matchId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["matchId"],
+      "description": "Get reports for a specific match"
+    },
+    {
+      "endpoint": "/scouting-reports/:reportId/pdf",
+      "method": "GET",
+      "file": "src/app/reports/[id]/page.tsx",
+      "params": ["reportId"],
+      "description": "Download scouting report as PDF"
+    },
+    {
+      "endpoint": "/api/ai/summary",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["prompt"],
+      "description": "Generate AI summary"
+    },
+    {
+      "endpoint": "/api/ai/index/:playerId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerId"],
+      "description": "Get AI player index"
+    },
+    {
+      "endpoint": "/api/ai/matchmaking",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerIds", "clubIds", "tags"],
+      "description": "AI matchmaking"
+    },
+    {
+      "endpoint": "/api/camps",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["type", "status", "upcoming", "isPublic"],
+      "description": "Get camps with filters"
+    },
+    {
+      "endpoint": "/api/camps/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single camp by ID"
+    },
+    {
+      "endpoint": "/api/camps/:campId/register",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["campId", "playerId", "parentalConsentGiven", "parentalConsentUrl", "parentName", "parentEmail", "parentPhone", "medicalWaiverSigned", "medicalWaiverUrl", "medicalConditions", "emergencyContact", "emergencyPhone", "notes"],
+      "description": "Register for a camp"
+    },
+    {
+      "endpoint": "/api/camps/my/registrations",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get user's camp registrations"
+    },
+    {
+      "endpoint": "/api/camps/registrations/:participationId",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["participationId"],
+      "description": "Cancel camp registration"
+    },
+    {
+      "endpoint": "/api/subscriptions/me",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get current user subscription"
+    },
+    {
+      "endpoint": "/api/subscriptions",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["tier", "billingPeriod", "stripePaymentMethodId"],
+      "description": "Create or update subscription"
+    },
+    {
+      "endpoint": "/api/subscriptions/cancel",
+      "method": "PUT",
+      "file": "src/lib/api-client.ts",
+      "params": ["reason"],
+      "description": "Cancel subscription"
+    },
+    {
+      "endpoint": "/api/subscriptions/reactivate",
+      "method": "PUT",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Reactivate subscription"
+    },
+    {
+      "endpoint": "/api/subscriptions/change-tier",
+      "method": "PUT",
+      "file": "src/lib/api-client.ts",
+      "params": ["tier", "billingPeriod"],
+      "description": "Change subscription tier"
+    },
+    {
+      "endpoint": "/api/kanban/boards",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get kanban boards"
+    },
+    {
+      "endpoint": "/api/kanban/boards/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single kanban board"
+    },
+    {
+      "endpoint": "/api/kanban/boards",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["name", "description", "isPublic"],
+      "description": "Create kanban board"
+    },
+    {
+      "endpoint": "/api/kanban/boards/:id",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "name", "description"],
+      "description": "Update kanban board"
+    },
+    {
+      "endpoint": "/api/kanban/boards/:id",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Delete kanban board"
+    },
+    {
+      "endpoint": "/api/kanban/boards/:boardId/columns",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["boardId", "name", "type", "color", "position"],
+      "description": "Create kanban column"
+    },
+    {
+      "endpoint": "/api/kanban/columns/:id",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "name", "color", "position"],
+      "description": "Update kanban column"
+    },
+    {
+      "endpoint": "/api/kanban/columns/:id",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Delete kanban column"
+    },
+    {
+      "endpoint": "/api/kanban/cards",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["columnId", "playerId", "position", "notes", "priority", "tags", "dueDate"],
+      "description": "Create kanban card"
+    },
+    {
+      "endpoint": "/api/kanban/cards/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get kanban card"
+    },
+    {
+      "endpoint": "/api/kanban/cards/:id",
+      "method": "PATCH",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "notes", "priority", "tags", "dueDate"],
+      "description": "Update kanban card"
+    },
+    {
+      "endpoint": "/api/kanban/cards/:id/move",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["id", "targetColumnId", "position"],
+      "description": "Move kanban card"
+    },
+    {
+      "endpoint": "/api/kanban/cards/:id",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Delete kanban card"
+    },
+    {
+      "endpoint": "/api/kanban/cards/:id/activities",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get kanban card activities"
+    },
+    {
+      "endpoint": "/api/marketplace/listings",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["leagues", "positions", "country", "languages", "maxBudget", "minRating", "verifiedOnly", "page", "limit"],
+      "description": "Search scout listings in marketplace"
+    },
+    {
+      "endpoint": "/api/marketplace/listings/:id",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["id"],
+      "description": "Get single scout listing"
+    },
+    {
+      "endpoint": "/api/marketplace/reviews/listing/:listingId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["listingId"],
+      "description": "Get reviews for a scout listing"
+    },
+    {
+      "endpoint": "/api/marketplace/favorites",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["scoutListingId", "notes", "tags"],
+      "description": "Add listing to favorites"
+    },
+    {
+      "endpoint": "/api/marketplace/favorites/:favoriteId",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["favoriteId"],
+      "description": "Remove from favorites"
+    },
+    {
+      "endpoint": "/api/marketplace/favorites",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get user's favorite listings"
+    },
+    {
+      "endpoint": "/api/marketplace/favorites/check/:scoutListingId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["scoutListingId"],
+      "description": "Check if listing is favorited"
+    },
+    {
+      "endpoint": "/api/arkane-match/chat",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["message", "conversationId"],
+      "description": "Chat with ArkaneMatch AI"
+    },
+    {
+      "endpoint": "/api/arkane-match/conversations/:conversationId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["conversationId"],
+      "description": "Get ArkaneMatch conversation"
+    },
+    {
+      "endpoint": "/api/arkane-match/conversations/:conversationId",
+      "method": "DELETE",
+      "file": "src/lib/api-client.ts",
+      "params": ["conversationId"],
+      "description": "Clear ArkaneMatch conversation"
+    },
+    {
+      "endpoint": "/api/arkane-match/conversations",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get all ArkaneMatch conversations"
+    },
+    {
+      "endpoint": "/api/voice-to-report/process",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["FormData with audio file"],
+      "description": "Process voice recording to extract report data"
+    },
+    {
+      "endpoint": "/api/voice-to-report/languages",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get supported languages for voice-to-report"
+    },
+    {
+      "endpoint": "/api/voice-to-report/examples",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get voice-to-report examples"
+    },
+    {
+      "endpoint": "/api/auto-scout/generate",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerId", "matchId", "reportType", "customContext", "autoSave", "temperature", "includeComparisons"],
+      "description": "Generate auto-scout report"
+    },
+    {
+      "endpoint": "/api/auto-scout/bulk-generate",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerIds", "matchId"],
+      "description": "Bulk generate auto-scout reports"
+    },
+    {
+      "endpoint": "/api/auto-scout/enhance/:reportId",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["reportId"],
+      "description": "Enhance auto-scout report"
+    },
+    {
+      "endpoint": "/api/auto-scout/templates",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": [],
+      "description": "Get auto-scout templates"
+    },
+    {
+      "endpoint": "/api/auto-scout/preview/:playerId",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerId", "matchId"],
+      "description": "Preview auto-scout report"
+    },
+    {
+      "endpoint": "/api/auto-scout/analytics",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["startDate", "endDate"],
+      "description": "Get auto-scout analytics"
+    },
+    {
+      "endpoint": "/api/auto-scout/player/:playerId/history",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["playerId"],
+      "description": "Get player auto-scout history"
+    },
+    {
+      "endpoint": "/api/auto-scout/cost-estimate",
+      "method": "GET",
+      "file": "src/lib/api-client.ts",
+      "params": ["reportType"],
+      "description": "Get cost estimate for auto-scout"
+    },
+    {
+      "endpoint": "/api/auto-scout/regenerate/:reportId",
+      "method": "POST",
+      "file": "src/lib/api-client.ts",
+      "params": ["reportId", "temperature"],
+      "description": "Regenerate auto-scout report"
+    },
+    {
+      "endpoint": "/api/market-value/player/:playerId",
+      "method": "GET",
+      "file": "src/lib/api/market-value.ts",
+      "params": ["playerId"],
+      "description": "Get player market valuation"
+    },
+    {
+      "endpoint": "/api/market-value/trend/:playerId",
+      "method": "GET",
+      "file": "src/lib/api/market-value.ts",
+      "params": ["playerId"],
+      "description": "Get valuation trend for player"
+    },
+    {
+      "endpoint": "/api/market-value/compare",
+      "method": "POST",
+      "file": "src/lib/api/market-value.ts",
+      "params": ["playerIds"],
+      "description": "Compare multiple players market values"
+    },
+    {
+      "endpoint": "/api/market-value/health",
+      "method": "GET",
+      "file": "src/lib/api/market-value.ts",
+      "params": [],
+      "description": "Check market value AI service health"
+    },
+    {
+      "endpoint": "/api/market-value/retrain",
+      "method": "POST",
+      "file": "src/lib/api/market-value.ts",
+      "params": [],
+      "description": "Trigger market value model retraining"
+    },
+    {
+      "endpoint": "/api/performance-predictor/predict/:playerId/:matchId",
+      "method": "POST",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": ["playerId", "matchId"],
+      "description": "Predict player performance for match"
+    },
+    {
+      "endpoint": "/api/performance-predictor/batch-predict/:matchId",
+      "method": "POST",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": ["matchId"],
+      "description": "Batch predict performance for all players in match"
+    },
+    {
+      "endpoint": "/api/performance-predictor/accuracy",
+      "method": "GET",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": ["playerId", "dateRange"],
+      "description": "Get prediction accuracy metrics"
+    },
+    {
+      "endpoint": "/api/performance-predictor/feature-importance",
+      "method": "GET",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": [],
+      "description": "Get feature importance from ML model"
+    },
+    {
+      "endpoint": "/api/performance-predictor/predictions/:playerId",
+      "method": "GET",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": ["playerId"],
+      "description": "Get historical predictions for player"
+    },
+    {
+      "endpoint": "/api/performance-predictor/insights/:playerId",
+      "method": "GET",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": ["playerId"],
+      "description": "Get performance insights for player"
+    },
+    {
+      "endpoint": "/api/performance-predictor/retrain",
+      "method": "POST",
+      "file": "src/lib/api/performance-predictor.ts",
+      "params": [],
+      "description": "Trigger performance predictor model retraining"
+    },
+    {
+      "endpoint": "/api/smart-scout/suggestions",
+      "method": "POST",
+      "file": "src/lib/api/smart-scout.ts",
+      "params": ["partialReport", "context"],
+      "description": "Get intelligent suggestions for report completion"
+    },
+    {
+      "endpoint": "/api/smart-scout/autocomplete",
+      "method": "POST",
+      "file": "src/lib/api/smart-scout.ts",
+      "params": ["fieldName", "partialValue", "context"],
+      "description": "Get autocomplete suggestions for field"
+    },
+    {
+      "endpoint": "/api/smart-scout/insights/:playerId",
+      "method": "GET",
+      "file": "src/lib/api/smart-scout.ts",
+      "params": ["playerId"],
+      "description": "Get AI-powered player insights"
+    },
+    {
+      "endpoint": "/api/smart-scout/index/:reportId",
+      "method": "POST",
+      "file": "src/lib/api/smart-scout.ts",
+      "params": ["reportId"],
+      "description": "Index specific report (Admin only)"
+    },
+    {
+      "endpoint": "/api/smart-scout/reindex-all",
+      "method": "POST",
+      "file": "src/lib/api/smart-scout.ts",
+      "params": [],
+      "description": "Reindex all approved reports (Admin only)"
+    },
+    {
+      "endpoint": "/classify",
+      "method": "POST",
+      "file": "src/lib/api/playstyle-dna.ts",
+      "params": ["playerId", "playerStats"],
+      "description": "Classify player playing style (PlayStyle DNA microservice)",
+      "baseUrl": "http://localhost:8002"
+    },
+    {
+      "endpoint": "/compare",
+      "method": "POST",
+      "file": "src/lib/api/playstyle-dna.ts",
+      "params": ["playerIds"],
+      "description": "Compare multiple players playing styles (PlayStyle DNA microservice)",
+      "baseUrl": "http://localhost:8002"
+    },
+    {
+      "endpoint": "/styles",
+      "method": "GET",
+      "file": "src/lib/api/playstyle-dna.ts",
+      "params": [],
+      "description": "Get all available playing styles (PlayStyle DNA microservice)",
+      "baseUrl": "http://localhost:8002"
+    },
+    {
+      "endpoint": "/similar/:playerId",
+      "method": "GET",
+      "file": "src/lib/api/playstyle-dna.ts",
+      "params": ["playerId", "limit"],
+      "description": "Get players similar to specified player (PlayStyle DNA microservice)",
+      "baseUrl": "http://localhost:8002"
+    },
+    {
+      "endpoint": "/analytics/distribution",
+      "method": "GET",
+      "file": "src/lib/api/playstyle-dna.ts",
+      "params": [],
+      "description": "Get style distribution analytics (PlayStyle DNA microservice)",
+      "baseUrl": "http://localhost:8002"
+    },
+    {
+      "endpoint": "/players/by-style/:style",
+      "method": "GET",
+      "file": "src/lib/api/playstyle-dna.ts",
+      "params": ["style"],
+      "description": "Get players by playing style (PlayStyle DNA microservice)",
+      "baseUrl": "http://localhost:8002"
+    },
+    {
+      "endpoint": "/api/admin/players/pending-validation",
+      "method": "GET",
+      "file": "src/services/validationService.ts",
+      "params": ["page", "limit"],
+      "description": "Get pending players for validation (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/by-status/:status",
+      "method": "GET",
+      "file": "src/services/validationService.ts",
+      "params": ["status", "page", "limit"],
+      "description": "Get players by verification status (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/verification-stats",
+      "method": "GET",
+      "file": "src/services/validationService.ts",
+      "params": [],
+      "description": "Get verification statistics (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/:playerId/validation-history",
+      "method": "GET",
+      "file": "src/services/validationService.ts",
+      "params": ["playerId"],
+      "description": "Get validation history for player (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/:playerId/validate",
+      "method": "POST",
+      "file": "src/services/validationService.ts",
+      "params": ["playerId", "validationData"],
+      "description": "Validate a player (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/:playerId/reject",
+      "method": "POST",
+      "file": "src/services/validationService.ts",
+      "params": ["playerId", "reason"],
+      "description": "Reject a player (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/:playerId/mark-suspicious",
+      "method": "POST",
+      "file": "src/services/validationService.ts",
+      "params": ["playerId", "reason"],
+      "description": "Mark player as suspicious (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/:playerId/convert-to-agency",
+      "method": "POST",
+      "file": "src/services/validationService.ts",
+      "params": ["playerId", "agencyData"],
+      "description": "Convert player to agency (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/bulk-import",
+      "method": "POST",
+      "file": "src/services/validationService.ts",
+      "params": ["players", "autoVerify"],
+      "description": "Bulk import players (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/bulk-import-csv",
+      "method": "POST",
+      "file": "src/services/validationService.ts",
+      "params": ["csvContent", "autoVerify"],
+      "description": "Bulk import players from CSV (Admin)"
+    },
+    {
+      "endpoint": "/api/admin/players/export-csv",
+      "method": "GET",
+      "file": "src/services/validationService.ts",
+      "params": ["status"],
+      "description": "Export players to CSV (Admin)"
+    },
+    {
+      "endpoint": "/passport/token/:token",
+      "method": "GET",
+      "file": "src/app/passport/[token]/page.tsx",
+      "params": ["token"],
+      "description": "Get public player passport by token"
+    },
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "file": "src/contexts/auth-context.tsx",
+      "params": ["email", "password"],
+      "description": "User authentication (duplicate context implementation)"
+    },
+    {
+      "endpoint": "/api/auth/signup",
+      "method": "POST",
+      "file": "src/contexts/auth-context.tsx",
+      "params": ["firstName", "lastName", "email", "password", "phone", "dateOfBirth", "role"],
+      "description": "User registration (duplicate context implementation)"
+    }
+  ],
+  "summary": {
+    "totalFiles": 13,
+    "totalCalls": 130,
+    "uniqueEndpoints": 123,
+    "apiServices": {
+      "mainBackend": {
+        "baseUrl": "http://localhost:3000",
+        "endpoints": 117,
+        "categories": [
+          "Authentication",
+          "Players",
+          "Matches",
+          "Clubs",
+          "Users/Scouts",
+          "Scouting Reports",
+          "Analytics",
+          "AI Features",
+          "Camps",
+          "Subscriptions",
+          "Kanban",
+          "Marketplace",
+          "ArkaneMatch AI",
+          "Voice-to-Report",
+          "AutoScout AI",
+          "Market Value AI",
+          "Performance Predictor AI",
+          "SmartScout AI",
+          "Admin Player Validation",
+          "Player Passport"
+        ]
+      },
+      "playStyleDnaService": {
+        "baseUrl": "http://localhost:8002",
+        "endpoints": 6,
+        "categories": [
+          "PlayStyle Classification",
+          "Player Comparison",
+          "Style Analytics"
+        ]
+      }
+    },
+    "httpMethods": {
+      "GET": 68,
+      "POST": 43,
+      "PUT": 3,
+      "PATCH": 11,
+      "DELETE": 5
+    },
+    "aiFeatures": [
+      "AutoScout - Automatic scouting report generation",
+      "SmartScout - Intelligent suggestions and autocomplete",
+      "ArkaneMatch - AI-powered scout matchmaking",
+      "Voice-to-Report - Voice transcription to report data",
+      "Market Value AI - Player valuation prediction",
+      "Performance Predictor - ML-based performance prediction",
+      "PlayStyle DNA - Player style classification and comparison",
+      "AI Summary Generation",
+      "AI Player Index",
+      "AI Matchmaking"
+    ],
+    "authenticationMethods": [
+      "Bearer Token (JWT)",
+      "LocalStorage (arcane_auth_token)"
+    ],
+    "features": [
+      "Player Management",
+      "Scouting Reports (CRUD + Workflow)",
+      "Match Management",
+      "Club Management",
+      "User/Scout Management",
+      "Analytics Dashboard",
+      "Camp Registration",
+      "Subscription Management (Stripe)",
+      "Kanban Boards for Player Tracking",
+      "Marketplace for Scout Services",
+      "Player Passport (Public/QR Code)",
+      "Admin Player Validation System",
+      "Bulk Import/Export (CSV)",
+      "Real-time Notifications",
+      "AI-Powered Features"
+    ]
+  },
+  "notes": [
+    "Main backend uses port 3000 (NestJS)",
+    "PlayStyle DNA microservice uses port 8002 (separate Python service)",
+    "Authentication uses JWT tokens stored in localStorage",
+    "Most endpoints require authentication via Bearer token",
+    "Admin endpoints are prefixed with /api/admin/",
+    "Public endpoints: /passport/token/:token",
+    "File uploads: Voice-to-Report uses FormData",
+    "PDF export: /scouting-reports/:reportId/pdf",
+    "CSV export: /api/admin/players/export-csv",
+    "Real-time features use polling (refetchInterval in React Query)",
+    "Error handling includes Sentry integration",
+    "Analytics tracking for all API calls"
+  ],
+  "generatedAt": "2025-11-11T00:00:00.000Z",
+  "version": "1.0.0"
+}

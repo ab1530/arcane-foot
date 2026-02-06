@@ -95,8 +95,8 @@ logger.logSecurity(event, severity, data)
 ```
 
 #### Logging HTTP Interceptor
-- Capture automatique des requêtes
-- Temps de réponse
+- Capture automatique des requêtes (+ `x-request-id` injecté sur chaque requête)
+- Temps de réponse et userId/role pour corréler avec Metro/Expo
 - Détection requêtes lentes (>1s)
 - Sanitization des données sensibles (password, token, etc.)
 

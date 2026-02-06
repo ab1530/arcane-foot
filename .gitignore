@@ -172,6 +172,7 @@ LOGIN_CREDENTIALS.md
 backend/src/coverage-temp/
 backend/test-results.json
 backend/test-results*.json
+codex_pack/
 
 # TypeScript build metadata
 **/*.tsbuildinfo

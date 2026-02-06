@@ -13,15 +13,21 @@ contin# 🚀 START HERE - ARCANE FOOTBALL
 cd /Users/lakhdari/Desktop/AppFoot/backend
 npm run start:dev
 
-# Terminal 2 - Frontend
+# Terminal 2 - Web Frontend
 cd /Users/lakhdari/Desktop/AppFoot/web
 npm run dev
+
+# Terminal 3 - Mobile App (Expo)
+cd /Users/lakhdari/Desktop/AppFoot/mobile
+npm install # first time only
+npm start
 ```
 
 ### 2. Login Test
 
 ```
-URL: http://localhost:3000 (ou 3002)
+Web URL: http://localhost:3000 (ou 3002)
+Mobile: Expo Go → scan QR code (iOS: camera, Android: Expo Go app)
 Email: scout@arcane-football.com
 Password: Scout123!
 ```
@@ -32,6 +38,7 @@ Password: Scout123!
 - [ ] Login fonctionne
 - [ ] Dashboard s'affiche avec stats
 - [ ] Players page charge
+- [ ] Mobile app se connecte et redirige vers l’accueil
 
 ✅ **C'est tout! Tu es prêt pour tester!**
 
@@ -71,6 +78,7 @@ Password: Scout123!
 | `DEVOPS.md` | Monitoring & observabilité |
 | `ASSETS_NEEDED.md` | Icons PWA à créer |
 | `INDEX_DOCUMENTATION.md` | Index complet docs |
+| `docs/MOBILE_PARITY_PLAN.md` | Roadmap d’alignement mobile/web |
 | `START_HERE.md` | Ce fichier |
 
 ---
@@ -109,6 +117,9 @@ cd backend && npx prisma generate && npx prisma db push
 
 # Frontend ne démarre pas?
 cd web && rm -rf .next && npm run dev
+
+# Mobile ne démarre pas?
+cd mobile && rm -rf .expo .cache && npm start -- --clear
 
 # Pas de données?
 cd backend && npm run prisma:seed

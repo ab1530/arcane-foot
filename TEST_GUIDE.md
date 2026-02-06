@@ -4,7 +4,7 @@
 
 1. **Serveur backend lancé** : `npm run start:dev`
 2. **Base de données** : PostgreSQL connectée
-3. **Compte admin** : `admin@arcane.com` / `Password123!`
+3. **Compte admin** : `admin@arcane.com` / `<DEMO_PASSWORD>` (fourni hors repo, ex: via `ARCANE_DEMO_PASSWORD`)
 
 ## 🚀 Tests Rapides (Manuel avec curl)
 
@@ -19,7 +19,7 @@ curl http://localhost:3000/api/health
 # Login admin
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@arcane.com","password":"Password123!"}'
+  -d '{"email":"admin@arcane.com","password":"<DEMO_PASSWORD>"}'
 ```
 ✅ Attendu : Réponse avec `token` et `user`
 
@@ -290,7 +290,7 @@ npx prisma generate
 # Re-login pour obtenir un nouveau token
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@arcane.com","password":"Password123!"}'
+  -d '{"email":"admin@arcane.com","password":"<DEMO_PASSWORD>"}'
 ```
 
 ### Serveur ne démarre pas

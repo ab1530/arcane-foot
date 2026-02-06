@@ -1,0 +1,1214 @@
+{
+  "apiCalls": [
+    {
+      "endpoint": "/auth/login",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["email", "password"],
+      "category": "Authentication"
+    },
+    {
+      "endpoint": "/auth/signup",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["userData"],
+      "category": "Authentication"
+    },
+    {
+      "endpoint": "/auth/me",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Authentication"
+    },
+    {
+      "endpoint": "/auth/profile",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["profileData"],
+      "category": "Authentication"
+    },
+    {
+      "endpoint": "/scouting-reports",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["params"],
+      "category": "Scouting Reports",
+      "usedBy": ["useReports hook", "scoutingReportsApi"]
+    },
+    {
+      "endpoint": "/scouting-reports/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Scouting Reports"
+    },
+    {
+      "endpoint": "/scouting-reports",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["reportData"],
+      "category": "Scouting Reports",
+      "usedBy": ["useReports hook", "CreateReportScreen"]
+    },
+    {
+      "endpoint": "/scouting-reports/:id",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["id", "reportData"],
+      "category": "Scouting Reports",
+      "usedBy": ["useReports hook"]
+    },
+    {
+      "endpoint": "/scouting-reports/:id/submit",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Scouting Reports"
+    },
+    {
+      "endpoint": "/scouting-reports/:id/review",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["id", "approved"],
+      "category": "Scouting Reports"
+    },
+    {
+      "endpoint": "/scouting-reports/:id",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Scouting Reports",
+      "usedBy": ["useReports hook"]
+    },
+    {
+      "endpoint": "/scouting-reports/player/:playerId",
+      "method": "GET",
+      "file": "src/services/api/scouting-reports.ts",
+      "params": ["playerId"],
+      "category": "Scouting Reports"
+    },
+    {
+      "endpoint": "/scouting-reports/scout/:scoutId",
+      "method": "GET",
+      "file": "src/services/api/scouting-reports.ts",
+      "params": ["scoutId"],
+      "category": "Scouting Reports"
+    },
+    {
+      "endpoint": "/scouting-reports/match/:matchId",
+      "method": "GET",
+      "file": "src/services/api/scouting-reports.ts",
+      "params": ["matchId"],
+      "category": "Scouting Reports"
+    },
+    {
+      "endpoint": "/camps",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["params"],
+      "category": "Camps",
+      "usedBy": ["useCamps hook"]
+    },
+    {
+      "endpoint": "/camps/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Camps"
+    },
+    {
+      "endpoint": "/camps/my/registrations",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Camps"
+    },
+    {
+      "endpoint": "/camps",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["campData"],
+      "category": "Camps"
+    },
+    {
+      "endpoint": "/camps/:id",
+      "method": "PUT",
+      "file": "src/services/api.ts",
+      "params": ["id", "campData"],
+      "category": "Camps"
+    },
+    {
+      "endpoint": "/camps/:id/register",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["id", "payload"],
+      "category": "Camps"
+    },
+    {
+      "endpoint": "/camps/registrations/:participationId",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["participationId"],
+      "category": "Camps"
+    },
+    {
+      "endpoint": "/ai/index/:playerId",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["playerId"],
+      "category": "AI - Arkane Index",
+      "usedBy": ["ArcaneIndexScreen"]
+    },
+    {
+      "endpoint": "/ai/summary",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["prompt"],
+      "category": "AI - Arkane GPT"
+    },
+    {
+      "endpoint": "/ai/matchmaking",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["playerIds", "clubIds", "tags"],
+      "category": "AI - Matchmaking"
+    },
+    {
+      "endpoint": "/arkane-match/chat",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["message", "conversationId"],
+      "category": "AI - Arkane Match"
+    },
+    {
+      "endpoint": "/arkane-match/conversations/:conversationId",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["conversationId"],
+      "category": "AI - Arkane Match"
+    },
+    {
+      "endpoint": "/arkane-match/conversations/:conversationId",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["conversationId"],
+      "category": "AI - Arkane Match"
+    },
+    {
+      "endpoint": "/arkane-match/info",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "AI - Arkane Match"
+    },
+    {
+      "endpoint": "/analytics/overview",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Analytics",
+      "usedBy": ["useAnalytics hook", "DashboardScreen"]
+    },
+    {
+      "endpoint": "/analytics/players",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Analytics",
+      "usedBy": ["useAnalytics hook"]
+    },
+    {
+      "endpoint": "/analytics/clubs",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Analytics",
+      "usedBy": ["useAnalytics hook"]
+    },
+    {
+      "endpoint": "/analytics/scouting-reports",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Analytics",
+      "usedBy": ["useAnalytics hook"]
+    },
+    {
+      "endpoint": "/analytics/activity-trends",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["days"],
+      "category": "Analytics",
+      "usedBy": ["useAnalytics hook"]
+    },
+    {
+      "endpoint": "/club-requests",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["params"],
+      "category": "Market"
+    },
+    {
+      "endpoint": "/club-requests/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Market"
+    },
+    {
+      "endpoint": "/profile",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Profile"
+    },
+    {
+      "endpoint": "/profile",
+      "method": "PUT",
+      "file": "src/services/api.ts",
+      "params": ["profileData"],
+      "category": "Profile"
+    },
+    {
+      "endpoint": "/passport/:token",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["token"],
+      "category": "Passport"
+    },
+    {
+      "endpoint": "/players",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["position", "status", "nationality", "clubId", "search", "page", "limit"],
+      "category": "Players",
+      "usedBy": ["usePlayers hook", "useMarket hook", "playersApi"]
+    },
+    {
+      "endpoint": "/players/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Players",
+      "usedBy": ["PlayerDetailScreen"]
+    },
+    {
+      "endpoint": "/players/:id/stats",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Players",
+      "usedBy": ["PlayerDetailScreen"]
+    },
+    {
+      "endpoint": "/players",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["playerData"],
+      "category": "Players"
+    },
+    {
+      "endpoint": "/players/:id",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["id", "playerData"],
+      "category": "Players"
+    },
+    {
+      "endpoint": "/players/:id",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Players"
+    },
+    {
+      "endpoint": "/clubs",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["country", "city", "search", "page", "limit"],
+      "category": "Clubs",
+      "usedBy": ["ClubsListScreen"]
+    },
+    {
+      "endpoint": "/clubs/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Clubs",
+      "usedBy": ["ClubDetailScreen"]
+    },
+    {
+      "endpoint": "/matches",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["status", "clubId", "scoutId", "competition", "season", "from", "to", "page", "limit"],
+      "category": "Matches",
+      "usedBy": ["useCalendar hook", "MatchesScreen"]
+    },
+    {
+      "endpoint": "/matches/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches/upcoming",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["limit"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches/live",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["matchData"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches/:id",
+      "method": "PUT",
+      "file": "src/services/api.ts",
+      "params": ["id", "matchData"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches/:id",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches/:matchId/assign-scout",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["matchId", "scoutId"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/matches/:matchId/score",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["matchId", "homeScore", "awayScore"],
+      "category": "Matches"
+    },
+    {
+      "endpoint": "/users",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["role", "page", "limit"],
+      "category": "Users"
+    },
+    {
+      "endpoint": "/subscriptions/me",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Subscriptions",
+      "usedBy": ["MembershipScreen"]
+    },
+    {
+      "endpoint": "/subscriptions",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["tier", "billingPeriod", "stripePaymentMethodId"],
+      "category": "Subscriptions",
+      "usedBy": ["MembershipScreen"]
+    },
+    {
+      "endpoint": "/subscriptions/cancel",
+      "method": "PUT",
+      "file": "src/services/api.ts",
+      "params": ["reason"],
+      "category": "Subscriptions"
+    },
+    {
+      "endpoint": "/subscriptions/reactivate",
+      "method": "PUT",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Subscriptions"
+    },
+    {
+      "endpoint": "/subscriptions/change-tier",
+      "method": "PUT",
+      "file": "src/services/api.ts",
+      "params": ["tier", "billingPeriod"],
+      "category": "Subscriptions"
+    },
+    {
+      "endpoint": "/contact",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["name", "email", "phone", "type", "message"],
+      "category": "Contact"
+    },
+    {
+      "endpoint": "/notifications/user/:userId",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["userId"],
+      "category": "Notifications"
+    },
+    {
+      "endpoint": "/notifications/:notificationId/read",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["notificationId"],
+      "category": "Notifications"
+    },
+    {
+      "endpoint": "/notifications/:notificationId",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["notificationId"],
+      "category": "Notifications"
+    },
+    {
+      "endpoint": "/kanban/boards",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi", "KanbanScreen"]
+    },
+    {
+      "endpoint": "/kanban/boards/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/boards",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["name", "description", "isPublic"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi", "CreateBoardModal"]
+    },
+    {
+      "endpoint": "/kanban/boards/:id",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["id", "name", "description"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/boards/:id",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/boards/:boardId/columns",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["boardId", "name", "type", "color", "position"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi", "CreateColumnModal"]
+    },
+    {
+      "endpoint": "/kanban/columns/:id",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["id", "name", "color", "position"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/columns/:id",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/cards",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["columnId", "playerId", "position", "notes", "priority", "tags", "dueDate"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi", "CreateCardModal"]
+    },
+    {
+      "endpoint": "/kanban/cards/:id",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi", "CardDetailsModal"]
+    },
+    {
+      "endpoint": "/kanban/cards/:id",
+      "method": "PATCH",
+      "file": "src/services/api.ts",
+      "params": ["id", "notes", "priority", "tags", "dueDate"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi", "CardDetailsModal"]
+    },
+    {
+      "endpoint": "/kanban/cards/:id/move",
+      "method": "POST",
+      "file": "src/services/api.ts",
+      "params": ["id", "targetColumnId", "position"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/cards/:id",
+      "method": "DELETE",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/kanban/cards/:id/activities",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": ["id"],
+      "category": "Kanban",
+      "usedBy": ["kanbanApi"]
+    },
+    {
+      "endpoint": "/events",
+      "method": "GET",
+      "file": "src/services/api/events.ts",
+      "params": ["type", "status", "startDate", "endDate", "assignedUserId", "matchId"],
+      "category": "Events",
+      "usedBy": ["eventsApi", "CalendarScreen"]
+    },
+    {
+      "endpoint": "/events/upcoming",
+      "method": "GET",
+      "file": "src/services/api/events.ts",
+      "params": ["limit"],
+      "category": "Events",
+      "usedBy": ["eventsApi"]
+    },
+    {
+      "endpoint": "/events/my-events",
+      "method": "GET",
+      "file": "src/services/api/events.ts",
+      "params": ["params"],
+      "category": "Events",
+      "usedBy": ["eventsApi", "CalendarScreenNew"]
+    },
+    {
+      "endpoint": "/events/:id",
+      "method": "GET",
+      "file": "src/services/api/events.ts",
+      "params": ["id"],
+      "category": "Events",
+      "usedBy": ["eventsApi"]
+    },
+    {
+      "endpoint": "/events",
+      "method": "POST",
+      "file": "src/services/api/events.ts",
+      "params": ["title", "description", "type", "status", "startDate", "endDate", "location", "latitude", "longitude", "matchId", "assignedUserIds"],
+      "category": "Events",
+      "usedBy": ["eventsApi"]
+    },
+    {
+      "endpoint": "/events/:id",
+      "method": "PATCH",
+      "file": "src/services/api/events.ts",
+      "params": ["id", "updateData"],
+      "category": "Events",
+      "usedBy": ["eventsApi"]
+    },
+    {
+      "endpoint": "/events/:id",
+      "method": "DELETE",
+      "file": "src/services/api/events.ts",
+      "params": ["id"],
+      "category": "Events",
+      "usedBy": ["eventsApi"]
+    },
+    {
+      "endpoint": "/voice-to-report/process",
+      "method": "POST",
+      "file": "src/services/api/voice-to-report.ts",
+      "params": ["audio", "language", "matchId", "playerId", "keepAudio"],
+      "category": "AI - Voice to Report",
+      "usedBy": ["voiceToReportApi", "VoiceToReportScreen"]
+    },
+    {
+      "endpoint": "/voice-to-report/languages",
+      "method": "GET",
+      "file": "src/services/api/voice-to-report.ts",
+      "params": [],
+      "category": "AI - Voice to Report",
+      "usedBy": ["voiceToReportApi"]
+    },
+    {
+      "endpoint": "/voice-to-report/examples",
+      "method": "GET",
+      "file": "src/services/api/voice-to-report.ts",
+      "params": [],
+      "category": "AI - Voice to Report",
+      "usedBy": ["voiceToReportApi"]
+    },
+    {
+      "endpoint": "/voice-to-report/test-transcription",
+      "method": "POST",
+      "file": "src/services/api/voice-to-report.ts",
+      "params": ["text", "language"],
+      "category": "AI - Voice to Report",
+      "usedBy": ["voiceToReportApi"]
+    },
+    {
+      "endpoint": "/performance-predictor/predict/:playerId/:matchId",
+      "method": "POST",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": ["playerId", "matchId"],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi", "SinglePredictionTab"]
+    },
+    {
+      "endpoint": "/performance-predictor/batch-predict/:matchId",
+      "method": "POST",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": ["matchId"],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi", "TeamLineupTab"]
+    },
+    {
+      "endpoint": "/performance-predictor/accuracy",
+      "method": "GET",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": ["playerId", "dateRange"],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi", "AccuracyTab"]
+    },
+    {
+      "endpoint": "/performance-predictor/feature-importance",
+      "method": "GET",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": [],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi"]
+    },
+    {
+      "endpoint": "/performance-predictor/retrain",
+      "method": "POST",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": [],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi"]
+    },
+    {
+      "endpoint": "/performance-predictor/predictions/:playerId",
+      "method": "GET",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": ["playerId"],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi"]
+    },
+    {
+      "endpoint": "/performance-predictor/insights/:playerId",
+      "method": "GET",
+      "file": "src/services/api/performance-predictor.ts",
+      "params": ["playerId"],
+      "category": "AI - Performance Predictor",
+      "usedBy": ["performancePredictorApi"]
+    },
+    {
+      "endpoint": "/market-value/player/:playerId",
+      "method": "GET",
+      "file": "src/services/api/market-value.ts",
+      "params": ["playerId"],
+      "category": "AI - Market Value",
+      "usedBy": ["marketValueApi", "MarketValueScreen", "MarketValueDetailScreen"]
+    },
+    {
+      "endpoint": "/market-value/trend/:playerId",
+      "method": "GET",
+      "file": "src/services/api/market-value.ts",
+      "params": ["playerId"],
+      "category": "AI - Market Value",
+      "usedBy": ["marketValueApi", "MarketValueDetailScreen"]
+    },
+    {
+      "endpoint": "/market-value/compare",
+      "method": "POST",
+      "file": "src/services/api/market-value.ts",
+      "params": ["playerIds"],
+      "category": "AI - Market Value",
+      "usedBy": ["marketValueApi"]
+    },
+    {
+      "endpoint": "/market-value/health",
+      "method": "GET",
+      "file": "src/services/api/market-value.ts",
+      "params": [],
+      "category": "AI - Market Value",
+      "usedBy": ["marketValueApi"]
+    },
+    {
+      "endpoint": "/auto-scout/generate",
+      "method": "POST",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["playerId", "matchId", "reportType", "tone", "detailLevel", "includeComparison", "customInstructions"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi", "AutoScoutScreen"]
+    },
+    {
+      "endpoint": "/auto-scout/templates",
+      "method": "GET",
+      "file": "src/services/api/auto-scout.ts",
+      "params": [],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi", "TemplateSelector"]
+    },
+    {
+      "endpoint": "/auto-scout/player/:playerId/history",
+      "method": "GET",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["playerId"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi", "AutoScoutHistoryScreen"]
+    },
+    {
+      "endpoint": "/auto-scout/regenerate/:reportId",
+      "method": "POST",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["reportId", "options"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi"]
+    },
+    {
+      "endpoint": "/auto-scout/cost-estimate",
+      "method": "GET",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["reportType"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi"]
+    },
+    {
+      "endpoint": "/auto-scout/preview/:playerId",
+      "method": "GET",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["playerId", "matchId"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi"]
+    },
+    {
+      "endpoint": "/auto-scout/enhance/:reportId",
+      "method": "POST",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["reportId"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi"]
+    },
+    {
+      "endpoint": "/auto-scout/analytics",
+      "method": "GET",
+      "file": "src/services/api/auto-scout.ts",
+      "params": ["startDate", "endDate"],
+      "category": "AI - Auto Scout",
+      "usedBy": ["autoScoutApi"]
+    },
+    {
+      "endpoint": "/smart-scout/suggestions",
+      "method": "POST",
+      "file": "src/services/api/smart-scout.ts",
+      "params": ["partialReport"],
+      "category": "AI - Smart Scout",
+      "usedBy": ["smartScoutApi", "SuggestionsTab"]
+    },
+    {
+      "endpoint": "/smart-scout/autocomplete",
+      "method": "POST",
+      "file": "src/services/api/smart-scout.ts",
+      "params": ["field", "currentValue", "context"],
+      "category": "AI - Smart Scout",
+      "usedBy": ["smartScoutApi", "AutocompleteTab"]
+    },
+    {
+      "endpoint": "/smart-scout/insights/:playerId",
+      "method": "GET",
+      "file": "src/services/api/smart-scout.ts",
+      "params": ["playerId"],
+      "category": "AI - Smart Scout",
+      "usedBy": ["smartScoutApi", "InsightsTab"]
+    },
+    {
+      "endpoint": "/marketplace/listings",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["leagues", "positions", "ageGroups", "countries", "minRate", "maxRate", "languages", "sortBy", "page", "limit"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi", "MarketplaceScreen"]
+    },
+    {
+      "endpoint": "/marketplace/listings/:id",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["id"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi", "ScoutDetailScreen"]
+    },
+    {
+      "endpoint": "/marketplace/listings/match",
+      "method": "POST",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["leagues", "positions", "budget"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/listings/my",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/listings",
+      "method": "POST",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["headline", "bio", "expertise", "languages", "availability", "hourlyRate", "matchRate", "reportRate", "currency", "portfolio"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/listings",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["updateData"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/listings/activate",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/listings/pause",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/listings",
+      "method": "DELETE",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers",
+      "method": "POST",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["scoutListingId", "offerType", "message", "proposedRate", "proposedMatches", "startDate", "endDate"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers/sent",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers/received",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers/:offerId/accept",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["offerId"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers/:offerId/reject",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["offerId"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers/:offerId/complete",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["offerId"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/offers/:offerId/cancel",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["offerId", "reason"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/reviews",
+      "method": "POST",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["offerId", "rating", "comment", "wouldRecommend"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/reviews/listing/:listingId",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["listingId"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/favorites",
+      "method": "POST",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["listingId", "notes", "tags"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/favorites/my",
+      "method": "GET",
+      "file": "src/services/marketplace.api.ts",
+      "params": [],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/favorites/:favoriteId",
+      "method": "DELETE",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["favoriteId"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/marketplace/favorites/:favoriteId",
+      "method": "PATCH",
+      "file": "src/services/marketplace.api.ts",
+      "params": ["favoriteId", "notes", "tags"],
+      "category": "Marketplace",
+      "usedBy": ["marketplaceApi"]
+    },
+    {
+      "endpoint": "/health",
+      "method": "GET",
+      "file": "src/services/api.ts",
+      "params": [],
+      "category": "System"
+    }
+  ],
+  "externalServices": [
+    {
+      "name": "PlayStyle DNA AI Service",
+      "baseUrl": "http://localhost:8002 (Python FastAPI)",
+      "endpoints": [
+        {
+          "endpoint": "/classify",
+          "method": "POST",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": ["playerId", "includeRecommendations", "includeSimilarPlayers", "similarityThreshold", "maxSimilarPlayers"],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi", "PlayStyleDNAScreen"]
+        },
+        {
+          "endpoint": "/compare",
+          "method": "POST",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": ["playerIds", "analysisDepth"],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi", "PlayStyleComparisonScreen"]
+        },
+        {
+          "endpoint": "/styles",
+          "method": "GET",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": [],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi", "StyleExplorerScreen"]
+        },
+        {
+          "endpoint": "/similar/:playerId",
+          "method": "GET",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": ["playerId", "limit", "threshold"],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi"]
+        },
+        {
+          "endpoint": "/search",
+          "method": "GET",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": ["style", "minConfidence", "position", "nationality", "limit"],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi"]
+        },
+        {
+          "endpoint": "/batch-classify",
+          "method": "POST",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": ["playerIds"],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi"]
+        },
+        {
+          "endpoint": "/health",
+          "method": "GET",
+          "file": "src/services/api/playstyle-dna.ts",
+          "params": [],
+          "category": "AI - PlayStyle DNA",
+          "usedBy": ["playStyleDnaApi"]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalFiles": 223,
+    "totalApiCalls": 153,
+    "uniqueEndpoints": 145,
+    "externalServices": 1,
+    "externalEndpoints": 7,
+    "categories": {
+      "Authentication": 4,
+      "Scouting Reports": 10,
+      "Camps": 7,
+      "AI - Arkane Index": 1,
+      "AI - Arkane GPT": 1,
+      "AI - Matchmaking": 1,
+      "AI - Arkane Match": 4,
+      "Analytics": 5,
+      "Market": 2,
+      "Profile": 2,
+      "Passport": 1,
+      "Players": 6,
+      "Clubs": 2,
+      "Matches": 10,
+      "Users": 1,
+      "Subscriptions": 5,
+      "Contact": 1,
+      "Notifications": 3,
+      "Kanban": 13,
+      "Events": 7,
+      "AI - Voice to Report": 4,
+      "AI - Performance Predictor": 7,
+      "AI - Market Value": 4,
+      "AI - Auto Scout": 8,
+      "AI - Smart Scout": 3,
+      "AI - PlayStyle DNA": 7,
+      "Marketplace": 21,
+      "System": 1
+    },
+    "httpMethods": {
+      "GET": 71,
+      "POST": 47,
+      "PATCH": 20,
+      "PUT": 7,
+      "DELETE": 15
+    },
+    "mainApiFiles": [
+      "src/services/api.ts (main API client with 100+ endpoints)",
+      "src/services/api/events.ts",
+      "src/services/api/kanban.ts",
+      "src/services/api/players.ts",
+      "src/services/api/scouting-reports.ts",
+      "src/services/api/voice-to-report.ts",
+      "src/services/api/performance-predictor.ts",
+      "src/services/api/market-value.ts",
+      "src/services/api/auto-scout.ts",
+      "src/services/api/smart-scout.ts",
+      "src/services/api/playstyle-dna.ts",
+      "src/services/marketplace.api.ts"
+    ],
+    "mainHooks": [
+      "src/hooks/usePlayers.ts",
+      "src/hooks/useReports.ts",
+      "src/hooks/useMarket.ts",
+      "src/hooks/useCalendar.ts",
+      "src/hooks/useCamps.ts",
+      "src/hooks/useAnalytics.ts"
+    ],
+    "mainScreensWithDirectCalls": [
+      "src/screens/ai/PlayStyleDNAScreen.tsx",
+      "src/screens/ai/MarketValueDetailScreen.tsx",
+      "src/screens/ai/ArcaneIndexScreen.tsx",
+      "src/screens/membership/MembershipScreen.tsx",
+      "src/screens/players/PlayerDetailScreen.tsx",
+      "src/screens/dashboard/DashboardScreen.tsx",
+      "src/screens/clubs/ClubsListScreen.tsx",
+      "src/screens/clubs/ClubDetailScreen.tsx",
+      "src/screens/calendar/CalendarScreenNew.tsx",
+      "src/screens/reports/ReportsScreen.tsx",
+      "src/screens/reports/CreateReportScreen.tsx",
+      "src/screens/matches/MatchesScreen.tsx",
+      "src/screens/kanban/KanbanScreen.tsx"
+    ],
+    "apiArchitecture": {
+      "mainClient": "Axios-based API client with interceptors",
+      "baseURL": "API_URL from constants/config.ts",
+      "authentication": "Bearer token stored in AsyncStorage",
+      "errorHandling": "Global interceptor with 401 auto-logout",
+      "logging": "Request/response tracking with logger utility",
+      "pagination": "normalizePaginated helper for consistent pagination",
+      "timeout": "10000ms (10 seconds) default"
+    },
+    "aiFeatures": [
+      "Arkane Index - Player rating system",
+      "Arkane GPT - AI chat for scouting insights",
+      "Arkane Match - Conversational player search",
+      "Voice to Report - Speech-to-text report generation",
+      "Performance Predictor - ML-based match predictions",
+      "Market Value - AI-powered player valuation",
+      "Auto Scout - Automated report generation",
+      "Smart Scout - Intelligent suggestions and autocomplete",
+      "PlayStyle DNA - Player style classification (external Python service)"
+    ],
+    "notes": [
+      "Mobile app uses React Native/Expo",
+      "Backend API runs on port 3000 (configurable)",
+      "PlayStyle DNA AI service runs on port 8002 (Python FastAPI)",
+      "All API calls use TypeScript with proper type definitions",
+      "Hooks pattern used for data fetching and state management",
+      "Some endpoints like /camps use mock data (not yet implemented in backend)",
+      "Comprehensive AI features integrated throughout the app",
+      "Marketplace feature for scout-club connections",
+      "Kanban board for player pipeline management",
+      "Events/Calendar system for match scheduling"
+    ]
+  }
+}
