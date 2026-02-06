@@ -86,6 +86,10 @@ describe('JwtStrategy', () => {
       clubs: {
         id: 'club-123',
       },
+      players: {
+        id: 'player-123',
+      },
+      playerId: 'player-123',
     };
 
     it('should validate and return user with valid access token', async () => {
@@ -102,6 +106,7 @@ describe('JwtStrategy', () => {
         ...mockUser,
         userId: 'user-123',
         clubId: 'club-123',
+        playerId: 'player-123',
       });
     });
 
@@ -166,6 +171,7 @@ describe('JwtStrategy', () => {
         ...userWithoutClub,
         userId: 'user-123',
         clubId: null,
+        playerId: 'player-123',
       });
     });
 
@@ -208,7 +214,8 @@ describe('JwtStrategy', () => {
 
       await strategy.validate(mockRequest, mockPayload);
 
-      const blacklistCallOrder = refreshTokenService.isAccessTokenBlacklisted.mock.invocationCallOrder[0];
+      const blacklistCallOrder =
+        refreshTokenService.isAccessTokenBlacklisted.mock.invocationCallOrder[0];
       const validateCallOrder = authService.validateUser.mock.invocationCallOrder[0];
 
       expect(blacklistCallOrder).toBeLessThan(validateCallOrder);

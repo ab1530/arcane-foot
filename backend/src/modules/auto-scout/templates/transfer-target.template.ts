@@ -1,8 +1,13 @@
 import { ReportTemplate, ReportType } from '../interfaces/report.interface';
 
 export const transferTargetTemplate: ReportTemplate = {
-  name: 'Transfer Target Report',
-  description: 'Detailed analysis for potential transfer/signing decision',
+  id: 'transfer-target',
+  name: 'Transfer Target',
+  description: 'In-depth evaluation for potential recruitment',
+  icon: 'target',
+  useCase: 'Transfer assessment',
+  estimatedCost: '$0.032',
+  reportType: ReportType.TRANSFER_TARGET,
   sections: [
     {
       name: 'Player Profile',

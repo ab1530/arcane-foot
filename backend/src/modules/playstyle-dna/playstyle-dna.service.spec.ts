@@ -188,7 +188,9 @@ describe('PlaystyleDnaService', () => {
       prismaService.players.findUnique.mockResolvedValue(null);
 
       await expect(service.classifyPlayer('non-existent')).rejects.toThrow(NotFoundException);
-      await expect(service.classifyPlayer('non-existent')).rejects.toThrow('Player with ID non-existent not found');
+      await expect(service.classifyPlayer('non-existent')).rejects.toThrow(
+        'Player with ID non-existent not found',
+      );
     });
 
     it('should classify player using ML service when available', async () => {
@@ -432,7 +434,7 @@ describe('PlaystyleDnaService', () => {
 
       const result = await service.findSimilarPlayers('player-1');
 
-      expect(result.find(p => p.id === 'player-1')).toBeUndefined();
+      expect(result.find((p) => p.id === 'player-1')).toBeUndefined();
       expect(prismaService.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -525,8 +527,12 @@ describe('PlaystyleDnaService', () => {
     it('should throw NotFoundException if first player does not exist', async () => {
       prismaService.players.findUnique.mockResolvedValueOnce(null);
 
-      await expect(service.comparePlayers('non-existent', 'player-2')).rejects.toThrow(NotFoundException);
-      await expect(service.comparePlayers('non-existent', 'player-2')).rejects.toThrow('One or both players not found');
+      await expect(service.comparePlayers('non-existent', 'player-2')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.comparePlayers('non-existent', 'player-2')).rejects.toThrow(
+        'One or both players not found',
+      );
     });
 
     it('should throw NotFoundException if second player does not exist', async () => {
@@ -534,7 +540,9 @@ describe('PlaystyleDnaService', () => {
         .mockResolvedValueOnce(mockPlayer)
         .mockResolvedValueOnce(null);
 
-      await expect(service.comparePlayers('player-1', 'non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.comparePlayers('player-1', 'non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should compare two players successfully', async () => {
@@ -633,7 +641,11 @@ describe('PlaystyleDnaService', () => {
     });
 
     it('should return higher similarity for identical players', async () => {
-      const player2Same = { ...mockPlayer, id: 'player-2', users: { ...mockPlayer.users, id: 'user-2' } };
+      const player2Same = {
+        ...mockPlayer,
+        id: 'player-2',
+        users: { ...mockPlayer.users, id: 'user-2' },
+      };
 
       prismaService.players.findUnique
         .mockResolvedValueOnce(mockPlayer)
@@ -701,7 +713,7 @@ describe('PlaystyleDnaService', () => {
           speed: 95,
           dribbling: 92,
           passing: 70,
-          finishing: 50,  // Lower finishing to prefer WINGER
+          finishing: 50, // Lower finishing to prefer WINGER
         },
       };
 
@@ -747,7 +759,7 @@ describe('PlaystyleDnaService', () => {
       expect(styleScoreKeys).toHaveLength(12);
 
       // Verify all styles are present
-      Object.values(PlayingStyle).forEach(style => {
+      Object.values(PlayingStyle).forEach((style) => {
         expect(styleScoreKeys).toContain(style);
         expect(result.styleScores[style]).toBeGreaterThanOrEqual(0);
       });
@@ -765,11 +777,9 @@ describe('PlaystyleDnaService', () => {
       const result = await service.classifyPlayer('player-1');
 
       // Forward position should have high scores for attacking styles
-      expect([
-        PlayingStyle.STRIKER,
-        PlayingStyle.POACHER,
-        PlayingStyle.TARGET_MAN,
-      ]).toContain(result.primaryStyle);
+      expect([PlayingStyle.STRIKER, PlayingStyle.POACHER, PlayingStyle.TARGET_MAN]).toContain(
+        result.primaryStyle,
+      );
     });
 
     it('should have secondary style different from primary', async () => {
@@ -795,11 +805,7 @@ describe('PlaystyleDnaService', () => {
 
       await service.classifyPlayer('player-1');
 
-      expect(cacheManager.set).toHaveBeenCalledWith(
-        'playstyle:player-1',
-        expect.any(Object),
-        3600,
-      );
+      expect(cacheManager.set).toHaveBeenCalledWith('playstyle:player-1', expect.any(Object), 3600);
     });
 
     it('should use different cache keys for different players', async () => {
@@ -964,9 +970,11 @@ describe('PlaystyleDnaService', () => {
         attributes: mockAttributes,
       };
 
-      prismaService.players.findUnique
-        .mockResolvedValueOnce(mockPlayer)
-        .mockResolvedValueOnce({ ...mockPlayer, id: 'player-2', users: { ...mockPlayer.users, id: 'user-2' } });
+      prismaService.players.findUnique.mockResolvedValueOnce(mockPlayer).mockResolvedValueOnce({
+        ...mockPlayer,
+        id: 'player-2',
+        users: { ...mockPlayer.users, id: 'user-2' },
+      });
 
       cacheManager.get.mockResolvedValue(profile);
 

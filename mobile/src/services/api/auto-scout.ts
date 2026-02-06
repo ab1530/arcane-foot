@@ -39,14 +39,14 @@ export const autoScoutApi = {
   /**
    * Get report generation history for a player (or all players)
    */
-  async getHistory(playerId?: string): Promise<{
+  async getHistory(playerId: string): Promise<{
     success: boolean;
     data: AutoScoutHistoryItem[];
   }> {
-    const params = playerId ? { playerId } : undefined;
-    const response = await api.getRaw('/auto-scout/player/:playerId/history', {
-      params,
-    });
+    if (!playerId) {
+      throw new Error('autoScoutApi.getHistory requires a playerId');
+    }
+    const response = await api.getRaw(`/auto-scout/player/${playerId}/history`);
     return response;
   },
 
@@ -113,6 +113,17 @@ export const autoScoutApi = {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     const response = await api.getRaw('/auto-scout/analytics', { params });
+    return response;
+  },
+
+  /**
+   * Delete a generated report
+   */
+  async deleteReport(reportId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    const response = await api.deleteRaw(`/auto-scout/reports/${reportId}`);
     return response;
   },
 };

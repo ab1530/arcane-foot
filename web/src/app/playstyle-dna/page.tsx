@@ -14,6 +14,8 @@ import { StyleBadge } from '@/components/playstyle-dna/StyleBadge';
 import { playStyleDnaApi } from '@/lib/api/playstyle-dna';
 import { getStyleColor } from '@/lib/utils/playstyle-colors';
 import type { PlayStyleClassification, StyleDefinition, StyleDistribution } from '@/types/playstyle-dna';
+import { ProtectedPage } from '@/components/guards/ProtectedPage';
+import { RequireTier } from '@/components/auth/RequireTier';
 
 type TabType = 'player-dna' | 'compare' | 'explorer';
 
@@ -127,7 +129,9 @@ export default function PlayStyleDNAPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-arcane-dark">
+    <ProtectedPage>
+      <RequireTier minTier="PRO">
+        <div className="min-h-screen bg-arcane-dark">
       {/* Hero Section */}
       <div className="relative overflow-hidden border-b border-arcane-darkBorder">
         <div className="absolute inset-0 bg-gradient-to-br from-arcane-accent/5 via-transparent to-transparent" />
@@ -506,6 +510,8 @@ export default function PlayStyleDNAPage() {
         open={styleModalOpen}
         onClose={() => setStyleModalOpen(false)}
       />
-    </div>
+        </div>
+      </RequireTier>
+    </ProtectedPage>
   );
 }

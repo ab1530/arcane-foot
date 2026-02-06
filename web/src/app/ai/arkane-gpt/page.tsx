@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -18,7 +18,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import MainLayout from "@/components/layout/MainLayout";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
+import { RequireTier } from "@/components/auth/RequireTier";
 import { apiClient } from "@/lib/api-client";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Message {
   id: string;
@@ -27,36 +30,23 @@ interface Message {
   timestamp: Date;
 }
 
-const suggestedQuestions = [
-  {
-    icon: TrendingUp,
-    text: "Quels sont les meilleurs jeunes talents français actuellement ?",
-    category: "Scouting",
-  },
-  {
-    icon: Users,
-    text: "Compare Mbappé et Haaland sur les 6 derniers mois",
-    category: "Comparaison",
-  },
-  {
-    icon: Trophy,
-    text: "Qui sont les favoris pour la Ligue des Champions ?",
-    category: "Analyse",
-  },
-  {
-    icon: Target,
-    text: "Quels profils chercher pour renforcer ma défense centrale ?",
-    category: "Recrutement",
-  },
-];
+const suggestionIconMap = {
+  trending: TrendingUp,
+  users: Users,
+  trophy: Trophy,
+  target: Target,
+} as const;
 
 export default function ArkaneGPTPage() {
-  const [messages, setMessages] = useState<Message[]>([
+  const { dictionary, language } = useLanguage();
+  const gptCopy = dictionary.aiTools.gpt;
+  const fallback = gptCopy.fallback;
+
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: "welcome",
       role: "assistant",
-      content:
-        "Bonjour ! Je suis ArkaneGPT, votre assistant IA spécialisé dans le football. Je peux vous aider avec l'analyse de joueurs, les statistiques, les tendances du marché et bien plus encore. Comment puis-je vous aider aujourd'hui ?",
+      content: gptCopy.welcome,
       timestamp: new Date(),
     },
   ]);
@@ -71,6 +61,25 @@ export default function ArkaneGPTPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (!prev.length || prev[0].id !== "welcome" || prev[0].content === gptCopy.welcome) {
+        return prev;
+      }
+      const [, ...rest] = prev;
+      return [{ ...prev[0], content: gptCopy.welcome }, ...rest];
+    });
+  }, [gptCopy.welcome]);
+
+  const suggestions = useMemo(
+    () =>
+      gptCopy.suggestions.map((suggestion) => ({
+        ...suggestion,
+        Icon: suggestionIconMap[suggestion.icon as keyof typeof suggestionIconMap] ?? Sparkles,
+      })),
+    [gptCopy],
+  );
 
   const handleSendMessage = async (messageText?: string) => {
     const text = messageText || input.trim();
@@ -98,35 +107,19 @@ export default function ArkaneGPTPage() {
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error("AI summary failed:", error);
-      const fallbackMessage: Message = {
+      const fallbackMessage =
+        (fallback as { error?: string })?.error ??
+        "Sorry, I couldn't process your request. Please try again later.";
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: generateMockResponse(text),
+        content: fallbackMessage,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, fallbackMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
-  };
-
-  const generateMockResponse = (question: string): string => {
-    // Mock responses basées sur des mots-clés
-    const lower = question.toLowerCase();
-
-    if (lower.includes("mbappé") || lower.includes("haaland")) {
-      return `Excellente question ! Voici une analyse comparative entre Mbappé et Haaland :\n\n**Kylian Mbappé (PSG):**\n- ArkaneIndex: 94.5/100\n- Points forts: Vitesse exceptionnelle, finition, polyvalence\n- 28 buts en 30 matches cette saison\n- Valeur marchande: ~180M€\n\n**Erling Haaland (Man City):**\n- ArkaneIndex: 93.2/100  \n- Points forts: Puissance physique, instinct de buteur\n- 32 buts en 28 matches cette saison\n- Valeur marchande: ~175M€\n\n**Conclusion:** Deux profils différents mais d'un niveau exceptionnel. Mbappé est plus complet et polyvalent, tandis que Haaland est un pur avant-centre redoutable dans la surface.`;
-    }
-
-    if (lower.includes("jeune") || lower.includes("talent")) {
-      return `Voici le top 5 des jeunes talents français à suivre selon ArkaneIndex :\n\n1. **Warren Zaïre-Emery (PSG)** - 17 ans\n   - ArkaneIndex: 82.5/100\n   - Potentiel: ⭐⭐⭐⭐⭐\n   - Milieu récupérateur, vision du jeu exceptionnelle\n\n2. **Rayan Cherki (Lyon)** - 20 ans\n   - ArkaneIndex: 79.3/100\n   - Créativité, technique pure\n\n3. **Castello Lukeba (RB Leipzig)** - 21 ans\n   - Défenseur central prometteur\n\n4. **Mathys Tel (Bayern)** - 18 ans\n   - Attaquant explosif\n\n5. **Désiré Doué (Rennes)** - 19 ans\n   - Milieu polyvalent\n\nVoulez-vous plus de détails sur l'un d'entre eux ?`;
-    }
-
-    if (lower.includes("défense") || lower.includes("défenseur")) {
-      return `Pour renforcer une défense centrale, voici les profils à cibler selon vos besoins :\n\n**Profil "Relance"** (pour un jeu de possession):\n- Pied gauche préférable\n- Qualité de passe > 85%\n- Vision du jeu ⭐⭐⭐⭐⭐\n- Exemples: Saliba, Stones\n\n**Profil "Bataille"** (jeu plus direct):\n- Duels aériens > 75%\n- Agressivité ⭐⭐⭐⭐\n- Physique imposant\n- Exemples: Van Dijk, Rüdiger\n\n**Profil "Complet"**:\n- Polyvalent défense/relance\n- Leadership\n- Prix plus élevé\n- Exemples: Dias, Marquinhos\n\nQuel type de profil correspond le mieux à votre équipe ?`;
-    }
-
-    return `Merci pour votre question ! Basé sur nos données ArkaneIndex et l'analyse de milliers de matches, voici mon analyse :\n\n${question}\n\nC'est un sujet passionnant. Notre IA a analysé les performances récentes, les statistiques avancées et les tendances du marché pour vous fournir cette réponse.\n\nSouhaitez-vous que j'approfondisse un aspect particulier ?`;
   };
 
   const handleSuggestedQuestion = (question: string) => {
@@ -135,7 +128,9 @@ export default function ArkaneGPTPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen overflow-hidden relative">
+      <ProtectedPage>
+        <RequireTier minTier="PRO">
+          <div className="min-h-screen overflow-hidden relative">
         <AnimatedBackground />
 
       <div className="relative z-10 h-screen flex flex-col">
@@ -147,17 +142,22 @@ export default function ArkaneGPTPage() {
                 <Brain className="h-6 w-6 text-arcane-dark" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-white uppercase tracking-tight">
-                  ArkaneGPT
+                <h1
+                  className="text-2xl font-black text-white uppercase tracking-tight"
+                  data-test="arkane-gpt-header-title"
+                >
+                  {gptCopy.header.title}
                 </h1>
-                <p className="text-arcane-grey text-sm">
-                  Assistant IA spécialisé Football
+                <p className="text-arcane-grey text-sm" data-test="arkane-gpt-header-subtitle">
+                  {gptCopy.header.subtitle}
                 </p>
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <div className="px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs text-green-400 font-bold">En ligne</span>
+                  <span className="text-xs text-green-400 font-bold" data-test="arkane-gpt-header-status">
+                    {gptCopy.header.status}
+                  </span>
                 </div>
               </div>
             </div>
@@ -217,7 +217,7 @@ export default function ArkaneGPTPage() {
                         </p>
                       </div>
                       <p className="text-xs text-arcane-grey mt-1">
-                        {message.timestamp.toLocaleTimeString("fr-FR", {
+                        {message.timestamp.toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US", {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
@@ -257,13 +257,16 @@ export default function ArkaneGPTPage() {
                   transition={{ delay: 0.3 }}
                   className="mt-8"
                 >
-                  <h3 className="text-arcane-grey text-sm mb-4 flex items-center gap-2">
+                  <h3
+                    className="text-arcane-grey text-sm mb-4 flex items-center gap-2"
+                    data-test="arkane-gpt-suggestions-title"
+                  >
                     <Sparkles className="h-4 w-4" />
-                    Questions suggérées
+                    {gptCopy.suggestionsTitle}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {suggestedQuestions.map((q) => {
-                      const Icon = q.icon;
+                    {suggestions.map((q) => {
+                      const Icon = q.Icon;
                       return (
                         <button
                           key={q.text}
@@ -305,7 +308,7 @@ export default function ArkaneGPTPage() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Posez votre question sur le football..."
+                  placeholder={gptCopy.input.placeholder}
                   className="flex-1 px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20"
                   disabled={isTyping}
                 />
@@ -321,14 +324,16 @@ export default function ArkaneGPTPage() {
                   )}
                 </Button>
               </form>
-              <p className="text-xs text-arcane-grey mt-2 text-center">
-                ArkaneGPT peut faire des erreurs. Vérifiez les informations importantes.
-              </p>
+                <p className="text-xs text-arcane-grey mt-2 text-center" data-test="arkane-gpt-input-warning">
+                  {gptCopy.input.warning}
+                </p>
             </div>
           </div>
         </div>
         </div>
       </div>
+        </RequireTier>
+      </ProtectedPage>
     </MainLayout>
   );
 }

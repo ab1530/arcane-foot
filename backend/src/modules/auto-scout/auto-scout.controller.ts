@@ -1,15 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Param,
-  UseGuards,
-  Request,
-  Query,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -18,12 +7,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { MinTier } from '../../common/decorators/min-tier.decorator';
 import { SubscriptionTier } from '@prisma/client';
 import { AutoScoutService } from './auto-scout.service';
-import {
-  GenerateReportDto,
-  BulkGenerateDto,
-  EnhanceReportDto,
-  CustomGenerateDto,
-} from './dto';
+import { GenerateReportDto, BulkGenerateDto, CustomGenerateDto } from './dto';
 import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('auto-scout')
@@ -39,7 +23,8 @@ export class AutoScoutController {
   @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 reports per hour
   @ApiOperation({
     summary: 'Generate AI scouting report (GOLD+)',
-    description: 'Generate a comprehensive scouting report using GPT-4 based on player statistics and performance data. Requires GOLD subscription or higher.',
+    description:
+      'Generate a comprehensive scouting report using GPT-4 based on player statistics and performance data. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -53,10 +38,7 @@ export class AutoScoutController {
     status: 429,
     description: 'Rate limit exceeded (max 10 reports per hour)',
   })
-  async generateReport(
-    @Body() dto: GenerateReportDto,
-    @Request() req: any,
-  ) {
+  async generateReport(@Body() dto: GenerateReportDto, @Request() req: any) {
     const report = await this.autoScoutService.generateReport(
       dto.playerId,
       dto.matchId,
@@ -84,7 +66,8 @@ export class AutoScoutController {
   @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 bulk operations per hour
   @ApiOperation({
     summary: 'Generate multiple AI scouting reports (GOLD+)',
-    description: 'Generate reports for multiple players at once (max 50 players). Admin only. Requires GOLD subscription or higher.',
+    description:
+      'Generate reports for multiple players at once (max 50 players). Admin only. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -94,10 +77,7 @@ export class AutoScoutController {
     status: 403,
     description: 'Insufficient permissions',
   })
-  async bulkGenerate(
-    @Body() dto: BulkGenerateDto,
-    @Request() req: any,
-  ) {
+  async bulkGenerate(@Body() dto: BulkGenerateDto, @Request() req: any) {
     const result = await this.autoScoutService.generateBulkReports(
       dto.playerIds,
       dto.matchId,
@@ -118,16 +98,14 @@ export class AutoScoutController {
   @Throttle({ default: { limit: 15, ttl: 3600000 } }) // 15 enhancements per hour
   @ApiOperation({
     summary: 'Enhance existing scouting report (GOLD+)',
-    description: 'Add AI-generated insights and improvements to an existing scouting report. Requires GOLD subscription or higher.',
+    description:
+      'Add AI-generated insights and improvements to an existing scouting report. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
     description: 'Report enhanced successfully',
   })
-  async enhanceReport(
-    @Param('reportId') reportId: string,
-    @Body() dto: EnhanceReportDto,
-  ) {
+  async enhanceReport(@Param('reportId') reportId: string) {
     const enhancedReport = await this.autoScoutService.enhanceReport(reportId);
 
     return {
@@ -142,7 +120,8 @@ export class AutoScoutController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Get available report templates (GOLD+)',
-    description: 'Retrieve list of predefined report templates for different use cases. Requires GOLD subscription or higher.',
+    description:
+      'Retrieve list of predefined report templates for different use cases. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
@@ -164,16 +143,14 @@ export class AutoScoutController {
   @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 custom reports per hour
   @ApiOperation({
     summary: 'Generate report with custom template (GOLD+)',
-    description: 'Generate a report using a custom template. Admin only. Requires GOLD subscription or higher.',
+    description:
+      'Generate a report using a custom template. Admin only. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
     description: 'Custom report generated successfully',
   })
-  async customGenerate(
-    @Body() dto: CustomGenerateDto,
-    @Request() req: any,
-  ) {
+  async customGenerate(@Body() dto: CustomGenerateDto, @Request() req: any) {
     const report = await this.autoScoutService.customGenerate(
       dto.playerId,
       dto.template,
@@ -194,16 +171,14 @@ export class AutoScoutController {
   @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 previews per hour
   @ApiOperation({
     summary: 'Preview report without saving (GOLD+)',
-    description: 'Generate a quick preview report without saving to database or consuming API quota. Requires GOLD subscription or higher.',
+    description:
+      'Generate a quick preview report without saving to database or consuming API quota. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,
     description: 'Preview generated successfully',
   })
-  async previewReport(
-    @Param('playerId') playerId: string,
-    @Query('matchId') matchId?: string,
-  ) {
+  async previewReport(@Param('playerId') playerId: string, @Query('matchId') matchId?: string) {
     // Generate report without saving
     const report = await this.autoScoutService.generateReport(
       playerId,
@@ -221,10 +196,10 @@ export class AutoScoutController {
   }
 
   @Get('analytics')
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({
     summary: 'Get AutoScout analytics',
-    description: 'Retrieve analytics about AI report generation usage, costs, and quality metrics. Admin only.',
+    description: 'Retrieve analytics about AI report generation usage, costs, and quality metrics.',
   })
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'endDate', required: false, type: String })
@@ -232,10 +207,7 @@ export class AutoScoutController {
     status: 200,
     description: 'Analytics retrieved successfully',
   })
-  async getAnalytics(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
+  async getAnalytics(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
@@ -262,11 +234,45 @@ export class AutoScoutController {
     description: 'Report history retrieved successfully',
   })
   async getPlayerReportHistory(@Param('playerId') playerId: string) {
-    // This would need implementation in service
-    return {
-      success: true,
-      message: 'Feature coming soon',
-    };
+    try {
+      const history = await this.autoScoutService.getPlayerHistory(playerId);
+      return {
+        success: true,
+        data: history,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        message: error.message || 'Failed to load report history',
+      };
+    }
+  }
+
+  @Get('history')
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({
+    summary: 'Get all AI report history for current user',
+    description: 'Retrieve all AI-generated reports created by the current scout.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Report history retrieved successfully',
+  })
+  async getAllReportHistory(@Request() req: any) {
+    try {
+      const history = await this.autoScoutService.getAllHistory(req.user.userId);
+      return {
+        success: true,
+        data: history,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        message: error.message || 'Failed to load report history',
+      };
+    }
   }
 
   @Get('cost-estimate')
@@ -275,7 +281,17 @@ export class AutoScoutController {
     summary: 'Estimate cost for report generation',
     description: 'Get cost estimate before generating a report.',
   })
-  @ApiQuery({ name: 'reportType', required: false, enum: ['MATCH_PERFORMANCE', 'SEASON_OVERVIEW', 'TRANSFER_TARGET', 'YOUTH_PROSPECT', 'QUICK_SCAN'] })
+  @ApiQuery({
+    name: 'reportType',
+    required: false,
+    enum: [
+      'MATCH_PERFORMANCE',
+      'SEASON_OVERVIEW',
+      'TRANSFER_TARGET',
+      'YOUTH_PROSPECT',
+      'QUICK_SCAN',
+    ],
+  })
   @ApiResponse({
     status: 200,
     description: 'Cost estimate provided',
@@ -310,7 +326,8 @@ export class AutoScoutController {
   @Throttle({ default: { limit: 10, ttl: 3600000 } })
   @ApiOperation({
     summary: 'Regenerate existing report (GOLD+)',
-    description: 'Regenerate an AI report with different parameters (e.g., different temperature). Requires GOLD subscription or higher.',
+    description:
+      'Regenerate an AI report with different parameters (e.g., different temperature). Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 201,
@@ -320,9 +337,12 @@ export class AutoScoutController {
     @Param('reportId') reportId: string,
     @Query('temperature') temperature?: number,
   ) {
+    const report = await this.autoScoutService.regenerateReport(reportId, temperature);
+
     return {
-      success: false,
-      message: 'Feature coming soon',
+      success: true,
+      data: report,
+      message: 'Report regenerated successfully',
     };
   }
 }

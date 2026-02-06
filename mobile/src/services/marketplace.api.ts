@@ -20,13 +20,9 @@ export const marketplaceApi = {
   async searchListings(
     filters: SearchListingsFilters = {}
   ): Promise<PaginatedResponse<MarketplaceListing>> {
-    const response = await api.getRaw<PaginatedResponse<MarketplaceListing>>(
-      '/marketplace/listings',
-      {
-        params: filters,
-      }
-    );
-    return response;
+    return api.getRaw<PaginatedResponse<MarketplaceListing>>('/marketplace/listings', {
+      params: filters,
+    });
   },
 
   /**

@@ -10,33 +10,74 @@ import Link from "next/link";
 import { ArrowLeft, Mail, Phone, MapPin, Send, Clock, Globe } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/language-context";
+import { apiClient } from "@/lib/api-client";
 
 export default function ContactPage() {
+  const { dictionary } = useLanguage();
+  const navigationCopy = dictionary.common.navigation;
+  const contactCopy = dictionary.contact;
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     type: "player",
     message: "",
+    company: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to API
-    // console.log("Form submitted:", formData);
+    if (isSubmitting) return;
 
-    toast.success("Message sent successfully!", {
-      description: "We'll get back to you within 24 hours.",
-    });
+    if (formData.company.trim()) {
+      toast.success(contactCopy.form.success.title, {
+        description: contactCopy.form.success.description,
+      });
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        type: "player",
+        message: "",
+        company: "",
+      });
+      return;
+    }
 
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      type: "player",
-      message: "",
-    });
+    setIsSubmitting(true);
+
+    try {
+      await apiClient.sendContactMessage({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || undefined,
+        type: formData.type,
+        message: formData.message.trim(),
+        company: formData.company.trim(),
+      });
+
+      toast.success(contactCopy.form.success.title, {
+        description: contactCopy.form.success.description,
+      });
+
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        type: "player",
+        message: "",
+        company: "",
+      });
+    } catch (error) {
+      toast.error(contactCopy.form.error.title, {
+        description: contactCopy.form.error.description,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -49,7 +90,9 @@ export default function ContactPage() {
           <div className="flex h-20 items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
               <ArrowLeft className="h-5 w-5 text-arcane-accent group-hover:-translate-x-1 transition-transform" />
-              <span className="text-arcane-grey group-hover:text-white transition-colors">Back to Home</span>
+              <span className="text-arcane-grey group-hover:text-white transition-colors">
+                {navigationCopy.backHome}
+              </span>
             </Link>
 
             <div className="flex items-center gap-3">
@@ -60,7 +103,7 @@ export default function ContactPage() {
             </div>
 
             <Link href="/services">
-              <Button>Our Services</Button>
+              <Button>{contactCopy.navCta}</Button>
             </Link>
           </div>
         </div>
@@ -76,14 +119,19 @@ export default function ContactPage() {
           >
             <motion.div className="inline-block mb-6">
               <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                Get in Touch
+                {contactCopy.hero.eyebrow}
               </span>
             </motion.div>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black mb-6">
-              <GradientText>CONTACT US</GradientText>
+            <h1
+              className="text-6xl md:text-8xl lg:text-9xl font-black mb-6"
+              data-test="contact-hero-title"
+            >
+              <GradientText>{contactCopy.hero.title}</GradientText>
             </h1>
             <p className="text-2xl text-arcane-grey max-w-3xl mx-auto">
-              Ready to take your career to the next level? <span className="text-white font-bold">Let's talk</span>
+              {contactCopy.hero.description.before}{" "}
+              <span className="text-white font-bold">{contactCopy.hero.description.highlight}</span>{" "}
+              {contactCopy.hero.description.after}
             </p>
           </motion.div>
 
@@ -100,9 +148,14 @@ export default function ContactPage() {
                   <div className="w-12 h-12 rounded-full bg-arcane-accent/10 flex items-center justify-center mb-4">
                     <Mail className="h-6 w-6 text-arcane-accent" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2 uppercase">Email</h3>
-                  <a href="mailto:contact@arcane.li" className="text-arcane-grey hover:text-arcane-accent transition-colors">
-                    contact@arcane.li
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase">
+                    {contactCopy.info.email.title}
+                  </h3>
+                  <a
+                    href={`mailto:${contactCopy.info.email.value}`}
+                    className="text-arcane-grey hover:text-arcane-accent transition-colors"
+                  >
+                    {contactCopy.info.email.value}
                   </a>
                 </GlassCard>
               </Card3D>
@@ -112,9 +165,14 @@ export default function ContactPage() {
                   <div className="w-12 h-12 rounded-full bg-arcane-accent/10 flex items-center justify-center mb-4">
                     <Phone className="h-6 w-6 text-arcane-accent" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2 uppercase">Phone</h3>
-                  <a href="tel:+491234567890" className="text-arcane-grey hover:text-arcane-accent transition-colors">
-                    +49 123 456 7890
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase">
+                    {contactCopy.info.phone.title}
+                  </h3>
+                  <a
+                    href={`tel:${contactCopy.info.phone.value.replace(/\\s/g, "")}`}
+                    className="text-arcane-grey hover:text-arcane-accent transition-colors"
+                  >
+                    {contactCopy.info.phone.value}
                   </a>
                 </GlassCard>
               </Card3D>
@@ -124,10 +182,16 @@ export default function ContactPage() {
                   <div className="w-12 h-12 rounded-full bg-arcane-accent/10 flex items-center justify-center mb-4">
                     <MapPin className="h-6 w-6 text-arcane-accent" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2 uppercase">Office</h3>
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase">
+                    {contactCopy.info.office.title}
+                  </h3>
                   <p className="text-arcane-grey">
-                    Berlin, Germany<br />
-                    Kreuzberg 10997
+                    {contactCopy.info.office.lines.map((line) => (
+                      <span key={line}>
+                        {line}
+                        <br />
+                      </span>
+                    ))}
                   </p>
                 </GlassCard>
               </Card3D>
@@ -137,10 +201,13 @@ export default function ContactPage() {
                   <div className="w-12 h-12 rounded-full bg-arcane-accent/10 flex items-center justify-center mb-4">
                     <Clock className="h-6 w-6 text-arcane-accent" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2 uppercase">Hours</h3>
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase">
+                    {contactCopy.info.hours.title}
+                  </h3>
                   <p className="text-arcane-grey">
-                    Mon - Fri: 9:00 - 18:00<br />
-                    24/7 Emergency Support
+                    {contactCopy.info.hours.weekdays}
+                    <br />
+                    {contactCopy.info.hours.emergency}
                   </p>
                 </GlassCard>
               </Card3D>
@@ -156,18 +223,30 @@ export default function ContactPage() {
                 <GlassCard variant="elevated" className="p-8 md:p-12">
                   <div className="mb-8">
                     <h2 className="text-4xl font-black mb-4 uppercase">
-                      Send us a <NeonText>Message</NeonText>
+                      {contactCopy.form.title} <NeonText>{contactCopy.form.highlight}</NeonText>
                     </h2>
                     <p className="text-arcane-grey">
-                      Fill out the form below and we'll get back to you within 24 hours
+                      {contactCopy.form.description}
                     </p>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="absolute left-[-10000px] top-auto h-0 w-0 overflow-hidden" aria-hidden="true">
+                      <label htmlFor="contact-company">Company</label>
+                      <input
+                        id="contact-company"
+                        name="company"
+                        type="text"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={formData.company}
+                        onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      />
+                    </div>
                     {/* Name */}
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                        Full Name *
+                        {contactCopy.form.fields.name.label}
                       </label>
                       <input
                         type="text"
@@ -175,7 +254,7 @@ export default function ContactPage() {
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                        placeholder="John Doe"
+                        placeholder={contactCopy.form.fields.name.placeholder}
                       />
                     </div>
 
@@ -183,7 +262,7 @@ export default function ContactPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                          Email *
+                          {contactCopy.form.fields.email.label}
                         </label>
                         <input
                           type="email"
@@ -191,20 +270,20 @@ export default function ContactPage() {
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                          placeholder="john@example.com"
+                          placeholder={contactCopy.form.fields.email.placeholder}
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                          Phone
+                          {contactCopy.form.fields.phone.label}
                         </label>
                         <input
                           type="tel"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                          placeholder="+49 123 456 7890"
+                          placeholder={contactCopy.form.fields.phone.placeholder}
                         />
                       </div>
                     </div>
@@ -212,7 +291,7 @@ export default function ContactPage() {
                     {/* Type */}
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                        I am a *
+                        {contactCopy.form.fields.type.label}
                       </label>
                       <select
                         required
@@ -220,18 +299,18 @@ export default function ContactPage() {
                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
                       >
-                        <option value="player">Player</option>
-                        <option value="club">Club Representative</option>
-                        <option value="scout">Scout</option>
-                        <option value="parent">Parent/Guardian</option>
-                        <option value="other">Other</option>
+                        {Object.entries(contactCopy.form.typeOptions).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
                     {/* Message */}
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                        Message *
+                        {contactCopy.form.fields.message.label}
                       </label>
                       <textarea
                         required
@@ -239,20 +318,26 @@ export default function ContactPage() {
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all resize-none"
-                        placeholder="Tell us about your goals and how we can help..."
+                        placeholder={contactCopy.form.fields.message.placeholder}
                       />
                     </div>
 
                     {/* Submit Button */}
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button type="submit" size="lg" className="w-full shadow-[0_0_30px_rgba(228,255,59,0.4)]">
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full shadow-[0_0_30px_rgba(228,255,59,0.4)]"
+                        disabled={isSubmitting}
+                        aria-busy={isSubmitting}
+                      >
                         <Send className="mr-2 h-5 w-5" />
-                        Send Message
+                        {contactCopy.form.submit}
                       </Button>
                     </motion.div>
 
                     <p className="text-sm text-arcane-grey text-center">
-                      By submitting this form, you agree to our privacy policy and terms of service.
+                      {contactCopy.form.disclaimer}
                     </p>
                   </form>
                 </GlassCard>
@@ -269,19 +354,16 @@ export default function ContactPage() {
           >
             <GlassCard variant="elevated" className="p-12 text-center">
               <Globe className="h-12 w-12 text-arcane-accent mx-auto mb-6" />
-              <h3 className="text-3xl font-black mb-4 uppercase">
-                <NeonText>Global Coverage</NeonText>
+              <h3 className="text-3xl font-black mb-4 uppercase" data-test="contact-global-title">
+                <NeonText>{contactCopy.global.title}</NeonText>
               </h3>
               <p className="text-xl text-arcane-grey max-w-3xl mx-auto mb-8">
-                With offices in Berlin, London, and Madrid, we provide 24/7 support to our clients worldwide
+                {contactCopy.global.description}
               </p>
               <div className="flex flex-wrap justify-center gap-4 text-arcane-grey">
-                <span>🇩🇪 Germany</span>
-                <span>🇬🇧 United Kingdom</span>
-                <span>🇪🇸 Spain</span>
-                <span>🇫🇷 France</span>
-                <span>🇮🇹 Italy</span>
-                <span>🇧🇷 Brazil</span>
+                {contactCopy.global.regions.map((region) => (
+                  <span key={region}>{region}</span>
+                ))}
               </div>
             </GlassCard>
           </motion.div>

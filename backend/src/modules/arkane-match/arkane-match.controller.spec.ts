@@ -484,9 +484,9 @@ describe('ArkaneMatchController', () => {
           new BadRequestException('Conversation does not belong to this user'),
         );
 
-        await expect(
-          controller.clearConversation(mockRequest, mockConversationId),
-        ).rejects.toThrow('Conversation does not belong to this user');
+        await expect(controller.clearConversation(mockRequest, mockConversationId)).rejects.toThrow(
+          'Conversation does not belong to this user',
+        );
       });
     });
 
@@ -494,9 +494,9 @@ describe('ArkaneMatchController', () => {
       it('should handle service errors', async () => {
         service.clearConversation.mockRejectedValue(new Error('Delete failed'));
 
-        await expect(
-          controller.clearConversation(mockRequest, mockConversationId),
-        ).rejects.toThrow('Delete failed');
+        await expect(controller.clearConversation(mockRequest, mockConversationId)).rejects.toThrow(
+          'Delete failed',
+        );
       });
 
       it('should handle non-existent conversation gracefully', async () => {
@@ -729,7 +729,11 @@ describe('ArkaneMatchController', () => {
       expect(user1Result.conversationId).not.toBe(user2Result.conversationId);
 
       // User 2 tries to access User 1's conversation
-      const user1Conversation = { ...mockConversation, id: user1Result.conversationId, userId: 'user-1' };
+      const user1Conversation = {
+        ...mockConversation,
+        id: user1Result.conversationId,
+        userId: 'user-1',
+      };
       service.getConversation.mockResolvedValue(user1Conversation as any);
 
       const result = await controller.getConversation(user2Request, user1Result.conversationId);
@@ -743,12 +747,10 @@ describe('ArkaneMatchController', () => {
         message: `Message ${i}`,
       }));
 
-      const results = await Promise.all(
-        requests.map(dto => controller.chat(mockRequest, dto)),
-      );
+      const results = await Promise.all(requests.map((dto) => controller.chat(mockRequest, dto)));
 
       expect(results).toHaveLength(5);
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.conversationId).toBeDefined();
       });
     });
@@ -808,9 +810,9 @@ describe('ArkaneMatchController', () => {
     it('should propagate 400 Bad Request errors', async () => {
       service.chat.mockRejectedValue(new BadRequestException('Invalid input'));
 
-      await expect(
-        controller.chat(mockRequest, { message: 'Test' }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.chat(mockRequest, { message: 'Test' })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should propagate 401 Unauthorized errors', async () => {

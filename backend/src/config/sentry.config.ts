@@ -8,10 +8,7 @@ export function initSentry() {
     tracesSampleRate: 1.0,
 
     // Integrations
-    integrations: [
-      Sentry.httpIntegration(),
-      Sentry.expressIntegration(),
-    ],
+    integrations: [Sentry.httpIntegration(), Sentry.expressIntegration()],
 
     // Environment
     environment: process.env.NODE_ENV || 'development',
@@ -20,7 +17,7 @@ export function initSentry() {
     release: process.env.APP_VERSION || 'development',
 
     // Error filtering
-    beforeSend(event, hint) {
+    beforeSend(event, _hint) {
       // Don't send errors in development
       if (process.env.NODE_ENV === 'development') {
         return null;

@@ -3,12 +3,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PlayerStatus } from '@prisma/client';
 
 export class CreatePlayerDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'User ID linked to this player',
     example: 'clxxxxxxxxxxxxxx',
   })
   @IsString()
-  userId: string;
+  @IsOptional()
+  userId?: string;
 
   @ApiPropertyOptional({
     description: 'Current club ID',
@@ -25,6 +26,46 @@ export class CreatePlayerDto {
   })
   @IsString()
   position: string;
+
+  @ApiPropertyOptional({
+    description: 'Observed player first name (used when user account is not linked)',
+    example: 'Walid',
+  })
+  @IsString()
+  @IsOptional()
+  firstName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Observed player last name (used when user account is not linked)',
+    example: 'Regragui',
+  })
+  @IsString()
+  @IsOptional()
+  lastName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Observed birth year when exact date is unknown',
+    example: 2010,
+  })
+  @IsInt()
+  @IsOptional()
+  birthYear?: number;
+
+  @ApiPropertyOptional({
+    description: 'Observed club name when no club relation exists',
+    example: 'Torcy',
+  })
+  @IsString()
+  @IsOptional()
+  observedClubName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Import source metadata',
+    example: 'SCOUT_CHAT',
+  })
+  @IsString()
+  @IsOptional()
+  importSource?: string;
 
   @ApiPropertyOptional({
     description: 'Preferred foot',
@@ -65,12 +106,13 @@ export class CreatePlayerDto {
   @IsOptional()
   weight?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Date of birth (ISO 8601 format)',
     example: '2000-01-15',
   })
   @IsDateString()
-  dateOfBirth: string;
+  @IsOptional()
+  dateOfBirth?: string;
 
   @ApiProperty({
     description: 'Nationality (ISO 3166-1 alpha-2 code)',

@@ -12,6 +12,11 @@ jest.mock('@/lib/api-client', () => ({
 describe('useSubscription Hook', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    localStorage.setItem('arcane_auth_token', 'test-token')
+  })
+
+  afterEach(() => {
+    localStorage.clear()
   })
 
   it('fetches subscription on mount', async () => {

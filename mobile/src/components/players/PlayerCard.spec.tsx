@@ -51,7 +51,7 @@ describe('PlayerCard', () => {
 
       const ageElement = screen.getByTestId('player-card-age');
       expect(ageElement).toBeTruthy();
-      expect(ageElement.children[0]).toMatch(/\d+ yrs/);
+      expect(ageElement).toHaveTextContent(/\d+\syrs/);
     });
 
     it('should handle missing user data', () => {

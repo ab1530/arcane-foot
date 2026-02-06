@@ -8,9 +8,9 @@
  * - Integrates with error boundary
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { analytics } from './analytics';
 import { handleSubscriptionError, isSubscriptionError } from './api-interceptor';
+import { logger } from './logger';
 
 export interface ErrorContext {
   endpoint?: string;
@@ -19,12 +19,12 @@ export interface ErrorContext {
   timestamp?: string;
   component?: string;
   action?: string;
-  [key: string]: any; // Index signature for Sentry compatibility
+  [key: string]: any;
 }
 
 export interface ErrorHandlerOptions {
   showToast?: boolean;
-  reportToSentry?: boolean;
+  logToLogger?: boolean;
   trackAnalytics?: boolean;
   context?: ErrorContext;
 }
@@ -46,7 +46,7 @@ export class ErrorHandler {
   } {
     const {
       showToast = true,
-      reportToSentry = true,
+      logToLogger = true,
       trackAnalytics = true,
       context = {},
     } = options;
@@ -73,7 +73,7 @@ export class ErrorHandler {
     // Handle other errors
     this.handleGenericError(error, errorMessage, errorStatus, {
       showToast,
-      reportToSentry,
+      logToLogger,
       trackAnalytics,
       context,
     });
@@ -117,21 +117,10 @@ export class ErrorHandler {
       timestamp: new Date().toISOString(),
     };
 
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Component Error:', error);
-      console.error('Error Info:', errorInfo);
-    }
-
-    // Report to Sentry
-    Sentry.captureException(error, {
-      contexts: {
-        react: {
-          componentStack: errorInfo.componentStack,
-          componentName,
-        },
-      },
-      level: 'error',
+    logger.error('Component error', error, {
+      scope: 'UI',
+      componentName,
+      componentStack: errorInfo.componentStack,
     });
 
     // Track in analytics
@@ -201,26 +190,23 @@ export class ErrorHandler {
     errorStatus: number,
     options: ErrorHandlerOptions
   ) {
-    const { reportToSentry, trackAnalytics, context } = options;
+    const { logToLogger, trackAnalytics, context } = options;
 
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error:', error);
-    }
-
-    // Report to Sentry
-    if (reportToSentry && errorStatus >= 500) {
-      Sentry.captureException(error, {
-        tags: {
-          error_status: errorStatus,
-          endpoint: context?.endpoint,
-          method: context?.method,
-        },
-        contexts: {
-          error_context: context,
-        },
-        level: 'error',
-      });
+    if (logToLogger) {
+      const payload = {
+        scope: 'ErrorHandler',
+        errorStatus,
+        errorMessage,
+        error,
+        endpoint: context?.endpoint,
+        method: context?.method,
+        context,
+      };
+      if (errorStatus >= 500) {
+        logger.error('Unhandled error', error, payload);
+      } else {
+        logger.warn('Unhandled error', payload);
+      }
     }
 
     // Track in analytics
@@ -282,7 +268,7 @@ export function useErrorHandler() {
   const handleError = (error: any, context?: ErrorContext) => {
     return ErrorHandler.handle(error, {
       showToast: true,
-      reportToSentry: true,
+      logToLogger: true,
       trackAnalytics: true,
       context,
     });
@@ -291,7 +277,7 @@ export function useErrorHandler() {
   const handleApiError = (error: any, endpoint: string, method?: string) => {
     return ErrorHandler.handleApiError(error, endpoint, method, {
       showToast: true,
-      reportToSentry: true,
+      logToLogger: true,
       trackAnalytics: true,
     });
   };

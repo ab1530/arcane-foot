@@ -16,6 +16,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
 
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
@@ -135,7 +136,7 @@ export const Card: React.FC<CardProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: theme.colors.background.elevated,
-    borderRadius: theme.radius.xl,
+    borderRadius: 16,
     overflow: 'hidden',
     ...theme.shadows.md,
   },
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    borderRadius: theme.radius.xl,
+    borderRadius: 16,
   },
   glowBase: {
     shadowColor: theme.colors.brand.primary,
@@ -166,13 +167,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   size_sm: {
-    padding: theme.spacing.sm,
+    padding: 8,
   },
   size_md: {
-    padding: theme.spacing.lg,
+    padding: 24,
   },
   size_lg: {
-    padding: theme.spacing.xl,
+    padding: 32,
   },
 });
 

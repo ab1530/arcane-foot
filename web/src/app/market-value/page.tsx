@@ -16,7 +16,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { AnimatedBackground } from '@/components/ui/animated-background';
 import MainLayout from '@/components/layout/MainLayout';
-import { ProtectedRoute } from '@/components/auth/protected-route';
+import { ProtectedPage } from '@/components/guards/ProtectedPage';
 import { Breadcrumb } from '@/components/breadcrumb';
 import { PlayerValuationCard } from '@/components/market-value/PlayerValuationCard';
 import { FactorBreakdown } from '@/components/market-value/FactorBreakdown';
@@ -139,7 +139,7 @@ export default function MarketValuePage() {
   ];
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -427,6 +427,6 @@ export default function MarketValuePage() {
           </div>
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

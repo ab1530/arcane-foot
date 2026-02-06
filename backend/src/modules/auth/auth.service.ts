@@ -3,9 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { DEFAULT_ROLE } from '../../common/roles/role.constants';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +30,7 @@ export class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    // Create user
+    // Always enforce default role to prevent self-assigning elevated privileges
     const user = await this.prisma.users.create({
       data: {
         id: randomUUID(),
@@ -37,7 +39,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        role: dto.role || 'PUBLIC',
+        role: DEFAULT_ROLE,
         updatedAt: new Date(),
       },
       select: {
@@ -52,15 +54,19 @@ export class AuthService {
       },
     });
 
+    const player = await this.prisma.players.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+
     // Generate access and refresh tokens
-    const tokens = await this.refreshTokenService.generateTokens(
-      user.id,
-      user.email,
-      user.role,
-    );
+    const tokens = await this.refreshTokenService.generateTokens(user.id, user.email, user.role);
 
     return {
-      user,
+      user: {
+        ...user,
+        playerId: player?.id ?? null,
+      },
       ...tokens,
       tokenType: 'Bearer',
     };
@@ -94,12 +100,13 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    const player = await this.prisma.players.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+
     // Generate access and refresh tokens
-    const tokens = await this.refreshTokenService.generateTokens(
-      user.id,
-      user.email,
-      user.role,
-    );
+    const tokens = await this.refreshTokenService.generateTokens(user.id, user.email, user.role);
 
     return {
       user: {
@@ -110,6 +117,7 @@ export class AuthService {
         role: user.role,
         phone: user.phone,
         avatar: user.avatar,
+        playerId: player?.id ?? null,
       },
       ...tokens,
       tokenType: 'Bearer',
@@ -131,12 +139,43 @@ export class AuthService {
             id: true,
           },
         },
+        players: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
     if (!user || !user.isActive) {
       return null;
     }
+
+    return {
+      ...user,
+      playerId: user.players?.id ?? null,
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.users.update({
+      where: { id: userId },
+      data: {
+        ...dto,
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        avatar: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
 
     return user;
   }

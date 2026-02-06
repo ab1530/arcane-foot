@@ -37,6 +37,7 @@ import {
   theme,
 } from '../../design/components';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -44,6 +45,52 @@ const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 export const HomeScreen = ({ navigation }: any) => {
   const { isAuthenticated, user } = useAuth();
+  const { dictionary } = useLocalization();
+  const t = dictionary.home || {
+    header: { userFallback: 'User', login: 'Login' },
+    hero: {
+      badge: 'AI-POWERED',
+      title: 'Elevate Your',
+      subtitle: 'Scouting Game',
+      tagline: 'Discover football talent through',
+      performance: 'performance',
+      precision: 'precision',
+      and: 'and',
+      ambition: 'ambition',
+      ctaAuth: 'Explore Players',
+      ctaGuest: 'Start Your Journey',
+    },
+    stats: {
+      elitePlayers: 'Elite Players',
+      topClubs: 'Top Clubs',
+      successRate: 'Success Rate',
+    },
+    services: {
+      title: 'Powered by Advanced Technology',
+      subtitle: 'Everything you need to discover and evaluate talent',
+      playerManagement: {
+        title: 'Player Management',
+        description: 'Comprehensive profiles and performance tracking',
+      },
+      performanceAnalytics: {
+        title: 'Performance Analytics',
+        description: 'AI-powered insights and match analysis',
+      },
+      globalNetwork: {
+        title: 'Global Network',
+        description: 'Connect with scouts and clubs worldwide',
+      },
+    },
+    cta: {
+      badge: 'LIMITED ACCESS',
+      title: 'Ready to transform your scouting?',
+      description: 'Join thousands of scouts using AI to discover the next generation of talent',
+      button: 'Create Free Account',
+    },
+    footer: {
+      copyright: '© 2025 ARCANE. All rights reserved.',
+    },
+  };
   const [refreshing, setRefreshing] = React.useState(false);
 
   // Animation values
@@ -122,7 +169,7 @@ export const HomeScreen = ({ navigation }: any) => {
   const stats = [
     {
       icon: 'people',
-      label: 'Elite Players',
+      label: t.stats.elitePlayers,
       value: 500,
       suffix: '+',
       color: theme.colors.brand.primary,
@@ -130,7 +177,7 @@ export const HomeScreen = ({ navigation }: any) => {
     },
     {
       icon: 'trophy',
-      label: 'Top Clubs',
+      label: t.stats.topClubs,
       value: 50,
       suffix: '+',
       color: theme.colors.brand.accent,
@@ -138,7 +185,7 @@ export const HomeScreen = ({ navigation }: any) => {
     },
     {
       icon: 'shield-checkmark',
-      label: 'Success Rate',
+      label: t.stats.successRate,
       value: 98,
       suffix: '%',
       color: theme.colors.semantic.success,
@@ -149,20 +196,20 @@ export const HomeScreen = ({ navigation }: any) => {
   const services = [
     {
       icon: 'analytics',
-      title: 'Player Management',
-      description: 'End-to-end career development with personalized strategies',
+      title: t.services.playerManagement.title,
+      description: t.services.playerManagement.description,
       gradient: [theme.colors.brand.primary, theme.colors.brand.accent],
     },
     {
       icon: 'trending-up',
-      title: 'Performance Analytics',
-      description: 'AI-powered tracking and insights for peak performance',
+      title: t.services.performanceAnalytics.title,
+      description: t.services.performanceAnalytics.description,
       gradient: [theme.colors.brand.accent, theme.colors.semantic.info],
     },
     {
       icon: 'globe',
-      title: 'Global Network',
-      description: 'Connect with elite clubs and scouts worldwide',
+      title: t.services.globalNetwork.title,
+      description: t.services.globalNetwork.description,
       gradient: [theme.colors.semantic.info, theme.colors.brand.primary],
     },
   ];
@@ -229,7 +276,7 @@ export const HomeScreen = ({ navigation }: any) => {
             >
               <Avatar
                 source={user?.avatar}
-                name={user?.name || 'User'}
+                name={user?.name || t.header.userFallback}
                 size="md"
                 status="online"
               />
@@ -240,7 +287,7 @@ export const HomeScreen = ({ navigation }: any) => {
               variant="secondary"
               onPress={() => navigation.navigate('Login')}
             >
-              Login
+              {t.header.login}
             </Button>
           )}
         </Animated.View>
@@ -249,11 +296,11 @@ export const HomeScreen = ({ navigation }: any) => {
         <Animated.View style={[styles.hero, heroAnimatedStyle]}>
           <Badge variant="gradient" rounded style={styles.heroBadge}>
             <Ionicons name="sparkles" size={14} color={theme.colors.text.inverse} />
-            <Text style={styles.badgeText}>REDEFINING FOOTBALL</Text>
+            <Text style={styles.badgeText}>{t.hero.badge}</Text>
           </Badge>
 
           <Display variant="display1" style={styles.heroTitle}>
-            EMPOWERING
+            {t.hero.title}
           </Display>
 
           <LinearGradient
@@ -263,15 +310,15 @@ export const HomeScreen = ({ navigation }: any) => {
             end={{ x: 1, y: 0 }}
           >
             <Display variant="display1" style={styles.heroAccentText}>
-              FOOTBALL
+              {t.hero.subtitle}
             </Display>
           </LinearGradient>
 
           <Text variant="body-lg" color="secondary" style={styles.heroSubtitle}>
-            Through <Text weight="bold" color="primary">performance</Text>, {' '}
-            <Text weight="bold" color="primary">precision</Text> and {' '}
+            {t.hero.tagline} <Text weight="bold" color="primary">{t.hero.performance}</Text>, {' '}
+            <Text weight="bold" color="primary">{t.hero.precision}</Text> {t.hero.and} {' '}
             <Text weight="bold" style={{ color: theme.colors.brand.primary }}>
-              bold ambition
+              {t.hero.ambition}
             </Text>
           </Text>
 
@@ -288,7 +335,7 @@ export const HomeScreen = ({ navigation }: any) => {
               icon={<Ionicons name="flash" size={20} color={theme.colors.text.inverse} />}
               fullWidth
             >
-              {isAuthenticated ? 'Explore Players' : 'Start Your Journey'}
+              {isAuthenticated ? t.hero.ctaAuth : t.hero.ctaGuest}
             </Button>
           </Animated.View>
         </Animated.View>
@@ -327,10 +374,10 @@ export const HomeScreen = ({ navigation }: any) => {
         {/* Services Section */}
         <Animated.View style={[styles.services, servicesAnimatedStyle]}>
           <Heading variant="h2" style={styles.sectionTitle}>
-            OUR SERVICES
+            {t.services.title}
           </Heading>
           <Text variant="body" color="secondary" style={styles.sectionSubtitle}>
-            Comprehensive solutions for modern football
+            {t.services.subtitle}
           </Text>
 
           {services.map((service, index) => (
@@ -380,11 +427,11 @@ export const HomeScreen = ({ navigation }: any) => {
           <Card variant="gradient" size="lg" style={styles.ctaCard}>
             <Badge variant="primary" rounded style={styles.ctaBadge}>
               <Ionicons name="flash" size={14} color={theme.colors.text.inverse} />
-              <Text style={styles.ctaBadgeText}>JOIN THE ELITE</Text>
+              <Text style={styles.ctaBadgeText}>{t.cta.badge}</Text>
             </Badge>
 
             <Display variant="display3" style={styles.ctaTitle}>
-              Ready to Elevate?
+              {t.cta.title}
             </Display>
 
             <Text
@@ -393,7 +440,7 @@ export const HomeScreen = ({ navigation }: any) => {
               align="center"
               style={styles.ctaDescription}
             >
-              Join the elite network of players, scouts, and clubs
+              {t.cta.description}
             </Text>
 
             <Button
@@ -405,7 +452,7 @@ export const HomeScreen = ({ navigation }: any) => {
                 navigation.navigate('Signup');
               }}
             >
-              Get Started Now
+              {t.cta.button}
             </Button>
           </Card>
         </Animated.View>
@@ -413,7 +460,7 @@ export const HomeScreen = ({ navigation }: any) => {
         {/* Footer */}
         <View style={styles.footer}>
           <Caption color="muted" align="center">
-            © 2025 Arcane Football GmbH. All rights reserved.
+            {t.footer.copyright}
           </Caption>
         </View>
       </ScrollView>
@@ -488,9 +535,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.layout.safeArea.top + theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
+    paddingHorizontal: 24,
+    paddingTop: theme.layout.safeArea.top + 24,
+    paddingBottom: 24,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -499,10 +546,10 @@ const styles = StyleSheet.create({
   logo: {
     width: 44,
     height: 44,
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: 16,
     ...theme.shadows.lg,
   },
   logoText: {
@@ -514,16 +561,16 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   hero: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing['3xl'],
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 64,
     zIndex: 0,
   },
   heroBadge: {
     alignSelf: 'flex-start',
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
     flexDirection: 'row',
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   badgeText: {
     fontSize: 11,
@@ -534,14 +581,14 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     letterSpacing: -2,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   heroAccent: {
     alignSelf: 'flex-start',
-    borderRadius: theme.radius.lg,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    marginBottom: theme.spacing.xl,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 32,
   },
   heroAccentText: {
     color: theme.colors.text.inverse,
@@ -549,77 +596,77 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     lineHeight: 28,
-    marginBottom: theme.spacing['2xl'],
+    marginBottom: 48,
   },
   ctaContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
   },
   stats: {
     flexDirection: 'row',
-    paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing['3xl'],
+    paddingHorizontal: 24,
+    gap: 16,
+    marginBottom: 64,
     zIndex: 0,
   },
   statCard: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: 32,
   },
   statIcon: {
     width: 56,
     height: 56,
-    borderRadius: theme.radius.full,
+    borderRadius: 9999,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   statValue: {
-    marginVertical: theme.spacing.xs,
+    marginVertical: 4,
   },
   services: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing['3xl'],
+    paddingHorizontal: 24,
+    marginBottom: 64,
     zIndex: 0,
   },
   sectionTitle: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   sectionSubtitle: {
-    marginBottom: theme.spacing['2xl'],
+    marginBottom: 48,
   },
   serviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   serviceIconContainer: {
     width: 56,
     height: 56,
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.lg,
+    marginRight: 24,
   },
   serviceContent: {
     flex: 1,
   },
   serviceDescription: {
-    marginTop: theme.spacing.xs,
+    marginTop: 4,
   },
   ctaSection: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing['3xl'],
+    paddingHorizontal: 24,
+    marginBottom: 64,
     zIndex: 0,
   },
   ctaCard: {
     alignItems: 'center',
-    paddingVertical: theme.spacing['3xl'],
+    paddingVertical: 64,
   },
   ctaBadge: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.xl,
+    gap: 4,
+    marginBottom: 32,
   },
   ctaBadgeText: {
     fontSize: 11,
@@ -628,16 +675,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   ctaTitle: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 24,
     textAlign: 'center',
   },
   ctaDescription: {
-    marginBottom: theme.spacing['2xl'],
-    paddingHorizontal: theme.spacing.xl,
+    marginBottom: 48,
+    paddingHorizontal: 32,
   },
   footer: {
-    paddingVertical: theme.spacing['3xl'],
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    paddingVertical: 64,
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
 });

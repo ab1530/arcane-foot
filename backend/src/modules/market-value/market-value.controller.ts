@@ -8,13 +8,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
 import { MinTier } from '../../common/decorators/min-tier.decorator';
@@ -47,12 +41,13 @@ export class MarketValueController {
     description: 'Player valuation retrieved successfully',
     type: PlayerValuationDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
+  })
   @ApiResponse({ status: 404, description: 'Player not found' })
   @ApiResponse({ status: 503, description: 'AI service unavailable' })
-  async getPlayerValuation(
-    @Param('playerId') playerId: string,
-  ): Promise<PlayerValuationDto> {
+  async getPlayerValuation(@Param('playerId') playerId: string): Promise<PlayerValuationDto> {
     return this.marketValueService.getPlayerValuation(playerId);
   }
 
@@ -71,11 +66,12 @@ export class MarketValueController {
     description: 'Valuation trend retrieved successfully',
     type: ValuationTrendDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
+  })
   @ApiResponse({ status: 404, description: 'Player not found' })
-  async getValuationTrend(
-    @Param('playerId') playerId: string,
-  ): Promise<ValuationTrendDto> {
+  async getValuationTrend(@Param('playerId') playerId: string): Promise<ValuationTrendDto> {
     return this.marketValueService.getValuationTrend(playerId);
   }
 

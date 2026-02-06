@@ -109,11 +109,7 @@ export class RefreshTokenService {
         createdAt: tokenData['createdAt'],
         lastUsed: new Date().toISOString(),
       };
-      await this.redisService.set(
-        refreshKey,
-        updatedTokenData,
-        this.REFRESH_TOKEN_TTL,
-      );
+      await this.redisService.set(refreshKey, updatedTokenData, this.REFRESH_TOKEN_TTL);
 
       // Generate new access token
       const accessToken = this.jwtService.sign(
@@ -170,7 +166,7 @@ export class RefreshTokenService {
     try {
       // Find all refresh tokens for user
       const pattern = `${this.REFRESH_TOKEN_PREFIX}*`;
-      const keys = await this.redisService.smembers(pattern);
+      const keys = await this.redisService.keys(pattern);
 
       let revokedCount = 0;
       for (const key of keys) {
@@ -225,7 +221,7 @@ export class RefreshTokenService {
   async getUserActiveSessions(userId: string): Promise<any[]> {
     try {
       const pattern = `${this.REFRESH_TOKEN_PREFIX}*`;
-      const keys = await this.redisService.smembers(pattern);
+      const keys = await this.redisService.keys(pattern);
 
       const sessions = [];
       for (const key of keys) {

@@ -22,6 +22,42 @@ module.exports = {
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
     },
+    overrides: [
+      {
+        files: [
+          '**/*.spec.ts',
+          '**/*.spec.tsx',
+          '**/*.test.ts',
+          '**/*.test.tsx',
+          'test/**/*.ts',
+          '**/__mocks__/**/*.ts',
+        ],
+        rules: {
+          '@typescript-eslint/no-unused-vars': 'off',
+        },
+      },
+      {
+        files: ['scripts/**/*.ts', 'src/scripts/**/*.ts'],
+        rules: {
+          '@typescript-eslint/no-unused-vars': [
+            'warn',
+            {
+              argsIgnorePattern: '^_',
+              varsIgnorePattern: '^_',
+              ignoreRestSiblings: true,
+            },
+          ],
+        },
+      },
+    ],
   };
 EOF

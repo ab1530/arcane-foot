@@ -1,43 +1,35 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Icon } from '../ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import type { GenerationStage } from '../../types/auto-scout';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 interface GenerationProgressProps {
   stage: GenerationStage;
 }
 
-const STAGES = [
-  {
-    id: 'fetching',
-    label: 'Fetching Stats',
-    icon: 'download',
-    description: 'Gathering player statistics and performance data',
-  },
-  {
-    id: 'generating',
-    label: 'Generating with GPT-4',
-    icon: 'ai',
-    description: 'AI is analyzing the data and creating insights',
-  },
-  {
-    id: 'scoring',
-    label: 'Scoring Quality',
-    icon: 'checkmarkCircle',
-    description: 'Evaluating report quality and accuracy',
-  },
-  {
-    id: 'complete',
-    label: 'Complete',
-    icon: 'checkmarkDone',
-    description: 'Report generated successfully',
-  },
-];
+const STAGE_ICONS: Record<GenerationStage['stage'], string> = {
+  fetching: 'download',
+  generating: 'ai',
+  scoring: 'checkmarkCircle',
+  complete: 'checkmarkDone',
+};
 
 export const GenerationProgress: React.FC<GenerationProgressProps> = ({ stage }) => {
+  const { dictionary } = useLocalization();
+  const progressCopy = dictionary.autoScout.wizard.progress;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const stages = useMemo(() => {
+    const keys: GenerationStage['stage'][] = ['fetching', 'generating', 'scoring', 'complete'];
+    return keys.map((key) => ({
+      id: key,
+      label: progressCopy.stages[key].label,
+      description: progressCopy.stages[key].description,
+      icon: STAGE_ICONS[key],
+    }));
+  }, [progressCopy.stages]);
 
   useEffect(() => {
     // Pulse animation for active stage
@@ -73,7 +65,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({ stage })
   }, [stage.progress]);
 
   const getCurrentStageIndex = () => {
-    return STAGES.findIndex((s) => s.id === stage.stage);
+    return stages.findIndex((s) => s.id === stage.stage);
   };
 
   const progressWidth = progressAnim.interpolate({
@@ -82,11 +74,11 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({ stage })
   });
 
   const currentStageIndex = getCurrentStageIndex();
-  const currentStage = STAGES[currentStageIndex];
+  const currentStage = stages[currentStageIndex] ?? stages[0];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Generating Report</Text>
+      <Text style={styles.title}>{progressCopy.title}</Text>
       <Text style={styles.subtitle}>{stage.message}</Text>
 
       {/* Progress Bar */}
@@ -126,7 +118,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({ stage })
 
       {/* All Stages List */}
       <View style={styles.stagesList}>
-        {STAGES.map((stageItem, index) => {
+        {stages.map((stageItem, index) => {
           const isActive = index === currentStageIndex;
           const isCompleted = index < currentStageIndex;
           const isPending = index > currentStageIndex;
@@ -166,7 +158,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({ stage })
         <View style={styles.timeEstimate}>
           <Icon name="time" size={16} color={colors.text.secondary} />
           <Text style={styles.timeEstimateText}>
-            Estimated time remaining: {stage.estimatedTimeRemaining}s
+            {progressCopy.timeEstimate.replace('{{seconds}}', String(stage.estimatedTimeRemaining))}
           </Text>
         </View>
       )}
@@ -177,7 +169,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({ stage })
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <Icon name="ai" size={24} color={colors.brand.primary} />
           </Animated.View>
-          <Text style={styles.gptBadgeText}>Powered by GPT-4</Text>
+          <Text style={styles.gptBadgeText}>{progressCopy.poweredBy}</Text>
         </View>
       )}
     </View>

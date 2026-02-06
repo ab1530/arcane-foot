@@ -59,13 +59,7 @@ export class HealthService {
     const uptime = this.getUptime();
 
     // Get database stats
-    const [
-      usersCount,
-      playersCount,
-      clubsCount,
-      reportsCount,
-      matchesCount,
-    ] = await Promise.all([
+    const [usersCount, playersCount, clubsCount, reportsCount, matchesCount] = await Promise.all([
       this.prisma.users.count(),
       this.prisma.players.count(),
       this.prisma.clubs.count(),

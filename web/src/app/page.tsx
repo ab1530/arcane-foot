@@ -9,6 +9,7 @@ import { InfiniteMarquee, LogoItem } from "@/components/ui/infinite-marquee";
 import { GradientText, NeonText } from "@/components/ui/gradient-text";
 import { Card3D } from "@/components/ui/card-3d";
 import { useAuth } from "@/contexts/auth-context";
+import { useLanguage } from "@/contexts/language-context";
 import Link from "next/link";
 import { ArrowRight, Zap, Target, TrendingUp, Users, Award, ChevronDown, Play, Sparkles, Trophy, Shield, User } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
@@ -16,6 +17,8 @@ import { fadeInUp, staggerContainer, staggerItem, scrollReveal } from "@/lib/des
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
+  const { dictionary } = useLanguage();
+  const t = dictionary.home;
   const [isScrolled, setIsScrolled] = useState(false);
   const targetRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -34,6 +37,12 @@ export default function Home() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Mapping icons to stats
+  const statsWithIcons = t.hero.stats.map((stat, index) => ({
+    ...stat,
+    icon: index === 0 ? Users : index === 1 ? Trophy : Shield
+  }));
 
   return (
     <main className="min-h-screen overflow-hidden relative">
@@ -73,16 +82,16 @@ export default function Home() {
               className="hidden md:flex items-center gap-8"
             >
               <Link href="/players" className="text-arcane-grey hover:text-arcane-accent transition-colors font-medium">
-                Players
+                {t.nav.players}
               </Link>
               <Link href="/services" className="text-arcane-grey hover:text-arcane-accent transition-colors font-medium">
-                Services
+                {t.nav.services}
               </Link>
               <Link href="/about" className="text-arcane-grey hover:text-arcane-accent transition-colors font-medium">
-                About
+                {t.nav.about}
               </Link>
               <Link href="/contact" className="text-arcane-grey hover:text-arcane-accent transition-colors font-medium">
-                Contact
+                {t.nav.contact}
               </Link>
             </motion.div>
 
@@ -96,7 +105,7 @@ export default function Home() {
                 <>
                   <Link href="/dashboard">
                     <Button variant="secondary" size="sm" className="hidden lg:flex">
-                      Dashboard
+                      {t.nav.dashboard}
                     </Button>
                   </Link>
                   <Link href="/dashboard">
@@ -116,12 +125,12 @@ export default function Home() {
                 <>
                   <Link href="/login">
                     <Button variant="secondary" size="sm">
-                      Login
+                      {t.nav.login}
                     </Button>
                   </Link>
                   <Link href="/signup">
                     <Button className="group">
-                      Get Started
+                      {t.nav.getStarted}
                       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </Link>
@@ -152,7 +161,7 @@ export default function Home() {
               <Sparkles className="h-5 w-5 text-arcane-accent" />
             </motion.div>
             <span className="text-base text-arcane-accent font-bold uppercase tracking-wider">
-              Redefining Football Representation
+              {t.hero.badge}
             </span>
           </motion.div>
 
@@ -169,7 +178,7 @@ export default function Home() {
                 transition={{ delay: 0.5 }}
               >
                 <GradientText animated className="block">
-                  EMPOWERING
+                  {t.hero.title.line1}
                 </GradientText>
               </motion.div>
               <motion.div
@@ -178,7 +187,7 @@ export default function Home() {
                 transition={{ delay: 0.7 }}
               >
                 <NeonText className="block">
-                  FOOTBALL
+                  {t.hero.title.line2}
                 </NeonText>
               </motion.div>
             </h1>
@@ -191,19 +200,19 @@ export default function Home() {
             transition={{ delay: 0.9 }}
             className="text-2xl md:text-3xl lg:text-4xl text-arcane-grey max-w-4xl mx-auto mb-16 leading-relaxed font-light"
           >
-            Through{" "}
+            {t.hero.subtitle.through}{" "}
             <span className="text-white font-bold relative inline-block">
-              performance
+              {t.hero.subtitle.performance}
               <span className="absolute -bottom-1 left-0 w-full h-1 bg-arcane-accent/30 blur-sm" />
             </span>
             ,{" "}
             <span className="text-white font-bold relative inline-block">
-              precision
+              {t.hero.subtitle.precision}
               <span className="absolute -bottom-1 left-0 w-full h-1 bg-arcane-accent/30 blur-sm" />
             </span>{" "}
-            and{" "}
+            {t.hero.subtitle.and}{" "}
             <span className="text-arcane-accent font-bold relative inline-block">
-              bold ambition
+              {t.hero.subtitle.ambition}
               <span className="absolute -bottom-1 left-0 w-full h-1 bg-arcane-accent blur-sm" />
             </span>
           </motion.p>
@@ -221,7 +230,7 @@ export default function Home() {
             >
               <Button size="lg" className="group text-xl px-12 py-8 rounded-full shadow-[0_0_40px_rgba(228,255,59,0.4)] hover:shadow-[0_0_60px_rgba(228,255,59,0.6)] transition-all">
                 <Zap className="mr-3 h-6 w-6" />
-                Start Your Journey
+                {t.hero.cta.startJourney}
                 <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
               </Button>
             </motion.div>
@@ -231,7 +240,7 @@ export default function Home() {
             >
               <Button size="lg" variant="secondary" className="text-xl px-12 py-8 rounded-full backdrop-blur-md">
                 <Play className="mr-3 h-6 w-6" />
-                Watch Video
+                {t.hero.cta.watchVideo}
               </Button>
             </motion.div>
           </motion.div>
@@ -243,11 +252,7 @@ export default function Home() {
             animate="animate"
             className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto"
           >
-            {[
-              { value: 500, label: "Elite Players", suffix: "+", icon: Users },
-              { value: 50, label: "Top Clubs", suffix: "+", icon: Trophy },
-              { value: 98, label: "Success Rate", suffix: "%", icon: Shield },
-            ].map((stat, index) => (
+            {statsWithIcons.map((stat, index) => (
               <motion.div key={index} variants={staggerItem}>
                 <Card3D>
                   <GlassCard variant="elevated" glowOnHover className="text-center p-8 cursor-pointer">
@@ -278,7 +283,7 @@ export default function Home() {
             className="absolute bottom-12 left-1/2 -translate-x-1/2"
           >
             <div className="flex flex-col items-center gap-2">
-              <span className="text-xs text-arcane-grey uppercase tracking-wider">Scroll</span>
+              <span className="text-xs text-arcane-grey uppercase tracking-wider">{t.hero.scroll}</span>
               <ChevronDown className="h-8 w-8 text-arcane-accent" />
             </div>
           </motion.div>
@@ -304,15 +309,14 @@ export default function Home() {
               className="inline-block mb-6"
             >
               <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                What We Offer
+                {t.services.badge}
               </span>
             </motion.div>
             <h2 className="text-6xl md:text-7xl lg:text-8xl font-black mb-6">
-              <GradientText>OUR SERVICES</GradientText>
+              <GradientText>{t.services.title}</GradientText>
             </h2>
             <p className="text-2xl text-arcane-grey max-w-3xl mx-auto leading-relaxed">
-              Comprehensive solutions for{" "}
-              <span className="text-white font-bold">modern football representation</span>
+              {t.services.subtitle}
             </p>
           </motion.div>
 
@@ -333,17 +337,17 @@ export default function Home() {
                     <div>
                       <Target className="h-16 w-16 text-arcane-accent mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
                       <h3 className="text-4xl font-black text-white mb-4 uppercase tracking-tight">
-                        Player Management
+                        {t.services.items.playerManagement.title}
                       </h3>
                       <p className="text-lg text-arcane-grey leading-relaxed group-hover:text-white transition-colors">
-                        End-to-end career development with personalized strategies, contract negotiation, and 24/7 support
+                        {t.services.items.playerManagement.description}
                       </p>
                     </div>
                     <motion.div
                       className="flex items-center gap-2 text-arcane-accent font-bold"
                       whileHover={{ x: 5 }}
                     >
-                      <span>Learn More</span>
+                      <span>{t.services.items.playerManagement.cta}</span>
                       <ArrowRight className="h-5 w-5" />
                     </motion.div>
                   </div>
@@ -363,10 +367,10 @@ export default function Home() {
                 <GlassCard variant="bordered" glowOnHover className="h-full p-8">
                   <Users className="h-12 w-12 text-arcane-accent mb-4 group-hover:scale-110 transition-all" />
                   <h3 className="text-2xl font-bold text-white mb-3 uppercase">
-                    Scouting Network
+                    {t.services.items.scoutingNetwork.title}
                   </h3>
                   <p className="text-arcane-grey group-hover:text-white transition-colors">
-                    Global talent identification with data-driven insights
+                    {t.services.items.scoutingNetwork.description}
                   </p>
                 </GlassCard>
               </Card3D>
@@ -384,10 +388,10 @@ export default function Home() {
                 <GlassCard variant="bordered" glowOnHover className="h-full p-8">
                   <TrendingUp className="h-12 w-12 text-arcane-accent mb-4 group-hover:scale-110 transition-all" />
                   <h3 className="text-2xl font-bold text-white mb-3 uppercase">
-                    Performance Analytics
+                    {t.services.items.performanceAnalytics.title}
                   </h3>
                   <p className="text-arcane-grey group-hover:text-white transition-colors">
-                    AI-powered tracking
+                    {t.services.items.performanceAnalytics.description}
                   </p>
                 </GlassCard>
               </Card3D>
@@ -405,10 +409,10 @@ export default function Home() {
                 <GlassCard variant="bordered" glowOnHover className="h-full p-8">
                   <Award className="h-12 w-12 text-arcane-accent mb-4 group-hover:scale-110 transition-all" />
                   <h3 className="text-2xl font-bold text-white mb-3 uppercase">
-                    Club Relations
+                    {t.services.items.clubRelations.title}
                   </h3>
                   <p className="text-arcane-grey group-hover:text-white transition-colors">
-                    Strategic partnerships
+                    {t.services.items.clubRelations.description}
                   </p>
                 </GlassCard>
               </Card3D>
@@ -429,10 +433,10 @@ export default function Home() {
                     <Zap className="h-16 w-16 text-arcane-accent group-hover:scale-110 transition-all" />
                     <div>
                       <h3 className="text-3xl font-black text-white mb-2 uppercase">
-                        Transfer Strategy
+                        {t.services.items.transferStrategy.title}
                       </h3>
                       <p className="text-lg text-arcane-grey group-hover:text-white transition-colors">
-                        Optimized transfer planning and market intelligence
+                        {t.services.items.transferStrategy.description}
                       </p>
                     </div>
                   </div>
@@ -452,10 +456,10 @@ export default function Home() {
                 <GlassCard variant="bordered" glowOnHover className="h-full p-8">
                   <Sparkles className="h-12 w-12 text-arcane-accent mb-4 group-hover:scale-110 transition-all" />
                   <h3 className="text-2xl font-bold text-white mb-3 uppercase">
-                    Brand Building
+                    {t.services.items.brandBuilding.title}
                   </h3>
                   <p className="text-arcane-grey group-hover:text-white transition-colors">
-                    Personal branding
+                    {t.services.items.brandBuilding.description}
                   </p>
                 </GlassCard>
               </Card3D>
@@ -485,14 +489,14 @@ export default function Home() {
               className="inline-block mb-6"
             >
               <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                Our Roster
+                {t.players.badge}
               </span>
             </motion.div>
             <h2 className="text-6xl md:text-7xl lg:text-8xl font-black mb-6">
-              ELITE <NeonText>PLAYERS</NeonText>
+              {t.players.title.elite} <NeonText>{t.players.title.highlight}</NeonText>
             </h2>
             <p className="text-2xl text-arcane-grey max-w-3xl mx-auto leading-relaxed">
-              Representing the <span className="text-white font-bold">future of football</span> with precision and ambition
+              {t.players.subtitle}
             </p>
           </motion.div>
 
@@ -504,11 +508,7 @@ export default function Home() {
             viewport={{ once: true }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
-            {[
-              { name: "Marcus Silva", position: "Striker", club: "Bayern Munich", rating: 94 },
-              { name: "Alex Chen", position: "Midfielder", club: "Barcelona", rating: 92 },
-              { name: "Jordan Williams", position: "Defender", club: "Real Madrid", rating: 90 },
-            ].map((player, index) => (
+            {t.players.mockPlayers.map((player, index) => (
               <motion.div key={index} variants={staggerItem}>
                 <Card3D>
                   <GlassCard variant="elevated" glowOnHover className="group cursor-pointer">
@@ -550,7 +550,7 @@ export default function Home() {
                             whileHover={{ y: 0, opacity: 1 }}
                           >
                             <Trophy className="h-5 w-5 text-arcane-accent" />
-                            <span className="text-white font-bold text-sm">Elite Performance</span>
+                            <span className="text-white font-bold text-sm">{t.players.performance}</span>
                           </motion.div>
                         </div>
                       </div>
@@ -589,7 +589,7 @@ export default function Home() {
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button variant="default" className="w-full group/btn shadow-[0_0_20px_rgba(228,255,59,0.3)]">
                           <Users className="mr-2 h-4 w-4" />
-                          View Profile
+                          {t.players.viewProfile}
                           <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
                         </Button>
                       </motion.div>
@@ -609,7 +609,7 @@ export default function Home() {
             className="text-center mt-16"
           >
             <Link href="/players" className="inline-flex items-center gap-2 text-arcane-accent hover:text-white transition-colors text-lg font-medium group">
-              View All Players
+              {t.players.viewAll}
               <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
             </Link>
           </motion.div>
@@ -664,7 +664,7 @@ export default function Home() {
               >
                 <Zap className="h-4 w-4 text-arcane-accent" />
                 <span className="text-sm font-medium text-arcane-accent uppercase tracking-wide">
-                  Join the Elite
+                  {t.cta.badge}
                 </span>
               </motion.div>
 
@@ -676,9 +676,9 @@ export default function Home() {
                 transition={{ delay: 0.3 }}
                 className="text-5xl md:text-7xl font-bold mb-6 uppercase tracking-wide"
               >
-                <span className="text-white">Ready to</span>
+                <span className="text-white">{t.cta.title.ready}</span>
                 <br />
-                <span className="text-arcane-accent">Elevate?</span>
+                <span className="text-arcane-accent">{t.cta.title.elevate}</span>
               </motion.h2>
 
               {/* Description */}
@@ -689,8 +689,8 @@ export default function Home() {
                 transition={{ delay: 0.4 }}
                 className="text-xl md:text-2xl text-arcane-grey max-w-2xl mx-auto mb-12 leading-relaxed"
               >
-                Join the <span className="text-white font-semibold">elite network</span> of players, scouts, and clubs that trust{" "}
-                <span className="text-arcane-accent font-semibold">Arcane Football</span>
+                {t.cta.subtitle.join} <span className="text-white font-semibold">{t.cta.subtitle.network}</span> {t.cta.subtitle.trust}{" "}
+                <span className="text-arcane-accent font-semibold">{t.cta.subtitle.arcane}</span>
               </motion.p>
 
               {/* CTA Buttons */}
@@ -703,7 +703,7 @@ export default function Home() {
               >
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button size="lg" className="text-lg px-12 py-6 group shadow-[0_0_30px_rgba(228,255,59,0.3)]">
-                    Get Started
+                    {t.cta.buttons.getStarted}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </motion.div>
@@ -711,7 +711,7 @@ export default function Home() {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button size="lg" variant="secondary" className="text-lg px-12 py-6 group">
                     <Play className="mr-2 h-5 w-5" />
-                    Watch Video
+                    {t.cta.buttons.watchVideo}
                   </Button>
                 </motion.div>
               </motion.div>
@@ -725,10 +725,10 @@ export default function Home() {
                 className="mt-16 pt-12 border-t border-arcane-darkBorder/50"
               >
                 <p className="text-sm text-arcane-grey uppercase tracking-wider mb-6">
-                  Trusted by top clubs worldwide
+                  {t.cta.trusted.title}
                 </p>
                 <div className="flex flex-wrap justify-center gap-8 items-center">
-                  {["Real Madrid", "Barcelona", "Bayern Munich", "PSG"].map((club, i) => (
+                  {t.cta.trusted.clubs.map((club, i) => (
                     <div
                       key={i}
                       className="text-arcane-grey hover:text-white transition-colors font-medium text-sm md:text-base"
@@ -753,10 +753,10 @@ export default function Home() {
             className="text-center"
           >
             <h3 className="text-lg uppercase tracking-widest text-arcane-grey mb-2 font-bold">
-              Trusted Worldwide
+              {t.partners.title.trusted}
             </h3>
             <p className="text-4xl md:text-5xl font-black">
-              <GradientText>Elite Club Partners</GradientText>
+              <GradientText>{t.partners.title.elite}</GradientText>
             </p>
           </motion.div>
         </div>
@@ -764,26 +764,16 @@ export default function Home() {
         <div className="space-y-8">
           {/* First row */}
           <InfiniteMarquee speed={40} direction="left">
-            <LogoItem name="Real Madrid" />
-            <LogoItem name="Barcelona" />
-            <LogoItem name="Bayern Munich" />
-            <LogoItem name="PSG" />
-            <LogoItem name="Manchester City" />
-            <LogoItem name="Liverpool" />
-            <LogoItem name="Juventus" />
-            <LogoItem name="AC Milan" />
+            {t.partners.clubs.slice(0, 8).map((club) => (
+              <LogoItem key={club} name={club} />
+            ))}
           </InfiniteMarquee>
 
           {/* Second row */}
           <InfiniteMarquee speed={45} direction="right">
-            <LogoItem name="Chelsea" />
-            <LogoItem name="Arsenal" />
-            <LogoItem name="Inter Milan" />
-            <LogoItem name="Atletico Madrid" />
-            <LogoItem name="Borussia Dortmund" />
-            <LogoItem name="Tottenham" />
-            <LogoItem name="Napoli" />
-            <LogoItem name="AS Roma" />
+            {t.partners.clubs.slice(8, 16).map((club) => (
+              <LogoItem key={club} name={club} />
+            ))}
           </InfiniteMarquee>
         </div>
       </section>
@@ -800,14 +790,14 @@ export default function Home() {
                 <span className="text-2xl font-bold text-white">ARCANE</span>
               </div>
               <p className="text-arcane-grey text-sm leading-relaxed">
-                Empowering football through performance, precision and bold ambition.
+                {t.footer.tagline}
               </p>
             </div>
 
             <div>
-              <h4 className="text-white font-bold mb-4 uppercase tracking-wide">Services</h4>
+              <h4 className="text-white font-bold mb-4 uppercase tracking-wide">{t.footer.sections.services.title}</h4>
               <ul className="space-y-2">
-                {["Player Management", "Scouting", "Analytics", "Transfers"].map((item) => (
+                {t.footer.sections.services.items.map((item) => (
                   <li key={item}>
                     <Link href="#" className="text-arcane-grey hover:text-arcane-accent transition-colors text-sm">
                       {item}
@@ -818,9 +808,9 @@ export default function Home() {
             </div>
 
             <div>
-              <h4 className="text-white font-bold mb-4 uppercase tracking-wide">Company</h4>
+              <h4 className="text-white font-bold mb-4 uppercase tracking-wide">{t.footer.sections.company.title}</h4>
               <ul className="space-y-2">
-                {["About", "Careers", "Contact", "Brand"].map((item) => (
+                {t.footer.sections.company.items.map((item) => (
                   <li key={item}>
                     <Link href="#" className="text-arcane-grey hover:text-arcane-accent transition-colors text-sm">
                       {item}
@@ -831,7 +821,7 @@ export default function Home() {
             </div>
 
             <div>
-              <h4 className="text-white font-bold mb-4 uppercase tracking-wide">Connect</h4>
+              <h4 className="text-white font-bold mb-4 uppercase tracking-wide">{t.footer.sections.connect.title}</h4>
               <div className="space-y-2">
                 <a href="https://www.arcane.li" className="block text-arcane-grey hover:text-arcane-accent transition-colors text-sm">
                   www.arcane.li
@@ -845,17 +835,17 @@ export default function Home() {
 
           <div className="border-t border-arcane-darkBorder/40 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-arcane-grey text-sm">
-              © 2025 Arcane Football GmbH. All rights reserved.
+              {t.footer.copyright}
             </p>
             <div className="flex gap-6">
               <Link href="/brand-preview" className="text-arcane-grey hover:text-arcane-accent transition-colors text-sm">
-                Brand Guidelines
+                {t.footer.links.brand}
               </Link>
               <Link href="#" className="text-arcane-grey hover:text-arcane-accent transition-colors text-sm">
-                Privacy
+                {t.footer.links.privacy}
               </Link>
               <Link href="#" className="text-arcane-grey hover:text-arcane-accent transition-colors text-sm">
-                Terms
+                {t.footer.links.terms}
               </Link>
             </div>
           </div>

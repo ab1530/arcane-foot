@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -18,9 +14,7 @@ export class EventsService {
 
     // Validation des dates
     if (new Date(eventData.startDate) >= new Date(eventData.endDate)) {
-      throw new BadRequestException(
-        'La date de début doit être antérieure à la date de fin',
-      );
+      throw new BadRequestException('La date de début doit être antérieure à la date de fin');
     }
 
     // Vérifier que le match existe si matchId est fourni
@@ -212,14 +206,10 @@ export class EventsService {
       const newStartDate = eventData.startDate
         ? new Date(eventData.startDate)
         : new Date(event.startDate);
-      const newEndDate = eventData.endDate
-        ? new Date(eventData.endDate)
-        : new Date(event.endDate);
+      const newEndDate = eventData.endDate ? new Date(eventData.endDate) : new Date(event.endDate);
 
       if (newStartDate >= newEndDate) {
-        throw new BadRequestException(
-          'La date de début doit être antérieure à la date de fin',
-        );
+        throw new BadRequestException('La date de début doit être antérieure à la date de fin');
       }
     }
 

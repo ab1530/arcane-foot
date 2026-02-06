@@ -2,11 +2,23 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL, API_TIMEOUT, STORAGE_KEYS } from '../constants/config';
 import type { AuthResponse, Player, Club, Match, PaginatedResponse } from '../types';
-import { logger, logError, logApiCall } from '../utils/logger';
+import type { CreateHardwareSessionPayload, HardwareSession } from '../types/hardware';
+import { logBridge, logAPI, logError } from '../logging/expoLogBridge';
+
+const generateRequestId = () =>
+  `${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 10)}`;
+
+// Quiet noisy endpoints (success logs) to avoid log spam (e.g. /auth/me health checks)
+const QUIET_ENDPOINTS = ['/auth/me'];
+const shouldLogSuccess = (url?: string) =>
+  url ? !QUIET_ENDPOINTS.some((endpoint) => url.includes(endpoint)) : false;
 
 class ApiClient {
   private client: AxiosInstance;
   private authToken: string | null = null;
+  private refreshPromise: Promise<string | null> | null = null;
+  private onAuthInvalid?: () => void | Promise<void>;
+  private onTokenRefreshed?: (token: string) => void;
 
   constructor() {
     this.client = axios.create({
@@ -20,17 +32,25 @@ class ApiClient {
     // Request interceptor to add auth token and track request start
     this.client.interceptors.request.use(
       async (config) => {
+        if ((config.headers as any)?.['x-skip-auth']) {
+          return config;
+        }
         const token =
           this.authToken || (await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN));
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        // Attach request ID for backend correlation
+        const requestId = generateRequestId();
+        config.headers['x-request-id'] = requestId;
+        (config as any).requestId = requestId;
+
         // Add timestamp for duration tracking
         (config as any).startTime = Date.now();
         return config;
       },
       (error) => {
-        logError('API request interceptor error', error);
+        logError('API request interceptor error', error as Error);
         return Promise.reject(error);
       }
     );
@@ -42,7 +62,10 @@ class ApiClient {
         const duration = Date.now() - ((response.config as any).startTime || Date.now());
         const endpoint = response.config.url || 'unknown';
         const method = (response.config.method || 'GET').toUpperCase();
-        logApiCall(endpoint, method, duration, response.status);
+        const requestId = (response.config as any).requestId;
+        if (shouldLogSuccess(endpoint)) {
+          logAPI(method, endpoint, response.status, duration, requestId);
+        }
         return response;
       },
       async (error: AxiosError) => {
@@ -51,22 +74,32 @@ class ApiClient {
         const endpoint = error.config?.url || 'unknown';
         const method = (error.config?.method || 'GET').toUpperCase();
         const status = error.response?.status || 0;
+        const requestId = (error.config as any)?.requestId;
 
-        logApiCall(endpoint, method, duration, status);
-        logError(`API ${method} ${endpoint} failed`, error, {
+        logAPI(method, endpoint, status, duration, requestId);
+        logError(`API ${method} ${endpoint} failed`, error as Error, {
           status,
           statusText: error.response?.statusText,
           data: error.response?.data,
+          requestId,
         });
 
-        if (error.response?.status === 401) {
-          // Token expired or invalid
-          await AsyncStorage.multiRemove([
-            STORAGE_KEYS.AUTH_TOKEN,
-            STORAGE_KEYS.USER_DATA,
-          ]);
-          this.authToken = null;
-          logger.warn('Authentication token expired or invalid');
+        if (error.response?.status === 401 && error.config && !(error.config as any)._retry) {
+          const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+          originalRequest._retry = true;
+
+          try {
+            const newToken = await this.handleTokenRefresh();
+            if (newToken) {
+              originalRequest.headers = originalRequest.headers ?? {};
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return this.client(originalRequest);
+            }
+          } catch (refreshError) {
+            logError('Token refresh failed', refreshError as Error);
+          }
+
+          await this.handleAuthFailure();
         }
         return Promise.reject(error);
       }
@@ -75,6 +108,61 @@ class ApiClient {
 
   setAuthToken(token: string | null) {
     this.authToken = token;
+  }
+
+  setAuthHandlers(handlers: { onAuthInvalid?: () => void | Promise<void>; onTokenRefreshed?: (token: string) => void }) {
+    this.onAuthInvalid = handlers.onAuthInvalid;
+    this.onTokenRefreshed = handlers.onTokenRefreshed;
+  }
+
+  private async handleTokenRefresh(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    if (!refreshToken) {
+      return null;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const { data } = await axios.post(
+          `${API_URL}/auth/refresh`,
+          { refreshToken },
+          {
+            timeout: API_TIMEOUT || 10000,
+            headers: { Authorization: '' },
+          }
+        );
+        const newAccessToken = (data as any)?.accessToken;
+        if (!newAccessToken) return null;
+
+        this.authToken = newAccessToken;
+        await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newAccessToken);
+        this.onTokenRefreshed?.(newAccessToken);
+        return newAccessToken;
+      } catch (err) {
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  private async handleAuthFailure() {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.AUTH_TOKEN,
+      STORAGE_KEYS.USER_DATA,
+      STORAGE_KEYS.REFRESH_TOKEN,
+    ]);
+    this.authToken = null;
+    logBridge.warn('Authentication token expired or invalid', 'AUTH');
+    if (this.onAuthInvalid) {
+      await this.onAuthInvalid();
+    }
   }
 
   private normalizePaginated<T>(payload: any): PaginatedResponse<T> {
@@ -145,8 +233,31 @@ class ApiClient {
     return data;
   }
 
+  async refreshAccessToken(refreshToken: string): Promise<string | null> {
+    try {
+      const { data } = await axios.post(
+        `${API_URL}/auth/refresh`,
+        { refreshToken },
+        { timeout: API_TIMEOUT || 10000 }
+      );
+      const newAccessToken = (data as any)?.accessToken ?? null;
+      if (newAccessToken) {
+        this.authToken = newAccessToken;
+        await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newAccessToken);
+        this.onTokenRefreshed?.(newAccessToken);
+      }
+      return newAccessToken;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async logout(): Promise<void> {
-    await AsyncStorage.multiRemove([STORAGE_KEYS.AUTH_TOKEN, STORAGE_KEYS.USER_DATA]);
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.AUTH_TOKEN,
+      STORAGE_KEYS.USER_DATA,
+      STORAGE_KEYS.REFRESH_TOKEN,
+    ]);
   }
 
   async getCurrentUser(): Promise<any> {
@@ -155,7 +266,7 @@ class ApiClient {
   }
 
   async updateAuthProfile(profileData: any): Promise<any> {
-    const { data } = await this.client.patch('/auth/profile', profileData);
+    const { data } = await this.client.patch('/auth/me', profileData);
     return data;
   }
 
@@ -298,6 +409,18 @@ class ApiClient {
     return data;
   }
 
+  // AI Usage Stats
+  async getAIUsageStats(): Promise<any> {
+    try {
+      const { data } = await this.client.get('/ai/usage-stats');
+      return data;
+    } catch (error) {
+      // Fallback to empty stats if endpoint doesn't exist yet
+      logError('Failed to fetch AI usage stats', error as Error);
+      return { totalQueries: 0, reportsAnalyzed: 0 };
+    }
+  }
+
   // Analytics endpoints
   async getAnalyticsOverview(): Promise<any> {
     const { data } = await this.client.get('/analytics/overview');
@@ -350,7 +473,37 @@ class ApiClient {
 
   // Passport endpoints
   async getPassport(token: string): Promise<any> {
-    const { data } = await this.client.get(`/passport/${token}`);
+    const { data } = await this.client.get(`/passport/token/${token}`);
+    return data;
+  }
+
+  async getPassportByToken(token: string): Promise<any> {
+    const { data } = await this.client.get(`/passport/token/${token}`);
+    return data;
+  }
+
+  async createPassport(passportData: { playerId: string; additionalData?: any }): Promise<any> {
+    const { data } = await this.client.post('/passport', passportData);
+    return data;
+  }
+
+  async getPassportByPlayer(playerId: string): Promise<any> {
+    const { data } = await this.client.get(`/passport/player/${playerId}`);
+    return data;
+  }
+
+  async getMyPassport(): Promise<any> {
+    const { data } = await this.client.get('/passport/me');
+    return data;
+  }
+
+  async verifyPassport(playerId: string, verificationData: { verified: boolean; verificationStatus: string; adminNotes?: string }): Promise<any> {
+    const { data } = await this.client.put(`/passport/player/${playerId}/verify`, verificationData);
+    return data;
+  }
+
+  async deletePassport(playerId: string): Promise<any> {
+    const { data } = await this.client.delete(`/passport/player/${playerId}`);
     return data;
   }
 
@@ -375,6 +528,16 @@ class ApiClient {
     return this.normalizePaginated<Player>(data);
   }
 
+  async getRecentPlayerViews(limit: number = 12): Promise<any[]> {
+    const { data } = await this.client.get('/players/views/recent', { params: { limit } });
+    return data;
+  }
+
+  async recordPlayerView(playerId: string, payload?: { source?: string }): Promise<{ viewedAt: string }> {
+    const { data } = await this.client.post(`/players/${playerId}/view`, payload ?? {});
+    return data;
+  }
+
   async getPlayer(id: string): Promise<Player> {
     return this.getRaw<Player>(`/players/${id}`);
   }
@@ -386,6 +549,26 @@ class ApiClient {
 
   async createPlayer(playerData: any): Promise<any> {
     const { data } = await this.client.post('/players', playerData);
+    return data;
+  }
+
+  async importScoutPlayers(payload: {
+    rawText: string;
+    dryRun?: boolean;
+    defaultNationality?: string;
+  }): Promise<{
+    created: number;
+    updated: number;
+    failed: number;
+    rows: Array<{
+      line: number;
+      raw: string;
+      action: 'CREATED' | 'UPDATED' | 'FAILED';
+      playerId?: string;
+      reason?: string;
+    }>;
+  }> {
+    const { data } = await this.client.post('/players/scout-import', payload);
     return data;
   }
 
@@ -477,6 +660,12 @@ class ApiClient {
     return data;
   }
 
+  // Subscription pricing
+  async getSubscriptionPricing(): Promise<any> {
+    const { data } = await this.client.get('/subscriptions/pricing');
+    return data;
+  }
+
   // Subscription endpoints
   async getMySubscription(): Promise<any> {
     const { data } = await this.client.get('/subscriptions/me');
@@ -529,14 +718,14 @@ class ApiClient {
           userId = user?.id;
         } catch (e) {
           // If getting user fails, return empty array
-          logError('Failed to get current user for notifications', e);
+          logError('Failed to get current user for notifications', e as Error);
           return [];
         }
       }
 
       // Only proceed if we have a valid userId
       if (!userId) {
-        logger.warn('No userId available for fetching notifications');
+        logBridge.warn('No userId available for fetching notifications', 'API');
         return [];
       }
 
@@ -545,7 +734,7 @@ class ApiClient {
       return data;
     } catch (error) {
       // Return empty array on error instead of throwing
-      logError('Error fetching notifications', error);
+      logError('Error fetching notifications', error as Error);
       return [];
     }
   }
@@ -558,6 +747,94 @@ class ApiClient {
   async deleteNotification(notificationId: string): Promise<any> {
     const { data } = await this.client.delete(`/notifications/${notificationId}`);
     return data;
+  }
+
+  // FCM Push Notification endpoints
+  async registerDevice(payload: {
+    fcmToken: string;
+    platform: 'ios' | 'android';
+    deviceInfo?: any;
+    userId?: string;
+  }): Promise<any> {
+    const { data } = await this.client.post('/notifications/register-device', payload);
+    return data;
+  }
+
+  async unregisterDevice(payload: { fcmToken: string; userId?: string }): Promise<any> {
+    const { data } = await this.client.post('/notifications/unregister-device', payload);
+    return data;
+  }
+
+  async sendNotification(payload: {
+    userId: string;
+    title: string;
+    body: string;
+    type?: string;
+    data?: any;
+  }): Promise<any> {
+    const { data } = await this.client.post('/notifications/send', payload);
+    return data;
+  }
+
+  async sendMultipleNotifications(payload: {
+    userIds: string[];
+    title: string;
+    body: string;
+    type?: string;
+    data?: any;
+  }): Promise<any> {
+    const { data } = await this.client.post('/notifications/send-multiple', payload);
+    return data;
+  }
+
+  async sendTopicNotification(payload: {
+    topic: string;
+    title: string;
+    body: string;
+    data?: any;
+  }): Promise<any> {
+    const { data } = await this.client.post('/notifications/send-topic', payload);
+    return data;
+  }
+
+  async subscribeToTopic(payload: { topic: string; userIds?: string[] }): Promise<any> {
+    const { data } = await this.client.post('/notifications/subscribe-topic', payload);
+    return data;
+  }
+
+  async unsubscribeFromTopic(payload: { topic: string; userIds?: string[] }): Promise<any> {
+    const { data } = await this.client.post('/notifications/unsubscribe-topic', payload);
+    return data;
+  }
+
+  async scheduleMatchReminder(matchId: string): Promise<any> {
+    const { data } = await this.client.post(`/notifications/match/${matchId}/reminder`);
+    return data;
+  }
+
+  async sendReportNotification(reportId: string): Promise<any> {
+    const { data } = await this.client.post(`/notifications/report/${reportId}/notify`);
+    return data;
+  }
+
+  // Hardware / GPS endpoints
+  async getHardwareSessions(playerId: string): Promise<HardwareSession[]> {
+    const { data } = await this.client.get(`/hardware/sessions/player/${playerId}`);
+    return data;
+  }
+
+  async getHardwareSession(sessionId: string): Promise<HardwareSession> {
+    const { data } = await this.client.get(`/hardware/sessions/${sessionId}`);
+    return data;
+  }
+
+  async createHardwareSession(payload: CreateHardwareSessionPayload): Promise<HardwareSession> {
+    const { data } = await this.client.post('/hardware/sessions', payload);
+    return data;
+  }
+
+  async deleteHardwareSession(sessionId: string): Promise<void> {
+    await this.client.delete(`/hardware/sessions/${sessionId}`);
   }
 
   // Kanban endpoints (extended)

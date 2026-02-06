@@ -4,7 +4,7 @@ import { SubscriptionTier } from '@prisma/client';
 
 export class CreateSubscriptionDto {
   @ApiProperty({
-    description: 'Niveau d\'abonnement',
+    description: "Niveau d'abonnement",
     enum: SubscriptionTier,
     example: SubscriptionTier.BASIC,
   })

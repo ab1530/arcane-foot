@@ -70,7 +70,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       await this.client.ping();
       this.isConnected = true;
     } catch (error) {
-      this.logger.warn('Redis not available - using in-memory cache');
+      this.logger.warn('Redis not available - using in-memory cache', (error as Error)?.message);
       this.isConnected = false;
     }
   }
@@ -80,11 +80,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    */
   private async disconnect() {
     if (this.isConnected) {
-      await Promise.all([
-        this.client?.quit(),
-        this.subscriber?.quit(),
-        this.publisher?.quit(),
-      ]);
+      await Promise.all([this.client?.quit(), this.subscriber?.quit(), this.publisher?.quit()]);
       this.logger.log('Redis disconnected');
     }
   }
@@ -156,6 +152,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Redis clear pattern error: ${error.message}`);
       return 0;
+    }
+  }
+
+  /**
+   * List keys matching pattern (use cautiously)
+   */
+  async keys(pattern: string): Promise<string[]> {
+    if (!this.isConnected) return [];
+
+    try {
+      return await this.client.keys(pattern);
+    } catch (error) {
+      this.logger.error(`Redis keys error: ${error.message}`);
+      return [];
     }
   }
 

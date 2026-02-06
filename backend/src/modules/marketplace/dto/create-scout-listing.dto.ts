@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsNumber, IsArray, IsObject, Min } from 'class-validator';
 
 export class CreateScoutListingDto {
-  @ApiProperty({ description: 'Professional headline', example: 'Senior Scout - LaLiga & Bundesliga' })
+  @ApiProperty({
+    description: 'Professional headline',
+    example: 'Senior Scout - LaLiga & Bundesliga',
+  })
   @IsString()
   headline: string;
 
@@ -13,7 +16,11 @@ export class CreateScoutListingDto {
 
   @ApiProperty({
     description: 'Expertise in leagues, positions, age groups',
-    example: { leagues: ['LaLiga', 'Bundesliga'], positions: ['GK', 'CB'], ageGroups: ['U21', 'SENIOR'] },
+    example: {
+      leagues: ['LaLiga', 'Bundesliga'],
+      positions: ['GK', 'CB'],
+      ageGroups: ['U21', 'SENIOR'],
+    },
   })
   @IsObject()
   expertise: {

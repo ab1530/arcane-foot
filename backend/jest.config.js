@@ -31,6 +31,7 @@ module.exports = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^src/(.*)$': '<rootDir>/$1',
+    '^@shared/(.*)$': '<rootDir>/../../shared/$1',
   },
   setupFilesAfterEnv: ['<rootDir>/../test/setup.ts'],
 };

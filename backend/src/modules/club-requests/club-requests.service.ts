@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClubRequestDto } from './dto/create-club-request.dto';
 import { UpdateClubRequestDto } from './dto/update-club-request.dto';
@@ -38,9 +38,7 @@ export class ClubRequestsService {
     });
 
     if (existingRequest) {
-      throw new BadRequestException(
-        'Une demande en attente existe déjà pour ce joueur et ce club'
-      );
+      throw new BadRequestException('Une demande en attente existe déjà pour ce joueur et ce club');
     }
 
     const { clubId, playerId, ...requestData } = createClubRequestDto;
@@ -75,11 +73,7 @@ export class ClubRequestsService {
     });
   }
 
-  async findAll(filters?: {
-    clubId?: string;
-    playerId?: string;
-    status?: ClubRequestStatus;
-  }) {
+  async findAll(filters?: { clubId?: string; playerId?: string; status?: ClubRequestStatus }) {
     return this.prisma.club_requests.findMany({
       where: {
         clubId: filters?.clubId,
@@ -176,7 +170,7 @@ export class ClubRequestsService {
     const terminalStatuses: ClubRequestStatus[] = [
       ClubRequestStatus.ACCEPTED,
       ClubRequestStatus.REJECTED,
-      ClubRequestStatus.COMPLETED
+      ClubRequestStatus.COMPLETED,
     ];
     if (updateClubRequestDto.status && terminalStatuses.includes(updateClubRequestDto.status)) {
       data.respondedAt = new Date();
@@ -242,19 +236,14 @@ export class ClubRequestsService {
   async getStatistics(clubId?: string) {
     const where = clubId ? { clubId } : {};
 
-    const [
-      total,
-      pending,
-      accepted,
-      rejected,
-      negotiating,
-      completed,
-    ] = await Promise.all([
+    const [total, pending, accepted, rejected, negotiating, completed] = await Promise.all([
       this.prisma.club_requests.count({ where }),
       this.prisma.club_requests.count({ where: { ...where, status: ClubRequestStatus.PENDING } }),
       this.prisma.club_requests.count({ where: { ...where, status: ClubRequestStatus.ACCEPTED } }),
       this.prisma.club_requests.count({ where: { ...where, status: ClubRequestStatus.REJECTED } }),
-      this.prisma.club_requests.count({ where: { ...where, status: ClubRequestStatus.NEGOTIATING } }),
+      this.prisma.club_requests.count({
+        where: { ...where, status: ClubRequestStatus.NEGOTIATING },
+      }),
       this.prisma.club_requests.count({ where: { ...where, status: ClubRequestStatus.COMPLETED } }),
     ]);
 
@@ -288,7 +277,7 @@ export class ClubRequestsService {
 
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
       throw new BadRequestException(
-        `Transition de statut invalide: ${currentStatus} -> ${newStatus}`
+        `Transition de statut invalide: ${currentStatus} -> ${newStatus}`,
       );
     }
   }

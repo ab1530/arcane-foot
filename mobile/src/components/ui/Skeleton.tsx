@@ -7,6 +7,15 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, ViewStyle, StyleProp } from 'react-native';
 import { colors, radius } from '../../design/theme';
 
+const BORDER_RADIUS = {
+  sm: radius.sm,
+  md: radius.md,
+  lg: radius.lg,
+  xl: radius.xl,
+  '2xl': radius['2xl'],
+  full: radius.full,
+} as const;
+
 interface SkeletonProps {
   /**
    * Width of the skeleton
@@ -91,7 +100,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       case 'text':
         return {
           height: 16,
-          borderRadius: radius.xs,
+          borderRadius: radius.sm,
         };
       default:
         return {

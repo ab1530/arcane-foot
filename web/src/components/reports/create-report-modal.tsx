@@ -37,12 +37,14 @@ interface CreateReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  preselectedMatchId?: string;
 }
 
 export function CreateReportModal({
   isOpen,
   onClose,
   onSuccess,
+  preselectedMatchId,
 }: CreateReportModalProps) {
   const [loading, setLoading] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
@@ -91,8 +93,18 @@ export function CreateReportModal({
     if (isOpen) {
       fetchMatches();
       fetchPlayers();
+
+      // Set preselected match if provided
+      if (preselectedMatchId) {
+        setMatchId(preselectedMatchId);
+      }
+    } else {
+      // Reset form when modal closes
+      resetForm();
+      setMatchSearch("");
+      setPlayerSearch("");
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedMatchId]);
 
   const fetchMatches = async () => {
     try {
@@ -131,6 +143,9 @@ export function CreateReportModal({
   });
 
   const filteredPlayers = players.filter((player) => {
+    // Skip players without user data
+    if (!player.user) return false;
+
     const searchLower = playerSearch.toLowerCase();
     const fullName = `${player.user.firstName} ${player.user.lastName}`.toLowerCase();
     return (
@@ -226,31 +241,71 @@ export function CreateReportModal({
             <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
               Match *
             </label>
-            <div className="relative mb-2">
-              <input
-                type="text"
-                placeholder="Rechercher un match..."
-                value={matchSearch}
-                onChange={(e) => setMatchSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none transition-all text-sm"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-arcane-grey" />
-            </div>
-            <select
-              required
-              value={matchId}
-              onChange={(e) => setMatchId(e.target.value)}
-              disabled={loadingMatches}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all disabled:opacity-50"
-            >
-              <option value="">Sélectionner un match</option>
-              {filteredMatches.map((match) => (
-                <option key={match.id} value={match.id}>
-                  {match.homeClub.name} vs {match.awayClub.name} -{" "}
-                  {new Date(match.scheduledAt).toLocaleDateString("fr-FR")}
-                </option>
-              ))}
-            </select>
+            {preselectedMatchId && matchId && matches.length > 0 ? (
+              // Show selected match prominently when preselected
+              <div className="space-y-2">
+                <div className="p-4 rounded-lg bg-arcane-accent/10 border-2 border-arcane-accent">
+                  {(() => {
+                    const selectedMatch = matches.find((m) => m.id === matchId);
+                    if (!selectedMatch) return <div className="text-white">Chargement...</div>;
+                    return (
+                      <div>
+                        <div className="text-white font-bold text-lg mb-1">
+                          {selectedMatch.homeClub.name} vs {selectedMatch.awayClub.name}
+                        </div>
+                        <div className="text-arcane-grey text-sm">
+                          {new Date(selectedMatch.scheduledAt).toLocaleDateString("fr-FR", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMatchId("");
+                    setMatchSearch("");
+                  }}
+                  className="text-sm text-arcane-accent hover:text-arcane-accent/80 underline"
+                >
+                  Changer de match
+                </button>
+              </div>
+            ) : (
+              // Show searchable dropdown when no preselection
+              <>
+                <div className="relative mb-2">
+                  <input
+                    type="text"
+                    placeholder="Rechercher un match..."
+                    value={matchSearch}
+                    onChange={(e) => setMatchSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none transition-all text-sm"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-arcane-grey" />
+                </div>
+                <select
+                  required
+                  value={matchId}
+                  onChange={(e) => setMatchId(e.target.value)}
+                  disabled={loadingMatches}
+                  className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all disabled:opacity-50"
+                >
+                  <option value="">Sélectionner un match</option>
+                  {filteredMatches.map((match) => (
+                    <option key={match.id} value={match.id}>
+                      {match.homeClub.name} vs {match.awayClub.name} -{" "}
+                      {new Date(match.scheduledAt).toLocaleDateString("fr-FR")}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
 
           {/* Player */}
@@ -258,32 +313,74 @@ export function CreateReportModal({
             <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
               Joueur *
             </label>
-            <div className="relative mb-2">
-              <input
-                type="text"
-                placeholder="Rechercher un joueur..."
-                value={playerSearch}
-                onChange={(e) => setPlayerSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none transition-all text-sm"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-arcane-grey" />
-            </div>
-            <select
-              required
-              value={playerId}
-              onChange={(e) => setPlayerId(e.target.value)}
-              disabled={loadingPlayers}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all disabled:opacity-50"
-            >
-              <option value="">Sélectionner un joueur</option>
-              {filteredPlayers.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.user.firstName} {player.user.lastName}
-                  {player.position && ` - ${player.position}`}
-                  {player.club && ` (${player.club.name})`}
-                </option>
-              ))}
-            </select>
+            {playerId && players.length > 0 ? (
+              // Show selected player prominently when selected
+              <div className="space-y-2">
+                <div className="p-4 rounded-lg bg-arcane-accent/10 border-2 border-arcane-accent">
+                  {(() => {
+                    const selectedPlayer = players.find((p) => p.id === playerId);
+                    if (!selectedPlayer || !selectedPlayer.user) return <div className="text-white">Chargement...</div>;
+                    return (
+                      <div>
+                        <div className="text-white font-bold text-lg mb-1">
+                          {selectedPlayer.user.firstName} {selectedPlayer.user.lastName}
+                        </div>
+                        <div className="text-arcane-grey text-sm flex items-center gap-3">
+                          {selectedPlayer.position && (
+                            <span className="px-2 py-1 rounded bg-arcane-darkBorder text-arcane-accent text-xs font-semibold">
+                              {selectedPlayer.position}
+                            </span>
+                          )}
+                          {selectedPlayer.club && (
+                            <span>{selectedPlayer.club.name}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlayerId("");
+                    setPlayerSearch("");
+                  }}
+                  className="text-sm text-arcane-accent hover:text-arcane-accent/80 underline"
+                >
+                  Changer de joueur
+                </button>
+              </div>
+            ) : (
+              // Show searchable dropdown when no selection
+              <>
+                <div className="relative mb-2">
+                  <input
+                    type="text"
+                    placeholder="Rechercher un joueur..."
+                    value={playerSearch}
+                    onChange={(e) => setPlayerSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none transition-all text-sm"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-arcane-grey" />
+                </div>
+                <select
+                  required
+                  value={playerId}
+                  onChange={(e) => setPlayerId(e.target.value)}
+                  disabled={loadingPlayers}
+                  className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all disabled:opacity-50"
+                >
+                  <option value="">Sélectionner un joueur</option>
+                  {filteredPlayers.map((player) => (
+                    <option key={player.id} value={player.id}>
+                      {player.user.firstName} {player.user.lastName}
+                      {player.position && ` - ${player.position}`}
+                      {player.club && ` (${player.club.name})`}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
         </div>
 
@@ -436,7 +533,7 @@ export function CreateReportModal({
             placeholder="Résumé général du joueur..."
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all resize-none"
+            className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-arcane-accent/30 text-arcane-accent font-medium placeholder-arcane-grey/50 focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all resize-none"
           />
         </div>
 
@@ -451,7 +548,7 @@ export function CreateReportModal({
               placeholder="Qualités du joueur..."
               value={strengths}
               onChange={(e) => setStrengths(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-green-500/30 text-white placeholder-arcane-grey focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all resize-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-green-500/30 text-green-400 font-medium placeholder-arcane-grey/50 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all resize-none"
             />
           </div>
 
@@ -464,7 +561,7 @@ export function CreateReportModal({
               placeholder="Points à améliorer..."
               value={weaknesses}
               onChange={(e) => setWeaknesses(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-red-500/30 text-white placeholder-arcane-grey focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all resize-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-red-500/30 text-red-400 font-medium placeholder-arcane-grey/50 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all resize-none"
             />
           </div>
         </div>
@@ -478,14 +575,14 @@ export function CreateReportModal({
             <select
               value={recommendation}
               onChange={(e) => setRecommendation(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-arcane-accent/30 text-arcane-accent font-medium focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
             >
-              <option value="">Sélectionner...</option>
-              <option value="BUY_NOW">Acheter Maintenant</option>
-              <option value="MONITOR">Suivre</option>
-              <option value="FOLLOW_UP">Revoir Plus Tard</option>
-              <option value="NOT_INTERESTED">Pas Intéressé</option>
-              <option value="NEEDS_MORE_DATA">Plus de Données</option>
+              <option value="" className="bg-gray-800 text-arcane-grey">Sélectionner...</option>
+              <option value="BUY_NOW" className="bg-gray-800 text-arcane-accent">⭐ Acheter Maintenant</option>
+              <option value="MONITOR" className="bg-gray-800 text-arcane-accent">👁️ Suivre</option>
+              <option value="FOLLOW_UP" className="bg-gray-800 text-arcane-accent">🔄 Revoir Plus Tard</option>
+              <option value="NOT_INTERESTED" className="bg-gray-800 text-arcane-accent">❌ Pas Intéressé</option>
+              <option value="NEEDS_MORE_DATA" className="bg-gray-800 text-arcane-accent">📊 Plus de Données</option>
             </select>
           </div>
 
@@ -493,13 +590,37 @@ export function CreateReportModal({
             <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
               Position Jouée
             </label>
-            <input
-              type="text"
-              placeholder="Ex: Attaquant, Milieu..."
+            <select
               value={playerPosition}
               onChange={(e) => setPlayerPosition(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-            />
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-arcane-accent/30 text-arcane-accent font-medium focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
+            >
+              <option value="" className="bg-gray-800 text-arcane-grey">Sélectionner une position...</option>
+              <optgroup label="🥅 Gardien" className="bg-gray-800 text-white">
+                <option value="GK" className="bg-gray-800 text-arcane-accent">GK - Gardien de but</option>
+              </optgroup>
+              <optgroup label="🛡️ Défenseurs" className="bg-gray-800 text-white">
+                <option value="CB" className="bg-gray-800 text-arcane-accent">CB - Défenseur central</option>
+                <option value="LB" className="bg-gray-800 text-arcane-accent">LB - Arrière gauche</option>
+                <option value="RB" className="bg-gray-800 text-arcane-accent">RB - Arrière droit</option>
+                <option value="LWB" className="bg-gray-800 text-arcane-accent">LWB - Piston gauche</option>
+                <option value="RWB" className="bg-gray-800 text-arcane-accent">RWB - Piston droit</option>
+              </optgroup>
+              <optgroup label="⚙️ Milieux" className="bg-gray-800 text-white">
+                <option value="CDM" className="bg-gray-800 text-arcane-accent">CDM - Milieu défensif</option>
+                <option value="CM" className="bg-gray-800 text-arcane-accent">CM - Milieu central</option>
+                <option value="CAM" className="bg-gray-800 text-arcane-accent">CAM - Milieu offensif</option>
+                <option value="LM" className="bg-gray-800 text-arcane-accent">LM - Milieu gauche</option>
+                <option value="RM" className="bg-gray-800 text-arcane-accent">RM - Milieu droit</option>
+              </optgroup>
+              <optgroup label="⚡ Attaquants" className="bg-gray-800 text-white">
+                <option value="LW" className="bg-gray-800 text-arcane-accent">LW - Ailier gauche</option>
+                <option value="RW" className="bg-gray-800 text-arcane-accent">RW - Ailier droit</option>
+                <option value="ST" className="bg-gray-800 text-arcane-accent">ST - Avant-centre</option>
+                <option value="CF" className="bg-gray-800 text-arcane-accent">CF - Buteur</option>
+                <option value="SS" className="bg-gray-800 text-arcane-accent">SS - Second attaquant</option>
+              </optgroup>
+            </select>
           </div>
         </div>
 
@@ -514,7 +635,7 @@ export function CreateReportModal({
               placeholder="Détails de la recommandation..."
               value={recommendationNotes}
               onChange={(e) => setRecommendationNotes(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all resize-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-arcane-accent/30 text-arcane-accent font-medium placeholder-arcane-grey/50 focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all resize-none"
             />
           </div>
         )}
@@ -530,7 +651,7 @@ export function CreateReportModal({
               placeholder="Ex: Rapide, Technique, Leader..."
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-arcane-accent/30 text-arcane-accent font-medium placeholder-arcane-grey/50 focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
             />
           </div>
 
@@ -545,7 +666,7 @@ export function CreateReportModal({
               placeholder="Ex: 90"
               value={playerMinutesPlayed}
               onChange={(e) => setPlayerMinutesPlayed(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-arcane-accent/30 text-arcane-accent font-medium placeholder-arcane-grey/50 focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
             />
           </div>
         </div>

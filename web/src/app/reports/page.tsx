@@ -3,9 +3,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Card3D } from "@/components/ui/card-3d";
 import { AnimatedBackground } from "@/components/ui/animated-background";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import { useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -31,6 +30,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { CreateReportModal } from "@/components/reports/create-report-modal";
+import { useLanguage } from "@/contexts/language-context";
 
 type ReportStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
 
@@ -80,6 +80,17 @@ interface ScoutingReport {
 
 export default function ReportsPage() {
   const router = useRouter();
+  const { dictionary } = useLanguage();
+  const reportsCopy = dictionary.reports;
+  const heroCopy = reportsCopy.hero;
+  const searchCopy = reportsCopy.search;
+  const statsCopy = reportsCopy.stats;
+  const filtersCopy = reportsCopy.filters;
+  const listCopy = reportsCopy.list;
+  const statusLabels = reportsCopy.statusLabels;
+  const actionsCopy = reportsCopy.actions;
+  const confirmations = reportsCopy.confirmations;
+  const toastsCopy = reportsCopy.toasts;
   const [reports, setReports] = useState<ScoutingReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -100,11 +111,15 @@ export default function ReportsPage() {
       setReports(response.data || []);
     } catch (error) {
       console.error("Error fetching reports:", error);
-      toast.error("Erreur lors du chargement des rapports");
+      toast.error(toastsCopy.loadError);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, toastsCopy.loadError]);
+
+  const filterButtonLabel = showFilters
+    ? searchCopy.toggleFiltersHide
+    : searchCopy.toggleFiltersShow;
 
   // Fetch reports from API
   useEffect(() => {
@@ -142,13 +157,7 @@ export default function ReportsPage() {
   };
 
   const getStatusLabel = (status: ReportStatus) => {
-    const labels = {
-      DRAFT: "Brouillon",
-      SUBMITTED: "En Revue",
-      APPROVED: "Approuvé",
-      REJECTED: "Rejeté",
-    };
-    return labels[status];
+    return statusLabels[status] || status;
   };
 
   const getStatusBadgeColor = (status: ReportStatus) => {
@@ -175,64 +184,71 @@ export default function ReportsPage() {
   };
 
   const handleDeleteReport = async (reportId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce rapport?")) return;
+    if (
+      !confirm(`${confirmations.delete.title}\n${confirmations.delete.description}`)
+    )
+      return;
 
     try {
       await apiClient.deleteScoutingReport(reportId);
-      toast.success("Rapport supprimé avec succès");
+      toast.success(toastsCopy.deleteSuccess);
       fetchReports();
     } catch (error) {
       console.error("Error deleting report:", error);
-      toast.error("Erreur lors de la suppression du rapport");
+      toast.error(toastsCopy.deleteError);
     }
   };
 
   const handleSubmitReport = async (reportId: string) => {
     if (
-      !confirm(
-        "Êtes-vous sûr de vouloir soumettre ce rapport ? Il sera envoyé pour approbation."
-      )
+      !confirm(`${confirmations.submit.title}\n${confirmations.submit.description}`)
     )
       return;
 
     try {
       await apiClient.submitScoutingReport(reportId);
-      toast.success("Rapport soumis avec succès");
+      toast.success(toastsCopy.submitSuccess);
       fetchReports();
     } catch (error) {
       console.error("Error submitting report:", error);
-      toast.error("Erreur lors de la soumission du rapport");
+      toast.error(toastsCopy.submitError);
     }
   };
 
   const handleApproveReport = async (reportId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir approuver ce rapport ?")) return;
+    if (
+      !confirm(`${confirmations.approve.title}\n${confirmations.approve.description}`)
+    )
+      return;
 
     try {
       await apiClient.reviewScoutingReport(reportId, true);
-      toast.success("Rapport approuvé avec succès");
+      toast.success(toastsCopy.approveSuccess);
       fetchReports();
     } catch (error) {
       console.error("Error approving report:", error);
-      toast.error("Erreur lors de l'approbation du rapport");
+      toast.error(toastsCopy.approveError);
     }
   };
 
   const handleRejectReport = async (reportId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir rejeter ce rapport ?")) return;
+    if (
+      !confirm(`${confirmations.reject.title}\n${confirmations.reject.description}`)
+    )
+      return;
 
     try {
       await apiClient.reviewScoutingReport(reportId, false);
-      toast.success("Rapport rejeté");
+      toast.success(toastsCopy.rejectSuccess);
       fetchReports();
     } catch (error) {
       console.error("Error rejecting report:", error);
-      toast.error("Erreur lors du rejet du rapport");
+      toast.error(toastsCopy.rejectError);
     }
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -244,18 +260,28 @@ export default function ReportsPage() {
               <div className="px-6 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h1 className="text-2xl font-black text-white flex items-center gap-3">
+                    <h1
+                      className="text-2xl font-black text-white flex items-center gap-3"
+                      data-test="reports-hero-title"
+                    >
                       <FileText className="h-6 w-6 text-arcane-accent" />
-                      Rapports de Scouting
+                      {heroCopy.title}
                     </h1>
-                    <p className="text-sm text-arcane-grey">Gérez vos rapports de scouting</p>
+                    <p className="text-sm text-arcane-grey" data-test="reports-hero-subtitle">
+                      {heroCopy.subtitle}
+                    </p>
                   </div>
                   <Button size="sm" onClick={() => setShowCreateModal(true)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Nouveau Rapport
+                    {heroCopy.cta}
                   </Button>
                 </div>
-                <Breadcrumb />
+                <Breadcrumb
+                  items={[
+                    { label: heroCopy.breadcrumb.dashboard, href: "/dashboard" },
+                    { label: heroCopy.breadcrumb.current },
+                  ]}
+                />
               </div>
             </div>
 
@@ -274,7 +300,7 @@ export default function ReportsPage() {
                       <div className="relative">
                         <input
                           type="text"
-                          placeholder="Rechercher un rapport, joueur, scout..."
+                          placeholder={searchCopy.placeholder}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="w-full sm:w-96 pl-10 pr-4 py-2.5 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
@@ -288,7 +314,7 @@ export default function ReportsPage() {
                         onClick={() => setShowFilters(!showFilters)}
                       >
                         <Filter className="h-4 w-4 mr-2" />
-                        Filtres
+                        {filterButtonLabel}
                       </Button>
                     </div>
 
@@ -296,21 +322,27 @@ export default function ReportsPage() {
                     <div className="flex gap-4">
                       <div className="text-center">
                         <p className="text-2xl font-black text-white">{reports.length}</p>
-                        <p className="text-xs text-arcane-grey uppercase tracking-wider">Total</p>
+                        <p className="text-xs text-arcane-grey uppercase tracking-wider">
+                          {statsCopy.total}
+                        </p>
                       </div>
                       <div className="h-12 w-px bg-arcane-darkBorder" />
                       <div className="text-center">
                         <p className="text-2xl font-black text-yellow-500">
                           {reports.filter((r) => r.status === "SUBMITTED").length}
                         </p>
-                        <p className="text-xs text-arcane-grey uppercase tracking-wider">En Revue</p>
+                        <p className="text-xs text-arcane-grey uppercase tracking-wider">
+                          {statsCopy.review}
+                        </p>
                       </div>
                       <div className="h-12 w-px bg-arcane-darkBorder" />
                       <div className="text-center">
                         <p className="text-2xl font-black text-green-500">
                           {reports.filter((r) => r.status === "APPROVED").length}
                         </p>
-                        <p className="text-xs text-arcane-grey uppercase tracking-wider">Approuvés</p>
+                        <p className="text-xs text-arcane-grey uppercase tracking-wider">
+                          {statsCopy.approved}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -327,18 +359,18 @@ export default function ReportsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                              Statut
+                              {filtersCopy.statusLabel}
                             </label>
                             <select
                               value={statusFilter}
                               onChange={(e) => setStatusFilter(e.target.value)}
                               className="w-full px-3 py-2 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white focus:border-arcane-accent focus:outline-none"
                             >
-                              <option value="">Tous</option>
-                              <option value="DRAFT">Brouillon</option>
-                              <option value="SUBMITTED">En Revue</option>
-                              <option value="APPROVED">Approuvé</option>
-                              <option value="REJECTED">Rejeté</option>
+                              <option value="">{filtersCopy.options.all}</option>
+                              <option value="DRAFT">{filtersCopy.options.draft}</option>
+                              <option value="SUBMITTED">{filtersCopy.options.submitted}</option>
+                              <option value="APPROVED">{filtersCopy.options.approved}</option>
+                              <option value="REJECTED">{filtersCopy.options.rejected}</option>
                             </select>
                           </div>
                         </div>
@@ -354,7 +386,7 @@ export default function ReportsPage() {
                     <GlassCard variant="elevated" className="p-12 text-center">
                       <Loader2 className="h-16 w-16 text-arcane-accent mx-auto mb-4 animate-spin" />
                       <h3 className="text-xl font-bold text-white mb-2">
-                        Chargement des rapports...
+                        {listCopy.loadingTitle}
                       </h3>
                     </GlassCard>
                   )}
@@ -373,9 +405,13 @@ export default function ReportsPage() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
                         >
-                          <Card3D>
-                            <GlassCard variant="elevated" glowOnHover className="p-6">
-                              <div className="flex flex-col lg:flex-row gap-6">
+                          <GlassCard
+                            variant="elevated"
+                            glowOnHover
+                            className="p-6 cursor-pointer transition-all hover:border-arcane-accent/50"
+                            onClick={() => handleViewReport(report.id)}
+                          >
+                            <div className="flex flex-col lg:flex-row gap-6">
                                 {/* Left - Player Info */}
                                 <div className="flex-1">
                                   <div className="flex items-start gap-4">
@@ -431,7 +467,7 @@ export default function ReportsPage() {
                                         {report.overallRating}
                                       </div>
                                       <div className="text-xs text-arcane-grey uppercase tracking-wider">
-                                        Note Globale
+                                        {listCopy.metrics.overall}
                                       </div>
                                     </div>
                                   )}
@@ -443,7 +479,9 @@ export default function ReportsPage() {
                                         <div className={`text-lg font-bold ${getRatingColor(report.technicalRating)}`}>
                                           {report.technicalRating}
                                         </div>
-                                        <div className="text-xs text-arcane-grey">Technique</div>
+                                        <div className="text-xs text-arcane-grey">
+                                          {listCopy.metrics.technical}
+                                        </div>
                                       </div>
                                     )}
                                     {report.physicalRating !== null && (
@@ -451,7 +489,9 @@ export default function ReportsPage() {
                                         <div className={`text-lg font-bold ${getRatingColor(report.physicalRating)}`}>
                                           {report.physicalRating}
                                         </div>
-                                        <div className="text-xs text-arcane-grey">Physique</div>
+                                        <div className="text-xs text-arcane-grey">
+                                          {listCopy.metrics.physical}
+                                        </div>
                                       </div>
                                     )}
                                     {report.mentalRating !== null && (
@@ -459,7 +499,9 @@ export default function ReportsPage() {
                                         <div className={`text-lg font-bold ${getRatingColor(report.mentalRating)}`}>
                                           {report.mentalRating}
                                         </div>
-                                        <div className="text-xs text-arcane-grey">Mental</div>
+                                        <div className="text-xs text-arcane-grey">
+                                          {listCopy.metrics.mental}
+                                        </div>
                                       </div>
                                     )}
                                     {report.tacticalRating !== null && (
@@ -467,7 +509,9 @@ export default function ReportsPage() {
                                         <div className={`text-lg font-bold ${getRatingColor(report.tacticalRating)}`}>
                                           {report.tacticalRating}
                                         </div>
-                                        <div className="text-xs text-arcane-grey">Tactique</div>
+                                        <div className="text-xs text-arcane-grey">
+                                          {listCopy.metrics.tactical}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -488,7 +532,7 @@ export default function ReportsPage() {
                                     <div className="flex items-center gap-2 mb-1">
                                       <User className="h-3 w-3 text-arcane-grey" />
                                       <span className="text-xs text-arcane-grey uppercase tracking-wider">
-                                        Scout
+                                        {listCopy.columns.scout}
                                       </span>
                                     </div>
                                     <p className="text-sm text-white font-medium">
@@ -498,34 +542,31 @@ export default function ReportsPage() {
 
                                   {/* Actions */}
                                   <div className="flex flex-col gap-2">
-                                    <Button
-                                      variant="secondary"
-                                      size="sm"
-                                      onClick={() => handleViewReport(report.id)}
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      Voir Détails
-                                    </Button>
-
                                     {/* DRAFT Status Actions */}
                                     {report.status === "DRAFT" && (
                                       <>
                                         <Button
                                           size="sm"
-                                          onClick={() => handleSubmitReport(report.id)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSubmitReport(report.id);
+                                          }}
                                           className="border-arcane-accent bg-arcane-accent/10 text-arcane-accent hover:bg-arcane-accent/20"
                                         >
                                           <Send className="h-4 w-4 mr-2" />
-                                          Soumettre
+                                          {actionsCopy.submit}
                                         </Button>
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => handleDeleteReport(report.id)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteReport(report.id);
+                                          }}
                                           className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                                         >
                                           <Trash2 className="h-4 w-4 mr-2" />
-                                          Supprimer
+                                          {actionsCopy.delete}
                                         </Button>
                                       </>
                                     )}
@@ -535,19 +576,25 @@ export default function ReportsPage() {
                                       <>
                                         <Button
                                           size="sm"
-                                          onClick={() => handleApproveReport(report.id)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleApproveReport(report.id);
+                                          }}
                                           className="border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20"
                                         >
                                           <ThumbsUp className="h-4 w-4 mr-2" />
-                                          Approuver
+                                          {actionsCopy.approve}
                                         </Button>
                                         <Button
                                           size="sm"
-                                          onClick={() => handleRejectReport(report.id)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRejectReport(report.id);
+                                          }}
                                           className="border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
                                         >
                                           <ThumbsDown className="h-4 w-4 mr-2" />
-                                          Rejeter
+                                          {actionsCopy.reject}
                                         </Button>
                                       </>
                                     )}
@@ -555,7 +602,6 @@ export default function ReportsPage() {
                                 </div>
                               </div>
                             </GlassCard>
-                          </Card3D>
                         </motion.div>
                       ))}
                     </motion.div>
@@ -566,17 +612,17 @@ export default function ReportsPage() {
                     <GlassCard variant="elevated" className="p-12 text-center">
                       <FileText className="h-16 w-16 text-arcane-grey mx-auto mb-4" />
                       <h3 className="text-xl font-bold text-white mb-2">
-                        {reports.length === 0 ? "Aucun rapport" : "Aucun résultat"}
+                        {reports.length === 0 ? listCopy.emptyTitle : listCopy.emptyFilteredTitle}
                       </h3>
                       <p className="text-arcane-grey mb-6">
                         {reports.length === 0
-                          ? "Commencez par créer votre premier rapport de scouting"
-                          : "Aucun rapport ne correspond à vos critères de recherche"}
+                          ? listCopy.emptyDescription
+                          : listCopy.emptyFilteredDescription}
                       </p>
                       {reports.length === 0 && (
                         <Button onClick={() => setShowCreateModal(true)}>
                           <Plus className="h-4 w-4 mr-2" />
-                          Créer un Rapport
+                          {listCopy.emptyCta}
                         </Button>
                       )}
                     </GlassCard>
@@ -594,6 +640,6 @@ export default function ReportsPage() {
           onSuccess={fetchReports}
         />
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

@@ -33,6 +33,7 @@ import type {
   SupportedLanguage,
 } from '../../types/voice-to-report';
 import { voiceToReportApi } from '../../services/api/voice-to-report';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 // Components
 import { RecordButton } from '../../components/voice/RecordButton';
@@ -55,6 +56,42 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { dictionary } = useLocalization();
+  const t = dictionary.voiceReport || {
+    header: { title: 'Voice to Report' },
+    toasts: {
+      recordingStarted: { title: 'Recording', message: 'Recording started' },
+      recordingComplete: { title: 'Done', message: 'Recording complete' },
+      maxDuration: { title: 'Limit reached', message: 'Max duration reached' },
+      processingComplete: { title: 'Processed', message: 'Confidence: {{confidence}}%' },
+      draftCreated: { title: 'Draft created', message: 'Draft created successfully' },
+    },
+    errors: {
+      startRecording: 'Failed to start recording',
+      stopRecording: 'Failed to stop recording',
+      noAudio: 'No audio recorded',
+      noData: 'No data available',
+      processingFailed: { title: 'Processing failed', message: 'Failed to process audio' },
+    },
+    instructions: {
+      idle: 'Tap to start recording',
+      recording: 'Recording... Tap to stop',
+      recorded: 'Recording complete. Process to continue',
+      processing: 'Processing your audio...',
+    },
+    actions: {
+      process: 'Process Recording',
+      generate: 'Generate Report',
+    },
+    processing: {
+      message: 'Processing your audio...',
+    },
+    sections: {
+      warnings: 'Warnings',
+      suggestions: 'Suggestions',
+    },
+  };
+
   // State
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [audioUri, setAudioUri] = useState<string | null>(null);
@@ -74,25 +111,8 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    * Request audio permissions
    */
   const requestPermissions = async (): Promise<boolean> => {
-    try {
-      // TODO: Implement with expo-av
-      // const { status } = await Audio.requestPermissionsAsync();
-      // if (status !== 'granted') {
-      //   Alert.alert(
-      //     'Permission Required',
-      //     'Microphone access is required to record voice notes. Please enable it in your device settings.',
-      //     [{ text: 'OK' }]
-      //   );
-      //   return false;
-      // }
-      // return true;
-
-      // Placeholder - always return true for now
-      return true;
-    } catch (error) {
-      console.error('Error requesting permissions:', error);
-      return false;
-    }
+    // TODO: Implement with expo-av permissions flow
+    return true;
   };
 
   /**
@@ -118,12 +138,12 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
 
       Toast.show({
         type: 'info',
-        text1: 'Recording Started',
-        text2: 'Speak your scouting report',
+        text1: t.toasts.recordingStarted.title,
+        text2: t.toasts.recordingStarted.message,
       });
     } catch (error) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording. Please try again.');
+      Alert.alert(dictionary?.common?.feedback?.error || 'Error', t.errors.startRecording);
     }
   };
 
@@ -150,12 +170,12 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
 
       Toast.show({
         type: 'success',
-        text1: 'Recording Complete',
-        text2: 'Tap "Process Recording" to generate report',
+        text1: t.toasts.recordingComplete.title,
+        text2: t.toasts.recordingComplete.message,
       });
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert('Error', 'Failed to stop recording. Please try again.');
+      Alert.alert(dictionary?.common?.feedback?.error || 'Error', t.errors.stopRecording);
     }
   };
 
@@ -177,8 +197,8 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
     stopRecording();
     Toast.show({
       type: 'warning',
-      text1: 'Max Duration Reached',
-      text2: 'Recording stopped at 5 minutes',
+      text1: t.toasts.maxDuration.title,
+      text2: t.toasts.maxDuration.message,
     });
   };
 
@@ -187,7 +207,20 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    */
   const processRecording = async () => {
     if (!audioUri) {
-      Alert.alert('Error', 'No audio recording found');
+      Alert.alert(dictionary?.common?.feedback?.error || 'Error', t.errors.noAudio);
+      return;
+    }
+
+    // Check if this is a placeholder/demo recording
+    if (audioUri === '/tmp/recording.m4a' || audioUri.includes('/tmp/')) {
+      Alert.alert(
+        'Demo Mode',
+        'Voice recording feature is not yet fully implemented. Real audio recording will be available soon with expo-av integration.',
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+      setRecordingState('recorded');
       return;
     }
 
@@ -207,19 +240,19 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
 
       Toast.show({
         type: 'success',
-        text1: 'Processing Complete',
-        text2: `Confidence: ${Math.round(response.confidence)}%`,
+        text1: t.toasts.processingComplete.title,
+        text2: t.toasts.processingComplete.message.replace('{{confidence}}', Math.round(response.confidence).toString()),
       });
     } catch (error: any) {
       console.error('Failed to process recording:', error);
-      setRecordingState('error');
+      setRecordingState('recorded');
 
       Alert.alert(
-        'Processing Failed',
-        error?.response?.data?.message || 'Failed to process voice recording. Please try again.',
+        t.errors.processingFailed.title,
+        error?.response?.data?.message || t.errors.processingFailed.message,
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: processRecording },
+          { text: dictionary?.common?.actions?.cancel || 'Cancel', style: 'cancel' },
+          { text: dictionary?.common?.actions?.retry || 'Retry', onPress: processRecording },
         ]
       );
     }
@@ -230,7 +263,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    */
   const generateReport = () => {
     if (!editedData) {
-      Alert.alert('Error', 'No data to generate report');
+      Alert.alert(dictionary?.common?.feedback?.error || 'Error', t.errors.noData);
       return;
     }
 
@@ -242,8 +275,8 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
 
     Toast.show({
       type: 'success',
-      text1: 'Report Draft Created',
-      text2: 'Review and submit your report',
+      text1: t.toasts.draftCreated.title,
+      text2: t.toasts.draftCreated.message,
     });
   };
 
@@ -265,7 +298,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voice to Report</Text>
+        <Text style={styles.headerTitle}>{t.header.title}</Text>
         <TouchableOpacity onPress={resetRecording}>
           <Ionicons name="refresh" size={24} color={COLORS.arcane.accent} />
         </TouchableOpacity>
@@ -305,10 +338,10 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
             {/* Instructions */}
             <View style={styles.instructions}>
               <Text style={styles.instructionsText}>
-                {recordingState === 'idle' && 'Tap the microphone to start recording'}
-                {recordingState === 'recording' && 'Recording... Tap again to stop'}
-                {recordingState === 'recorded' && 'Recording saved. Process to generate report'}
-                {recordingState === 'processing' && 'Processing your voice recording...'}
+                {recordingState === 'idle' && t.instructions.idle}
+                {recordingState === 'recording' && t.instructions.recording}
+                {recordingState === 'recorded' && t.instructions.recorded}
+                {recordingState === 'processing' && t.instructions.processing}
               </Text>
             </View>
 
@@ -330,7 +363,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
                 activeOpacity={0.8}
               >
                 <Ionicons name="sparkles" size={20} color={COLORS.arcane.dark} />
-                <Text style={styles.processButtonText}>Process Recording</Text>
+                <Text style={styles.processButtonText}>{t.actions.process}</Text>
               </TouchableOpacity>
             )}
 
@@ -339,7 +372,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
               <View style={styles.processingContainer}>
                 <ActivityIndicator size="large" color={COLORS.arcane.accent} />
                 <Text style={styles.processingText}>
-                  Transcribing and analyzing...
+                  {t.processing.message}
                 </Text>
               </View>
             )}
@@ -363,7 +396,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
               <View style={styles.warningsCard}>
                 <View style={styles.warningsHeader}>
                   <Ionicons name="warning" size={20} color={COLORS.warning} />
-                  <Text style={styles.warningsTitle}>Warnings</Text>
+                  <Text style={styles.warningsTitle}>{t.sections.warnings}</Text>
                 </View>
                 {voiceReport.warnings.map((warning, index) => (
                   <Text key={index} style={styles.warningText}>
@@ -378,7 +411,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
               <View style={styles.suggestionsCard}>
                 <View style={styles.suggestionsHeader}>
                   <Ionicons name="bulb" size={20} color={COLORS.info} />
-                  <Text style={styles.suggestionsTitle}>Suggestions</Text>
+                  <Text style={styles.suggestionsTitle}>{t.sections.suggestions}</Text>
                 </View>
                 {voiceReport.suggestions.map((suggestion, index) => (
                   <Text key={index} style={styles.suggestionText}>
@@ -404,7 +437,7 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
               activeOpacity={0.8}
             >
               <Ionicons name="document-text" size={20} color={COLORS.arcane.dark} />
-              <Text style={styles.generateButtonText}>Generate Report</Text>
+              <Text style={styles.generateButtonText}>{t.actions.generate}</Text>
             </TouchableOpacity>
           </View>
         )}

@@ -1,8 +1,13 @@
 import { ReportTemplate, ReportType } from '../interfaces/report.interface';
 
 export const youthProspectTemplate: ReportTemplate = {
-  name: 'Youth Prospect Report',
-  description: 'Detailed analysis of young player potential and development path',
+  id: 'youth-prospect',
+  name: 'Youth Prospect',
+  description: 'Development potential and growth trajectory analysis',
+  icon: 'star',
+  useCase: 'Youth development',
+  estimatedCost: '$0.026',
+  reportType: ReportType.YOUTH_PROSPECT,
   sections: [
     {
       name: 'Prospect Profile',

@@ -23,10 +23,7 @@ export class DataSyncController {
   @Post('clubs')
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Sync clubs for a competition' })
-  async syncClubs(
-    @Body('competitionId') competitionId: string,
-    @Body('source') source: string,
-  ) {
+  async syncClubs(@Body('competitionId') competitionId: string, @Body('source') source: string) {
     await this.dataSyncService.syncClubs(competitionId, source);
     return { message: 'Clubs sync started' };
   }
@@ -34,10 +31,7 @@ export class DataSyncController {
   @Post('players')
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Sync players for a club' })
-  async syncPlayers(
-    @Body('clubId') clubId: string,
-    @Body('source') source: string,
-  ) {
+  async syncPlayers(@Body('clubId') clubId: string, @Body('source') source: string) {
     await this.dataSyncService.syncPlayers(clubId, source);
     return { message: 'Players sync started' };
   }
@@ -45,10 +39,7 @@ export class DataSyncController {
   @Post('matches')
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Sync matches for a competition' })
-  async syncMatches(
-    @Body('competitionId') competitionId: string,
-    @Body('source') source: string,
-  ) {
+  async syncMatches(@Body('competitionId') competitionId: string, @Body('source') source: string) {
     await this.dataSyncService.syncMatches(competitionId, source);
     return { message: 'Matches sync started' };
   }

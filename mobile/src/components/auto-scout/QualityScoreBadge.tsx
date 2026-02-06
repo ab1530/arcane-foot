@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Icon } from '../ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import type { QualityScore } from '../../types/auto-scout';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 interface QualityScoreBadgeProps {
   qualityScore: QualityScore;
@@ -18,7 +19,7 @@ const GRADE_COLORS = {
   D: '#EF4444', // Red
 };
 
-const GRADE_LABELS = {
+const DEFAULT_GRADE_LABELS = {
   S: 'Exceptional',
   A: 'Excellent',
   B: 'Good',
@@ -31,10 +32,13 @@ export const QualityScoreBadge: React.FC<QualityScoreBadgeProps> = ({
   size = 'large',
   showBreakdown = false,
 }) => {
+  const { dictionary } = useLocalization();
+  const qualityCopy = dictionary.autoScout.wizard.quality;
   const [modalVisible, setModalVisible] = React.useState(false);
 
   const gradeColor = GRADE_COLORS[qualityScore.grade];
-  const gradeLabel = GRADE_LABELS[qualityScore.grade];
+  const gradeLabel =
+    qualityCopy.grades[qualityScore.grade] ?? DEFAULT_GRADE_LABELS[qualityScore.grade];
   const badgeSize = size === 'large' ? 120 : 60;
   const fontSize = size === 'large' ? typography.sizes.h1 : typography.sizes.xl;
 
@@ -80,7 +84,7 @@ export const QualityScoreBadge: React.FC<QualityScoreBadgeProps> = ({
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Quality Score Breakdown</Text>
+                <Text style={styles.modalTitle}>{qualityCopy.modalTitle}</Text>
                 <TouchableOpacity
                   onPress={() => setModalVisible(false)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -103,24 +107,24 @@ export const QualityScoreBadge: React.FC<QualityScoreBadgeProps> = ({
 
               <View style={styles.breakdownList}>
                 <BreakdownItem
-                  label="Data Completeness"
+                  label={qualityCopy.breakdown.dataCompleteness.label}
                   value={qualityScore.breakdown.dataCompleteness}
-                  description="How comprehensive the available data is"
+                  description={qualityCopy.breakdown.dataCompleteness.description}
                 />
                 <BreakdownItem
-                  label="Insight Depth"
+                  label={qualityCopy.breakdown.insightDepth.label}
                   value={qualityScore.breakdown.insightDepth}
-                  description="Quality and depth of AI analysis"
+                  description={qualityCopy.breakdown.insightDepth.description}
                 />
                 <BreakdownItem
-                  label="Technical Accuracy"
+                  label={qualityCopy.breakdown.technicalAccuracy.label}
                   value={qualityScore.breakdown.technicalAccuracy}
-                  description="Precision of technical assessments"
+                  description={qualityCopy.breakdown.technicalAccuracy.description}
                 />
                 <BreakdownItem
-                  label="Actionability"
+                  label={qualityCopy.breakdown.actionability.label}
                   value={qualityScore.breakdown.actionability}
-                  description="Usefulness of recommendations"
+                  description={qualityCopy.breakdown.actionability.description}
                 />
               </View>
             </View>

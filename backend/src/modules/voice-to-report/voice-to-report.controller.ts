@@ -24,10 +24,7 @@ import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.gua
 import { MinTier } from '../../common/decorators/min-tier.decorator';
 import { SubscriptionTier } from '@prisma/client';
 import { VoiceToReportService } from './voice-to-report.service';
-import {
-  ProcessVoiceReportDto,
-  SupportedLanguage,
-} from './dto/process-voice-report.dto';
+import { ProcessVoiceReportDto, SupportedLanguage } from './dto/process-voice-report.dto';
 import {
   VoiceReportResponseDto,
   LanguageInfo,
@@ -50,10 +47,7 @@ export class VoiceToReportController {
       },
       fileFilter: (req, file, callback) => {
         if (!file.mimetype.startsWith('audio/')) {
-          return callback(
-            new BadRequestException('Only audio files are allowed'),
-            false,
-          );
+          return callback(new BadRequestException('Only audio files are allowed'), false);
         }
         callback(null, true);
       },
@@ -138,11 +132,7 @@ export class VoiceToReportController {
       keepAudio: keepAudio === true || (keepAudio as any) === 'true',
     };
 
-    return this.voiceToReportService.processVoiceReport(
-      file,
-      req.user.userId,
-      dto,
-    );
+    return this.voiceToReportService.processVoiceReport(file, req.user.userId, dto);
   }
 
   @Get('languages')
@@ -190,8 +180,7 @@ export class VoiceToReportController {
         text: {
           type: 'string',
           description: 'Sample transcription text',
-          example:
-            'This is a scouting report for John Doe, center back, number 5...',
+          example: 'This is a scouting report for John Doe, center back, number 5...',
         },
         language: {
           type: 'string',
@@ -206,10 +195,7 @@ export class VoiceToReportController {
     status: 200,
     description: 'Extraction test completed',
   })
-  async testTranscription(
-    @Body('text') text: string,
-    @Body('language') language?: string,
-  ) {
+  async testTranscription(@Body('text') text: string, @Body('language') language?: string) {
     if (!text) {
       throw new BadRequestException('Text is required');
     }
@@ -221,14 +207,11 @@ export class VoiceToReportController {
       language || 'en',
     );
 
-    const { data: validatedData, warnings } = await (
-      this.voiceToReportService as any
-    ).validateData(extractedData);
-
-    const confidence = (this.voiceToReportService as any).calculateConfidence(
-      validatedData,
-      text,
+    const { data: validatedData, warnings } = await (this.voiceToReportService as any).validateData(
+      extractedData,
     );
+
+    const confidence = (this.voiceToReportService as any).calculateConfidence(validatedData, text);
 
     const suggestions = (this.voiceToReportService as any).generateSuggestions(
       validatedData,

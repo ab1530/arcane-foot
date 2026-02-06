@@ -10,7 +10,7 @@ import { NeonText } from "@/components/ui/gradient-text";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import Link from "next/link";
 import Image from "next/image";
@@ -72,7 +72,7 @@ export default function ClubDetailPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -91,13 +91,13 @@ export default function ClubDetailPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
   if (!club) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -123,7 +123,7 @@ export default function ClubDetailPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
@@ -132,7 +132,7 @@ export default function ClubDetailPage() {
   const totalMatches = allMatches.length;
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -312,6 +312,6 @@ export default function ClubDetailPage() {
           </div>
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

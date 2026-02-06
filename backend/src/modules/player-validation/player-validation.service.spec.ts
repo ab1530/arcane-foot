@@ -348,9 +348,9 @@ describe('PlayerValidationService', () => {
     it('should throw NotFoundException if player does not exist', async () => {
       prisma.players.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.validatePlayer(playerId, verifiedById, dto),
-      ).rejects.toThrow(new NotFoundException(`Player with ID ${playerId} not found`));
+      await expect(service.validatePlayer(playerId, verifiedById, dto)).rejects.toThrow(
+        new NotFoundException(`Player with ID ${playerId} not found`),
+      );
     });
 
     it('should throw BadRequestException if player is not PUBLIC type', async () => {
@@ -360,9 +360,7 @@ describe('PlayerValidationService', () => {
       };
       prisma.players.findUnique.mockResolvedValue(agencyPlayer as any);
 
-      await expect(
-        service.validatePlayer(playerId, verifiedById, dto),
-      ).rejects.toThrow(
+      await expect(service.validatePlayer(playerId, verifiedById, dto)).rejects.toThrow(
         new BadRequestException('Only PUBLIC players can be validated through this endpoint'),
       );
     });
@@ -374,9 +372,9 @@ describe('PlayerValidationService', () => {
       };
       prisma.players.findUnique.mockResolvedValue(verifiedPlayer as any);
 
-      await expect(
-        service.validatePlayer(playerId, verifiedById, dto),
-      ).rejects.toThrow(new BadRequestException('Player is already verified'));
+      await expect(service.validatePlayer(playerId, verifiedById, dto)).rejects.toThrow(
+        new BadRequestException('Player is already verified'),
+      );
     });
 
     it('should create audit log during transaction', async () => {
@@ -554,9 +552,9 @@ describe('PlayerValidationService', () => {
     it('should throw NotFoundException if player does not exist', async () => {
       prisma.players.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.rejectPlayer(playerId, rejectedById, dto),
-      ).rejects.toThrow(new NotFoundException(`Player with ID ${playerId} not found`));
+      await expect(service.rejectPlayer(playerId, rejectedById, dto)).rejects.toThrow(
+        new NotFoundException(`Player with ID ${playerId} not found`),
+      );
     });
 
     it('should throw BadRequestException if player is not PUBLIC type', async () => {
@@ -566,9 +564,7 @@ describe('PlayerValidationService', () => {
       };
       prisma.players.findUnique.mockResolvedValue(agencyPlayer as any);
 
-      await expect(
-        service.rejectPlayer(playerId, rejectedById, dto),
-      ).rejects.toThrow(
+      await expect(service.rejectPlayer(playerId, rejectedById, dto)).rejects.toThrow(
         new BadRequestException('Only PUBLIC players can be rejected through this endpoint'),
       );
     });
@@ -720,9 +716,9 @@ describe('PlayerValidationService', () => {
     it('should throw NotFoundException if player does not exist', async () => {
       prisma.players.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.markAsSuspicious(playerId, markedById, reason),
-      ).rejects.toThrow(new NotFoundException(`Player with ID ${playerId} not found`));
+      await expect(service.markAsSuspicious(playerId, markedById, reason)).rejects.toThrow(
+        new NotFoundException(`Player with ID ${playerId} not found`),
+      );
     });
 
     it('should create audit log with suspicious marker details', async () => {
@@ -876,9 +872,9 @@ describe('PlayerValidationService', () => {
     it('should throw NotFoundException if player does not exist', async () => {
       prisma.players.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.convertToAgency(playerId, convertedById, dto),
-      ).rejects.toThrow(new NotFoundException(`Player with ID ${playerId} not found`));
+      await expect(service.convertToAgency(playerId, convertedById, dto)).rejects.toThrow(
+        new NotFoundException(`Player with ID ${playerId} not found`),
+      );
     });
 
     it('should throw BadRequestException if player is not PUBLIC type', async () => {
@@ -888,9 +884,7 @@ describe('PlayerValidationService', () => {
       };
       prisma.players.findUnique.mockResolvedValue(agencyPlayer as any);
 
-      await expect(
-        service.convertToAgency(playerId, convertedById, dto),
-      ).rejects.toThrow(
+      await expect(service.convertToAgency(playerId, convertedById, dto)).rejects.toThrow(
         new BadRequestException('Only PUBLIC players can be converted to AGENCY type'),
       );
     });
@@ -902,9 +896,7 @@ describe('PlayerValidationService', () => {
       };
       prisma.players.findUnique.mockResolvedValue(unverifiedPlayer as any);
 
-      await expect(
-        service.convertToAgency(playerId, convertedById, dto),
-      ).rejects.toThrow(
+      await expect(service.convertToAgency(playerId, convertedById, dto)).rejects.toThrow(
         new BadRequestException('Player must be verified before converting to AGENCY type'),
       );
     });
@@ -1102,12 +1094,12 @@ describe('PlayerValidationService', () => {
     it('should return comprehensive verification statistics', async () => {
       const mockCounts = [
         100, // totalPublicPlayers
-        30,  // pendingCount
-        50,  // verifiedCount
-        15,  // rejectedCount
-        5,   // suspiciousCount
-        12,  // recentValidations
-        3,   // recentRejections
+        30, // pendingCount
+        50, // verifiedCount
+        15, // rejectedCount
+        5, // suspiciousCount
+        12, // recentValidations
+        3, // recentRejections
       ];
 
       prisma.players.count
@@ -1157,12 +1149,12 @@ describe('PlayerValidationService', () => {
     it('should calculate percentages correctly', async () => {
       prisma.players.count
         .mockResolvedValueOnce(200) // total
-        .mockResolvedValueOnce(50)  // pending (25%)
+        .mockResolvedValueOnce(50) // pending (25%)
         .mockResolvedValueOnce(100) // verified (50%)
-        .mockResolvedValueOnce(40)  // rejected (20%)
-        .mockResolvedValueOnce(10)  // suspicious (5%)
-        .mockResolvedValueOnce(20)  // recent validations
-        .mockResolvedValueOnce(8);  // recent rejections
+        .mockResolvedValueOnce(40) // rejected (20%)
+        .mockResolvedValueOnce(10) // suspicious (5%)
+        .mockResolvedValueOnce(20) // recent validations
+        .mockResolvedValueOnce(8); // recent rejections
 
       const result = await service.getVerificationStats();
 

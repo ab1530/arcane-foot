@@ -115,13 +115,11 @@ export class ApiFootballService {
    */
   private async fetchApi(endpoint: string, retries = 3): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
-
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         const response = await fetch(url, {
           headers: {
-            'x-rapidapi-key': this.apiKey,
-            'x-rapidapi-host': 'v3.football.api-sports.io',
+            'x-apisports-key': this.apiKey,
           },
         });
 
@@ -151,18 +149,18 @@ export class ApiFootballService {
 
   private mapStatus(apiStatus: string): string {
     const statusMap = {
-      'TBD': 'SCHEDULED',
-      'NS': 'SCHEDULED',
+      TBD: 'SCHEDULED',
+      NS: 'SCHEDULED',
       '1H': 'LIVE',
-      'HT': 'LIVE',
+      HT: 'LIVE',
       '2H': 'LIVE',
-      'ET': 'LIVE',
-      'P': 'LIVE',
-      'FT': 'COMPLETED',
-      'AET': 'COMPLETED',
-      'PEN': 'COMPLETED',
-      'PST': 'POSTPONED',
-      'CANC': 'CANCELLED',
+      ET: 'LIVE',
+      P: 'LIVE',
+      FT: 'COMPLETED',
+      AET: 'COMPLETED',
+      PEN: 'COMPLETED',
+      PST: 'POSTPONED',
+      CANC: 'CANCELLED',
     };
 
     return statusMap[apiStatus] || 'SCHEDULED';

@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="fr" className="dark">
       <body className={`${inter.variable} font-inter antialiased`}>
         <ClientProviders>
           {children}

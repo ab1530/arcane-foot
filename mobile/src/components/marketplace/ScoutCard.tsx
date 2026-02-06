@@ -32,6 +32,7 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
 }) => {
   const scale = useSharedValue(1);
   const favoriteScale = useSharedValue(1);
+  const scoutUser = listing.scout?.user;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -57,25 +58,35 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
   };
 
   const formatPrice = () => {
-    const { pricing } = listing;
-    if (pricing.hourlyRate) {
+    const pricing = listing.pricing;
+    if (pricing?.hourlyRate) {
       return `${pricing.currency} ${pricing.hourlyRate}/hr`;
     }
-    if (pricing.matchRate) {
+    if (pricing?.matchRate) {
       return `${pricing.currency} ${pricing.matchRate}/match`;
     }
-    if (pricing.reportRate) {
+    if (pricing?.reportRate) {
       return `${pricing.currency} ${pricing.reportRate}/report`;
     }
-    return 'Contact for pricing';
+    return 'Tarif sur demande';
   };
 
   const getAvatarUri = () => {
-    return listing.scout.user.avatar || `https://ui-avatars.com/api/?name=${listing.scout.user.firstName}+${listing.scout.user.lastName}&background=E4FF3B&color=080C1D&size=200`;
+    if (scoutUser?.avatar) return scoutUser.avatar;
+    const nameSeed = scoutUser
+      ? `${scoutUser.firstName ?? ''}+${scoutUser.lastName ?? ''}`
+      : listing.headline ?? 'Scout Pro';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(nameSeed)}&background=E4FF3B&color=080C1D&size=200`;
   };
 
-  const displayExpertise = listing.expertise.leagues.slice(0, 3);
-  const moreCount = listing.expertise.leagues.length - 3;
+  const displayExpertise = listing.expertise?.leagues?.slice(0, 3) ?? [];
+  const moreCount = (listing.expertise?.leagues?.length ?? 0) - displayExpertise.length;
+  const stats = listing.stats ?? {
+    avgRating: 0,
+    totalReviews: 0,
+    totalReports: 0,
+    completedOffers: 0,
+  };
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
@@ -93,7 +104,7 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
               style={styles.avatar}
               resizeMode="cover"
             />
-            {listing.scout.isVerified && (
+            {listing.scout?.isVerified && (
               <View style={styles.verifiedBadge}>
                 <BadgeCheck size={16} color={colors.brand.primary} fill={colors.brand.primary} />
               </View>
@@ -102,17 +113,19 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
 
           <View style={styles.headerInfo}>
             <Text style={styles.name} numberOfLines={1}>
-              {listing.scout.user.firstName} {listing.scout.user.lastName}
+              {scoutUser
+                ? `${scoutUser.firstName ?? ''} ${scoutUser.lastName ?? ''}`.trim()
+                : listing.headline || 'Scout professionnel'}
             </Text>
             <Text style={styles.headline} numberOfLines={2}>
               {listing.headline}
             </Text>
 
             {/* Location */}
-            {listing.scout.user.country && (
+            {scoutUser?.country && (
               <View style={styles.locationRow}>
                 <MapPin size={12} color={colors.text.tertiary} />
-                <Text style={styles.locationText}>{listing.scout.user.country}</Text>
+                <Text style={styles.locationText}>{scoutUser.country}</Text>
               </View>
             )}
           </View>
@@ -140,13 +153,13 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
           <View style={styles.statItem}>
             <Star size={14} color={colors.semantic.warning} fill={colors.semantic.warning} />
             <Text style={styles.statText}>
-              {listing.stats.avgRating.toFixed(1)} ({listing.stats.totalReviews})
+              {stats.avgRating.toFixed(1)} ({stats.totalReviews})
             </Text>
           </View>
           <Text style={styles.statDivider}>•</Text>
-          <Text style={styles.statText}>{listing.stats.totalReports} reports</Text>
+          <Text style={styles.statText}>{stats.totalReports} reports</Text>
           <Text style={styles.statDivider}>•</Text>
-          <Text style={styles.statText}>{listing.stats.completedOffers} completed</Text>
+          <Text style={styles.statText}>{stats.completedOffers} completed</Text>
         </View>
 
         {/* Expertise Tags */}

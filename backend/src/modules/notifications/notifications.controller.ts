@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { RegisterDeviceDto } from './dto/register-device.dto';
@@ -68,6 +78,18 @@ export class NotificationsController {
   @UseGuards(JwtAuthGuard)
   unsubscribeFromTopic(@Body() body: { userIds: string[]; topic: string }) {
     return this.notificationsService.unsubscribeFromTopic(body.userIds, body.topic);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  getAllNotifications(@Request() req, @Query('unreadOnly') unreadOnly?: string) {
+    return this.notificationsService.getUserNotifications(req.user.id, unreadOnly === 'true');
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMyNotifications(@Request() req, @Query('unreadOnly') unreadOnly?: string) {
+    return this.notificationsService.getUserNotifications(req.user.id, unreadOnly === 'true');
   }
 
   @Get('user/:userId')

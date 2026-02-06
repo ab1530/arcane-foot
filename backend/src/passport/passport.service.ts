@@ -34,28 +34,7 @@ export class PassportService {
       throw new BadRequestException('Player already has a passport');
     }
 
-    const avgRating = player.scouting_reports.length > 0
-      ? Math.round(
-          player.scouting_reports.reduce((sum, r) => sum + (r.overallRating || 0), 0) /
-            player.scouting_reports.length
-        )
-      : null;
-
-    const passportData = {
-      firstName: player.users.firstName,
-      lastName: player.users.lastName,
-      position: player.position,
-      nationality: player.nationality,
-      dateOfBirth: player.dateOfBirth,
-      height: player.height,
-      weight: player.weight,
-      preferredFoot: player.preferredFoot,
-      club: player.clubs ? { name: player.clubs.name, logo: player.clubs.logo } : null,
-      avatar: player.users.avatar,
-      averageRating: avgRating,
-      totalReports: player.scouting_reports.length,
-      statsSnapshot: player.statsJson,
-    };
+    const passportData = this.buildPassportData(player);
 
     return this.prisma.player_passports.create({
       data: {
@@ -118,6 +97,63 @@ export class PassportService {
     return passport;
   }
 
+  async getPassportForUser(userId: string) {
+    const player = await this.prisma.players.findFirst({
+      where: { userId },
+      include: {
+        users: true,
+        clubs: true,
+        scouting_reports: {
+          where: { status: 'APPROVED' },
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('Player profile not found for user');
+    }
+
+    const existingPassport = await this.prisma.player_passports.findUnique({
+      where: { playerId: player.id },
+      include: {
+        players: {
+          include: {
+            users: true,
+            clubs: true,
+          },
+        },
+      },
+    });
+
+    if (existingPassport) {
+      return existingPassport;
+    }
+
+    const passportData = this.buildPassportData(player);
+
+    return this.prisma.player_passports.create({
+      data: {
+        id: randomUUID(),
+        playerId: player.id,
+        publicToken: randomUUID(),
+        status: PassportStatus.PENDING,
+        passportData,
+        verificationNotes: 'Auto-generated passport',
+        updatedAt: new Date(),
+      },
+      include: {
+        players: {
+          include: {
+            users: true,
+            clubs: true,
+          },
+        },
+      },
+    });
+  }
+
   async verifyPassport(
     playerId: string,
     status: PassportStatus,
@@ -167,6 +203,7 @@ export class PassportService {
 
       return qrCodeDataUrl;
     } catch (error) {
+      console.error('Failed to generate QR code', error);
       throw new BadRequestException('Failed to generate QR code');
     }
   }
@@ -183,5 +220,31 @@ export class PassportService {
     return this.prisma.player_passports.delete({
       where: { playerId },
     });
+  }
+
+  private buildPassportData(player: any) {
+    const avgRating =
+      player.scouting_reports?.length > 0
+        ? Math.round(
+            player.scouting_reports.reduce((sum, r) => sum + (r.overallRating || 0), 0) /
+              player.scouting_reports.length,
+          )
+        : null;
+
+    return {
+      firstName: player.users?.firstName,
+      lastName: player.users?.lastName,
+      position: player.position,
+      nationality: player.nationality,
+      dateOfBirth: player.dateOfBirth,
+      height: player.height,
+      weight: player.weight,
+      preferredFoot: player.preferredFoot,
+      club: player.clubs ? { name: player.clubs.name, logo: player.clubs.logo } : null,
+      avatar: player.users?.avatar,
+      averageRating: avgRating,
+      totalReports: player.scouting_reports?.length ?? 0,
+      statsSnapshot: player.statsJson,
+    };
   }
 }

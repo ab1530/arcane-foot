@@ -69,7 +69,7 @@ export class SentryInterceptor implements NestInterceptor {
   private async handle403Error(
     request: any,
     error: ForbiddenException,
-    context: ExecutionContext,
+    _context: ExecutionContext,
   ) {
     const user = request.user;
     const path = request.url;

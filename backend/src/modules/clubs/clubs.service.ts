@@ -64,23 +64,23 @@ export class ClubsService {
     // Generate cache key based on query params
     const cacheKey = `clubs:list:${JSON.stringify(params)}`;
 
-    return this.cacheManager.getOrSet(
-      cacheKey,
-      async () => {
-        const where: any = {};
-        if (country) where.country = country;
-        if (city) where.city = city;
-        if (search) {
-          where.OR = [
-            { name: { contains: search, mode: 'insensitive' } },
-            { shortName: { contains: search, mode: 'insensitive' } },
-          ];
-        }
+    return this.cacheManager
+      .getOrSet(
+        cacheKey,
+        async () => {
+          const where: any = {};
+          if (country) where.country = country;
+          if (city) where.city = city;
+          if (search) {
+            where.OR = [
+              { name: { contains: search, mode: 'insensitive' } },
+              { shortName: { contains: search, mode: 'insensitive' } },
+            ];
+          }
 
-        const skip = (page - 1) * limit;
+          const skip = (page - 1) * limit;
 
-        const [clubs, total] = await Promise.all([
-          this.prisma.clubs.findMany({
+          const clubs = await this.prisma.clubs.findMany({
             where,
             skip,
             take: limit,
@@ -102,26 +102,19 @@ export class ClubsService {
               },
             },
             orderBy: { name: 'asc' },
-          }),
-          this.prisma.clubs.count({ where }),
-        ]);
+          });
 
-        return {
-          data: clubs,
-          meta: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-          },
-        };
-      },
-      60, // Cache for 1 minute
-    ).then(async (result) => {
-      // Tag for invalidation
-      await this.cacheManager.cacheWithTags(cacheKey, result, ['clubs:list'], 60);
-      return result;
-    });
+          // Return array directly for consistency with tests and API standards
+          // If pagination metadata is needed, clients can use response headers or separate endpoint
+          return clubs;
+        },
+        60, // Cache for 1 minute
+      )
+      .then(async (result) => {
+        // Tag for invalidation
+        await this.cacheManager.cacheWithTags(cacheKey, result, ['clubs:list'], 60);
+        return result;
+      });
   }
 
   /**

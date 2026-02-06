@@ -9,14 +9,21 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import { Icon } from '../../components/ui';
+import { ScreenHeader } from '../../components/navigation';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { logger, logError } from '../../utils/logger';
 import type { IconName } from '../../constants/icons';
+import type { AppStackParamList } from '../../types/navigation';
+import type { CalendarMatch } from '../../types/calendar';
 
 // Conditional import for MapView
 let MapView: any;
@@ -33,44 +40,11 @@ try {
 
 const { width } = Dimensions.get('window');
 
-interface Match {
-  id: string;
-  date: string;
-  time?: string;
-  homeClub?: {
-    id: string;
-    name: string;
-    logo?: string;
-  };
-  awayClub?: {
-    id: string;
-    name: string;
-    logo?: string;
-  };
-  venue?: {
-    name: string;
-    city: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-  };
-  competition?: {
-    name: string;
-  };
-  status?: string;
-  assignments?: Array<{
-    scoutId: string;
-    scout?: {
-      firstName: string;
-      lastName: string;
-    };
-  }>;
-}
-
 type ViewMode = 'list' | 'week' | 'map';
 
 export const CalendarScreenNew = () => {
-  const [matches, setMatches] = useState<Match[]>([]);
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const [matches, setMatches] = useState<CalendarMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -82,11 +56,11 @@ export const CalendarScreenNew = () => {
       const response = await api.getMatches();
 
       // Handle different response formats
-      const matchesList = Array.isArray(response)
+      const matchesList = (Array.isArray(response)
         ? response
-        : response?.items || response?.data || [];
+        : response?.items || response?.data || []) as CalendarMatch[];
 
-      logger.log('Matches fetched', { count: matchesList.length });
+      logger.info('calendar', 'Matches fetched', { count: matchesList.length });
       setMatches(matchesList);
     } catch (error) {
       logError('Failed to fetch matches', error);
@@ -152,6 +126,14 @@ export const CalendarScreenNew = () => {
     });
   };
 
+  const renderBadge = (logo?: string | null) => {
+    if (!logo) {
+      return <View style={styles.badgePlaceholder} />;
+    }
+
+    return <Image source={{ uri: logo }} style={styles.badgeImage} />;
+  };
+
   const renderListView = () => (
     <ScrollView
       style={styles.scrollView}
@@ -170,46 +152,69 @@ export const CalendarScreenNew = () => {
           <Text style={styles.emptyText}>No matches scheduled</Text>
         </GlassCard>
       ) : (
-        matches.map(match => (
-          <GlassCard key={match.id} variant="elevated" style={styles.matchCard}>
-            <View style={styles.matchHeader}>
-              <View style={styles.dateContainer}>
-                <Text style={styles.matchDate}>{formatDate(match.date)}</Text>
-                <Text style={styles.matchTime}>{formatTime(match.date)}</Text>
+        matches.map((match, index) => (
+          <TouchableOpacity
+            key={match.id}
+            style={styles.matchTile}
+            activeOpacity={0.92}
+            onPress={() => navigation.navigate('MatchDetail', { match })}
+          >
+            {match.competition && (
+              <LinearGradient
+                colors={['#fde047', '#f97316']}
+                style={styles.leagueBadge}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {renderBadge(match.competition.logo)}
+                <Text style={styles.leagueBadgeText} numberOfLines={1}>
+                  {match.competition.name}
+                </Text>
+              </LinearGradient>
+            )}
+            <View style={styles.matchTileContent}>
+              <View style={styles.matchHeader}>
+                <View style={styles.dateContainer}>
+                  <Text style={styles.matchDate}>{formatDate(match.date)}</Text>
+                  <Text style={styles.matchTime}>{formatTime(match.date)}</Text>
+                </View>
               </View>
-              {match.competition && (
-                <Text style={styles.competition}>{match.competition.name}</Text>
+
+              <View style={styles.teamsContainer}>
+                <View style={styles.team}>
+                  {renderBadge(match.homeClub?.logo)}
+                  <Text style={styles.teamName}>{match.homeClub?.name || 'TBD'}</Text>
+                </View>
+                <Text style={styles.vs}>VS</Text>
+                <View style={styles.team}>
+                  {renderBadge(match.awayClub?.logo)}
+                  <Text style={styles.teamName}>{match.awayClub?.name || 'TBD'}</Text>
+                </View>
+              </View>
+
+              {match.venue && (
+                <View style={styles.venueContainer}>
+                  <Icon name="location" size={16} color={colors.text.secondary} />
+                  <Text style={styles.venueText}>
+                    {match.venue.name}, {match.venue.city}
+                  </Text>
+                </View>
+              )}
+
+              {match.assignments && match.assignments.length > 0 && (
+                <View style={styles.scoutsContainer}>
+                  <Icon name="people" size={16} color={colors.brand.primary} />
+                  <Text style={styles.scoutsText}>
+                    {match.assignments.length} scout{match.assignments.length > 1 ? 's' : ''} assigned
+                  </Text>
+                </View>
               )}
             </View>
-
-            <View style={styles.teamsContainer}>
-              <View style={styles.team}>
-                <Text style={styles.teamName}>{match.homeClub?.name || 'TBD'}</Text>
-              </View>
-              <Text style={styles.vs}>VS</Text>
-              <View style={styles.team}>
-                <Text style={styles.teamName}>{match.awayClub?.name || 'TBD'}</Text>
-              </View>
-            </View>
-
-            {match.venue && (
-              <View style={styles.venueContainer}>
-                <Icon name="location" size={16} color={colors.text.secondary} />
-                <Text style={styles.venueText}>
-                  {match.venue.name}, {match.venue.city}
-                </Text>
-              </View>
-            )}
-
-            {match.assignments && match.assignments.length > 0 && (
-              <View style={styles.scoutsContainer}>
-                <Icon name="people" size={16} color={colors.brand.primary} />
-                <Text style={styles.scoutsText}>
-                  {match.assignments.length} scout{match.assignments.length > 1 ? 's' : ''} assigned
-                </Text>
-              </View>
-            )}
-          </GlassCard>
+            <LinearGradient
+              colors={index % 2 === 0 ? ['#58D3FF', '#1D4ED8'] : ['#FDE047', '#F97316']}
+              style={styles.matchTileAccent}
+            />
+          </TouchableOpacity>
         ))
       )}
     </ScrollView>
@@ -270,15 +275,21 @@ export const CalendarScreenNew = () => {
                   {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                 </Text>
                 {dayMatches.map(match => (
-                  <GlassCard key={match.id} variant="elevated" style={styles.weekMatchCard}>
-                    <Text style={styles.weekMatchTime}>{formatTime(match.date)}</Text>
-                    <Text style={styles.weekMatchTeams}>
-                      {match.homeClub?.name} vs {match.awayClub?.name}
-                    </Text>
-                    {match.venue && (
-                      <Text style={styles.weekMatchVenue}>{match.venue.name}</Text>
-                    )}
-                  </GlassCard>
+                  <TouchableOpacity
+                    key={match.id}
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate('MatchDetail', { match })}
+                  >
+                    <GlassCard variant="elevated" style={styles.weekMatchCard}>
+                      <Text style={styles.weekMatchTime}>{formatTime(match.date)}</Text>
+                      <Text style={styles.weekMatchTeams}>
+                        {match.homeClub?.name} vs {match.awayClub?.name}
+                      </Text>
+                      {match.venue && (
+                        <Text style={styles.weekMatchVenue}>{match.venue.name}</Text>
+                      )}
+                    </GlassCard>
+                  </TouchableOpacity>
                 ))}
               </View>
             );
@@ -355,37 +366,46 @@ export const CalendarScreenNew = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Calendar</Text>
+      <ScreenHeader blur={false} borderBottom={false} />
+      <View style={styles.heroSection}>
+        <Text style={styles.heroEyebrow}>Arcane Calendar</Text>
+        <Text style={styles.heroTitle}>Match Center</Text>
+        <Text style={styles.heroSubtitle}>
+          Suivez vos rencontres planifiées, répartissez les scouts et visualisez les terrains en un
+          coup d’œil.
+        </Text>
       </View>
 
-      {/* View Mode Selector */}
       <View style={styles.viewModeContainer}>
-        {(['list', 'week', 'map'] as ViewMode[]).map(mode => (
+        {(['list', 'week', 'map'] as ViewMode[]).map((mode) => (
           <TouchableOpacity
             key={mode}
             style={[
               styles.viewModeButton,
-              viewMode === mode && styles.viewModeButtonActive
+              viewMode === mode && styles.viewModeButtonActive,
             ]}
             onPress={() => setViewMode(mode)}
           >
             <Icon
-              name={mode === 'list' ? 'list' : mode === 'week' ? 'calendar' : 'location' as IconName}
-              size={20}
-              color={viewMode === mode ? colors.background.primary : colors.text.secondary}
+              name={(mode === 'list'
+                ? 'list'
+                : mode === 'week'
+                ? 'calendar'
+                : 'location') as IconName}
+              size={18}
+              color={
+                viewMode === mode ? colors.background.primary : colors.text.secondary
+              }
             />
-            <Text style={[
-              styles.viewModeText,
-              viewMode === mode && styles.viewModeTextActive
-            ]}>
+            <Text
+              style={[styles.viewModeText, viewMode === mode && styles.viewModeTextActive]}
+            >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Content based on view mode */}
       {viewMode === 'list' && renderListView()}
       {viewMode === 'week' && renderWeekView()}
       {viewMode === 'map' && renderMapView()}
@@ -396,7 +416,7 @@ export const CalendarScreenNew = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -408,22 +428,32 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     color: colors.text.secondary,
   },
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
+  heroSection: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
-  title: {
-    fontSize: typography.sizes.h3,
-    fontWeight: 'bold',
+  heroEyebrow: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontFamily: typography.fonts.bold,
     color: colors.text.primary,
+    marginTop: spacing.xs,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
   },
   viewModeContainer: {
     flexDirection: 'row',
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    backgroundColor: colors.surface.glassLight,
-    borderRadius: radius.lg,
-    padding: spacing.xs,
+    gap: spacing.sm,
   },
   viewModeButton: {
     flex: 1,
@@ -431,11 +461,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
     gap: spacing.xs,
   },
   viewModeButtonActive: {
     backgroundColor: colors.brand.primary,
+    borderColor: colors.brand.primary,
   },
   viewModeText: {
     fontSize: typography.sizes.sm,
@@ -462,9 +496,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text.primary,
   },
-  matchCard: {
+  matchTile: {
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#0f1525',
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  matchTileContent: {
     padding: spacing.lg,
-    marginBottom: spacing.md,
+  },
+  matchTileAccent: {
+    height: 6,
   },
   matchHeader: {
     flexDirection: 'row',
@@ -483,13 +528,23 @@ const styles = StyleSheet.create({
     color: colors.brand.primary,
     marginTop: spacing.xs,
   },
-  competition: {
-    fontSize: typography.sizes.xs,
-    color: colors.text.secondary,
-    backgroundColor: colors.background.tertiary,
+  leagueBadge: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
+    borderRadius: 999,
+    gap: spacing.xs,
+    minWidth: width * 0.3,
+  },
+  leagueBadgeText: {
+    fontSize: typography.sizes.xs,
+    color: colors.background.primary,
+    fontFamily: typography.fonts.medium,
+    flexShrink: 1,
   },
   teamsContainer: {
     flexDirection: 'row',
@@ -500,6 +555,7 @@ const styles = StyleSheet.create({
   team: {
     flex: 1,
     alignItems: 'center',
+    gap: spacing.xs,
   },
   teamName: {
     fontSize: typography.sizes.lg,
@@ -531,6 +587,17 @@ const styles = StyleSheet.create({
   scoutsText: {
     fontSize: typography.sizes.sm,
     color: colors.brand.primary,
+  },
+  badgePlaceholder: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.surface.glassLight,
+  },
+  badgeImage: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   weekHeader: {
     flexDirection: 'row',

@@ -174,12 +174,8 @@ describe('MarketValueService', () => {
 
       mockCacheManager.get.mockResolvedValue(null);
       mockPrismaService.players.findUnique.mockResolvedValue(mockPlayer);
-      mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('Service unavailable')),
-      );
-      mockPrismaService.player_valuations.findFirst.mockResolvedValue(
-        lastValuation,
-      );
+      mockHttpService.post.mockReturnValue(throwError(() => new Error('Service unavailable')));
+      mockPrismaService.player_valuations.findFirst.mockResolvedValue(lastValuation);
 
       const result = await service.getPlayerValuation('player-1');
 
@@ -201,15 +197,13 @@ describe('MarketValueService', () => {
         {
           playerId: 'player-1',
           estimatedValue: 20.0,
-          confidenceScore: 0.80,
+          confidenceScore: 0.8,
           modelVersion: 'v1',
           createdAt: new Date('2024-10-06'),
         },
       ];
 
-      mockPrismaService.player_valuations.findMany.mockResolvedValue(
-        mockValuations,
-      );
+      mockPrismaService.player_valuations.findMany.mockResolvedValue(mockValuations);
 
       const result = await service.getValuationTrend('player-1');
 
@@ -260,10 +254,7 @@ describe('MarketValueService', () => {
       const playerIds = Array(11).fill('player-id');
 
       await expect(service.compareValuations(playerIds)).rejects.toThrow(
-        new HttpException(
-          'Maximum 10 players can be compared',
-          HttpStatus.BAD_REQUEST,
-        ),
+        new HttpException('Maximum 10 players can be compared', HttpStatus.BAD_REQUEST),
       );
     });
 
@@ -361,9 +352,7 @@ describe('MarketValueService', () => {
     });
 
     it('should map countries to leagues correctly', () => {
-      expect(service['getLeagueFromCountry']('England')).toBe(
-        'Premier League',
-      );
+      expect(service['getLeagueFromCountry']('England')).toBe('Premier League');
       expect(service['getLeagueFromCountry']('Spain')).toBe('LaLiga');
       expect(service['getLeagueFromCountry']('Germany')).toBe('Bundesliga');
       expect(service['getLeagueFromCountry']('Unknown')).toBe('Other');
@@ -404,9 +393,7 @@ describe('MarketValueService', () => {
     });
 
     it('should return unhealthy status if service is down', async () => {
-      mockHttpService.get.mockReturnValue(
-        throwError(() => new Error('Connection refused')),
-      );
+      mockHttpService.get.mockReturnValue(throwError(() => new Error('Connection refused')));
 
       const result = await service.checkAIServiceHealth();
 

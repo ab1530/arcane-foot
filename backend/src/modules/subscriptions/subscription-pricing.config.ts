@@ -88,7 +88,7 @@ export const SUBSCRIPTION_PRICING: Record<SubscriptionTier, PricingPlan> = {
       'Analyse vidéo basique',
       'Matchmaking IA clubs-joueurs',
       'Statistiques avancées',
-      'Collaboration équipe (jusqu\'à 3 membres)',
+      "Collaboration équipe (jusqu'à 3 membres)",
       'Accès prioritaire aux camps',
       'Support prioritaire (24h)',
       'API access (10,000 calls/mois)',
@@ -170,8 +170,13 @@ export function getAllPricingPlans(): PricingPlan[] {
 /**
  * Get pricing plans for public display (excluding internal details)
  */
-export function getPublicPricingPlans(): Omit<PricingPlan, 'stripePriceIdMonthly' | 'stripePriceIdYearly' | 'stripeProductId'>[] {
-  return Object.values(SUBSCRIPTION_PRICING).map(({ stripePriceIdMonthly, stripePriceIdYearly, stripeProductId, ...plan }) => plan);
+export function getPublicPricingPlans(): Omit<
+  PricingPlan,
+  'stripePriceIdMonthly' | 'stripePriceIdYearly' | 'stripeProductId'
+>[] {
+  return Object.values(SUBSCRIPTION_PRICING).map(
+    ({ stripePriceIdMonthly, stripePriceIdYearly, stripeProductId, ...plan }) => plan,
+  );
 }
 
 /**

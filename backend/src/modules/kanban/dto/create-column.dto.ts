@@ -12,7 +12,7 @@ export class CreateColumnDto {
   @IsEnum(KanbanColumnType)
   type: KanbanColumnType;
 
-  @ApiPropertyOptional({ description: 'Couleur hex pour l\'UI', example: '#3498db' })
+  @ApiPropertyOptional({ description: "Couleur hex pour l'UI", example: '#3498db' })
   @IsString()
   @IsOptional()
   @IsHexColor()

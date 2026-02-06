@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { logger, logError } from '../utils/logger';
+import { logger } from '../utils/logger';
 import type { Player } from '../types';
 
 export interface MarketFilters {
@@ -60,7 +60,9 @@ export const useMarket = (initialFilters?: MarketFilters) => {
       setTotalPages(response?.meta?.totalPages || 1);
       setTotalCount(response?.meta?.total || 0);
     } catch (err) {
-      logError('Failed to fetch market players', err);
+      logger.error('market', 'Failed to fetch market players', {
+        error: (err as Error)?.message,
+      });
       setError('Failed to load players');
       setPlayers([]);
     } finally {
@@ -162,7 +164,9 @@ export const useMarketStats = () => {
         available: availablePlayers.length
       });
     } catch (err) {
-      logError('Failed to fetch market stats', err);
+      logger.error('market', 'Failed to fetch market stats', {
+        error: (err as Error)?.message,
+      });
       setError('Failed to load market statistics');
     } finally {
       setLoading(false);

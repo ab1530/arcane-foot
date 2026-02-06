@@ -40,7 +40,7 @@ export class ClubRequestsController {
     name: 'status',
     required: false,
     enum: ClubRequestStatus,
-    description: 'Filtrer par statut'
+    description: 'Filtrer par statut',
   })
   @ApiResponse({ status: 200, description: 'Liste des demandes récupérée avec succès' })
   findAll(
@@ -53,7 +53,11 @@ export class ClubRequestsController {
 
   @Get('statistics')
   @ApiOperation({ summary: 'Récupérer les statistiques des demandes' })
-  @ApiQuery({ name: 'clubId', required: false, description: 'Statistiques pour un club spécifique' })
+  @ApiQuery({
+    name: 'clubId',
+    required: false,
+    description: 'Statistiques pour un club spécifique',
+  })
   @ApiResponse({ status: 200, description: 'Statistiques récupérées avec succès' })
   getStatistics(@Query('clubId') clubId?: string) {
     return this.clubRequestsService.getStatistics(clubId);

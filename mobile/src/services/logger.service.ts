@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 export enum LogLevel {
@@ -49,7 +49,7 @@ class LoggerService {
       // Clean old logs on initialization
       await this.cleanOldLogs();
     } catch (error) {
-      console.error('Failed to initialize logger:', error);
+      // Silently fail - will retry on first log write
     }
   }
 
@@ -95,7 +95,8 @@ class LoggerService {
         encoding: FileSystem.EncodingType.UTF8,
       });
     } catch (error) {
-      console.error('Failed to write log to file:', error);
+      // Silently fail - don't use console to avoid infinite loop
+      // Error will be visible in file write failures
     }
   }
 
@@ -117,7 +118,7 @@ class LoggerService {
       // Clean old backups
       await this.cleanOldLogs();
     } catch (error) {
-      console.error('Failed to rotate log files:', error);
+      // Silently fail
     }
   }
 
@@ -139,7 +140,7 @@ class LoggerService {
         await FileSystem.deleteAsync(`${logsDir}/${file}`, { idempotent: true });
       }
     } catch (error) {
-      console.error('Failed to clean old logs:', error);
+      // Silently fail
     }
   }
 
@@ -159,28 +160,11 @@ class LoggerService {
       this.logs.shift();
     }
 
-    // Write to file asynchronously
+    // Write to file asynchronously (silently, no console output)
     this.writeToFile(entry);
 
-    // Also log to console in development
-    if (__DEV__) {
-      const consoleMessage = this.formatLogEntry(entry);
-      switch (level) {
-        case LogLevel.DEBUG:
-          console.debug(consoleMessage);
-          break;
-        case LogLevel.INFO:
-          console.info(consoleMessage);
-          break;
-        case LogLevel.WARN:
-          console.warn(consoleMessage);
-          break;
-        case LogLevel.ERROR:
-        case LogLevel.FATAL:
-          console.error(consoleMessage);
-          break;
-      }
-    }
+    // NOTE: We don't log to console here to avoid infinite loop with expoLogBridge
+    // The expoLogBridge handles console output
   }
 
   public debug(message: string, context: string = 'App', data?: any) {
@@ -266,7 +250,6 @@ class LoggerService {
         encoding: FileSystem.EncodingType.UTF8,
       });
     } catch (error) {
-      console.error('Failed to read log file:', error);
       return 'Failed to read logs';
     }
   }
@@ -277,7 +260,6 @@ class LoggerService {
       const files = await FileSystem.readDirectoryAsync(logsDir);
       return files.filter(file => file.endsWith('.log'));
     } catch (error) {
-      console.error('Failed to get log files:', error);
       return [];
     }
   }
@@ -312,7 +294,6 @@ class LoggerService {
 
       return exportPath;
     } catch (error) {
-      console.error('Failed to export logs:', error);
       throw error;
     }
   }
@@ -324,7 +305,7 @@ class LoggerService {
       await FileSystem.makeDirectoryAsync(logsDir, { intermediates: true });
       this.logs = [];
     } catch (error) {
-      console.error('Failed to clear logs:', error);
+      // Silently fail
     }
   }
 }

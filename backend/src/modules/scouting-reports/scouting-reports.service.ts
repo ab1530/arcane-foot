@@ -1,17 +1,17 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { GamificationService } from '../gamification/gamification.service';
 import { CreateScoutingReportDto } from './dto/create-scouting-report.dto';
 import { UpdateScoutingReportDto } from './dto/update-scouting-report.dto';
 import { QueryScoutingReportDto } from './dto/query-scouting-report.dto';
 
 @Injectable()
 export class ScoutingReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private gamification: GamificationService,
+  ) {}
 
   async create(createDto: CreateScoutingReportDto, scoutId: string) {
     // Validate scoutId is provided
@@ -68,6 +68,19 @@ export class ScoutingReportsService {
         tacticalRating: createDto.tacticalRating,
         recommendation: createDto.recommendation,
         recommendationNotes: createDto.recommendationNotes,
+        withBallAnalysis: createDto.withBallAnalysis,
+        offBallAnalysis: createDto.offBallAnalysis,
+        gameIntelligenceAnalysis: createDto.gameIntelligenceAnalysis,
+        attitudeAnalysis: createDto.attitudeAnalysis,
+        staffOpinion: createDto.staffOpinion,
+        observedDominantFoot: createDto.observedDominantFoot,
+        observedHeightCm: createDto.observedHeightCm,
+        observedWeightKg: createDto.observedWeightKg,
+        observedClubName: createDto.observedClubName,
+        sprint10mSec: createDto.sprint10mSec,
+        sprint20mSec: createDto.sprint20mSec,
+        sprint40mSec: createDto.sprint40mSec,
+        vmaKmh: createDto.vmaKmh,
         tags: createDto.tags,
         similarPlayerIds: createDto.similarPlayerIds,
         updatedAt: new Date(),
@@ -86,8 +99,17 @@ export class ScoutingReportsService {
           include: {
             users: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
+                avatar: true,
+              },
+            },
+            clubs: {
+              select: {
+                id: true,
+                name: true,
+                logo: true,
               },
             },
           },
@@ -103,11 +125,35 @@ export class ScoutingReportsService {
       },
     });
 
-    return report;
+    // Trigger gamification system (fire and forget - don't wait)
+    this.gamification.trackUserAction(scoutId, 'report_created').catch((err) => {
+      console.error('❌ Gamification error:', err.message);
+      console.error('Stack:', err.stack);
+    });
+
+    // Transform data to match frontend expectations
+    return {
+      ...report,
+      player: {
+        ...report.players,
+        user: report.players?.users,
+        club: report.players?.clubs,
+      },
+      scout: report.users,
+      match: {
+        ...report.matches,
+        homeClub: report.matches?.clubs_matches_homeClubIdToclubs,
+        awayClub: report.matches?.clubs_matches_awayClubIdToclubs,
+      },
+      // Remove old fields
+      players: undefined,
+      users: undefined,
+      matches: undefined,
+    };
   }
 
   async findAll(query: QueryScoutingReportDto) {
-    const { playerId, scoutId, matchId, status, recommendation } = query;
+    const { playerId, scoutId, matchId, status, recommendation, page = 1, limit = 1000 } = query;
 
     const where: any = {};
     if (playerId) where.playerId = playerId;
@@ -116,43 +162,79 @@ export class ScoutingReportsService {
     if (status) where.status = status;
     if (recommendation) where.recommendation = recommendation;
 
-    const reports = await this.prisma.scouting_reports.findMany({
-      where,
-      include: {
-        users: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
+    const skip = (page - 1) * limit;
+
+    const [reports, total] = await Promise.all([
+      this.prisma.scouting_reports.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          users: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+            },
           },
-        },
-        players: {
-          include: {
-            users: {
-              select: {
-                firstName: true,
-                lastName: true,
+          players: {
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
               },
             },
           },
-        },
-        matches: {
-          include: {
-            clubs_matches_homeClubIdToclubs: true,
-            clubs_matches_awayClubIdToclubs: true,
+          matches: {
+            include: {
+              clubs_matches_homeClubIdToclubs: true,
+              clubs_matches_awayClubIdToclubs: true,
+            },
           },
+          scouting_notes: true,
+          media: true,
         },
-        scouting_notes: true,
-        media: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.scouting_reports.count({ where }),
+    ]);
 
-    return reports;
+    // Transform data to match frontend expectations
+    const transformedReports = reports.map((report: any) => ({
+      ...report,
+      player: {
+        ...report.players,
+        user: report.players?.users,
+      },
+      scout: report.users,
+      match: {
+        ...report.matches,
+        homeClub: report.matches?.clubs_matches_homeClubIdToclubs,
+        awayClub: report.matches?.clubs_matches_awayClubIdToclubs,
+      },
+      // Remove old fields
+      players: undefined,
+      users: undefined,
+      matches: undefined,
+    }));
+
+    return {
+      data: transformedReports,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {
@@ -172,8 +254,17 @@ export class ScoutingReportsService {
           include: {
             users: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
+                avatar: true,
+              },
+            },
+            clubs: {
+              select: {
+                id: true,
+                name: true,
+                logo: true,
               },
             },
           },
@@ -197,7 +288,25 @@ export class ScoutingReportsService {
       throw new NotFoundException(`Rapport avec l'ID ${id} introuvable`);
     }
 
-    return report;
+    // Transform data to match frontend expectations
+    return {
+      ...report,
+      player: {
+        ...report.players,
+        user: report.players?.users,
+        club: report.players?.clubs,
+      },
+      scout: report.users,
+      match: {
+        ...report.matches,
+        homeClub: report.matches?.clubs_matches_homeClubIdToclubs,
+        awayClub: report.matches?.clubs_matches_awayClubIdToclubs,
+      },
+      // Remove old fields
+      players: undefined,
+      users: undefined,
+      matches: undefined,
+    };
   }
 
   async update(id: string, updateDto: UpdateScoutingReportDto) {
@@ -221,8 +330,17 @@ export class ScoutingReportsService {
           include: {
             users: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
+                avatar: true,
+              },
+            },
+            clubs: {
+              select: {
+                id: true,
+                name: true,
+                logo: true,
               },
             },
           },
@@ -238,7 +356,25 @@ export class ScoutingReportsService {
       },
     });
 
-    return updated;
+    // Transform data to match frontend expectations
+    return {
+      ...updated,
+      player: {
+        ...updated.players,
+        user: updated.players?.users,
+        club: updated.players?.clubs,
+      },
+      scout: updated.users,
+      match: {
+        ...updated.matches,
+        homeClub: updated.matches?.clubs_matches_homeClubIdToclubs,
+        awayClub: updated.matches?.clubs_matches_awayClubIdToclubs,
+      },
+      // Remove old fields
+      players: undefined,
+      users: undefined,
+      matches: undefined,
+    };
   }
 
   async remove(id: string) {
@@ -262,13 +398,62 @@ export class ScoutingReportsService {
         submittedAt: new Date(),
       },
       include: {
-        users: true,
-        players: true,
-        matches: true,
+        users: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+        players: {
+          include: {
+            users: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            },
+            clubs: {
+              select: {
+                id: true,
+                name: true,
+                logo: true,
+              },
+            },
+          },
+        },
+        matches: {
+          include: {
+            clubs_matches_homeClubIdToclubs: true,
+            clubs_matches_awayClubIdToclubs: true,
+          },
+        },
       },
     });
 
-    return submitted;
+    // Transform data to match frontend expectations
+    return {
+      ...submitted,
+      player: {
+        ...submitted.players,
+        user: submitted.players?.users,
+        club: submitted.players?.clubs,
+      },
+      scout: submitted.users,
+      match: {
+        ...submitted.matches,
+        homeClub: submitted.matches?.clubs_matches_homeClubIdToclubs,
+        awayClub: submitted.matches?.clubs_matches_awayClubIdToclubs,
+      },
+      // Remove old fields
+      players: undefined,
+      users: undefined,
+      matches: undefined,
+    };
   }
 
   async review(id: string, reviewerId: string, approved: boolean) {
@@ -282,13 +467,62 @@ export class ScoutingReportsService {
         reviewedBy: reviewerId,
       },
       include: {
-        users: true,
-        players: true,
-        matches: true,
+        users: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+        players: {
+          include: {
+            users: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            },
+            clubs: {
+              select: {
+                id: true,
+                name: true,
+                logo: true,
+              },
+            },
+          },
+        },
+        matches: {
+          include: {
+            clubs_matches_homeClubIdToclubs: true,
+            clubs_matches_awayClubIdToclubs: true,
+          },
+        },
       },
     });
 
-    return reviewed;
+    // Transform data to match frontend expectations
+    return {
+      ...reviewed,
+      player: {
+        ...reviewed.players,
+        user: reviewed.players?.users,
+        club: reviewed.players?.clubs,
+      },
+      scout: reviewed.users,
+      match: {
+        ...reviewed.matches,
+        homeClub: reviewed.matches?.clubs_matches_homeClubIdToclubs,
+        awayClub: reviewed.matches?.clubs_matches_awayClubIdToclubs,
+      },
+      // Remove old fields
+      players: undefined,
+      users: undefined,
+      matches: undefined,
+    };
   }
 
   async getPlayerReports(playerId: string) {

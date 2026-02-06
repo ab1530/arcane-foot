@@ -38,6 +38,16 @@ function log(message: string, color = colors.reset) {
   console.log(`${color}${message}${colors.reset}`);
 }
 
+function getDemoPassword(): string {
+  const demoPassword = process.env.ARCANE_DEMO_PASSWORD;
+  if (!demoPassword) {
+    throw new Error(
+      'ARCANE_DEMO_PASSWORD is required to run this script (do not commit demo passwords).',
+    );
+  }
+  return demoPassword;
+}
+
 function logSection(title: string) {
   console.log('\n' + '='.repeat(60));
   log(`  ${title}`, colors.bright + colors.cyan);
@@ -113,7 +123,7 @@ async function testAuthentication() {
       'POST',
       {
         email: 'admin@arcane.com',
-        password: 'Password123!',
+        password: getDemoPassword(),
       },
       false,
     );
@@ -168,22 +178,16 @@ async function testPlayerValidation() {
 
   if (testPlayerId) {
     await runTest('Get Validation History', async () => {
-      const response = await makeRequest(
-        `/admin/players/${testPlayerId}/validation-history`,
-      );
+      const response = await makeRequest(`/admin/players/${testPlayerId}/validation-history`);
 
       log(`  ${response.history.length} entrées d'historique`, colors.yellow);
     });
 
     await runTest('Validate Player', async () => {
-      const response = await makeRequest(
-        `/admin/players/${testPlayerId}/validate`,
-        'POST',
-        {
-          notes: 'Player validated by automated test',
-          notifyPlayer: false,
-        },
-      );
+      const response = await makeRequest(`/admin/players/${testPlayerId}/validate`, 'POST', {
+        notes: 'Player validated by automated test',
+        notifyPlayer: false,
+      });
 
       if (response.verificationStatus !== 'VERIFIED') {
         throw new Error('Player not verified');
@@ -251,9 +255,7 @@ async function testGamification() {
   });
 
   await runTest('Get Leaderboard', async () => {
-    const response = await makeRequest(
-      '/gamification/leaderboard/WEEKLY_OVERALL?limit=10',
-    );
+    const response = await makeRequest('/gamification/leaderboard/WEEKLY_OVERALL?limit=10');
 
     log(`  Top ${response.leaderboard.length} joueurs`, colors.yellow);
 
@@ -267,7 +269,10 @@ async function testGamification() {
 
     if (response.challenge) {
       log(`  Challenge: ${response.challenge.title}`, colors.yellow);
-      log(`  Progrès: ${response.userProgress.progress}/${response.challenge.target}`, colors.yellow);
+      log(
+        `  Progrès: ${response.userProgress.progress}/${response.challenge.target}`,
+        colors.yellow,
+      );
       log(`  Complété: ${response.userProgress.completed ? 'Oui' : 'Non'}`, colors.yellow);
     }
   });
@@ -281,10 +286,7 @@ async function testGamification() {
   });
 
   await runTest('Track User Action', async () => {
-    const response = await makeRequest(
-      '/gamification/track-action/PROFILE_COMPLETED',
-      'POST',
-    );
+    const response = await makeRequest('/gamification/track-action/PROFILE_COMPLETED', 'POST');
 
     log(`  Action trackée: ${response.action}`, colors.yellow);
 
@@ -317,7 +319,10 @@ async function testAIIntelligence() {
       log(`  Market Value: ${response.marketValue}`, colors.yellow);
       log(`  Potential: ${response.potentialScore}`, colors.yellow);
       log(`  Injury Risk: ${response.injuryRisk}`, colors.yellow);
-      log(`  Strengths: ${response.strengthWeakness.strengths.join(', ') || 'None'}`, colors.yellow);
+      log(
+        `  Strengths: ${response.strengthWeakness.strengths.join(', ') || 'None'}`,
+        colors.yellow,
+      );
     });
 
     await runTest('AI Talent Prediction', async () => {
@@ -337,7 +342,10 @@ async function testAIIntelligence() {
       log(`  Top ${response.topMatches.length} clubs compatibles:`, colors.yellow);
 
       response.topMatches.slice(0, 3).forEach((match: any, i: number) => {
-        log(`    ${i + 1}. ${match.clubName} (${match.compatibilityScore.toFixed(0)}%)`, colors.yellow);
+        log(
+          `    ${i + 1}. ${match.clubName} (${match.compatibilityScore.toFixed(0)}%)`,
+          colors.yellow,
+        );
       });
     });
 
@@ -387,9 +395,7 @@ async function testExternalAPIs() {
   });
 
   await runTest('TheSportsDB - Search Team', async () => {
-    const response = await makeRequest(
-      '/external-apis/sportsdb/team/search?name=Arsenal',
-    );
+    const response = await makeRequest('/external-apis/sportsdb/team/search?name=Arsenal');
 
     if (response) {
       log(`  Team trouvée: ${response.name}`, colors.yellow);
@@ -399,9 +405,7 @@ async function testExternalAPIs() {
   });
 
   await runTest('TheSportsDB - Search Player', async () => {
-    const response = await makeRequest(
-      '/external-apis/sportsdb/player/search?name=Messi',
-    );
+    const response = await makeRequest('/external-apis/sportsdb/player/search?name=Messi');
 
     if (response) {
       log(`  Joueur trouvé: ${response.name}`, colors.yellow);
@@ -422,9 +426,7 @@ async function testExternalAPIs() {
   });
 
   await runTest('Football-Data - League Stats', async () => {
-    const response = await makeRequest(
-      '/external-apis/footballdata/stats/Premier League',
-    );
+    const response = await makeRequest('/external-apis/footballdata/stats/Premier League');
 
     if (response.totalMatches > 0) {
       log(`  Total matches: ${response.totalMatches}`, colors.yellow);
@@ -511,8 +513,7 @@ function displayFinalResults() {
   }
 
   // Statistiques de performance
-  const avgDuration =
-    results.reduce((sum, r) => sum + (r.duration || 0), 0) / total;
+  const avgDuration = results.reduce((sum, r) => sum + (r.duration || 0), 0) / total;
 
   log(`\nPerformance moyenne: ${avgDuration.toFixed(0)}ms par test`, colors.yellow);
 
@@ -533,7 +534,8 @@ function displayFinalResults() {
 // ============================================================================
 
 async function main() {
-  log(`
+  log(
+    `
     ╔════════════════════════════════════════════════════════════╗
     ║                                                            ║
     ║     🚀 ARCANE FOOTBALL PLATFORM - TESTS COMPLETS 🚀       ║
@@ -541,7 +543,9 @@ async function main() {
     ║     Tests de tous les systèmes implémentés                ║
     ║                                                            ║
     ╚════════════════════════════════════════════════════════════╝
-  `, colors.bright + colors.cyan);
+  `,
+    colors.bright + colors.cyan,
+  );
 
   log('\nDémarrage des tests...', colors.yellow);
   log(`Backend: ${API_BASE}`, colors.yellow);

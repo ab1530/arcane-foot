@@ -178,9 +178,7 @@ describe('EventsService', () => {
         endDate: '2025-01-15T10:00:00Z',
       };
 
-      await expect(service.create(invalidDto, mockUserId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(invalidDto, mockUserId)).rejects.toThrow(BadRequestException);
       await expect(service.create(invalidDto, mockUserId)).rejects.toThrow(
         'La date de début doit être antérieure à la date de fin',
       );
@@ -193,17 +191,13 @@ describe('EventsService', () => {
         endDate: '2025-01-15T10:00:00Z',
       };
 
-      await expect(service.create(invalidDto, mockUserId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(invalidDto, mockUserId)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when match does not exist', async () => {
       prisma.matches.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(validCreateDto, mockUserId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.create(validCreateDto, mockUserId)).rejects.toThrow(NotFoundException);
       await expect(service.create(validCreateDto, mockUserId)).rejects.toThrow(
         `Match avec l'ID ${mockMatchId} introuvable`,
       );
@@ -257,10 +251,7 @@ describe('EventsService', () => {
     it('should create event with location coordinates', async () => {
       prisma.events.create.mockResolvedValue(mockEvent as any);
 
-      const result = await service.create(
-        { ...validCreateDto, matchId: undefined },
-        mockUserId,
-      );
+      const result = await service.create({ ...validCreateDto, matchId: undefined }, mockUserId);
 
       expect(result.latitude).toBe(48.8566);
       expect(result.longitude).toBe(2.3522);
@@ -543,9 +534,7 @@ describe('EventsService', () => {
     it('should throw NotFoundException when event does not exist', async () => {
       prisma.events.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('non-existent-id')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent-id')).rejects.toThrow(
         `Événement avec l'ID non-existent-id introuvable`,
       );
@@ -685,9 +674,7 @@ describe('EventsService', () => {
     it('should throw NotFoundException when event does not exist', async () => {
       prisma.events.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.update('non-existent-id', updateDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent-id', updateDto)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when updating with invalid dates', async () => {
@@ -697,9 +684,7 @@ describe('EventsService', () => {
       };
       prisma.events.findUnique.mockResolvedValue(mockEvent as any);
 
-      await expect(
-        service.update(mockEventId, invalidDates),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.update(mockEventId, invalidDates)).rejects.toThrow(BadRequestException);
     });
 
     it('should validate dates when updating only startDate', async () => {
@@ -778,9 +763,7 @@ describe('EventsService', () => {
     it('should throw NotFoundException when event does not exist', async () => {
       prisma.events.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -1001,8 +984,7 @@ describe('EventsService', () => {
       const result = await service.create(dto, mockUserId);
 
       const durationDays =
-        (result.endDate.getTime() - result.startDate.getTime()) /
-        (1000 * 60 * 60 * 24);
+        (result.endDate.getTime() - result.startDate.getTime()) / (1000 * 60 * 60 * 24);
       expect(durationDays).toBeGreaterThan(5);
     });
 

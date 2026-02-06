@@ -20,7 +20,7 @@ Sentry.init({
 
 logger.log(
   '[OK] Sentry initialized for ' +
-  (process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development'),
+    (process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development'),
 );
 
 if (process.env.SENTRY_VALIDATE === 'true') {

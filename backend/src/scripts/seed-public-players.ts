@@ -1,5 +1,11 @@
 import { Logger } from '@nestjs/common';
-import { PrismaClient, PlayerType, VerificationStatus, PlayerStatus, UserRole } from '@prisma/client';
+import {
+  PrismaClient,
+  PlayerType,
+  VerificationStatus,
+  PlayerStatus,
+  UserRole,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
@@ -119,7 +125,9 @@ async function seedPublicPlayers() {
             },
           });
 
-          console.log(`✅ Created PUBLIC player: ${playerData.firstName} ${playerData.lastName} (${playerData.email})`);
+          console.log(
+            `✅ Created PUBLIC player: ${playerData.firstName} ${playerData.lastName} (${playerData.email})`,
+          );
           createdCount++;
         });
       } else {

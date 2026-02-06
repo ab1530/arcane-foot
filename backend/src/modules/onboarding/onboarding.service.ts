@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OnboardingStepStatus } from '@prisma/client';
-import { getOnboardingFlow, OnboardingFlow, OnboardingStep } from './onboarding.config';
+import { getOnboardingFlow } from './onboarding.config';
 import { UpdateStepDto } from './dto/update-step.dto';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { randomUUID } from 'crypto';
@@ -49,8 +49,8 @@ export class OnboardingService {
             status: OnboardingStepStatus.NOT_STARTED,
             updatedAt: new Date(),
           },
-        })
-      )
+        }),
+      ),
     );
 
     return {
@@ -93,7 +93,7 @@ export class OnboardingService {
     // Calculate progress
     const totalSteps = steps.length;
     const completedSteps = steps.filter(
-      (step) => step.status === OnboardingStepStatus.COMPLETED
+      (step) => step.status === OnboardingStepStatus.COMPLETED,
     ).length;
     const progressPercentage = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
@@ -111,7 +111,7 @@ export class OnboardingService {
       (step) =>
         step.config?.isRequired &&
         (step.status === OnboardingStepStatus.NOT_STARTED ||
-          step.status === OnboardingStepStatus.IN_PROGRESS)
+          step.status === OnboardingStepStatus.IN_PROGRESS),
     );
 
     return {
@@ -124,7 +124,7 @@ export class OnboardingService {
         completedSteps,
         totalSteps,
         requiredStepsCompleted: enrichedSteps.filter(
-          (s) => s.config?.isRequired && s.status === OnboardingStepStatus.COMPLETED
+          (s) => s.config?.isRequired && s.status === OnboardingStepStatus.COMPLETED,
         ).length,
         requiredStepsTotal: flow.steps.filter((s) => s.isRequired).length,
       },
@@ -322,7 +322,9 @@ export class OnboardingService {
   async getStatistics() {
     const [total, completed, inProgress, skipped] = await Promise.all([
       this.prisma.user_onboarding.count(),
-      this.prisma.user_onboarding.count({ where: { isCompleted: true, completedAt: { not: null } } }),
+      this.prisma.user_onboarding.count({
+        where: { isCompleted: true, completedAt: { not: null } },
+      }),
       this.prisma.user_onboarding.count({
         where: { isCompleted: false, skippedAt: null },
       }),
@@ -351,7 +353,7 @@ export class OnboardingService {
           completed: roleCompleted,
           completionRate: roleTotal > 0 ? Math.round((roleCompleted / roleTotal) * 100) : 0,
         };
-      })
+      }),
     );
 
     return {

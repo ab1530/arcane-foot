@@ -1,5 +1,6 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
+import React from 'react'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -22,20 +23,28 @@ jest.mock('next/navigation', () => ({
   },
 }))
 
-// Mock framer-motion
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: 'div',
-    button: 'button',
-    span: 'span',
-    a: 'a',
-    p: 'p',
-    h1: 'h1',
-    h2: 'h2',
-    h3: 'h3',
-  },
-  AnimatePresence: ({ children }) => children,
-}))
+// Mock framer-motion with props-stripping elements to avoid DOM warnings
+jest.mock('framer-motion', () => {
+  const createComponent = (Tag) =>
+    React.forwardRef((props, ref) => {
+      // Drop motion-only props so React doesn't warn in tests
+      const { whileHover, whileTap, initial, animate, exit, variants, transition, layout, ...rest } = props
+      return <Tag ref={ref} {...rest} />
+    })
+
+  const motionProxy = new Proxy(
+    {},
+    {
+      get: (_, el) => createComponent(el),
+    }
+  )
+
+  return {
+    __esModule: true,
+    motion: motionProxy,
+    AnimatePresence: ({ children }) => children,
+  }
+})
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

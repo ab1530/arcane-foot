@@ -1,23 +1,42 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Sparkles, History, FileText } from 'lucide-react';
-import { toast } from 'sonner';
-import { apiClient } from '@/lib/api-client';
-import { GeneratedReport, GenerationProgress as ProgressType } from '@/types/auto-scout';
+import { toast } from "sonner";
+import { apiClient } from "@/lib/api-client";
+import { GeneratedReport, GenerationProgress as ProgressType } from "@/types/auto-scout";
 
 // Components
-import { TemplateSelector } from '@/components/auto-scout/TemplateSelector';
-import { GenerationForm } from '@/components/auto-scout/GenerationForm';
-import { GenerationProgress } from '@/components/auto-scout/GenerationProgress';
-import { GeneratedReportPreview } from '@/components/auto-scout/GeneratedReportPreview';
-import { ReportHistoryList } from '@/components/auto-scout/ReportHistoryList';
+import { TemplateSelector } from "@/components/auto-scout/TemplateSelector";
+import { GenerationForm } from "@/components/auto-scout/GenerationForm";
+import { GenerationProgress } from "@/components/auto-scout/GenerationProgress";
+import { GeneratedReportPreview } from "@/components/auto-scout/GeneratedReportPreview";
+import { ReportHistoryList } from "@/components/auto-scout/ReportHistoryList";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
+import { RequireTier } from "@/components/auth/RequireTier";
+import { useLanguage } from "@/contexts/language-context";
 
 type WizardStep = 'template' | 'configure' | 'generating' | 'preview';
 type Tab = 'generate' | 'history';
 
+type AutoScoutAnalytics = {
+  totalReports?: number;
+  averageQualityScore?: number;
+  estimatedCost?: number;
+  templateUsage?: Array<{ template: string; count: number }>;
+};
+
 export default function AutoScoutPage() {
+  const { dictionary, language } = useLanguage();
+  const autoScoutCopy = dictionary.autoScout;
+  const heroCopy = autoScoutCopy.hero;
+  const tabsCopy = autoScoutCopy.tabs;
+  const stepsCopy = autoScoutCopy.steps;
+  const progressCopy = autoScoutCopy.progress;
+  const wizardCopy = autoScoutCopy.wizard;
+  const toastsCopy = autoScoutCopy.toasts;
+
   // Tab state
   const [activeTab, setActiveTab] = useState<Tab>('generate');
 
@@ -29,9 +48,89 @@ export default function AutoScoutPage() {
   // Progress state
   const [progress, setProgress] = useState<ProgressType>({
     stage: 'idle',
-    message: 'Initializing...',
+    message: progressCopy.fetching,
     progress: 0,
   });
+  const [analytics, setAnalytics] = useState<AutoScoutAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const loadAnalytics = async () => {
+      try {
+        setAnalyticsLoading(true);
+        const response = await apiClient
+          .getAutoScoutAnalytics()
+          .catch((error: any) => {
+            if (error?.message?.includes("403") || error?.message?.includes("Unauthorized")) {
+              return null;
+            }
+            throw error;
+          });
+        if (!cancelled && response) {
+          setAnalytics(response.data ?? response);
+        }
+      } catch (error) {
+        console.error("Failed to load AutoScout analytics:", error);
+      } finally {
+        if (!cancelled) {
+          setAnalyticsLoading(false);
+        }
+      }
+    };
+    loadAnalytics();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const numberFormatter = useMemo(
+    () => new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US"),
+    [language],
+  );
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }),
+    [language],
+  );
+
+  const statsCards = useMemo(
+    () => [
+      {
+        label: wizardCopy.stats.totalReports,
+        value:
+          analytics?.totalReports !== undefined
+            ? numberFormatter.format(analytics.totalReports)
+            : "—",
+      },
+      {
+        label: wizardCopy.stats.averageQualityScore,
+        value:
+          analytics?.averageQualityScore !== undefined
+            ? `${analytics.averageQualityScore.toFixed(1)}/100`
+            : "—",
+      },
+      {
+        label: wizardCopy.stats.estimatedCost,
+        value:
+          analytics?.estimatedCost !== undefined
+            ? currencyFormatter.format(analytics.estimatedCost)
+            : "—",
+      },
+      {
+        label: wizardCopy.stats.templateUsage,
+        value:
+          analytics?.templateUsage?.length !== undefined
+            ? numberFormatter.format(analytics.templateUsage.length)
+            : "—",
+      },
+    ],
+    [analytics, currencyFormatter, numberFormatter, wizardCopy.stats],
+  );
 
   // Handle template selection
   const handleTemplateSelect = (templateId: string) => {
@@ -41,7 +140,7 @@ export default function AutoScoutPage() {
   // Handle next step
   const handleNext = () => {
     if (currentStep === 'template' && !selectedTemplate) {
-      toast.error('Please select a template');
+      toast.error(toastsCopy.selectTemplateError);
       return;
     }
 
@@ -76,7 +175,7 @@ export default function AutoScoutPage() {
       // Simulate progress stages
       setProgress({
         stage: 'fetching_stats',
-        message: 'Fetching player statistics...',
+        message: progressCopy.fetching,
         progress: 10,
         estimatedTimeRemaining: 10,
       });
@@ -86,7 +185,7 @@ export default function AutoScoutPage() {
 
       setProgress({
         stage: 'generating',
-        message: 'Generating report with GPT-4...',
+        message: progressCopy.generating,
         progress: 40,
         estimatedTimeRemaining: 8,
       });
@@ -101,7 +200,7 @@ export default function AutoScoutPage() {
       // Update progress
       setProgress({
         stage: 'scoring',
-        message: 'Calculating quality score...',
+        message: progressCopy.scoring,
         progress: 80,
         estimatedTimeRemaining: 2,
       });
@@ -111,7 +210,7 @@ export default function AutoScoutPage() {
 
       setProgress({
         stage: 'complete',
-        message: 'Report generated successfully!',
+        message: progressCopy.complete,
         progress: 100,
         estimatedTimeRemaining: 0,
       });
@@ -124,14 +223,14 @@ export default function AutoScoutPage() {
         setCurrentStep('preview');
       }, 1000);
 
-      toast.success('Report generated successfully!');
+      toast.success(toastsCopy.generateSuccess);
     } catch (error: any) {
       console.error('Failed to generate report:', error);
-      toast.error(error.message || 'Failed to generate report');
+      toast.error(error.message || toastsCopy.generateError);
 
       setProgress({
         stage: 'error',
-        message: 'Failed to generate report',
+        message: progressCopy.error,
         progress: 0,
       });
 
@@ -145,7 +244,7 @@ export default function AutoScoutPage() {
   // Handle save report
   const handleSave = async () => {
     try {
-      toast.success('Report saved successfully!');
+      toast.success(toastsCopy.saveSuccess);
       // Reset wizard
       setCurrentStep('template');
       setSelectedTemplate('');
@@ -154,7 +253,7 @@ export default function AutoScoutPage() {
       setActiveTab('history');
     } catch (error) {
       console.error('Failed to save report:', error);
-      toast.error('Failed to save report');
+      toast.error(toastsCopy.saveError);
     }
   };
 
@@ -166,42 +265,61 @@ export default function AutoScoutPage() {
 
   // Handle discard
   const handleDiscard = () => {
-    if (confirm('Are you sure you want to discard this report?')) {
+    if (confirm(autoScoutCopy.confirmations.discard)) {
       setCurrentStep('template');
       setSelectedTemplate('');
       setGeneratedReport(null);
-      toast.info('Report discarded');
+      toast.info(toastsCopy.discardInfo);
     }
   };
 
   // Progress indicator steps
   const wizardSteps = [
-    { id: 'template', label: 'Template', number: 1 },
-    { id: 'configure', label: 'Configure', number: 2 },
-    { id: 'generating', label: 'Generate', number: 3 },
-    { id: 'preview', label: 'Review', number: 4 },
+    { id: 'template', label: stepsCopy.template, number: 1 },
+    { id: 'configure', label: stepsCopy.configure, number: 2 },
+    { id: 'generating', label: stepsCopy.generating, number: 3 },
+    { id: 'preview', label: stepsCopy.preview, number: 4 },
   ];
 
   const currentStepIndex = wizardSteps.findIndex((s) => s.id === currentStep);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black p-6">
-      <div className="max-w-7xl mx-auto">
+    <ProtectedPage>
+      <RequireTier minTier="PRO">
+        <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black p-6">
+          <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Sparkles className="w-8 h-8 text-[#E4FF3B]" />
-            <h1 className="text-4xl font-bold text-white">
-              AutoScout
+            <h1 className="text-4xl font-bold text-white" data-test="auto-scout-hero-title">
+              {heroCopy.title}
             </h1>
             <span className="px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 text-sm font-semibold">
-              GPT-4 Powered
+              {heroCopy.badge}
             </span>
           </div>
-          <p className="text-gray-400 text-lg">
-            AI-powered scouting report generation with quality scoring
+          <p className="text-gray-400 text-lg" data-test="auto-scout-hero-description">
+            {heroCopy.subtitle}
           </p>
+          <p className="text-sm text-gray-500 mt-2">{heroCopy.note}</p>
         </div>
+
+        {(analytics || analyticsLoading) && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {statsCards.map((card) => (
+              <div
+                key={card.label}
+                className="rounded-2xl bg-black/40 border border-white/10 p-4 text-center"
+              >
+                <p className="text-sm text-gray-400 uppercase tracking-wide">{card.label}</p>
+                <p className="text-2xl font-black text-white mt-2">
+                  {card.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex items-center gap-4 mb-8">
@@ -216,7 +334,7 @@ export default function AutoScoutPage() {
             `}
           >
             <FileText className="w-5 h-5" />
-            Generate Report
+            {tabsCopy.generate}
           </button>
 
           <button
@@ -230,7 +348,7 @@ export default function AutoScoutPage() {
             `}
           >
             <History className="w-5 h-5" />
-            Report History
+            {tabsCopy.history}
           </button>
         </div>
 
@@ -369,7 +487,7 @@ export default function AutoScoutPage() {
                     className="px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     <ArrowLeft className="w-5 h-5" />
-                    Back
+                    {autoScoutCopy.navigation.back}
                   </button>
 
                   <button
@@ -377,7 +495,7 @@ export default function AutoScoutPage() {
                     disabled={currentStep === 'template' && !selectedTemplate}
                     className="px-6 py-3 rounded-xl bg-[#E4FF3B] text-black font-semibold hover:bg-[#d4ef2b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Next
+                    {autoScoutCopy.navigation.next}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
@@ -395,7 +513,9 @@ export default function AutoScoutPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </div>
+          </div>
+        </div>
+      </RequireTier>
+    </ProtectedPage>
   );
 }

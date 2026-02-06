@@ -7,13 +7,18 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { NotificationsCenter } from '../NotificationsCenter';
 import api from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
+
+jest.mock('../../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+}));
 
 // Mock the API
 jest.mock('../../../services/api');
 const mockedApi = api as jest.Mocked<typeof api>;
+const mockUseAuth = useAuth as jest.Mock;
 
-// Mock Alert
-jest.spyOn(Alert, 'alert');
+const alertMock = Alert.alert as jest.Mock;
 
 // Mock logger
 jest.mock('../../../utils/logger', () => ({
@@ -43,6 +48,8 @@ const mockNotifications = [
 describe('NotificationsCenter Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseAuth.mockReturnValue({ user: { id: 'user-1' } });
+    alertMock.mockClear();
   });
 
   it('should render correctly when visible', () => {

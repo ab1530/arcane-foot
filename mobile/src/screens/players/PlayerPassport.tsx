@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -6,7 +6,6 @@ import {
   Dimensions,
   Pressable,
   Image,
-  Alert,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -23,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import QRCode from 'react-native-qrcode-svg';
 import {
   Card,
   Text,
@@ -48,54 +48,82 @@ interface PlayerPassportProps {
 export const PlayerPassport: React.FC<PlayerPassportProps> = ({ navigation, route }) => {
   const { playerId, player: passedPlayer } = route.params || {};
 
-  // Mock player data - in production, fetch based on playerId
-  const player = passedPlayer || {
-    id: playerId || '1',
-    name: 'Kylian Mbappé',
-    position: 'ST',
-    number: 7,
-    club: {
-      name: 'Paris Saint-Germain',
-      logo: '🔴🔵',
-    },
-    nationality: {
-      country: 'France',
-      flag: '🇫🇷',
-    },
-    age: 25,
-    height: '178 cm',
-    weight: '75 kg',
-    foot: 'Right',
-    marketValue: '€180M',
-    contractUntil: '2028',
-    image: null, // Would be a URL in production
-    stats: {
-      overall: 92,
-      pace: 97,
-      shooting: 89,
-      passing: 80,
-      dribbling: 92,
-      defending: 36,
-      physical: 76,
-    },
-    performance: {
-      goals: 28,
-      assists: 12,
-      matches: 34,
-      yellowCards: 3,
-      redCards: 0,
-      minutesPlayed: 2890,
-    },
-    achievements: [
-      { icon: 'trophy', title: 'World Cup', year: '2018' },
-      { icon: 'medal', title: 'Golden Boot', year: '2023' },
-      { icon: 'star', title: 'Best Player', year: '2024' },
-    ],
-    career: [
-      { club: 'Monaco', period: '2015-2017', apps: 60, goals: 27 },
-      { club: 'PSG', period: '2017-Present', apps: 260, goals: 212 },
-    ],
-  };
+  // Transform real player data to passport format
+  const player = useMemo(() => {
+    if (!passedPlayer) {
+      return {
+        id: playerId || '1',
+        name: 'Unknown Player',
+        position: 'N/A',
+        number: '?',
+        club: { name: 'Free Agent', logo: '⚽' },
+        nationality: { country: 'Unknown', flag: '🌍' },
+        age: 0,
+        height: 'N/A',
+        weight: 'N/A',
+        foot: 'N/A',
+        marketValue: 'N/A',
+        contractUntil: 'N/A',
+        image: null,
+        stats: {},
+        performance: {},
+        achievements: [],
+        career: [],
+      };
+    }
+
+    const realPlayer = passedPlayer;
+    const arkaneIndex = realPlayer.statsJson?.arkaneIndex || {};
+
+    // Calculate birth year from dateOfBirth
+    const birthDate = realPlayer.dateOfBirth ? new Date(realPlayer.dateOfBirth) : null;
+    const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : null;
+
+    // Format contract date
+    const contractDate = realPlayer.contractUntil ? new Date(realPlayer.contractUntil) : null;
+    const contractYear = contractDate ? contractDate.getFullYear() : null;
+
+    return {
+      id: realPlayer.id,
+      name: `${realPlayer.user?.firstName || realPlayer.users?.firstName || ''} ${realPlayer.user?.lastName || realPlayer.users?.lastName || ''}`.trim(),
+      position: realPlayer.position || 'N/A',
+      number: realPlayer.jerseyNumber || realPlayer.number || '?',
+      club: {
+        name: realPlayer.club?.name || realPlayer.clubs?.name || 'Free Agent',
+        logo: realPlayer.club?.logo || realPlayer.clubs?.logo || '⚽',
+      },
+      nationality: {
+        country: realPlayer.nationality || 'Unknown',
+        flag: '🌍', // Could map country to flag
+      },
+      age: age || 0,
+      height: realPlayer.height ? `${realPlayer.height} cm` : 'N/A',
+      weight: realPlayer.weight ? `${realPlayer.weight} kg` : 'N/A',
+      foot: realPlayer.preferredFoot || 'N/A',
+      marketValue: realPlayer.marketValue ? `€${(realPlayer.marketValue / 1000000).toFixed(1)}M` : 'N/A',
+      contractUntil: contractYear ? contractYear.toString() : 'N/A',
+      image: realPlayer.photoUrl || realPlayer.user?.avatar || realPlayer.users?.avatar || null,
+      stats: {
+        overall: Math.round((arkaneIndex.technical + arkaneIndex.physical + arkaneIndex.mental + arkaneIndex.tactical) / 4) || 75,
+        technical: arkaneIndex.technical || 0,
+        physical: arkaneIndex.physical || 0,
+        mental: arkaneIndex.mental || 0,
+        tactical: arkaneIndex.tactical || 0,
+        potential: arkaneIndex.potential || 0,
+        consistency: arkaneIndex.consistency || 0,
+      },
+      performance: {
+        goals: realPlayer.statsJson?.goals || 0,
+        assists: realPlayer.statsJson?.assists || 0,
+        matches: realPlayer.statsJson?.matchesPlayed || 0,
+        yellowCards: realPlayer.statsJson?.yellowCards || 0,
+        redCards: realPlayer.statsJson?.redCards || 0,
+        minutesPlayed: realPlayer.statsJson?.minutesPlayed || 0,
+      },
+      achievements: [],
+      career: [],
+    };
+  }, [passedPlayer, playerId]);
 
   const [activeTab, setActiveTab] = useState('stats');
   const scrollY = useSharedValue(0);
@@ -335,16 +363,12 @@ export const PlayerPassport: React.FC<PlayerPassportProps> = ({ navigation, rout
         <BlurView intensity={20} style={StyleSheet.absoluteFillObject} />
 
         <Animated.View style={[styles.playerImageContainer, imageAnimatedStyle]}>
-          {player.image ? (
-            <Image source={{ uri: player.image }} style={styles.playerImage} />
-          ) : (
-            <LinearGradient
-              colors={[theme.colors.brand.primary, theme.colors.brand.accent]}
-              style={styles.playerImagePlaceholder}
-            >
-              <Text style={styles.playerNumber}>{player.number}</Text>
-            </LinearGradient>
-          )}
+          <LinearGradient
+            colors={[theme.colors.brand.primary, theme.colors.brand.accent]}
+            style={styles.playerImagePlaceholder}
+          >
+            <Text style={styles.playerNumber}>{player.number}</Text>
+          </LinearGradient>
         </Animated.View>
 
         {/* Back Button */}
@@ -360,18 +384,6 @@ export const PlayerPassport: React.FC<PlayerPassportProps> = ({ navigation, rout
           </BlurView>
         </Pressable>
 
-        {/* Share Button */}
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            Alert.alert('Share', 'Share player profile');
-          }}
-          style={styles.shareButton}
-        >
-          <BlurView intensity={80} style={styles.shareButtonBlur}>
-            <Ionicons name="share-social" size={24} color={theme.colors.text.primary} />
-          </BlurView>
-        </Pressable>
       </Animated.View>
 
       <ScrollView
@@ -388,14 +400,21 @@ export const PlayerPassport: React.FC<PlayerPassportProps> = ({ navigation, rout
         <Animated.View entering={FadeInDown.springify()}>
           <Card variant="glass" size="lg" style={styles.infoCard}>
             <View style={styles.playerHeader}>
-              <View>
-                <Heading variant="h1">{player.name}</Heading>
+              <View style={styles.playerInfoSection}>
+                <Heading variant="h1" numberOfLines={2}>{player.name || `${player.user?.firstName} ${player.user?.lastName}` || 'Unknown Player'}</Heading>
                 <View style={styles.playerMeta}>
-                  <Badge variant="gradient" rounded size="sm">
-                    <Text style={styles.positionBadge}>{player.position}</Text>
-                  </Badge>
+                  <View style={styles.positionBadgeContainer}>
+                    <LinearGradient
+                      colors={[theme.colors.brand.primary, theme.colors.brand.accent]}
+                      style={styles.positionBadgeGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.positionBadgeText}>{player.position || 'N/A'}</Text>
+                    </LinearGradient>
+                  </View>
                   <Text variant="body" color="secondary">
-                    {player.nationality.flag} {player.nationality.country}
+                    {player.nationality?.flag || '🌍'} {player.nationality?.country || player.nationality || 'Unknown'}
                   </Text>
                 </View>
               </View>
@@ -404,8 +423,8 @@ export const PlayerPassport: React.FC<PlayerPassportProps> = ({ navigation, rout
                   colors={[theme.colors.brand.primary, theme.colors.brand.accent]}
                   style={styles.ratingGradient}
                 >
-                  <Text style={styles.ratingText}>{player.stats.overall}</Text>
-                  <Caption color="inverse">RATING</Caption>
+                  <Text style={styles.ratingText}>{player.stats?.overall || player.overallRating || 75}</Text>
+                  <Text style={styles.ratingLabel}>RATING</Text>
                 </LinearGradient>
               </View>
             </View>
@@ -413,36 +432,59 @@ export const PlayerPassport: React.FC<PlayerPassportProps> = ({ navigation, rout
             <View style={styles.infoGrid}>
               <View style={styles.infoItem}>
                 <Caption color="tertiary">Age</Caption>
-                <Text variant="body" weight="bold">{player.age}</Text>
+                <Text variant="body" weight="bold">{player.age || 'N/A'}</Text>
               </View>
               <View style={styles.infoItem}>
                 <Caption color="tertiary">Height</Caption>
-                <Text variant="body" weight="bold">{player.height}</Text>
+                <Text variant="body" weight="bold">{player.height || 'N/A'}</Text>
               </View>
               <View style={styles.infoItem}>
                 <Caption color="tertiary">Weight</Caption>
-                <Text variant="body" weight="bold">{player.weight}</Text>
+                <Text variant="body" weight="bold">{player.weight || 'N/A'}</Text>
               </View>
               <View style={styles.infoItem}>
                 <Caption color="tertiary">Foot</Caption>
-                <Text variant="body" weight="bold">{player.foot}</Text>
+                <Text variant="body" weight="bold">{player.foot || player.preferredFoot || 'N/A'}</Text>
               </View>
             </View>
 
             <View style={styles.clubInfo}>
               <View style={styles.clubLeft}>
-                <Text style={styles.clubLogo}>{player.club.logo}</Text>
+                <View style={styles.clubLogoCircle}>
+                  <Text style={styles.clubLogoEmoji}>⚽</Text>
+                </View>
                 <View>
-                  <Text variant="body" weight="bold">{player.club.name}</Text>
-                  <Caption color="secondary">Contract until {player.contractUntil}</Caption>
+                  <Text variant="body" weight="bold">{player.club?.name || 'Free Agent'}</Text>
+                  <Caption color="secondary">Contract until {player.contractUntil || 'N/A'}</Caption>
                 </View>
               </View>
-              <View>
+              <View style={styles.marketValueContainer}>
                 <Caption color="tertiary">Market Value</Caption>
                 <Text variant="h3" style={{ color: theme.colors.brand.primary }}>
-                  {player.marketValue}
+                  {player.marketValue || 'N/A'}
                 </Text>
               </View>
+            </View>
+
+            {/* QR Code Section */}
+            <View style={styles.qrCodeSection}>
+              <View style={styles.qrCodeContainer}>
+                <QRCode
+                  value={JSON.stringify({
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    club: player.club?.name,
+                    passportUrl: `https://arcane.app/passport/${player.id}`,
+                  })}
+                  size={120}
+                  backgroundColor="white"
+                  color={theme.colors.brand.primary}
+                />
+              </View>
+              <Caption color="tertiary" style={styles.qrCodeLabel}>
+                Scan to view digital passport
+              </Caption>
             </View>
           </Card>
         </Animated.View>
@@ -510,9 +552,9 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   playerImagePlaceholder: {
-    width: SCREEN_WIDTH * 0.5,
-    height: SCREEN_WIDTH * 0.5,
-    borderRadius: SCREEN_WIDTH * 0.25,
+    width: SCREEN_WIDTH * 0.35,
+    height: SCREEN_WIDTH * 0.35,
+    borderRadius: SCREEN_WIDTH * 0.175,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -523,8 +565,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: theme.layout.safeArea.top + theme.spacing.md,
-    left: theme.spacing.lg,
+    top: theme.layout.safeArea.top + 16,
+    left: 24,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -536,37 +578,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.surface.glass + '80',
   },
-  shareButton: {
-    position: 'absolute',
-    top: theme.layout.safeArea.top + theme.spacing.md,
-    right: theme.spacing.lg,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  shareButtonBlur: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface.glass + '80',
-  },
   infoCard: {
-    marginHorizontal: theme.spacing.lg,
-    marginTop: theme.spacing.lg,
-    padding: theme.spacing.xl,
+    marginHorizontal: 24,
+    marginTop: 24,
+    padding: 32,
   },
   playerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
+    gap: 16,
+  },
+  playerInfoSection: {
+    flex: 1,
+    maxWidth: '65%',
   },
   playerMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.sm,
+    gap: 12,
+    marginTop: 8,
+  },
+  positionBadgeContainer: {
+    alignSelf: 'flex-start',
+  },
+  positionBadgeGradient: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  positionBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.text.inverse,
   },
   positionBadge: {
     fontSize: 11,
@@ -575,41 +620,67 @@ const styles = StyleSheet.create({
   },
   ratingContainer: {
     alignItems: 'center',
+    flexShrink: 0,
+    minWidth: 85,
   },
   ratingGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 85,
+    height: 85,
+    borderRadius: 42.5,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 8,
   },
   ratingText: {
     fontSize: 32,
     fontWeight: '900',
-    color: theme.colors.text.inverse,
+    color: '#000000',
+    lineHeight: 34,
+  },
+  ratingLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#000000',
+    marginTop: 0,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   infoGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: 24,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: theme.colors.surface.border,
   },
   infoItem: {
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   clubInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    marginTop: 24,
   },
   clubLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: 16,
+  },
+  clubLogoCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.surface.elevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clubLogoEmoji: {
+    fontSize: 24,
+  },
+  marketValueContainer: {
+    alignItems: 'flex-end',
   },
   clubLogo: {
     fontSize: 32,
@@ -617,69 +688,85 @@ const styles = StyleSheet.create({
   clubEmoji: {
     fontSize: 24,
   },
+  qrCodeSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderColor: theme.colors.surface.border,
+    alignItems: 'center',
+  },
+  qrCodeContainer: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  qrCodeLabel: {
+    textAlign: 'center',
+  },
   tabs: {
     flexDirection: 'row',
-    marginHorizontal: theme.spacing.lg,
-    marginVertical: theme.spacing.xl,
+    marginHorizontal: 24,
+    marginVertical: 32,
     backgroundColor: theme.colors.surface.glass,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.xs,
+    borderRadius: 12,
+    padding: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 16,
     alignItems: 'center',
-    borderRadius: theme.radius.md,
+    borderRadius: 8,
     overflow: 'hidden',
   },
   activeTab: {
     backgroundColor: theme.colors.surface.elevated,
   },
   tabContent: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
   },
   statsCard: {
-    padding: theme.spacing.xl,
+    padding: 32,
   },
   cardTitle: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
   },
   statRow: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 24,
   },
   statLabel: {
-    marginBottom: theme.spacing.xs,
+    marginBottom: 4,
   },
   statBarContainer: {
     height: 28,
     backgroundColor: theme.colors.surface.glass,
-    borderRadius: theme.radius.full,
+    borderRadius: 9999,
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
   },
   statBar: {
     height: '100%',
-    borderRadius: theme.radius.full,
+    borderRadius: 9999,
   },
   statValue: {
     position: 'absolute',
-    right: theme.spacing.sm,
+    right: 8,
     color: theme.colors.text.primary,
   },
   performanceCard: {
-    padding: theme.spacing.xl,
+    padding: 32,
   },
   performanceGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
   },
   performanceStat: {
     width: '48%',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
   },
   performanceIcon: {
     width: 48,
@@ -687,24 +774,24 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   cardsSection: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: theme.spacing.xl,
-    paddingTop: theme.spacing.lg,
+    gap: 32,
+    paddingTop: 24,
     borderTopWidth: 1,
     borderColor: theme.colors.surface.border,
   },
   cardItem: {
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: 8,
   },
   card: {
     width: 40,
     height: 56,
-    borderRadius: theme.radius.sm,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -715,33 +802,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF0000' + '30',
   },
   careerCard: {
-    padding: theme.spacing.xl,
+    padding: 32,
   },
   careerItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: 24,
     borderBottomWidth: 1,
     borderColor: theme.colors.surface.border,
   },
   careerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: 16,
   },
   careerRight: {
     flexDirection: 'row',
-    gap: theme.spacing.xl,
+    gap: 32,
   },
   careerStat: {
     alignItems: 'center',
   },
   achievementsSection: {
-    marginTop: theme.spacing.xl,
+    marginTop: 32,
   },
   achievementsTitle: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 24,
   },
   achievementsGrid: {
     flexDirection: 'row',
@@ -749,7 +836,7 @@ const styles = StyleSheet.create({
   },
   achievement: {
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   achievementIcon: {
     width: 48,
@@ -757,7 +844,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
 });
 

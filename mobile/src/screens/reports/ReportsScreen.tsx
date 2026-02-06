@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import { Icon } from '../../components/ui';
+import { ScreenHeader } from '../../components/navigation';
 import api from '../../services/api';
 import { logger, logError } from '../../utils/logger';
 import type { IconName } from '../../constants/icons';
@@ -45,6 +47,13 @@ interface Report {
   };
 }
 
+const statusGradients: Record<Report['status'], [string, string]> = {
+  DRAFT: [colors.surface.border, colors.surface.glass],
+  SUBMITTED: [colors.semantic.info, colors.semantic.infoBg],
+  APPROVED: [colors.semantic.success, colors.semantic.successBg],
+  REJECTED: [colors.semantic.error, colors.semantic.errorBg],
+};
+
 export const ReportsScreen = () => {
   const navigation = useNavigation<any>();
   const [reports, setReports] = useState<Report[]>([]);
@@ -63,7 +72,7 @@ export const ReportsScreen = () => {
         ? response
         : response?.items || response?.data || [];
 
-      logger.log('Reports fetched', { count: reportsList.length });
+      logger.info('reports', 'Reports fetched', { count: reportsList.length });
       setReports(reportsList);
     } catch (error) {
       logError('Failed to fetch reports', error);
@@ -86,11 +95,11 @@ export const ReportsScreen = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'APPROVED':
-        return '#22c55e';
+        return colors.semantic.success;
       case 'REJECTED':
-        return '#ef4444';
+        return colors.semantic.error;
       case 'SUBMITTED':
-        return '#3b82f6';
+        return colors.semantic.info;
       case 'DRAFT':
       default:
         return colors.text.secondary;
@@ -113,10 +122,10 @@ export const ReportsScreen = () => {
 
   const getRatingColor = (rating?: number) => {
     if (!rating) return colors.text.secondary;
-    if (rating >= 80) return '#22c55e';
+    if (rating >= 80) return colors.semantic.success;
     if (rating >= 60) return colors.brand.primary;
-    if (rating >= 40) return '#f59e0b';
-    return '#ef4444';
+    if (rating >= 40) return colors.semantic.warning;
+    return colors.semantic.error;
   };
 
   const filteredReports = reports.filter(report => {
@@ -132,10 +141,29 @@ export const ReportsScreen = () => {
   });
 
   const statuses = ['all', 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'];
+  const statusCounts = reports.reduce(
+    (acc, report) => {
+      acc[report.status] = (acc[report.status] || 0) + 1;
+      return acc;
+    },
+    {
+      DRAFT: 0,
+      SUBMITTED: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+    } as Record<Report['status'], number>
+  );
+
+  const heroStats = [
+    { label: 'Rapports', value: reports.length },
+    { label: 'Validés', value: statusCounts.APPROVED },
+    { label: 'En attente', value: statusCounts.SUBMITTED },
+  ];
 
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader title="Rapports" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brand.primary} />
           <Text style={styles.loadingText}>Loading reports...</Text>
@@ -146,53 +174,73 @@ export const ReportsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Scouting Reports</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate('CreateReport')}
-        >
-          <Icon name="add" size={24} color={colors.background.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Icon name="search" size={20} color={colors.text.secondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search player, club..."
-          placeholderTextColor={colors.text.secondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {/* Status Filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
-      >
-        {statuses.map(status => (
+      <ScreenHeader
+        title="Rapports de scouting"
+        blur={false}
+        borderBottom={false}
+        rightActions={
           <TouchableOpacity
-            key={status}
-            style={[
-              styles.filterChip,
-              selectedStatus === status && styles.filterChipActive
-            ]}
-            onPress={() => setSelectedStatus(status)}
+            style={styles.addButton}
+            onPress={() => navigation.navigate('CreateReport')}
           >
-            <Text style={[
-              styles.filterChipText,
-              selectedStatus === status && styles.filterChipTextActive
-            ]}>
-              {status === 'all' ? 'All' : status}
-            </Text>
+            <Icon name="add" size={20} color={colors.background.primary} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        }
+      />
+
+      <View style={styles.heroSection}>
+        <Text style={styles.heroEyebrow}>Arcane Insights</Text>
+        <Text style={styles.heroTitle}>Scouting Reports</Text>
+        <Text style={styles.heroSubtitle}>
+          Consolidez vos décisions grâce aux rapports déposés par vos scouts. Filtrez, révisez et validez en un clin d’œil.
+        </Text>
+        <View style={styles.heroStatsRow}>
+          {heroStats.map((stat) => (
+            <View key={stat.label} style={styles.statCard}>
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.searchCard}>
+        <View style={styles.searchInputWrapper}>
+          <Icon name="search" size={18} color={colors.text.secondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher un joueur, un club..."
+            placeholderTextColor={colors.text.secondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {statuses.map(status => (
+            <TouchableOpacity
+              key={status}
+              style={[
+                styles.filterChip,
+                selectedStatus === status && styles.filterChipActive,
+              ]}
+              onPress={() => setSelectedStatus(status)}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  selectedStatus === status && styles.filterChipTextActive,
+                ]}
+              >
+                {status === 'all' ? 'Tous' : status}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Reports List */}
       <ScrollView
@@ -215,60 +263,109 @@ export const ReportsScreen = () => {
             </Text>
           </GlassCard>
         ) : (
-          filteredReports.map(report => (
+          filteredReports.map((report, index) => (
             <TouchableOpacity
               key={report.id}
+              activeOpacity={0.92}
               onPress={() => navigation.navigate('ReportDetail', { reportId: report.id })}
             >
-              <GlassCard variant="elevated" style={styles.reportCard}>
-                <View style={styles.reportHeader}>
-                  <View style={styles.playerInfo}>
+              <View style={styles.reportTile}>
+                <LinearGradient
+                  colors={statusGradients[report.status] || [colors.surface.border, colors.surface.glass]}
+                  style={styles.statusRibbon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Icon name={getStatusIcon(report.status)} size={16} color={colors.background.primary} />
+                  <Text style={styles.statusRibbonText}>{report.status}</Text>
+                </LinearGradient>
+
+                <View style={styles.tileHeader}>
+                  <View style={styles.playerMeta}>
                     <Text style={styles.playerName}>
                       {report.player?.user?.firstName} {report.player?.user?.lastName}
                     </Text>
-                    {report.match && (
-                      <Text style={styles.matchInfo}>
-                        {report.match.homeClub?.name} vs {report.match.awayClub?.name}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) + '20' }]}>
-                    <Icon name={getStatusIcon(report.status)} size={16} color={getStatusColor(report.status)} />
-                    <Text style={[styles.statusText, { color: getStatusColor(report.status) }]}>
-                      {report.status}
+                    <Text style={styles.reportDate}>
+                      {new Date(report.createdAt).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.reportContent}>
-                  {report.overallRating && (
-                    <View style={styles.ratingContainer}>
-                      <Text style={styles.ratingLabel}>Overall</Text>
-                      <Text style={[styles.ratingValue, { color: getRatingColor(report.overallRating) }]}>
-                        {report.overallRating}/100
+                {report.overallRating && (
+                  <View style={styles.ratingWrap}>
+                    <Text style={styles.ratingLabel}>Overall</Text>
+                    <View style={styles.ratingBubble}>
+                      <Text
+                        style={[
+                          styles.ratingBubbleValue,
+                          { color: getRatingColor(report.overallRating) },
+                        ]}
+                      >
+                        {report.overallRating}
                       </Text>
                     </View>
-                  )}
+                  </View>
+                )}
 
-                  {report.recommendation && (
-                    <View style={styles.recommendationContainer}>
-                      <Text style={styles.recommendationLabel}>Recommendation</Text>
-                      <Text style={styles.recommendationValue}>
-                        {report.recommendation.replace(/_/g, ' ')}
+                {report.match && (
+                  <View style={styles.matchupRow}>
+                    <View style={styles.teamPill}>
+                      <Text style={styles.teamText} numberOfLines={1}>
+                        {report.match.homeClub?.name || 'Home'}
                       </Text>
                     </View>
-                  )}
+                    <Text style={styles.vsText}>vs</Text>
+                    <View style={styles.teamPill}>
+                      <Text style={styles.teamText} numberOfLines={1}>
+                        {report.match.awayClub?.name || 'Away'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {report.recommendation && (
+                  <View style={styles.recommendationRow}>
+                    <Icon name="sparkles" size={16} color={colors.brand.primary} />
+                    <Text style={styles.recommendationText}>
+                      {report.recommendation.replace(/_/g, ' ')}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.tileFooter}>
+                  <View style={styles.scoutInfo}>
+                    <View style={styles.scoutAvatar}>
+                      <Text style={styles.scoutAvatarText}>
+                        {report.scout?.firstName?.[0]}
+                        {report.scout?.lastName?.[0]}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.scoutLabel}>Scout</Text>
+                      <Text style={styles.scoutName}>
+                        {report.scout?.firstName} {report.scout?.lastName}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.tileActions}>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <Icon name="share" size={16} color={colors.text.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <Icon name="document" size={16} color={colors.text.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                <View style={styles.reportFooter}>
-                  <Text style={styles.scoutName}>
-                    By {report.scout?.firstName} {report.scout?.lastName}
-                  </Text>
-                  <Text style={styles.reportDate}>
-                    {new Date(report.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-              </GlassCard>
+                <LinearGradient
+                  colors={index % 2 === 0 ? colors.brand.gradient : [colors.brand.accent, colors.brand.primary]}
+                  style={styles.tileAccent}
+                />
+              </View>
             </TouchableOpacity>
           ))
         )}
@@ -280,7 +377,7 @@ export const ReportsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -292,51 +389,82 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     color: colors.text.secondary,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.brand.primary,
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
+    justifyContent: 'center',
   },
-  title: {
-    fontSize: typography.sizes.h3,
-    fontWeight: 'bold',
+  heroSection: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  heroEyebrow: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontFamily: typography.fonts.bold,
     color: colors.text.primary,
   },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  heroSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
   },
-  searchContainer: {
+  heroStatsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface.glassLight,
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  statCard: {
+    flex: 1,
+    padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.surface.border,
+    backgroundColor: colors.background.secondary,
+  },
+  statValue: {
+    fontSize: 24,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  statLabel: {
+    marginTop: spacing.xs,
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+  },
+  searchCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius['2xl'],
+    backgroundColor: colors.surface.glass,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    gap: spacing.sm,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    marginLeft: spacing.sm,
-    fontSize: typography.sizes.base,
     color: colors.text.primary,
-  },
-  filterContainer: {
-    maxHeight: 50,
-    marginBottom: spacing.md,
+    fontSize: typography.sizes.base,
   },
   filterContent: {
-    paddingHorizontal: spacing.md,
     gap: spacing.sm,
+    paddingRight: spacing.sm,
   },
   filterChip: {
     paddingHorizontal: spacing.md,
@@ -363,11 +491,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing['2xl'],
   },
   emptyCard: {
-    padding: spacing.xl * 2,
+    padding: spacing['2xl'],
     alignItems: 'center',
   },
   emptyText: {
@@ -381,87 +509,168 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.text.secondary,
   },
-  reportCard: {
+  reportTile: {
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.background.secondary,
     padding: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+    position: 'relative',
+    gap: spacing.md,
   },
-  reportHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  playerInfo: {
-    flex: 1,
-  },
-  playerName: {
-    fontSize: typography.sizes.lg,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  matchInfo: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
-  },
-  statusBadge: {
+  statusRibbon: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
-    gap: spacing.xs,
   },
-  statusText: {
+  statusRibbonText: {
     fontSize: typography.sizes.xs,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: colors.background.primary,
   },
-  reportContent: {
+  tileHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    gap: spacing.md,
   },
-  ratingContainer: {
+  playerMeta: {
     flex: 1,
+    gap: spacing.xs,
+  },
+  playerName: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  reportDate: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+  },
+  ratingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   ratingLabel: {
     fontSize: typography.sizes.xs,
     color: colors.text.secondary,
-    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
-  ratingValue: {
-    fontSize: typography.sizes.xl,
-    fontWeight: 'bold',
+  ratingBubble: {
+    minWidth: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
   },
-  recommendationContainer: {
-    flex: 2,
-    alignItems: 'flex-end',
+  ratingBubbleValue: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
   },
-  recommendationLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
+  matchupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
   },
-  recommendationValue: {
+  teamPill: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glassLight,
+  },
+  teamText: {
     fontSize: typography.sizes.sm,
-    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  vsText: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+  },
+  recommendationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.brand.primary}1A`,
+  },
+  recommendationText: {
+    fontSize: typography.sizes.sm,
     color: colors.brand.primary,
     textTransform: 'capitalize',
   },
-  reportFooter: {
+  tileFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: spacing.md,
+    alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: colors.background.tertiary,
+    borderTopColor: colors.surface.borderLight,
+    paddingTop: spacing.md,
+  },
+  scoutInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  scoutAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.surface.glassLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoutAvatarText: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.primary,
+    fontFamily: typography.fonts.bold,
+  },
+  scoutLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
   },
   scoutName: {
     fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
+    color: colors.text.primary,
+    fontWeight: '600',
   },
-  reportDate: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
+  tileActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileAccent: {
+    height: 6,
+    borderRadius: radius.full,
   },
 });
 

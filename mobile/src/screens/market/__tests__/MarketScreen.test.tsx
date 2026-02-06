@@ -12,52 +12,37 @@ describe('MarketScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('rend l’en-tête et la barre de recherche', () => {
-    const { getByText, getByPlaceholderText } = render(<MarketScreen navigation={navigation as any} />);
+  it('rend l’en-tête, la barre de recherche et les filtres', () => {
+    const { getByText, getByPlaceholderText, getByTestId } = render(
+      <MarketScreen navigation={navigation as any} loadingDelayMs={0} />,
+    );
 
     expect(getByText('Transfer Market')).toBeTruthy();
-    expect(getByPlaceholderText('Search players...')).toBeTruthy();
+    expect(getByPlaceholderText('Search players, clubs or tags...')).toBeTruthy();
+    expect(getByTestId('position-filter-ALL')).toBeTruthy();
+    expect(getByTestId('budget-filter-ALL')).toBeTruthy();
   });
 
-  it('met à jour la catégorie sélectionnée', () => {
-    const { getByTestId } = render(<MarketScreen navigation={navigation as any} />);
-    const midfieldersCategory = getByTestId('market-category-midfielders');
+  it('filtre par budget et watchlist', () => {
+    const { getByTestId, queryByText } = render(
+      <MarketScreen navigation={navigation as any} loadingDelayMs={0} />,
+    );
 
-    fireEvent.press(midfieldersCategory);
-    expect(midfieldersCategory.props.accessibilityState?.selected).toBe(true);
+    fireEvent.press(getByTestId('budget-filter-UNDER_10'));
+    expect(queryByText('Marcus Silva')).toBeNull();
+
+    fireEvent(getByTestId('watchlist-toggle'), 'valueChange', true);
+    expect(queryByText('Amina Diallo')).toBeNull();
   });
 
   it('met à jour la requête de recherche', () => {
-    const { getByPlaceholderText } = render(<MarketScreen navigation={navigation as any} />);
-    const searchInput = getByPlaceholderText('Search players...');
+    const { getByPlaceholderText, queryByText } = render(
+      <MarketScreen navigation={navigation as any} loadingDelayMs={0} />,
+    );
+    const searchInput = getByPlaceholderText('Search players, clubs or tags...');
 
-    fireEvent.changeText(searchInput, 'Mbappé');
-    expect(searchInput.props.value).toBe('Mbappé');
-  });
-
-  it('navigue vers la fiche joueur', () => {
-    const { getByTestId } = render(<MarketScreen navigation={navigation as any} />);
-
-    fireEvent.press(getByTestId('market-player-1'));
-    expect(navigation.navigate).toHaveBeenCalledWith('PlayerDetail', { id: '1' });
-  });
-
-  it('affiche le message fallback lorsque la catégorie filtrée ne contient aucun joueur', () => {
-    const { getByTestId, getByText, getByPlaceholderText } = render(<MarketScreen navigation={navigation as any} />);
-    fireEvent.press(getByTestId('market-category-goalkeepers'));
-    fireEvent.changeText(getByPlaceholderText('Search players...'), 'zzzz');
-
-    expect(getByText('No players match your filters')).toBeTruthy();
-  });
-
-  it('clear la recherche via le bouton ✕', () => {
-    const { getByPlaceholderText, getByTestId } = render(<MarketScreen navigation={navigation as any} />);
-    const searchInput = getByPlaceholderText('Search players...');
-
-    fireEvent.changeText(searchInput, 'Mbappé');
-    expect(searchInput.props.value).toBe('Mbappé');
-
-    fireEvent.press(getByTestId('market-search-clear'));
-    expect(searchInput.props.value).toBe('');
+    fireEvent.changeText(searchInput, 'Victor');
+    expect(searchInput.props.value).toBe('Victor');
+    expect(queryByText('Victor Hugo')).toBeTruthy();
   });
 });

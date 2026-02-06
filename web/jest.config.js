@@ -9,6 +9,7 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@shared/(.*)$': '<rootDir>/../shared/$1',
   },
   testMatch: [
     '**/__tests__/**/*.[jt]s?(x)',
@@ -19,18 +20,20 @@ const customJestConfig = {
     '/.next/',
     '/e2e/',
     '/test/e2e/',
+    '/tests/ui/',
   ],
   collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/app/**',
+    'src/hooks/useSubscription.ts',
+    'src/components/ui/button.tsx',
+    'src/components/ui/glass-card.tsx',
+    // Add more files here as they get unit tests
   ],
   coverageThreshold: {
     global: {
-      branches: 2,
-      functions: 1,
-      lines: 3,
-      statements: 3,
+      branches: 50,
+      functions: 60,
+      lines: 60,
+      statements: 60,
     },
   },
 }

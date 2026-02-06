@@ -31,7 +31,16 @@ export function useSubscription() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSubscription();
+    // Check if user is logged in before fetching subscription
+    const token = typeof window !== 'undefined' ? localStorage.getItem('arcane_auth_token') : null;
+    if (token) {
+      fetchSubscription();
+    } else {
+      // No token, user not logged in - set default state
+      setSubscription(null);
+      setLoading(false);
+      setError(null);
+    }
   }, []);
 
   const fetchSubscription = async () => {

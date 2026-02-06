@@ -14,6 +14,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import type { AppStackParamList } from '../../types/navigation';
 import api from '../../services/api';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ArcaneIndex'>;
 
@@ -35,6 +36,9 @@ type PlayerIndexResponse = {
 const DEFAULT_PLAYER_ID = '';
 
 export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
+  const { dictionary, language } = useLocalization();
+  const copy = dictionary.aiTools.index;
+  const locale = language === 'en' ? 'en-US' : 'fr-FR';
   const [playerId, setPlayerId] = useState(DEFAULT_PLAYER_ID);
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<PlayerIndexResponse | null>(null);
@@ -58,18 +62,43 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
         });
       } catch (err) {
         console.error('Failed to load ArkaneIndex:', err);
-        setError("Impossible de récupérer l'index pour ce joueur.");
+        setError(copy.search.errors.generic);
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [copy.search.errors.generic]
   );
 
   useEffect(() => {
-    // Ne pas charger automatiquement au démarrage
-    // L'utilisateur doit entrer un ID et cliquer sur "Analyser"
-  }, []);
+    let cancelled = false;
+
+    const preloadPlayer = async () => {
+      try {
+        const response = await api.getPlayers({ limit: 1 });
+        const firstPlayer =
+          response?.items?.[0] ??
+          response?.data?.[0] ??
+          response?.players?.[0];
+        const resolvedId =
+          firstPlayer?.id ||
+          firstPlayer?.playerId ||
+          firstPlayer?.player?.id;
+
+        if (resolvedId && !cancelled) {
+          setPlayerId(resolvedId);
+          fetchIndex(resolvedId);
+        }
+      } catch (err) {
+        console.warn('Impossible de précharger un joueur pour ArkaneIndex:', err);
+      }
+    };
+
+    preloadPlayer();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchIndex]);
 
   const handleSearch = useCallback(() => {
     fetchIndex(playerId);
@@ -79,10 +108,9 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
     if (!data?.breakdown?.length) {
       return (
         <GlassCard variant="bordered" style={styles.emptyBreakdownCard}>
-          <Text style={styles.emptyBreakdownTitle}>Aucune donnée détaillée</Text>
+          <Text style={styles.emptyBreakdownTitle}>{copy.breakdown.empty.title}</Text>
           <Text style={styles.emptyBreakdownText}>
-            Configure l’IA ArkaneIndex depuis le backend pour afficher les composantes
-            techniques, physiques et tactiques d’un joueur.
+            {copy.breakdown.empty.description}
           </Text>
         </GlassCard>
       );
@@ -91,7 +119,7 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
     return data.breakdown.map((item, index) => (
       <GlassCard key={`${item.name ?? 'metric'}-${index}`} variant="elevated" style={styles.breakdownCard}>
         <View style={styles.breakdownHeader}>
-          <Text style={styles.breakdownTitle}>{item.name ?? 'Dimension inconnue'}</Text>
+          <Text style={styles.breakdownTitle}>{item.name ?? copy.breakdown.fallbackName}</Text>
           <Text style={styles.breakdownScore}>
             {item.score ?? 0}
             {typeof item.max === 'number' ? ` / ${item.max}` : ''}
@@ -101,7 +129,7 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.breakdownDescription}>{item.description}</Text>
         ) : (
           <Text style={styles.breakdownDescriptionMuted}>
-            Description non fournie par le moteur IA.
+            {copy.breakdown.fallbackDescription}
           </Text>
         )}
       </GlassCard>
@@ -114,25 +142,24 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ArkaneIndex</Text>
+        <Text style={styles.headerTitle}>{copy.header.title}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <GlassCard variant="elevated" style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Score IA des talents</Text>
+          <Text style={styles.heroTitle}>{copy.hero.title}</Text>
           <Text style={styles.heroSubtitle}>
-            Analyse en temps réel des joueurs avec les critères Arkane (technique,
-            physique, mental, tactique, potentiel…).
+            {copy.hero.subtitle}
           </Text>
         </GlassCard>
 
         <GlassCard variant="bordered" style={styles.searchCard}>
-          <Text style={styles.sectionTitle}>Rechercher un joueur</Text>
+          <Text style={styles.sectionTitle}>{copy.search.title}</Text>
           <View style={styles.searchRow}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Entrez l'ID du joueur"
+              placeholder={copy.search.placeholder}
               placeholderTextColor={colors.text.secondary}
               value={playerId}
               onChangeText={setPlayerId}
@@ -146,7 +173,7 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
               {isLoading ? (
                 <ActivityIndicator color={colors.background.primary} />
               ) : (
-                <Text style={styles.searchButtonText}>Analyser</Text>
+                <Text style={styles.searchButtonText}>{copy.search.button}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -156,25 +183,26 @@ export const ArcaneIndexScreen: React.FC<Props> = ({ navigation }) => {
         <GlassCard variant="elevated" style={styles.scoreCard}>
           <View style={styles.scoreRow}>
             <View>
-              <Text style={styles.scoreLabel}>Score global</Text>
+              <Text style={styles.scoreLabel}>{copy.scoreCard.globalScore}</Text>
               <Text style={styles.scoreValue}>{data?.overallScore ?? '—'}</Text>
             </View>
             <View>
-              <Text style={styles.scoreLabel}>Dernière mise à jour</Text>
+              <Text style={styles.scoreLabel}>{copy.scoreCard.lastUpdated}</Text>
               <Text style={styles.scoreMeta}>
                 {data?.updatedAt
-                  ? new Date(data.updatedAt).toLocaleString('fr-FR')
-                  : 'Non disponible'}
+                  ? new Date(data.updatedAt).toLocaleString(locale)
+                  : copy.scoreCard.notAvailable}
               </Text>
             </View>
           </View>
           <Text style={styles.scoreSource}>
-            Source: {data?.source ? data.source : 'ai-service'}
+            {copy.scoreCard.sourceLabel}:{' '}
+            {data?.source ? data.source : copy.scoreCard.sourceFallback}
           </Text>
         </GlassCard>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Décomposition du scoring</Text>
+          <Text style={styles.sectionTitle}>{copy.breakdown.title}</Text>
           {renderBreakdown()}
         </View>
       </ScrollView>

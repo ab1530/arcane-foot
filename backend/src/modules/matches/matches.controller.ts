@@ -33,7 +33,10 @@ export class MatchesController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new match', description: 'Schedule a new match between two clubs' })
+  @ApiOperation({
+    summary: 'Create a new match',
+    description: 'Schedule a new match between two clubs',
+  })
   @ApiResponse({ status: 201, description: 'Match successfully created' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
@@ -42,8 +45,16 @@ export class MatchesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all matches', description: 'Retrieve a paginated list of matches with optional filters' })
-  @ApiQuery({ name: 'status', required: false, enum: MatchStatus, description: 'Filter by match status' })
+  @ApiOperation({
+    summary: 'Get all matches',
+    description: 'Retrieve a paginated list of matches with optional filters',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: MatchStatus,
+    description: 'Filter by match status',
+  })
   @ApiQuery({ name: 'clubId', required: false, description: 'Filter by club ID (home or away)' })
   @ApiQuery({ name: 'scoutId', required: false, description: 'Filter by assigned scout ID' })
   @ApiQuery({ name: 'competition', required: false, description: 'Filter by competition name' })
@@ -78,8 +89,16 @@ export class MatchesController {
   }
 
   @Get('upcoming')
-  @ApiOperation({ summary: 'Get upcoming matches', description: 'Retrieve upcoming scheduled matches' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Number of matches to return', example: 10 })
+  @ApiOperation({
+    summary: 'Get upcoming matches',
+    description: 'Retrieve upcoming scheduled matches',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of matches to return',
+    example: 10,
+  })
   @ApiResponse({ status: 200, description: 'Upcoming matches retrieved successfully' })
   getUpcoming(@Query('limit') limit?: string) {
     return this.matchesService.getUpcoming(limit ? parseInt(limit) : undefined);
@@ -93,7 +112,10 @@ export class MatchesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get match by ID', description: 'Retrieve detailed information about a specific match' })
+  @ApiOperation({
+    summary: 'Get match by ID',
+    description: 'Retrieve detailed information about a specific match',
+  })
   @ApiParam({ name: 'id', description: 'Match ID', example: 'clxxxxxxxxxxxxxx' })
   @ApiResponse({ status: 200, description: 'Match found' })
   @ApiResponse({ status: 404, description: 'Match not found' })
@@ -128,7 +150,10 @@ export class MatchesController {
   @Patch(':id/assign-scout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Assign scout to match', description: 'Assign a scout to cover this match' })
+  @ApiOperation({
+    summary: 'Assign scout to match',
+    description: 'Assign a scout to cover this match',
+  })
   @ApiParam({ name: 'id', description: 'Match ID', example: 'clxxxxxxxxxxxxxx' })
   @ApiBody({ schema: { properties: { scoutId: { type: 'string', example: 'clxxxxxxxxxxxxxx' } } } })
   @ApiResponse({ status: 200, description: 'Scout successfully assigned' })
@@ -147,9 +172,9 @@ export class MatchesController {
     schema: {
       properties: {
         homeScore: { type: 'number', example: 2 },
-        awayScore: { type: 'number', example: 1 }
-      }
-    }
+        awayScore: { type: 'number', example: 1 },
+      },
+    },
   })
   @ApiResponse({ status: 200, description: 'Score successfully updated' })
   @ApiResponse({ status: 404, description: 'Match not found' })

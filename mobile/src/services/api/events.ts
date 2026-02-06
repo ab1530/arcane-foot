@@ -1,4 +1,5 @@
 import api from '../api';
+import type { UserRole } from '@shared/config/roles.config';
 
 export interface Event {
   id: string;
@@ -18,7 +19,7 @@ export interface Event {
     email: string;
     firstName: string;
     lastName: string;
-    role: string;
+    role: UserRole;
   };
   assignedUsers: Array<{
     id: string;
@@ -27,7 +28,7 @@ export interface Event {
       email: string;
       firstName: string;
       lastName: string;
-      role: string;
+      role: UserRole;
     };
   }>;
   match?: {

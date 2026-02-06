@@ -1,10 +1,32 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import LoginScreen from '../LoginScreen';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuth } from '../../../contexts/AuthContext';
+import { translations } from '../../../i18n';
 
-jest.mock('../../../store/authStore', () => ({
-  useAuthStore: jest.fn(),
+jest.mock('../../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+}));
+
+jest.mock('../../../contexts/LocalizationContext', () => {
+  const { translations } = require('../../../i18n');
+  return {
+    useLocalization: () => ({
+      dictionary: translations.fr,
+      t: (key: string) => key,
+    }),
+  };
+});
+
+const mockSetAuthToken = jest.fn();
+const mockApiLogin = jest.fn();
+
+jest.mock('../../../services/api', () => ({
+  __esModule: true,
+  default: {
+    login: (...args: any[]) => mockApiLogin(...args),
+    setAuthToken: (...args: any[]) => mockSetAuthToken(...args),
+  },
 }));
 
 const mockNavigation = {
@@ -13,64 +35,90 @@ const mockNavigation = {
 };
 
 describe('LoginScreen', () => {
-  const mockUseAuthStore = useAuthStore as jest.Mock;
+  const mockUseAuth = useAuth as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('désactive le bouton de connexion quand les champs sont vides', () => {
-    mockUseAuthStore.mockReturnValue({
+  it('laisse le bouton actif tant que aucune requête n’est lancée', () => {
+    mockUseAuth.mockReturnValue({
       login: jest.fn(),
-      isLoading: false,
-      error: null,
-      clearError: jest.fn(),
     });
 
     const { getByTestId } = render(<LoginScreen navigation={mockNavigation as any} route={undefined as any} />);
     const submitButton = getByTestId('login-submit-button');
 
-    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    expect(submitButton.props.accessibilityState?.disabled).toBe(false);
   });
 
   it('active le bouton et déclenche login avec email nettoyé', async () => {
     const login = jest.fn().mockResolvedValue(undefined);
-    const clearError = jest.fn();
 
-    mockUseAuthStore.mockReturnValue({
+    mockUseAuth.mockReturnValue({
       login,
-      isLoading: false,
-      error: null,
-      clearError,
+    });
+
+    mockApiLogin.mockResolvedValue({
+      accessToken: 'token',
+      refreshToken: 'refresh-token',
+      user: { id: '1', firstName: 'Test', lastName: 'User' },
     });
 
     const { getByPlaceholderText, getByTestId } = render(
       <LoginScreen navigation={mockNavigation as any} route={undefined as any} />
     );
 
-    fireEvent.changeText(getByPlaceholderText('john.doe@club.com'), '  user@club.com  ');
-    fireEvent.changeText(getByPlaceholderText('••••••••'), 'password');
+    fireEvent.changeText(getByPlaceholderText('Email'), '  user@club.com  ');
+    fireEvent.changeText(getByPlaceholderText('Mot de passe'), 'password');
 
     const submitButton = getByTestId('login-submit-button');
     expect(submitButton.props.accessibilityState?.disabled).toBe(false);
 
-    fireEvent.press(submitButton);
-
-    expect(login).toHaveBeenCalledWith('user@club.com', 'password');
-  });
-
-  it('affiche un loader quand la requête est en cours', () => {
-    mockUseAuthStore.mockReturnValue({
-      login: jest.fn(),
-      isLoading: true,
-      error: null,
-      clearError: jest.fn(),
+    await act(async () => {
+      fireEvent.press(submitButton);
     });
 
-    const { getByTestId } = render(<LoginScreen navigation={mockNavigation as any} route={undefined as any} />);
-    const submitButton = getByTestId('login-submit-button');
+    expect(mockApiLogin).toHaveBeenCalledWith({
+      email: 'user@club.com',
+      password: 'password',
+    });
+    expect(login).toHaveBeenCalledWith(
+      { id: '1', firstName: 'Test', lastName: 'User' },
+      'token',
+      'refresh-token'
+    );
+  });
 
-    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+  it('affiche un loader quand la requête est en cours', async () => {
+    const login = jest.fn().mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue({ login });
+
+    let resolvePromise: () => void = () => {};
+    mockApiLogin.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePromise = () =>
+            resolve({
+              accessToken: 'token',
+              user: { id: '1', firstName: 'Test', lastName: 'User' },
+            });
+        })
+    );
+
+    const { getByPlaceholderText, getByTestId } = render(
+      <LoginScreen navigation={mockNavigation as any} route={undefined as any} />
+    );
+
+    fireEvent.changeText(getByPlaceholderText('Email'), 'user@club.com');
+    fireEvent.changeText(getByPlaceholderText('Mot de passe'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('login-submit-button'));
+    });
+
     expect(getByTestId('login-loading-indicator')).toBeTruthy();
+
+    await act(async () => resolvePromise());
   });
 });

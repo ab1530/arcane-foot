@@ -4,6 +4,7 @@ import { ScoutingReportsService } from './scouting-reports.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { PrismaClient, ReportStatus, RecommendationType } from '@prisma/client';
+import { GamificationService } from '../gamification/gamification.service';
 
 describe('ScoutingReportsService', () => {
   let service: ScoutingReportsService;
@@ -34,7 +35,7 @@ describe('ScoutingReportsService', () => {
     role: 'SCOUT',
   };
 
-  const mockReport = {
+  const mockReportDb = {
     id: 'report-123',
     matchId: 'match-123',
     playerId: 'player-123',
@@ -84,6 +85,26 @@ describe('ScoutingReportsService', () => {
     media: [],
   };
 
+  const transformReport = (report: any) => ({
+    ...report,
+    player: {
+      ...report.players,
+      user: report.players?.users,
+      club: (report.players as any)?.clubs,
+    },
+    scout: report.users,
+    match: {
+      ...report.matches,
+      homeClub: report.matches?.clubs_matches_homeClubIdToclubs,
+      awayClub: report.matches?.clubs_matches_awayClubIdToclubs,
+    },
+    players: undefined,
+    users: undefined,
+    matches: undefined,
+  });
+
+  const mockReport = transformReport(mockReportDb);
+
   beforeEach(async () => {
     prisma = mockDeep<PrismaClient>();
     const module: TestingModule = await Test.createTestingModule({
@@ -92,6 +113,12 @@ describe('ScoutingReportsService', () => {
         {
           provide: PrismaService,
           useValue: prisma,
+        },
+        {
+          provide: GamificationService,
+          useValue: {
+            trackUserAction: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -132,7 +159,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       const result = await service.create(createDto, 'scout-123');
 
@@ -220,7 +247,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(minimalDto, 'scout-123');
 
@@ -231,7 +258,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(createDto, 'scout-123');
 
@@ -246,7 +273,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(createDto, 'scout-123');
 
@@ -258,7 +285,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(createDto, 'scout-123');
 
@@ -268,31 +295,62 @@ describe('ScoutingReportsService', () => {
   });
 
   describe('findAll', () => {
+    const mockReportsDb = [mockReportDb];
     const mockReports = [mockReport];
 
     it('should return all reports without filters', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
+      prisma.scouting_reports.count.mockResolvedValue(mockReportsDb.length as any);
 
       const result = await service.findAll({});
 
       expect(prisma.scouting_reports.findMany).toHaveBeenCalledWith({
         where: {},
-        include: expect.objectContaining({
-          users: expect.any(Object),
-          players: expect.any(Object),
-          matches: expect.any(Object),
+        include: {
+          users: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+            },
+          },
+          players: {
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          matches: {
+            include: {
+              clubs_matches_homeClubIdToclubs: true,
+              clubs_matches_awayClubIdToclubs: true,
+            },
+          },
           scouting_notes: true,
           media: true,
-        }),
+        },
         orderBy: {
           createdAt: 'desc',
         },
+        skip: 0,
+        take: 1000,
       });
-      expect(result).toEqual(mockReports);
+      expect(result).toEqual({
+        data: mockReports,
+        meta: { total: 1, page: 1, limit: 1000, totalPages: 1 },
+      });
     });
 
     it('should filter by playerId', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({ playerId: 'player-123' });
 
@@ -304,7 +362,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should filter by scoutId', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({ scoutId: 'scout-123' });
 
@@ -316,7 +374,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should filter by matchId', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({ matchId: 'match-123' });
 
@@ -328,7 +386,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should filter by status', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({ status: 'SUBMITTED' as ReportStatus });
 
@@ -340,7 +398,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should filter by recommendation', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({ recommendation: 'HIGHLY_RECOMMENDED' as RecommendationType });
 
@@ -352,7 +410,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should filter with multiple criteria', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({
         playerId: 'player-123',
@@ -372,7 +430,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should order by createdAt desc', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({});
 
@@ -384,7 +442,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should include all relations', async () => {
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
 
       await service.findAll({});
 
@@ -399,7 +457,7 @@ describe('ScoutingReportsService', () => {
 
   describe('findOne', () => {
     it('should return a report by ID', async () => {
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
 
       const result = await service.findOne('report-123');
 
@@ -417,7 +475,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should order scouting_notes by minute', async () => {
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
 
       await service.findOne('report-123');
 
@@ -441,14 +499,10 @@ describe('ScoutingReportsService', () => {
       strengths: 'Updated strengths',
     };
 
-    const updatedReport = {
-      ...mockReport,
-      ...updateDto,
-    };
-
     it('should update a report successfully', async () => {
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue(updatedReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      const updatedReportDb = { ...mockReportDb, ...updateDto };
+      prisma.scouting_reports.update.mockResolvedValue(updatedReportDb as any);
 
       const result = await service.update('report-123', updateDto);
 
@@ -459,15 +513,9 @@ describe('ScoutingReportsService', () => {
       expect(prisma.scouting_reports.update).toHaveBeenCalledWith({
         where: { id: 'report-123' },
         data: updateDto,
-        include: expect.objectContaining({
-          users: expect.any(Object),
-          players: expect.any(Object),
-          matches: expect.any(Object),
-          scouting_notes: true,
-          media: true,
-        }),
+        include: expect.any(Object),
       });
-      expect(result).toEqual(updatedReport);
+      expect(result).toEqual(transformReport(updatedReportDb));
     });
 
     it('should throw NotFoundException if report not found', async () => {
@@ -481,8 +529,8 @@ describe('ScoutingReportsService', () => {
 
     it('should update status field', async () => {
       const statusUpdate = { status: 'SUBMITTED' as ReportStatus };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue({ ...mockReport, ...statusUpdate } as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.update.mockResolvedValue({ ...mockReportDb, ...statusUpdate } as any);
 
       await service.update('report-123', statusUpdate);
 
@@ -500,8 +548,8 @@ describe('ScoutingReportsService', () => {
         mentalRating: 85,
         tacticalRating: 87,
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue({ ...mockReport, ...ratingsUpdate } as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.update.mockResolvedValue({ ...mockReportDb, ...ratingsUpdate } as any);
 
       await service.update('report-123', ratingsUpdate);
 
@@ -514,7 +562,7 @@ describe('ScoutingReportsService', () => {
 
     it('should update tags array', async () => {
       const tagsUpdate = { tags: ['updated', 'tags', 'list'] };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
       prisma.scouting_reports.update.mockResolvedValue({ ...mockReport, ...tagsUpdate } as any);
 
       await service.update('report-123', tagsUpdate);
@@ -531,8 +579,11 @@ describe('ScoutingReportsService', () => {
         recommendation: 'NOT_RECOMMENDED' as RecommendationType,
         recommendationNotes: 'Does not meet requirements',
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue({ ...mockReport, ...recommendationUpdate } as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.update.mockResolvedValue({
+        ...mockReport,
+        ...recommendationUpdate,
+      } as any);
 
       await service.update('report-123', recommendationUpdate);
 
@@ -546,8 +597,8 @@ describe('ScoutingReportsService', () => {
 
   describe('remove', () => {
     it('should delete a report successfully', async () => {
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.delete.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.delete.mockResolvedValue(mockReportDb as any);
 
       const result = await service.remove('report-123');
 
@@ -573,13 +624,13 @@ describe('ScoutingReportsService', () => {
 
   describe('submit', () => {
     it('should submit a report successfully', async () => {
-      const submittedReport = {
-        ...mockReport,
+      const submittedReportDb = {
+        ...mockReportDb,
         status: 'SUBMITTED' as ReportStatus,
         submittedAt: new Date(),
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue(submittedReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.update.mockResolvedValue(submittedReportDb as any);
 
       const result = await service.submit('report-123');
 
@@ -593,13 +644,9 @@ describe('ScoutingReportsService', () => {
           status: 'SUBMITTED',
           submittedAt: expect.any(Date),
         },
-        include: {
-          users: true,
-          players: true,
-          matches: true,
-        },
+        include: expect.any(Object),
       });
-      expect(result).toEqual(submittedReport);
+      expect(result).toEqual(transformReport(submittedReportDb));
     });
 
     it('should throw NotFoundException if report not found', async () => {
@@ -613,11 +660,11 @@ describe('ScoutingReportsService', () => {
 
     it('should update status to SUBMITTED', async () => {
       const submittedReport = {
-        ...mockReport,
+        ...mockReportDb,
         status: 'SUBMITTED' as ReportStatus,
         submittedAt: new Date(),
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
       prisma.scouting_reports.update.mockResolvedValue(submittedReport as any);
 
       const result = await service.submit('report-123');
@@ -629,14 +676,14 @@ describe('ScoutingReportsService', () => {
 
   describe('review', () => {
     it('should approve a report successfully', async () => {
-      const approvedReport = {
-        ...mockReport,
+      const approvedReportDb = {
+        ...mockReportDb,
         status: 'APPROVED' as ReportStatus,
         reviewedAt: new Date(),
         reviewedBy: 'reviewer-123',
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue(approvedReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.update.mockResolvedValue(approvedReportDb as any);
 
       const result = await service.review('report-123', 'reviewer-123', true);
 
@@ -647,24 +694,20 @@ describe('ScoutingReportsService', () => {
           reviewedAt: expect.any(Date),
           reviewedBy: 'reviewer-123',
         },
-        include: {
-          users: true,
-          players: true,
-          matches: true,
-        },
+        include: expect.any(Object),
       });
-      expect(result.status).toBe('APPROVED');
+      expect(result).toEqual(transformReport(approvedReportDb));
     });
 
     it('should reject a report successfully', async () => {
-      const rejectedReport = {
-        ...mockReport,
+      const rejectedReportDb = {
+        ...mockReportDb,
         status: 'REJECTED' as ReportStatus,
         reviewedAt: new Date(),
         reviewedBy: 'reviewer-123',
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
-      prisma.scouting_reports.update.mockResolvedValue(rejectedReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
+      prisma.scouting_reports.update.mockResolvedValue(rejectedReportDb as any);
 
       const result = await service.review('report-123', 'reviewer-123', false);
 
@@ -675,13 +718,9 @@ describe('ScoutingReportsService', () => {
           reviewedAt: expect.any(Date),
           reviewedBy: 'reviewer-123',
         },
-        include: {
-          users: true,
-          players: true,
-          matches: true,
-        },
+        include: expect.any(Object),
       });
-      expect(result.status).toBe('REJECTED');
+      expect(result).toEqual(transformReport(rejectedReportDb));
     });
 
     it('should throw NotFoundException if report not found', async () => {
@@ -695,12 +734,12 @@ describe('ScoutingReportsService', () => {
 
     it('should set reviewedBy field', async () => {
       const approvedReport = {
-        ...mockReport,
+        ...mockReportDb,
         status: 'APPROVED' as ReportStatus,
         reviewedAt: new Date(),
         reviewedBy: 'reviewer-456',
       };
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
       prisma.scouting_reports.update.mockResolvedValue(approvedReport as any);
 
       const result = await service.review('report-123', 'reviewer-456', true);
@@ -712,8 +751,9 @@ describe('ScoutingReportsService', () => {
 
   describe('getPlayerReports', () => {
     it('should return reports for a specific player', async () => {
-      const mockReports = [mockReport];
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      const mockReportsDb = [mockReportDb];
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
+      prisma.scouting_reports.count.mockResolvedValue(mockReportsDb.length as any);
 
       const result = await service.getPlayerReports('player-123');
 
@@ -722,22 +762,30 @@ describe('ScoutingReportsService', () => {
           where: { playerId: 'player-123' },
         }),
       );
-      expect(result).toEqual(mockReports);
+      expect(result).toEqual({
+        data: [transformReport(mockReportDb)],
+        meta: { total: 1, page: 1, limit: 1000, totalPages: 1 },
+      });
     });
 
     it('should return empty array when no reports exist', async () => {
       prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.scouting_reports.count.mockResolvedValue(0 as any);
 
       const result = await service.getPlayerReports('player-456');
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        data: [],
+        meta: { total: 0, page: 1, limit: 1000, totalPages: 0 },
+      });
     });
   });
 
   describe('getScoutReports', () => {
     it('should return reports for a specific scout', async () => {
-      const mockReports = [mockReport];
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      const mockReportsDb = [mockReportDb];
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
+      prisma.scouting_reports.count.mockResolvedValue(mockReportsDb.length as any);
 
       const result = await service.getScoutReports('scout-123');
 
@@ -746,22 +794,30 @@ describe('ScoutingReportsService', () => {
           where: { scoutId: 'scout-123' },
         }),
       );
-      expect(result).toEqual(mockReports);
+      expect(result).toEqual({
+        data: [transformReport(mockReportDb)],
+        meta: { total: 1, page: 1, limit: 1000, totalPages: 1 },
+      });
     });
 
     it('should return empty array when scout has no reports', async () => {
       prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.scouting_reports.count.mockResolvedValue(0 as any);
 
       const result = await service.getScoutReports('scout-456');
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        data: [],
+        meta: { total: 0, page: 1, limit: 1000, totalPages: 0 },
+      });
     });
   });
 
   describe('getMatchReports', () => {
     it('should return reports for a specific match', async () => {
-      const mockReports = [mockReport];
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      const mockReportsDb = [mockReportDb];
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
+      prisma.scouting_reports.count.mockResolvedValue(mockReportsDb.length as any);
 
       const result = await service.getMatchReports('match-123');
 
@@ -770,22 +826,30 @@ describe('ScoutingReportsService', () => {
           where: { matchId: 'match-123' },
         }),
       );
-      expect(result).toEqual(mockReports);
+      expect(result).toEqual({
+        data: [transformReport(mockReportDb)],
+        meta: { total: 1, page: 1, limit: 1000, totalPages: 1 },
+      });
     });
 
     it('should return empty array when match has no reports', async () => {
       prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.scouting_reports.count.mockResolvedValue(0 as any);
 
       const result = await service.getMatchReports('match-456');
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        data: [],
+        meta: { total: 0, page: 1, limit: 1000, totalPages: 0 },
+      });
     });
   });
 
   describe('getReportsByRecommendation', () => {
     it('should return reports with HIGHLY_RECOMMENDED recommendation', async () => {
-      const mockReports = [mockReport];
-      prisma.scouting_reports.findMany.mockResolvedValue(mockReports as any);
+      const mockReportsDb = [mockReportDb];
+      prisma.scouting_reports.findMany.mockResolvedValue(mockReportsDb as any);
+      prisma.scouting_reports.count.mockResolvedValue(mockReportsDb.length as any);
 
       const result = await service.getReportsByRecommendation('HIGHLY_RECOMMENDED');
 
@@ -794,11 +858,15 @@ describe('ScoutingReportsService', () => {
           where: { recommendation: 'HIGHLY_RECOMMENDED' },
         }),
       );
-      expect(result).toEqual(mockReports);
+      expect(result).toEqual({
+        data: [transformReport(mockReportDb)],
+        meta: { total: 1, page: 1, limit: 1000, totalPages: 1 },
+      });
     });
 
     it('should return reports with NOT_RECOMMENDED recommendation', async () => {
       prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.scouting_reports.count.mockResolvedValue(0 as any);
 
       const result = await service.getReportsByRecommendation('NOT_RECOMMENDED');
 
@@ -807,14 +875,21 @@ describe('ScoutingReportsService', () => {
           where: { recommendation: 'NOT_RECOMMENDED' },
         }),
       );
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        data: [],
+        meta: { total: 0, page: 1, limit: 1000, totalPages: 0 },
+      });
     });
   });
 
   describe('Status workflow transitions', () => {
     it('should transition from DRAFT to SUBMITTED', async () => {
       const draftReport = { ...mockReport, status: 'DRAFT' as ReportStatus };
-      const submittedReport = { ...mockReport, status: 'SUBMITTED' as ReportStatus, submittedAt: new Date() };
+      const submittedReport = {
+        ...mockReport,
+        status: 'SUBMITTED' as ReportStatus,
+        submittedAt: new Date(),
+      };
 
       prisma.scouting_reports.findUnique.mockResolvedValue(draftReport as any);
       prisma.scouting_reports.update.mockResolvedValue(submittedReport as any);
@@ -827,7 +902,11 @@ describe('ScoutingReportsService', () => {
 
     it('should transition from SUBMITTED to APPROVED', async () => {
       const submittedReport = { ...mockReport, status: 'SUBMITTED' as ReportStatus };
-      const approvedReport = { ...mockReport, status: 'APPROVED' as ReportStatus, reviewedAt: new Date() };
+      const approvedReport = {
+        ...mockReport,
+        status: 'APPROVED' as ReportStatus,
+        reviewedAt: new Date(),
+      };
 
       prisma.scouting_reports.findUnique.mockResolvedValue(submittedReport as any);
       prisma.scouting_reports.update.mockResolvedValue(approvedReport as any);
@@ -840,7 +919,11 @@ describe('ScoutingReportsService', () => {
 
     it('should transition from SUBMITTED to REJECTED', async () => {
       const submittedReport = { ...mockReport, status: 'SUBMITTED' as ReportStatus };
-      const rejectedReport = { ...mockReport, status: 'REJECTED' as ReportStatus, reviewedAt: new Date() };
+      const rejectedReport = {
+        ...mockReport,
+        status: 'REJECTED' as ReportStatus,
+        reviewedAt: new Date(),
+      };
 
       prisma.scouting_reports.findUnique.mockResolvedValue(submittedReport as any);
       prisma.scouting_reports.update.mockResolvedValue(rejectedReport as any);
@@ -866,18 +949,22 @@ describe('ScoutingReportsService', () => {
         overallRating: 85,
       };
 
-      await expect(service.create(createDto, 'scout-123')).rejects.toThrow('Database connection failed');
+      await expect(service.create(createDto, 'scout-123')).rejects.toThrow(
+        'Database connection failed',
+      );
     });
 
     it('should handle database errors on update', async () => {
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
       prisma.scouting_reports.update.mockRejectedValue(new Error('Update failed'));
 
-      await expect(service.update('report-123', { summary: 'Updated' })).rejects.toThrow('Update failed');
+      await expect(service.update('report-123', { summary: 'Updated' })).rejects.toThrow(
+        'Update failed',
+      );
     });
 
     it('should handle database errors on delete', async () => {
-      prisma.scouting_reports.findUnique.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
       prisma.scouting_reports.delete.mockRejectedValue(new Error('Delete failed'));
 
       await expect(service.remove('report-123')).rejects.toThrow('Delete failed');
@@ -932,7 +1019,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(minRatingDto, 'scout-123');
 
@@ -953,7 +1040,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(maxRatingDto, 'scout-123');
 
@@ -974,7 +1061,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(mixedRatingDto, 'scout-123');
 
@@ -983,7 +1070,15 @@ describe('ScoutingReportsService', () => {
   });
 
   describe('Recommendation types coverage', () => {
-    const recommendations = ['BUY_NOW', 'MONITOR', 'FOLLOW_UP', 'NOT_INTERESTED', 'HIGHLY_RECOMMENDED', 'RECOMMENDED', 'NOT_RECOMMENDED'];
+    const recommendations = [
+      'BUY_NOW',
+      'MONITOR',
+      'FOLLOW_UP',
+      'NOT_INTERESTED',
+      'HIGHLY_RECOMMENDED',
+      'RECOMMENDED',
+      'NOT_RECOMMENDED',
+    ];
 
     recommendations.forEach((rec) => {
       it(`should filter by ${rec} recommendation`, async () => {
@@ -1012,7 +1107,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithZeroMinutes, 'scout-123');
 
@@ -1031,7 +1126,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithMaxMinutes, 'scout-123');
 
@@ -1049,7 +1144,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithoutPosition, 'scout-123');
 
@@ -1068,7 +1163,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithEmptyTags, 'scout-123');
 
@@ -1086,7 +1181,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithEmptySimilar, 'scout-123');
 
@@ -1104,7 +1199,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithManyTags, 'scout-123');
 
@@ -1122,7 +1217,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithManySimilar, 'scout-123');
 
@@ -1145,7 +1240,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithEmptyStrings, 'scout-123');
 
@@ -1166,7 +1261,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithLongText, 'scout-123');
 
@@ -1174,7 +1269,7 @@ describe('ScoutingReportsService', () => {
     });
 
     it('should create report with special characters in text', async () => {
-      const specialText = "Special chars: <>&\"'{}[]|\\`~!@#$%^&*()";
+      const specialText = 'Special chars: <>&"\'{}[]|\\`~!@#$%^&*()';
       const dtoWithSpecialChars = {
         matchId: 'match-123',
         playerId: 'player-123',
@@ -1186,7 +1281,7 @@ describe('ScoutingReportsService', () => {
       prisma.matches.findUnique.mockResolvedValue(mockMatch as any);
       prisma.players.findUnique.mockResolvedValue(mockPlayer as any);
       prisma.users.findUnique.mockResolvedValue(mockScout as any);
-      prisma.scouting_reports.create.mockResolvedValue(mockReport as any);
+      prisma.scouting_reports.create.mockResolvedValue(mockReportDb as any);
 
       await service.create(dtoWithSpecialChars, 'scout-123');
 

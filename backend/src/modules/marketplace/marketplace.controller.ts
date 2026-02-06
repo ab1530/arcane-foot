@@ -12,15 +12,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { MarketplaceService } from './marketplace.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CreateScoutListingDto } from './dto/create-scout-listing.dto';
 import { UpdateScoutListingDto } from './dto/update-scout-listing.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
@@ -39,6 +35,8 @@ export class MarketplaceController {
   // ==================== SCOUT LISTING MANAGEMENT ====================
 
   @Post('listings')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Create scout listing (scouts only)' })
   @ApiResponse({ status: 201, description: 'Listing created successfully' })
   @ApiResponse({ status: 400, description: 'Only scouts can create listings' })
@@ -47,6 +45,8 @@ export class MarketplaceController {
   }
 
   @Get('listings/my')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get my scout listing (scouts only)' })
   @ApiResponse({ status: 200, description: 'Listing retrieved successfully' })
   @ApiResponse({ status: 404, description: 'No listing found' })
@@ -55,17 +55,18 @@ export class MarketplaceController {
   }
 
   @Patch('listings')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Update scout listing (scouts only)' })
   @ApiResponse({ status: 200, description: 'Listing updated successfully' })
   @ApiResponse({ status: 403, description: 'Not authorized to update this listing' })
-  async updateListing(
-    @Request() req,
-    @Body() dto: UpdateScoutListingDto,
-  ) {
+  async updateListing(@Request() req, @Body() dto: UpdateScoutListingDto) {
     return this.marketplaceService.updateListing(req.user.userId, dto);
   }
 
   @Patch('listings/activate')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Activate scout listing (make it visible)' })
   @ApiResponse({ status: 200, description: 'Listing activated' })
@@ -75,6 +76,8 @@ export class MarketplaceController {
   }
 
   @Patch('listings/pause')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Pause scout listing (temporarily hide)' })
   @ApiResponse({ status: 200, description: 'Listing paused' })
@@ -84,6 +87,8 @@ export class MarketplaceController {
   }
 
   @Delete('listings')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete scout listing (archives it)' })
   @ApiResponse({ status: 204, description: 'Listing deleted' })
@@ -117,6 +122,8 @@ export class MarketplaceController {
 
   @Post('listings/match')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({
     summary: 'Calculate matching scores for club needs (clubs only)',
   })
@@ -128,6 +135,8 @@ export class MarketplaceController {
   // ==================== OFFER MANAGEMENT ====================
 
   @Post('offers')
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Send offer to scout (clubs only)' })
   @ApiResponse({ status: 201, description: 'Offer sent successfully' })
   @ApiResponse({ status: 400, description: 'Only clubs can send offers' })
@@ -136,6 +145,8 @@ export class MarketplaceController {
   }
 
   @Get('offers/sent')
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get offers sent by my club' })
   @ApiResponse({ status: 200, description: 'Sent offers retrieved' })
   async getSentOffers(@Request() req) {
@@ -143,6 +154,8 @@ export class MarketplaceController {
   }
 
   @Get('offers/received')
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get offers received by me (scouts only)' })
   @ApiResponse({ status: 200, description: 'Received offers retrieved' })
   async getReceivedOffers(@Request() req) {
@@ -151,6 +164,8 @@ export class MarketplaceController {
 
   @Patch('offers/:id/accept')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Accept offer (scouts only)' })
   @ApiResponse({ status: 200, description: 'Offer accepted' })
   @ApiResponse({ status: 403, description: 'Not authorized' })
@@ -160,18 +175,19 @@ export class MarketplaceController {
 
   @Patch('offers/:id/reject')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Reject offer (scouts only)' })
   @ApiResponse({ status: 200, description: 'Offer rejected' })
   @ApiResponse({ status: 403, description: 'Not authorized' })
-  async rejectOffer(
-    @Request() req,
-    @Param('id') id: string,
-  ) {
+  async rejectOffer(@Request() req, @Param('id') id: string) {
     return this.marketplaceService.rejectOffer(req.user.userId, id);
   }
 
   @Patch('offers/:id/complete')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Mark offer as completed (scouts only)' })
   @ApiResponse({ status: 200, description: 'Offer marked as completed' })
   @ApiResponse({ status: 403, description: 'Not authorized' })
@@ -181,20 +197,20 @@ export class MarketplaceController {
 
   @Patch('offers/:id/cancel')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Cancel offer' })
   @ApiResponse({ status: 200, description: 'Offer cancelled' })
   @ApiResponse({ status: 403, description: 'Not authorized' })
-  async cancelOffer(
-    @Request() req,
-    @Param('id') id: string,
-    @Body('reason') reason?: string,
-  ) {
+  async cancelOffer(@Request() req, @Param('id') id: string, @Body('reason') reason?: string) {
     return this.marketplaceService.cancelOffer(req.user.clubId, id, reason);
   }
 
   // ==================== REVIEWS ====================
 
   @Post('reviews')
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Create review for completed offer (clubs only)' })
   @ApiResponse({ status: 201, description: 'Review created successfully' })
   @ApiResponse({ status: 400, description: 'Can only review completed offers' })
@@ -212,6 +228,8 @@ export class MarketplaceController {
   // ==================== FAVORITES ====================
 
   @Post('favorites')
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Add scout listing to favorites (clubs only)' })
   @ApiResponse({ status: 201, description: 'Favorite added' })
   async addFavorite(@Request() req, @Body() dto: CreateFavoriteDto) {
@@ -219,14 +237,22 @@ export class MarketplaceController {
   }
 
   @Get('favorites/my')
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Get my favorite scout listings' })
   @ApiResponse({ status: 200, description: 'Favorites retrieved' })
   async getFavorites(@Request() req) {
+    // Favorites are for clubs only, scouts don't have favorites
+    if (!req.user.clubId) {
+      return [];
+    }
     return this.marketplaceService.getFavorites(req.user.clubId);
   }
 
   @Delete('favorites/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Remove favorite' })
   @ApiResponse({ status: 204, description: 'Favorite removed' })
   async removeFavorite(@Request() req, @Param('id') id: string) {
@@ -235,6 +261,8 @@ export class MarketplaceController {
 
   @Patch('favorites/:id')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('AGENT', 'CLUB_CONTACT', 'ADMIN', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Update favorite notes/tags' })
   @ApiResponse({ status: 200, description: 'Favorite updated' })
   async updateFavorite(

@@ -25,7 +25,7 @@ export class GamificationService {
         userId,
         achievement,
         userStats,
-        context
+        context,
       );
 
       if (isUnlocked) {
@@ -52,9 +52,14 @@ export class GamificationService {
     userId: string,
     achievement: any,
     userStats: any,
-    context: any
+    context: any,
   ): Promise<boolean> {
     const condition = achievement.condition as any;
+
+    // Skip achievements without conditions
+    if (!condition || !condition.type) {
+      return false;
+    }
 
     switch (condition.type) {
       case 'goals':
@@ -62,6 +67,9 @@ export class GamificationService {
 
       case 'validations':
         return userStats.playersValidated >= condition.value;
+
+      case 'reports':
+        return (userStats.reportsCreated || 0) >= condition.value;
 
       case 'login_streak':
         return userStats.loginStreak >= condition.value;
@@ -108,7 +116,7 @@ export class GamificationService {
 
       // Log achievement unlock (NotificationsService.sendNotification method not implemented yet)
       this.logger.log(
-        `Achievement Unlocked: User ${userId} unlocked "${userAchievement.achievements.name}" (${userAchievement.achievements.points} points)`
+        `Achievement Unlocked: User ${userId} unlocked "${userAchievement.achievements.name}" (${userAchievement.achievements.points} points)`,
       );
 
       // Award badge if applicable
@@ -156,7 +164,8 @@ export class GamificationService {
 
   private async levelUp(userId: string, userStats: any, prisma: any) {
     const newLevel = userStats.currentLevel + 1;
-    const leftoverProgress = userStats.currentLevelPoints - this.calculateLevelThreshold(userStats.currentLevel);
+    const leftoverProgress =
+      userStats.currentLevelPoints - this.calculateLevelThreshold(userStats.currentLevel);
     const nextLevelThreshold = this.calculateLevelThreshold(newLevel);
 
     await prisma.user_stats.update({
@@ -169,12 +178,10 @@ export class GamificationService {
     });
 
     // Log level up (NotificationsService.sendNotification method not implemented yet)
-    this.logger.log(
-      `Level Up: User ${userId} reached level ${newLevel}!`
-    );
+    this.logger.log(`Level Up: User ${userId} reached level ${newLevel}!`);
 
-    // Check for level-based achievements
-    await this.checkAndUnlockAchievements(userId, { action: 'level_up', level: newLevel });
+    // NOTE: Level-based achievements will be checked the next time trackUserAction is called
+    // Removed recursive checkAndUnlockAchievements call to prevent infinite loops
   }
 
   // ============= LEADERBOARDS =============
@@ -250,6 +257,8 @@ export class GamificationService {
           period: currentPeriod,
           score: scoreValue,
           rank,
+          startDate: this.getPeriodStartDate(category, currentPeriod),
+          endDate: this.getPeriodEndDate(category, currentPeriod),
           updatedAt: new Date(),
         },
       });
@@ -352,7 +361,7 @@ export class GamificationService {
     });
 
     // Fetch all users in a single query
-    const userIds = leaderboardEntries.map(entry => entry.userId);
+    const userIds = leaderboardEntries.map((entry) => entry.userId);
     const users = await this.prisma.users.findMany({
       where: {
         id: { in: userIds },
@@ -366,10 +375,10 @@ export class GamificationService {
     });
 
     // Create a map for quick user lookup
-    const userMap = new Map(users.map(user => [user.id, user]));
+    const userMap = new Map(users.map((user) => [user.id, user]));
 
     // Combine leaderboard entries with user data
-    const entries = leaderboardEntries.map(entry => ({
+    const entries = leaderboardEntries.map((entry) => ({
       ...entry,
       users: userMap.get(entry.userId) || null,
     }));
@@ -404,6 +413,16 @@ export class GamificationService {
     };
   }
 
+  async getLeaderboardOverview(userId?: string) {
+    const types = ['ALL_TIME', 'WEEKLY_OVERALL', 'WEEKLY_SCOUT', 'MONTHLY_PLAYER', 'SEASON_CLUB'];
+    const current = await this.getLeaderboard('ALL_TIME', 10, userId);
+    return {
+      types,
+      current: current.entries,
+      currentPeriod: current.currentPeriod,
+    };
+  }
+
   async getUserProfile(userId: string) {
     const userStats = await this.getUserStats(userId);
     const user = await this.prisma.users.findUnique({
@@ -422,10 +441,12 @@ export class GamificationService {
       where: { userId },
     });
 
-    const profileCompleteness = this.calculateProfileCompleteness(await this.prisma.users.findUnique({
-      where: { id: userId },
-      include: { players: true },
-    }));
+    const profileCompleteness = this.calculateProfileCompleteness(
+      await this.prisma.users.findUnique({
+        where: { id: userId },
+        include: { players: true },
+      }),
+    );
 
     return {
       user,
@@ -454,22 +475,56 @@ export class GamificationService {
     });
 
     return {
-      unlocked: userAchievements.filter(ua =>
-        !category || ua.achievements.category === category
-      ),
+      unlocked: userAchievements.filter((ua) => !category || ua.achievements.category === category),
       total: allAchievements.length,
       unlockedCount: userAchievements.length,
       availableAchievements: allAchievements.filter(
-        (a) => !userAchievements.find((ua) => ua.achievementId === a.id)
+        (a) => !userAchievements.find((ua) => ua.achievementId === a.id),
       ),
+    };
+  }
+
+  async getAvailableAchievements(userId: string, category?: string) {
+    const achievements = await this.getUserAchievements(userId, category);
+    return achievements.availableAchievements;
+  }
+
+  async claimAchievement(userId: string, achievementId: string) {
+    // Check if already unlocked
+    const existing = await this.prisma.user_achievements.findUnique({
+      where: {
+        userId_achievementId: {
+          userId,
+          achievementId,
+        },
+      },
+      include: {
+        achievements: true,
+      },
+    });
+
+    if (existing) {
+      return {
+        achievement: existing.achievements,
+        unlockedAt: existing.unlockedAt,
+        xpGained: existing.achievements.points,
+        alreadyUnlocked: true,
+      };
+    }
+
+    const unlocked = await this.unlockAchievement(userId, achievementId);
+
+    return {
+      achievement: unlocked.achievements,
+      unlockedAt: unlocked.unlockedAt,
+      xpGained: unlocked.achievements.points,
+      alreadyUnlocked: false,
     };
   }
 
   async getUserBadges(userId: string) {
     // Badge system placeholder - will be implemented when Badge models are added
-    this.logger.log(
-      `Get User Badges (placeholder): Fetching badges for user ${userId}`
-    );
+    this.logger.log(`Get User Badges (placeholder): Fetching badges for user ${userId}`);
     return {
       badges: [],
       total: 0,
@@ -576,7 +631,7 @@ export class GamificationService {
 
       // Log notification (NotificationsService.sendNotification method not implemented yet)
       this.logger.log(
-        `Daily Challenge Complete: User ${userId} completed "${challenge.title}" and earned ${challenge.rewardPoints} XP!`
+        `Daily Challenge Complete: User ${userId} completed "${challenge.title}" and earned ${challenge.rewardPoints} XP!`,
       );
     }
   }
@@ -666,11 +721,9 @@ export class GamificationService {
   // ============= BADGES =============
   // Note: Badge system will be implemented when Badge/UserBadge models are added to schema
 
-  async awardBadge(userId: string, badgeType: string, tx?: any) {
+  async awardBadge(userId: string, badgeType: string, _tx?: any) {
     // Badge system placeholder - will be implemented when Badge models are added
-    this.logger.log(
-      `Badge Award (placeholder): User ${userId} would receive "${badgeType}" badge`
-    );
+    this.logger.log(`Badge Award (placeholder): User ${userId} would receive "${badgeType}" badge`);
     return null;
   }
 
@@ -704,9 +757,7 @@ export class GamificationService {
 
   async pinBadge(userId: string, badgeId: string) {
     // Badge system placeholder - will be implemented when Badge models are added
-    this.logger.log(
-      `Pin Badge (placeholder): User ${userId} would pin badge ${badgeId}`
-    );
+    this.logger.log(`Pin Badge (placeholder): User ${userId} would pin badge ${badgeId}`);
     return {
       success: true,
       message: 'Badge system not yet implemented',
@@ -718,26 +769,23 @@ export class GamificationService {
   private calculateProfileCompleteness(user: any): number {
     if (!user) return 0;
 
-    const fields = [
-      'firstName',
-      'lastName',
-      'email',
-      'phone',
-      'avatar',
-    ];
+    const fields = ['firstName', 'lastName', 'email', 'phone', 'avatar'];
 
-    const playerFields = user.players && user.players.length > 0 ? [
-      'position',
-      'dateOfBirth',
-      'nationality',
-      'height',
-      'weight',
-      'preferredFoot',
-      'biography',
-    ] : [];
+    const playerFields =
+      user.players && user.players.length > 0
+        ? [
+            'position',
+            'dateOfBirth',
+            'nationality',
+            'height',
+            'weight',
+            'preferredFoot',
+            'biography',
+          ]
+        : [];
 
     const allFields = [...fields, ...playerFields];
-    const completedFields = allFields.filter(field => {
+    const completedFields = allFields.filter((field) => {
       if (user.players && user.players.length > 0 && playerFields.includes(field)) {
         return user.players[0][field] !== null && user.players[0][field] !== undefined;
       }
@@ -772,8 +820,7 @@ export class GamificationService {
         break;
 
       case 'assist_made':
-        // TODO: Add assistsMade field to user_stats schema
-        // updates.assistsMade = { increment: 1 };
+        updates.assistsMade = { increment: 1 };
         await this.updateChallengeProgress(userId, 'make_assists');
         break;
 
@@ -783,13 +830,15 @@ export class GamificationService {
         break;
 
       case 'player_rejected':
-        // TODO: Add playersRejected field to user_stats schema
-        // updates.playersRejected = { increment: 1 };
+        updates.playersRejected = { increment: 1 };
         break;
 
       case 'talent_discovered':
-        // TODO: Add talentsDiscovered field to user_stats schema
-        // updates.talentsDiscovered = { increment: 1 };
+        updates.talentsDiscovered = { increment: 1 };
+        break;
+
+      case 'report_created':
+        updates.reportsCreated = { increment: 1 };
         break;
 
       case 'login':
@@ -836,7 +885,7 @@ export class GamificationService {
   }
 
   async distributeLeaderboardRewards(category: string) {
-    const period = this.getCurrentPeriod(category);
+    const _currentPeriod = this.getCurrentPeriod(category);
     const previousPeriod = this.getPreviousPeriod(category);
 
     const topPlayers = await this.prisma.leaderboards.findMany({
@@ -859,7 +908,7 @@ export class GamificationService {
 
       // Log leaderboard reward (NotificationsService.sendNotification method not implemented yet)
       this.logger.log(
-        `Leaderboard Reward: User ${entry.userId} ranked #${entry.rank} in ${category} and earned ${reward.points} XP!`
+        `Leaderboard Reward: User ${entry.userId} ranked #${entry.rank} in ${category} and earned ${reward.points} XP!`,
       );
     }
   }

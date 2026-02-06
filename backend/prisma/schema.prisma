@@ -43,6 +43,21 @@ model audit_logs {
   @@index([userId])
 }
 
+model contact_messages {
+  id        String   @id
+  name      String
+  email     String
+  phone     String?
+  type      String
+  message   String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([createdAt])
+  @@index([email])
+}
+
 model camp_participations {
   id                   String              @id
   campId               String
@@ -161,13 +176,13 @@ model clubs {
   camps                             camps[]
   club_requests                     club_requests[]
   users                             users?                @relation(fields: [contactUserId], references: [id])
+  marketplace_offers                marketplace_offers[]
+  marketplace_reviews               marketplace_reviews[]
   matches_matches_awayClubIdToclubs matches[]             @relation("matches_awayClubIdToclubs")
   matches_matches_homeClubIdToclubs matches[]             @relation("matches_homeClubIdToclubs")
   players                           players[]
-  venues                            venues[]
-  marketplace_offers                marketplace_offers[]
-  marketplace_reviews               marketplace_reviews[]
   scout_favorites                   scout_favorites[]
+  venues                            venues[]
 
   @@index([country])
   @@index([externalId])
@@ -252,45 +267,24 @@ model comments {
 }
 
 model competitions {
-  id              String    @id
-  name            String
-  shortName       String?
-  country         String?
-  level           String?
-  type            String?
-  season          String?
-  logo            String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime
-  currentMatchday Int?
-  endDate         DateTime?
-  externalId      String?   @unique
-  externalSource  String?
-  lastSyncAt      DateTime?
-  startDate       DateTime?
-  matches         matches[]
+  id             String    @id
+  name           String
+  shortName      String?
+  country        String?
+  level          String?
+  type           String?
+  season         String?
+  logo           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime
+  externalId     String?   @unique
+  externalSource String?
+  matches        matches[]
 
   @@index([country])
   @@index([externalId])
   @@index([externalSource, externalId])
   @@index([season])
-}
-
-model daily_challenges {
-  id                    String                  @id
-  title                 String
-  description           String
-  challengeType         String
-  targetValue           Int
-  rewardPoints          Int                     @default(50)
-  date                  DateTime                @unique
-  expiresAt             DateTime
-  isActive              Boolean                 @default(true)
-  createdAt             DateTime                @default(now())
-  user_daily_challenges user_daily_challenges[]
-
-  @@index([date])
-  @@index([isActive])
 }
 
 model event_assignments {
@@ -381,7 +375,6 @@ model kanban_cards {
   @@index([playerId])
   @@index([position])
   @@index([priority])
-  @@index([dueDate])
 }
 
 model kanban_columns {
@@ -399,21 +392,6 @@ model kanban_columns {
 
   @@index([boardId])
   @@index([position])
-}
-
-model leaderboards {
-  id        String   @id
-  userId    String
-  category  String
-  score     Int
-  rank      Int
-  period    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-
-  @@unique([userId, category, period])
-  @@index([category, period, rank])
-  @@index([userId])
 }
 
 model match_assignments {
@@ -466,6 +444,7 @@ model matches {
   timezone                         String                    @default("UTC")
   venueId                          String?
   venueOld                         String?
+  auto_generated_reports           auto_generated_reports[]
   events                           events[]
   match_assignments                match_assignments[]
   clubs_matches_awayClubIdToclubs  clubs                     @relation("matches_awayClubIdToclubs", fields: [awayClubId], references: [id])
@@ -475,11 +454,9 @@ model matches {
   users_matches_scoutIdTousers     users?                    @relation("matches_scoutIdTousers", fields: [scoutId], references: [id])
   venues                           venues?                   @relation(fields: [venueId], references: [id])
   media                            media[]
-  scouting_reports                 scouting_reports[]
   performance_predictions          performance_predictions[]
-  auto_generated_reports           auto_generated_reports[]
+  scouting_reports                 scouting_reports[]
 
-  @@unique([homeClubId, awayClubId, scheduledAt])
   @@index([competitionId])
   @@index([createdById])
   @@index([matchDate])
@@ -487,9 +464,6 @@ model matches {
   @@index([scoutId])
   @@index([status])
   @@index([venueId])
-  @@index([season])
-  @@index([homeClubId])
-  @@index([awayClubId])
 }
 
 model media {
@@ -516,7 +490,6 @@ model media {
   @@index([playerId])
   @@index([reportId])
   @@index([type])
-  @@index([uploadedAt])
 }
 
 model notifications {
@@ -535,8 +508,6 @@ model notifications {
   @@index([createdAt])
   @@index([isRead])
   @@index([userId])
-  @@index([type])
-  @@index([userId, isRead])
 }
 
 model player_passports {
@@ -560,14 +531,14 @@ model player_passports {
 
 model players {
   id                      String                    @id
-  userId                  String                    @unique
+  userId                  String?                   @unique
   clubId                  String?
   position                String
   preferredFoot           String?
   jerseyNumber            Int?
   height                  Float?
   weight                  Float?
-  dateOfBirth             DateTime
+  dateOfBirth             DateTime?
   nationality             String
   status                  PlayerStatus              @default(PROSPECT)
   marketValue             Float?
@@ -584,24 +555,31 @@ model players {
   externalId              String?                   @unique
   externalSource          String?
   photoUrl                String?
-  lastSyncAt              DateTime?
-  conversionNotes         String?
-  rejectionReason         String?
   verificationStatus      VerificationStatus        @default(PENDING)
   verifiedAt              DateTime?
   verifiedById            String?
+  lastSyncAt              DateTime?
+  conversionNotes         String?
+  rejectionReason         String?
+  firstName               String?
+  lastName                String?
+  birthYear               Int?
+  observedClubName        String?
+  importSource            String?
+  auto_generated_reports  auto_generated_reports[]
   camp_participations     camp_participations[]
   club_requests           club_requests[]
+  hardware_sessions       HardwareSession[]
   kanban_cards            kanban_cards[]
   media                   media[]
-  player_passports        player_passports?
-  clubs                   clubs?                    @relation(fields: [clubId], references: [id])
-  users                   users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  scouting_reports        scouting_reports[]
   performance_predictions performance_predictions[]
-  prediction_accuracy_log prediction_accuracy_log[]
+  player_passports        player_passports?
   player_valuations       player_valuations[]
-  auto_generated_reports  auto_generated_reports[]
+  player_views            player_views[]
+  clubs                   clubs?                    @relation(fields: [clubId], references: [id])
+  users                   users?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prediction_accuracy_log prediction_accuracy_log[]
+  scouting_reports        scouting_reports[]
 
   @@index([clubId])
   @@index([externalId])
@@ -610,10 +588,61 @@ model players {
   @@index([position])
   @@index([status])
   @@index([verificationStatus])
-  @@index([dateOfBirth])
-  @@index([nationality])
-  @@index([marketValue])
-  @@index([isPublic])
+  @@index([birthYear])
+  @@index([firstName, lastName])
+  @@index([observedClubName])
+}
+
+model HardwareSession {
+  id                    String   @id @default(uuid())
+  playerId              String
+  deviceId              String
+  source                String
+  type                  String
+  startedAt             DateTime
+  endedAt               DateTime
+  movementDistanceM     Float?
+  sprintDistanceM       Float?
+  offenseDefenseRatio   Float?
+  avgSpeedKmh           Float?
+  maxSpeedKmh           Float?
+  sprintTimeS           Float?
+  sprintCount           Int?
+  totalTimeMin          Float?
+  caloriesBurned        Float?
+  maxAccelerationG      Float?
+  maxDecelerationG      Float?
+  accelerationCount     Int?
+  reductionStepsCount   Int?
+  thermalTrajectoryMap  Json?
+  sprintVectorData      Json?
+  motionTrajectoryData  Json?
+  qualitySixDimensional Json?
+  rawMetrics            Json?
+  normalizedMetrics     Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  players               players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@index([startedAt])
+  @@map("hardware_sessions")
+}
+
+model player_views {
+  id       String   @id @default(uuid())
+  viewerId String
+  playerId String
+  viewedAt DateTime @default(now())
+  source   String?
+  players  players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  viewer   users    @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerId, playerId])
+  @@index([viewerId])
+  @@index([playerId])
+  @@index([viewedAt])
+  @@map("player_views")
 }
 
 model scouting_notes {
@@ -630,46 +659,56 @@ model scouting_notes {
 }
 
 model scouting_reports {
-  id                  String              @id
-  matchId             String
-  playerId            String
-  scoutId             String
-  status              ReportStatus        @default(DRAFT)
-  overallRating       Int?
-  summary             String?
-  strengths           String?
-  weaknesses          String?
-  notesJson           Json?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime
-  submittedAt         DateTime?
-  reviewedAt          DateTime?
-  mentalRating        Int?
-  physicalRating      Int?
-  playerMinutesPlayed Int?
-  playerPosition      String?
-  recommendation      RecommendationType?
-  recommendationNotes String?
-  reviewedBy          String?
-  similarPlayerIds    String[]
-  tacticalRating      Int?
-  tags                String[]
-  technicalRating     Int?
-  media               media[]
-  scouting_notes      scouting_notes[]
-  matches             matches             @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  players             players             @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  users               users               @relation(fields: [scoutId], references: [id])
-  report_embeddings   report_embeddings?
+  id                       String              @id
+  matchId                  String
+  playerId                 String
+  scoutId                  String
+  status                   ReportStatus        @default(DRAFT)
+  overallRating            Int?
+  summary                  String?
+  strengths                String?
+  weaknesses               String?
+  notesJson                Json?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime
+  submittedAt              DateTime?
+  reviewedAt               DateTime?
+  mentalRating             Int?
+  physicalRating           Int?
+  playerMinutesPlayed      Int?
+  playerPosition           String?
+  recommendation           RecommendationType?
+  recommendationNotes      String?
+  reviewedBy               String?
+  similarPlayerIds         String[]
+  tacticalRating           Int?
+  tags                     String[]
+  technicalRating          Int?
+  withBallAnalysis         String?
+  offBallAnalysis          String?
+  gameIntelligenceAnalysis String?
+  attitudeAnalysis         String?
+  staffOpinion             String?
+  observedDominantFoot     String?
+  observedHeightCm         Int?
+  observedWeightKg         Int?
+  observedClubName         String?
+  sprint10mSec             Float?
+  sprint20mSec             Float?
+  sprint40mSec             Float?
+  vmaKmh                   Float?
+  media                    media[]
+  report_embeddings        report_embeddings?
+  scouting_notes           scouting_notes[]
+  matches                  matches             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  players                  players             @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users                    users               @relation(fields: [scoutId], references: [id])
 
   @@index([matchId])
   @@index([playerId])
   @@index([recommendation])
   @@index([scoutId])
   @@index([status])
-  @@index([overallRating])
-  @@index([submittedAt])
-  @@index([createdAt])
 }
 
 model subscriptions {
@@ -732,25 +771,6 @@ model user_achievements {
   @@index([userId])
 }
 
-model user_daily_challenges {
-  id               String           @id
-  userId           String
-  challengeId      String
-  progress         Int              @default(0)
-  isCompleted      Boolean          @default(false)
-  isClaimed        Boolean          @default(false)
-  completedAt      DateTime?
-  claimedAt        DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime
-  daily_challenges daily_challenges @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, challengeId])
-  @@index([challengeId])
-  @@index([isCompleted])
-  @@index([userId])
-}
-
 model user_stats {
   id                 String    @id
   userId             String    @unique
@@ -763,11 +783,15 @@ model user_stats {
   goalsScored        Int       @default(0)
   matchesPlayed      Int       @default(0)
   playersValidated   Int       @default(0)
+  reportsCreated     Int       @default(0)
   reportsSubmitted   Int       @default(0)
   loginStreak        Int       @default(0)
   lastLoginDate      DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime
+  assistsMade        Int       @default(0)
+  playersRejected    Int       @default(0)
+  talentsDiscovered  Int       @default(0)
   users              users     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([currentLevel])
@@ -791,32 +815,32 @@ model users {
   lastLoginAt                                             DateTime?
   createdAt                                               DateTime                 @default(now())
   updatedAt                                               DateTime
+  auto_generated_reports                                  auto_generated_reports[]
   clubs                                                   clubs?
   coaching_bookings                                       coaching_bookings[]
   comments                                                comments[]
   event_assignments                                       event_assignments[]
   events                                                  events[]
+  leaderboards                                            leaderboards[]
   match_assignments_match_assignments_assignedByIdTousers match_assignments[]      @relation("match_assignments_assignedByIdTousers")
   match_assignments_match_assignments_scoutIdTousers      match_assignments[]      @relation("match_assignments_scoutIdTousers")
   matches_matches_createdByIdTousers                      matches[]                @relation("matches_createdByIdTousers")
   matches_matches_scoutIdTousers                          matches[]                @relation("matches_scoutIdTousers")
   notifications                                           notifications[]
+  onboarding_steps                                        onboarding_steps[]
+  player_views                                            player_views[]
   players                                                 players?
+  scout_listings                                          scout_listings?
   scouting_reports                                        scouting_reports[]
   subscriptions                                           subscriptions?
   tasks_tasks_assigneeIdTousers                           tasks[]                  @relation("tasks_assigneeIdTousers")
   tasks_tasks_creatorIdTousers                            tasks[]                  @relation("tasks_creatorIdTousers")
-  user_stats                                              user_stats?
+  user_daily_challenges                                   user_daily_challenges[]
   user_onboarding                                         user_onboarding?
-  onboarding_steps                                        onboarding_steps[]
-  scout_listings                                          scout_listings?
-  auto_generated_reports                                  auto_generated_reports[]
+  user_stats                                              user_stats?
 
   @@index([email])
   @@index([role])
-  @@index([isActive])
-  @@index([emailVerified])
-  @@index([lastLoginAt])
 }
 
 model venues {
@@ -838,6 +862,351 @@ model venues {
 
   @@index([city])
   @@index([clubId])
+}
+
+model user_onboarding {
+  id          String    @id
+  userId      String    @unique
+  currentStep String?
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  skippedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  users       users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model onboarding_steps {
+  id          String               @id
+  userId      String
+  stepKey     String
+  stepOrder   Int
+  status      OnboardingStepStatus @default(NOT_STARTED)
+  completedAt DateTime?
+  skippedAt   DateTime?
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime
+  users       users                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stepKey])
+  @@index([userId])
+  @@index([stepKey])
+}
+
+model rbac_events {
+  id           String        @id
+  userId       String
+  eventType    RbacEventType
+  feature      String
+  endpoint     String
+  method       String
+  currentTier  String
+  requiredTier String
+  userJourney  String?
+  ipAddress    String?
+  userAgent    String?
+  timestamp    DateTime      @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([feature])
+  @@index([timestamp])
+  @@index([currentTier])
+  @@index([requiredTier])
+  @@map("rbac_events")
+}
+
+model upgrade_modals {
+  id               String    @id
+  userId           String
+  feature          String
+  trigger          String    @default("403_error")
+  shownAt          DateTime  @default(now())
+  dismissedAt      DateTime?
+  ctaClickedAt     DateTime?
+  timeShownSeconds Int?
+
+  @@index([userId])
+  @@index([feature])
+  @@index([shownAt])
+  @@map("upgrade_modals")
+}
+
+model subscription_conversions {
+  id          String   @id
+  userId      String
+  fromTier    String
+  toTier      String
+  source      String
+  feature     String?
+  revenue     Float
+  currency    String   @default("EUR")
+  convertedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([fromTier])
+  @@index([toTier])
+  @@index([source])
+  @@index([convertedAt])
+  @@map("subscription_conversions")
+}
+
+model leaderboards {
+  id           String   @id @default(cuid())
+  userId       String
+  category     String
+  subcategory  String?
+  period       String
+  startDate    DateTime
+  endDate      DateTime
+  score        Int
+  rank         Int
+  previousRank Int?
+  reward       Json?
+  claimed      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, period])
+  @@index([category, period, rank])
+  @@index([userId, category])
+  @@index([score])
+}
+
+model daily_challenges {
+  id                    String                  @id @default(uuid())
+  date                  DateTime                @unique
+  expiresAt             DateTime
+  title                 String
+  description           String
+  challengeType         String
+  targetValue           Int
+  rewardPoints          Int
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  user_daily_challenges user_daily_challenges[]
+
+  @@index([date])
+  @@index([isActive])
+}
+
+model user_daily_challenges {
+  id               String           @id @default(cuid())
+  userId           String
+  challengeId      String
+  progress         Int              @default(0)
+  isCompleted      Boolean          @default(false)
+  completedAt      DateTime?
+  isClaimed        Boolean          @default(false)
+  claimedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  daily_challenges daily_challenges @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  users            users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([userId, isCompleted])
+  @@index([challengeId])
+}
+
+model scout_listings {
+  id                  String                @id
+  userId              String                @unique
+  headline            String?
+  bio                 String?
+  expertise           Json?
+  languages           String[]
+  availability        Json?
+  hourlyRate          Float?
+  matchRate           Float?
+  reportRate          Float?
+  currency            String                @default("EUR")
+  portfolio           Json?
+  stats               Json?
+  status              ScoutListingStatus    @default(DRAFT)
+  isVerified          Boolean               @default(false)
+  verifiedAt          DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  marketplace_offers  marketplace_offers[]
+  marketplace_reviews marketplace_reviews[]
+  scout_favorites     scout_favorites[]
+  users               users                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([isVerified])
+}
+
+model marketplace_offers {
+  id                  String                @id
+  scoutListingId      String
+  clubId              String
+  offerType           OfferType
+  title               String
+  description         String
+  budget              Float
+  currency            String                @default("EUR")
+  startDate           DateTime?
+  endDate             DateTime?
+  location            String?
+  requirements        Json?
+  status              OfferStatus           @default(PENDING)
+  matchingScore       Int?
+  sentAt              DateTime              @default(now())
+  respondedAt         DateTime?
+  acceptedAt          DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  cancellationReason  String?
+  clubs               clubs                 @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  scout_listings      scout_listings        @relation(fields: [scoutListingId], references: [id], onDelete: Cascade)
+  marketplace_reviews marketplace_reviews[]
+
+  @@index([scoutListingId])
+  @@index([clubId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+model marketplace_reviews {
+  id                 String             @id
+  scoutListingId     String
+  offerId            String
+  clubId             String
+  rating             Int
+  comment            String?
+  tags               String[]
+  isVerified         Boolean            @default(false)
+  reviewedAt         DateTime           @default(now())
+  clubs              clubs              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  marketplace_offers marketplace_offers @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  scout_listings     scout_listings     @relation(fields: [scoutListingId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, clubId])
+  @@index([scoutListingId])
+  @@index([offerId])
+  @@index([clubId])
+  @@index([reviewedAt])
+}
+
+model scout_favorites {
+  id             String         @id
+  clubId         String
+  scoutListingId String
+  notes          String?
+  tags           String[]
+  addedAt        DateTime       @default(now())
+  clubs          clubs          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  scout_listings scout_listings @relation(fields: [scoutListingId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, scoutListingId])
+  @@index([clubId])
+  @@index([scoutListingId])
+  @@index([addedAt])
+}
+
+model auto_generated_reports {
+  id               String   @id @default(uuid())
+  playerId         String
+  matchId          String?
+  scoutId          String?
+  reportData       Json
+  qualityScore     Float
+  qualityBreakdown Json
+  template         String
+  model            String   @default("gpt-4-turbo-preview")
+  tokensUsed       Int
+  generationTime   Int
+  cost             Float?
+  createdAt        DateTime @default(now())
+  matches          matches? @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  players          players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users            users?   @relation(fields: [scoutId], references: [id])
+
+  @@index([playerId])
+  @@index([matchId])
+  @@index([scoutId])
+  @@index([createdAt])
+  @@index([template])
+  @@index([qualityScore])
+}
+
+model player_valuations {
+  id              String   @id
+  playerId        String
+  estimatedValue  Float
+  confidenceLow   Float
+  confidenceHigh  Float
+  confidenceScore Float
+  factors         Json
+  modelVersion    String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  players         players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@index([createdAt])
+}
+
+model performance_predictions {
+  id                 String   @id
+  playerId           String
+  matchId            String
+  predictedRating    Float
+  confidenceLow      Float
+  confidenceHigh     Float
+  confidenceScore    Float
+  ratingDistribution Json
+  keyFactors         Json
+  recommendations    String[]
+  modelVersion       String   @default("v1")
+  actualRating       Float?
+  predictionError    Float?
+  predictedAt        DateTime @default(now())
+  matches            matches  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  players            players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, matchId])
+  @@index([playerId])
+  @@index([matchId])
+  @@index([predictedAt])
+}
+
+model prediction_accuracy_log {
+  id               String   @id @default(uuid())
+  playerId         String?
+  dateRange        String
+  modelVersion     String
+  totalPredictions Int
+  avgError         Float
+  rmse             Float
+  withinCI         Float
+  r2Score          Float?
+  calculatedAt     DateTime @default(now())
+  players          players? @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, dateRange, modelVersion])
+  @@index([dateRange])
+  @@index([playerId])
+  @@index([modelVersion])
+  @@index([calculatedAt])
+}
+
+model report_embeddings {
+  id               String           @id
+  reportId         String           @unique
+  embedding        Float[]
+  model            String           @default("text-embedding-3-small")
+  createdAt        DateTime         @default(now())
+  scouting_reports scouting_reports @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
 }
 
 enum AchievementCategory {
@@ -994,6 +1363,13 @@ enum PlayerType {
   PUBLIC
 }
 
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPICIOUS
+}
+
 enum RecommendationType {
   BUY_NOW
   MONITOR
@@ -1051,18 +1427,19 @@ enum UserRole {
   PUBLIC
 }
 
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-  SUSPICIOUS
-}
-
 enum OnboardingStepStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
   SKIPPED
+}
+
+enum RbacEventType {
+  FEATURE_BLOCKED
+  UPGRADE_MODAL_SHOWN
+  UPGRADE_MODAL_DISMISSED
+  UPGRADE_MODAL_CTA_CLICKED
+  SUBSCRIPTION_UPGRADED
 }
 
 enum ScoutListingStatus {
@@ -1072,360 +1449,19 @@ enum ScoutListingStatus {
   ARCHIVED
 }
 
-enum OfferType {
-  MATCH_ASSIGNMENT
-  PLAYER_REPORT
-  RETAINER
-  CONSULTATION
-}
-
 enum OfferStatus {
   PENDING
   VIEWED
   ACCEPTED
   REJECTED
-  COUNTER_OFFERED
   IN_PROGRESS
   COMPLETED
   CANCELLED
 }
 
-model user_onboarding {
-  id          String    @id
-  userId      String    @unique
-  currentStep String?
-  isCompleted Boolean   @default(false)
-  completedAt DateTime?
-  skippedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime
-  users       users     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model onboarding_steps {
-  id          String               @id
-  userId      String
-  stepKey     String
-  stepOrder   Int
-  status      OnboardingStepStatus @default(NOT_STARTED)
-  completedAt DateTime?
-  skippedAt   DateTime?
-  metadata    Json?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime
-  users       users                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, stepKey])
-  @@index([userId])
-  @@index([stepKey])
-}
-
-// ==========================================
-// MARKETPLACE MODELS
-// ==========================================
-
-model scout_listings {
-  id                  String                @id
-  userId              String                @unique
-  bio                 String?
-  headline            String
-  expertise           Json
-  languages           String[]
-  availability        Json
-  hourlyRate          Float?
-  matchRate           Float?
-  reportRate          Float?
-  currency            String                @default("EUR")
-  portfolio           Json?
-  stats               Json?
-  status              ScoutListingStatus    @default(DRAFT)
-  isVerified          Boolean               @default(false)
-  verifiedAt          DateTime?
-  featuredUntil       DateTime?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime
-  users               users                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  marketplace_offers  marketplace_offers[]
-  marketplace_reviews marketplace_reviews[]
-  scout_favorites     scout_favorites[]
-
-  @@index([status])
-  @@index([isVerified])
-  @@index([userId])
-}
-
-model marketplace_offers {
-  id                  String                @id
-  scoutListingId      String
-  clubId              String
-  offerType           OfferType
-  title               String
-  description         String
-  budget              Float
-  currency            String                @default("EUR")
-  startDate           DateTime?
-  endDate             DateTime?
-  location            String?
-  requirements        Json?
-  status              OfferStatus           @default(PENDING)
-  sentAt              DateTime              @default(now())
-  respondedAt         DateTime?
-  acceptedAt          DateTime?
-  completedAt         DateTime?
-  cancelledAt         DateTime?
-  cancellationReason  String?
-  matchingScore       Float?
-  metadata            Json?
-  scout_listings      scout_listings        @relation(fields: [scoutListingId], references: [id], onDelete: Cascade)
-  clubs               clubs                 @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  marketplace_reviews marketplace_reviews[]
-
-  @@index([scoutListingId])
-  @@index([clubId])
-  @@index([status])
-  @@index([offerType])
-  @@index([startDate])
-}
-
-model marketplace_reviews {
-  id                 String             @id
-  offerId            String
-  scoutListingId     String
-  clubId             String
-  rating             Int
-  comment            String?
-  tags               String[]
-  reviewedAt         DateTime           @default(now())
-  isVerified         Boolean            @default(false)
-  marketplace_offers marketplace_offers @relation(fields: [offerId], references: [id], onDelete: Cascade)
-  scout_listings     scout_listings     @relation(fields: [scoutListingId], references: [id], onDelete: Cascade)
-  clubs              clubs              @relation(fields: [clubId], references: [id], onDelete: Cascade)
-
-  @@unique([offerId, clubId])
-  @@index([scoutListingId])
-  @@index([clubId])
-  @@index([rating])
-}
-
-model scout_favorites {
-  id             String         @id
-  clubId         String
-  scoutListingId String
-  notes          String?
-  tags           String[]
-  addedAt        DateTime       @default(now())
-  clubs          clubs          @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  scout_listings scout_listings @relation(fields: [scoutListingId], references: [id], onDelete: Cascade)
-
-  @@unique([clubId, scoutListingId])
-  @@index([clubId])
-  @@index([scoutListingId])
-}
-
-// ==========================================
-// SMARTSCOUT AI - VECTOR EMBEDDINGS
-// ==========================================
-
-model report_embeddings {
-  id               String           @id
-  reportId         String           @unique
-  embedding        Float[]
-  model            String           @default("text-embedding-3-small")
-  createdAt        DateTime         @default(now())
-  scouting_reports scouting_reports @relation(fields: [reportId], references: [id], onDelete: Cascade)
-
-  @@index([reportId])
-  @@map("report_embeddings")
-}
-
-// ==========================================
-// PERFORMANCE PREDICTOR - ML PREDICTIONS
-// ==========================================
-
-model performance_predictions {
-  id       String @id
-  playerId String
-  matchId  String
-
-  predictedRating Float
-  confidenceLow   Float
-  confidenceHigh  Float
-  confidenceScore Float
-
-  ratingDistribution Json
-  keyFactors         Json
-  recommendations    String[]
-
-  actualRating    Float? // Filled after match (from scouting report)
-  predictionError Float? // Absolute error: |predicted - actual|
-
-  modelVersion String   @default("v1")
-  predictedAt  DateTime @default(now())
-
-  players players @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  matches matches @relation(fields: [matchId], references: [id], onDelete: Cascade)
-
-  @@unique([playerId, matchId])
-  @@index([matchId])
-  @@index([predictedAt])
-  @@index([playerId])
-  @@map("performance_predictions")
-}
-
-model prediction_accuracy_log {
-  id        String  @id
-  playerId  String?
-  dateRange String // "2024-01", "2024-Q1", "2024-season"
-
-  totalPredictions Int
-  avgError         Float // Mean Absolute Error
-  rmse             Float // Root Mean Squared Error
-  withinCI         Float // % predictions within confidence interval
-  r2Score          Float? // R² score for the period
-
-  modelVersion String   @default("v1")
-  calculatedAt DateTime @default(now())
-
-  players players? @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
-  @@unique([playerId, dateRange, modelVersion])
-  @@index([playerId])
-  @@index([dateRange])
-  @@index([modelVersion])
-  @@map("prediction_accuracy_log")
-}
-
-// ==========================================
-// MARKET VALUE AI - PLAYER VALUATIONS
-// ==========================================
-
-model player_valuations {
-  id       String @id
-  playerId String
-
-  estimatedValue  Float // Market value in millions EUR
-  confidenceLow   Float // Lower confidence bound
-  confidenceHigh  Float // Upper confidence bound
-  confidenceScore Float // Confidence score (0-1)
-
-  factors      Json // Contributing factors breakdown
-  modelVersion String @default("v1")
-
-  createdAt DateTime @default(now())
-
-  players players @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
-  @@index([playerId])
-  @@index([createdAt])
-  @@index([modelVersion])
-  @@map("player_valuations")
-}
-
-// ==========================================
-// AUTOSCOUT - AI SCOUTING REPORTS
-// ==========================================
-
-model auto_generated_reports {
-  id       String  @id
-  playerId String
-  matchId  String?
-  scoutId  String? // Scout who requested generation
-
-  reportData       Json // Full generated report
-  qualityScore     Float
-  qualityBreakdown Json
-
-  template       String
-  model          String @default("gpt-4-turbo-preview")
-  tokensUsed     Int
-  generationTime Int // milliseconds
-
-  wasManuallyEdited Boolean @default(false)
-  savedAsReport     Boolean @default(false)
-  savedReportId     String? // Link to scouting_reports if saved
-
-  createdAt DateTime @default(now())
-
-  players players  @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  matches matches? @relation(fields: [matchId], references: [id], onDelete: SetNull)
-  users   users?   @relation(fields: [scoutId], references: [id], onDelete: SetNull)
-
-  @@index([playerId])
-  @@index([scoutId])
-  @@index([createdAt])
-  @@index([qualityScore])
-  @@index([template])
-  @@map("auto_generated_reports")
-}
-
-// ==========================================
-// RBAC MONITORING - SUBSCRIPTION CONVERSION TRACKING
-// ==========================================
-
-model rbac_events {
-  id           String        @id
-  userId       String
-  eventType    RbacEventType
-  feature      String
-  endpoint     String
-  method       String
-  currentTier  String
-  requiredTier String
-  userJourney  String? // JSON string of last 5 pages
-  ipAddress    String?
-  userAgent    String?
-  timestamp    DateTime      @default(now())
-
-  @@index([userId])
-  @@index([eventType])
-  @@index([feature])
-  @@index([timestamp])
-  @@index([currentTier])
-  @@index([requiredTier])
-  @@map("rbac_events")
-}
-
-model upgrade_modals {
-  id               String    @id
-  userId           String
-  feature          String
-  trigger          String    @default("403_error")
-  shownAt          DateTime  @default(now())
-  dismissedAt      DateTime?
-  ctaClickedAt     DateTime?
-  timeShownSeconds Int?
-
-  @@index([userId])
-  @@index([feature])
-  @@index([shownAt])
-  @@map("upgrade_modals")
-}
-
-model subscription_conversions {
-  id          String   @id
-  userId      String
-  fromTier    String
-  toTier      String
-  source      String // "ai_features_403", "upgrade_modal", "pricing_page", etc.
-  feature     String? // Which feature triggered the upgrade
-  revenue     Float
-  currency    String   @default("EUR")
-  convertedAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([fromTier])
-  @@index([toTier])
-  @@index([source])
-  @@index([convertedAt])
-  @@map("subscription_conversions")
-}
-
-enum RbacEventType {
-  FEATURE_BLOCKED
-  UPGRADE_MODAL_SHOWN
-  UPGRADE_MODAL_DISMISSED
-  UPGRADE_MODAL_CTA_CLICKED
-  SUBSCRIPTION_UPGRADED
+enum OfferType {
+  MATCH_ASSIGNMENT
+  PLAYER_REPORT
+  CONSULTATION
+  RETAINER
 }

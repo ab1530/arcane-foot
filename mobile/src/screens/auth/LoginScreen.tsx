@@ -1,41 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   TextInput,
-  ScrollView,
   Alert,
+  ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassCard, GradientText } from '../../components/ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { showSuccess, showError } from '../../services/toast';
 import api from '../../services/api';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { dictionary } = useLocalization();
+  const loginCopy = dictionary.auth.login;
+
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const passwordInputRef = useRef<TextInput>(null);
+
   const handleLogin = async () => {
+    if (loading) {
+      return;
+    }
+
     if (!email || !password) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      showError('Veuillez remplir tous les champs');
+      showError(loginCopy.toasts.missingFields);
       return;
     }
 
@@ -49,163 +57,137 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       if (response.accessToken && response.user) {
-        // Store the token
-        await api.setAuthToken(response.accessToken);
-
-        // Login the user
-        await login(response.user, response.accessToken);
-
+        api.setAuthToken(response.accessToken);
+        await login(response.user, response.accessToken, response.refreshToken);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showSuccess('Connexion réussie !');
+        showSuccess(loginCopy.toasts.success);
       }
     } catch (error: any) {
       console.error('Login error:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
       if (error.response?.status === 401) {
-        showError('Email ou mot de passe incorrect');
+        showError(loginCopy.toasts.invalidCredentials);
       } else if (error.response?.data?.message) {
         showError(error.response.data.message);
       } else if (error.message === 'Network Error') {
-        showError('Erreur de connexion au serveur');
+        showError(loginCopy.toasts.network);
       } else {
-        showError('Une erreur est survenue');
+        showError(loginCopy.toasts.generic);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      'Mot de passe oublié',
-      'La réinitialisation du mot de passe sera bientôt disponible',
-      [{ text: 'OK' }]
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[colors.background.primary, colors.background.secondary]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
+          <View style={styles.content}>
+            {/* Logo */}
             <View style={styles.logoContainer}>
-              <LinearGradient
-                colors={[colors.brand.primary, colors.brand.primary + '80']}
-                style={styles.logoGradient}
-              >
-                <Ionicons name="football" size={50} color={colors.background.primary} />
-              </LinearGradient>
-            </View>
-            <GradientText variant="arcane" style={styles.appName}>
-              Arcane Football
-            </GradientText>
-            <Text style={styles.tagline}>Plateforme de Scouting Professionnel</Text>
-          </View>
-
-          {/* Login Form */}
-          <GlassCard variant="elevated" style={styles.formCard}>
-            <Text style={styles.formTitle}>Connexion</Text>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={20} color={colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={colors.text.secondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <Ionicons name="football" size={60} color={colors.brand.primary} />
+              <Text style={styles.appName}>{loginCopy.appName}</Text>
+              <Text style={styles.tagline}>{loginCopy.tagline}</Text>
             </View>
 
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={20} color={colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Mot de passe"
-                placeholderTextColor={colors.text.secondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
+            {/* Form Card */}
+            <View style={styles.formCard}>
+              <Text style={styles.formTitle}>{loginCopy.title}</Text>
+
+              {/* Email Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={20} color={colors.text.secondary} style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder={loginCopy.inputs.email}
+                    placeholderTextColor={colors.text.secondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    editable={!loading}
+                  />
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color={colors.text.secondary} style={styles.icon} />
+                  <TextInput
+                    ref={passwordInputRef}
+                    style={styles.input}
+                    placeholder={loginCopy.inputs.password}
+                    placeholderTextColor={colors.text.secondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.text.secondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Login Button */}
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color={colors.text.secondary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
-            </TouchableOpacity>
-
-            {/* Login Button */}
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.disabledButton]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <LinearGradient
-                colors={[colors.brand.primary, colors.brand.primary + 'DD']}
-                style={styles.buttonGradient}
+                testID="login-submit-button"
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: loading }}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.background.primary} />
+                  <ActivityIndicator testID="login-loading-indicator" color="#fff" />
                 ) : (
-                  <>
-                    <Text style={styles.loginButtonText}>Se connecter</Text>
-                    <Ionicons name="arrow-forward" size={20} color={colors.background.primary} />
-                  </>
+                  <Text style={styles.loginButtonText}>{loginCopy.button}</Text>
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            {/* Test Credentials Info */}
-            <View style={styles.testInfo}>
-              <Ionicons name="information-circle" size={16} color={colors.semantic.info} />
-              <Text style={styles.testInfoText}>
-                Test: admin@arcane.com / Password123!
-              </Text>
+              {/* Test Info */}
+              <View style={styles.testInfo}>
+                <Ionicons name="information-circle-outline" size={16} color={colors.semantic.info} />
+                <Text style={styles.testInfoText}>{loginCopy.testCredentials}</Text>
+              </View>
             </View>
-          </GlassCard>
 
-          {/* Register Link */}
-          <View style={styles.registerSection}>
-            <Text style={styles.registerText}>Pas encore de compte ?</Text>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate('Signup');
-              }}
-            >
-              <Text style={styles.registerLink}>Créer un compte</Text>
-            </TouchableOpacity>
+            {/* Register Link */}
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>{loginCopy.noAccount} </Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Signup')}
+                disabled={loading}
+              >
+                <Text style={styles.registerLink}>{loginCopy.signupCta}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -216,38 +198,30 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.background.primary,
   },
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
+  scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: spacing.lg,
   },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: spacing["2xl"],
+  content: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   logoContainer: {
-    marginBottom: spacing.md,
-  },
-  logoGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: radius.full,
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.brand.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
+    marginBottom: spacing.xl * 2,
   },
   appName: {
-    fontSize: typography.sizes.h2,
+    fontSize: typography.sizes.h1,
     fontWeight: 'bold',
+    color: colors.text.primary,
+    marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
   tagline: {
@@ -255,64 +229,59 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   formCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
     padding: spacing.xl,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   formTitle: {
     fontSize: typography.sizes.h3,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: colors.text.primary,
-    marginBottom: spacing.xl,
     textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  inputGroup: {
+    marginBottom: spacing.lg,
+  },
+  label: {
+    fontSize: typography.sizes.sm,
+    fontWeight: '500',
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface.glassLight,
+    backgroundColor: colors.background.primary,
     borderRadius: radius.md,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.surface.border,
+    paddingHorizontal: spacing.md,
+    height: 50,
   },
-  inputIcon: {
+  icon: {
     marginRight: spacing.sm,
   },
   input: {
     flex: 1,
-    height: 50,
     color: colors.text.primary,
     fontSize: typography.sizes.base,
-  },
-  eyeButton: {
-    padding: spacing.sm,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: spacing.xl,
-  },
-  forgotPasswordText: {
-    color: colors.brand.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: '500',
+    paddingVertical: spacing.sm,
   },
   loginButton: {
-    marginBottom: spacing.lg,
+    backgroundColor: colors.brand.primary,
     borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: spacing.md,
-    gap: spacing.sm,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
   loginButtonText: {
-    color: colors.background.primary,
+    color: '#fff',
     fontSize: typography.sizes.base,
     fontWeight: 'bold',
   },
@@ -320,20 +289,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
     padding: spacing.sm,
     backgroundColor: colors.semantic.info + '20',
     borderRadius: radius.sm,
+    gap: spacing.xs,
   },
   testInfoText: {
     color: colors.semantic.info,
     fontSize: typography.sizes.xs,
   },
-  registerSection: {
+  registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.xs,
   },
   registerText: {
     color: colors.text.secondary,

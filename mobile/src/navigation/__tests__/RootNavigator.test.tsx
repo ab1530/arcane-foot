@@ -2,69 +2,134 @@ import React from 'react';
 import { Text } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
 import RootNavigator from '../RootNavigator';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../contexts/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-jest.mock('../../store/authStore', () => ({
-  useAuthStore: jest.fn(),
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
 }));
 
-jest.mock('../MainTabNavigator', () => {
+jest.mock('../AppNavigator', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function MockMainTabNavigator() {
+  return function MockAppNavigator() {
     return <Text testID="main-tab-navigator">Main app</Text>;
   };
 });
 
+jest.mock('../../screens/home/HomeScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return { HomeScreen: () => <Text>Accueil</Text> };
+});
+
+jest.mock('../../screens/auth/LoginScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return function MockLoginScreen() {
+    return <Text>Connexion</Text>;
+  };
+});
+
+jest.mock('../../screens/auth/SignupScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return function MockSignupScreen() {
+    return <Text>Créer un compte</Text>;
+  };
+});
+
+jest.mock('../../screens/auth/RoleSelectorScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return function MockRoleSelectorScreen() {
+    return <Text>Choix du rôle</Text>;
+  };
+});
+
+jest.mock('../../hooks/useNotifications', () => ({
+  __esModule: true,
+  default: () => ({
+    isRegistered: false,
+    permissionStatus: 'granted',
+    registerForNotifications: jest.fn().mockResolvedValue(undefined),
+    unregister: jest.fn().mockResolvedValue(undefined),
+    subscribeToTopic: jest.fn().mockResolvedValue(undefined),
+    unsubscribeFromTopic: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 describe('RootNavigator', () => {
-  const mockUseAuthStore = useAuthStore as jest.Mock;
+  const mockUseAuth = useAuth as jest.Mock;
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   it('affiche un indicateur de chargement lorsque l’état auth est en cours', () => {
-    const loadStoredAuth = jest.fn();
-    mockUseAuthStore.mockReturnValue({
+    mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       isLoading: true,
-      loadStoredAuth,
     });
 
-    const { getByTestId } = render(<RootNavigator />);
+    const { getByTestId } = render(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
     expect(getByTestId('auth-loading-indicator')).toBeTruthy();
-    expect(loadStoredAuth).toHaveBeenCalledTimes(1);
   });
 
   it('rend la pile auth quand l’utilisateur n’est pas connecté', async () => {
-    const loadStoredAuth = jest.fn();
-    mockUseAuthStore.mockReturnValue({
+    mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       isLoading: false,
-      loadStoredAuth,
     });
 
-    const { getByText } = render(<RootNavigator />);
+    const { getByText } = render(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
     await waitFor(() => {
       expect(getByText('Connexion')).toBeTruthy();
     });
-    expect(loadStoredAuth).toHaveBeenCalledTimes(1);
   });
 
   it('rend la navigation principale quand l’utilisateur est authentifié', async () => {
-    const loadStoredAuth = jest.fn();
-    mockUseAuthStore.mockReturnValue({
+    mockUseAuth.mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
-      loadStoredAuth,
     });
 
-    const { getByTestId, queryByText } = render(<RootNavigator />);
+    const { getByTestId, queryByText } = render(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
 
     await waitFor(() => {
       expect(getByTestId('main-tab-navigator')).toBeTruthy();
       expect(queryByText('Connexion')).toBeNull();
     });
-    expect(loadStoredAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it('affiche le sélecteur de rôle si plusieurs rôles sont disponibles', async () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      activeRole: null,
+      user: { id: 'u-1', roles: ['PLAYER', 'SCOUT'] },
+    });
+
+    const { getByText } = render(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByText('Choix du rôle')).toBeTruthy();
+    });
   });
 });

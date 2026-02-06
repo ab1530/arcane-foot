@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,47 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenHeader } from '../../components/navigation';
+import { Icon } from '../../components/ui';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { colors, spacing, typography, radius } from '../../design/theme';
 import { scoutingReportsApi, ScoutingReport, ReportStatus } from '../../services/api/scouting-reports';
 
 type ReportDetailRouteProp = RouteProp<{ params: { reportId: string } }, 'params'>;
 
+const statusGradients: Record<ReportStatus, [string, string]> = {
+  DRAFT: [colors.surface.border, colors.surface.glass],
+  SUBMITTED: [colors.semantic.info, colors.semantic.infoBg],
+  APPROVED: [colors.semantic.success, colors.semantic.successBg],
+  REJECTED: [colors.semantic.error, colors.semantic.errorBg],
+};
+
+const getRatingColor = (rating?: number) => {
+  if (!rating) return colors.text.secondary;
+  if (rating >= 80) return colors.semantic.success;
+  if (rating >= 60) return colors.brand.primary;
+  if (rating >= 40) return colors.semantic.warning;
+  return colors.semantic.error;
+};
+
+const formatOptionalText = (value?: string | null) => {
+  if (!value || !value.trim()) {
+    return 'Non renseigné';
+  }
+  return value;
+};
+
+const formatOptionalNumber = (value?: number | null, suffix = '') => {
+  if (value === undefined || value === null) {
+    return 'Non renseigné';
+  }
+  return `${value}${suffix}`;
+};
+
 const ReportDetailScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<ReportDetailRouteProp>();
   const { reportId } = route.params;
 
@@ -91,16 +124,6 @@ const ReportDetailScreen = () => {
     );
   };
 
-  const getStatusColor = (status: ReportStatus) => {
-    switch (status) {
-      case 'DRAFT': return '#95a5a6';
-      case 'SUBMITTED': return '#3498db';
-      case 'APPROVED': return '#2ecc71';
-      case 'REJECTED': return '#e74c3c';
-      default: return '#95a5a6';
-    }
-  };
-
   const getStatusLabel = (status: ReportStatus) => {
     switch (status) {
       case 'DRAFT': return 'Brouillon';
@@ -124,20 +147,21 @@ const ReportDetailScreen = () => {
 
   const getRecommendationColor = (recommendation?: string) => {
     switch (recommendation) {
-      case 'BUY_NOW': return '#e74c3c';
-      case 'MONITOR': return '#f39c12';
-      case 'FOLLOW_UP': return '#3498db';
-      case 'NOT_INTERESTED': return '#95a5a6';
-      case 'NEEDS_MORE_DATA': return '#9b59b6';
-      default: return '#bdc3c7';
+      case 'BUY_NOW': return colors.semantic.error;
+      case 'MONITOR': return colors.semantic.warning;
+      case 'FOLLOW_UP': return colors.semantic.info;
+      case 'NOT_INTERESTED': return colors.surface.border;
+      case 'NEEDS_MORE_DATA': return colors.brand.accent;
+      default: return colors.brand.primary;
     }
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        <ScreenHeader title="Rapport" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator testID="report-detail-loading-indicator" size="large" color="#2c3e50" />
+          <ActivityIndicator testID="report-detail-loading-indicator" size="large" color={colors.brand.primary} />
         </View>
       </SafeAreaView>
     );
@@ -146,6 +170,7 @@ const ReportDetailScreen = () => {
   if (!report) {
     return (
       <SafeAreaView style={styles.container}>
+        <ScreenHeader title="Rapport" />
         <View style={styles.errorContainer}>
           <Text testID="report-detail-empty" style={styles.errorText}>Rapport introuvable</Text>
         </View>
@@ -167,213 +192,202 @@ const ReportDetailScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity testID="report-detail-back" onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#2c3e50" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Détails du rapport</Text>
-        <TouchableOpacity testID="report-detail-delete" onPress={handleDelete}>
-          <Ionicons name="trash-outline" size={24} color="#e74c3c" />
-        </TouchableOpacity>
-        </View>
+      <ScreenHeader
+        title="Détails du rapport"
+        blur={false}
+        borderBottom={false}
+        rightActions={
+          <TouchableOpacity testID="report-detail-delete" onPress={handleDelete} style={styles.iconButton}>
+            <Icon name="trash" size={18} color={colors.semantic.error} />
+          </TouchableOpacity>
+        }
+      />
 
-      <ScrollView style={styles.content}>
-        {/* Status Section */}
-        <View style={styles.section}>
-          <View style={[styles.statusBadgeLarge, { backgroundColor: getStatusColor(report.status) }]}>
-            <Text style={styles.statusTextLarge}>{getStatusLabel(report.status)}</Text>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        <LinearGradient
+          colors={[colors.background.secondary, colors.background.tertiary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <LinearGradient
+            colors={statusGradients[report.status]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statusBadge}
+          >
+            <Text style={styles.statusText}>{getStatusLabel(report.status)}</Text>
+          </LinearGradient>
+
+          <Text style={styles.heroPlayer}>{playerName}</Text>
+          <Text style={styles.heroSubtitle}>{matchInfo}</Text>
+
+          <View style={styles.heroMetaRow}>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Scout</Text>
+              <Text style={styles.metaValue}>{scoutName}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Créé le</Text>
+              <Text style={styles.metaValue}>
+                {new Date(report.createdAt).toLocaleDateString('fr-FR')}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {/* Player Section */}
-        <View style={styles.section}>
+          {report.overallRating !== undefined && (
+            <View style={styles.ratingBubbleRow}>
+              <Text style={styles.ratingBubbleLabel}>Overall</Text>
+              <View style={styles.ratingBubble}>
+                <Text
+                  style={[
+                    styles.ratingBubbleValue,
+                    { color: getRatingColor(report.overallRating) },
+                  ]}
+                >
+                  {report.overallRating}
+                </Text>
+              </View>
+            </View>
+          )}
+        </LinearGradient>
+
+        <GlassCard variant="elevated" style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Joueur</Text>
-          <View style={styles.card}>
-            <Text style={styles.playerName}>{playerName}</Text>
-            {report.player?.position && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Position:</Text>
-                <Text style={styles.infoValue}>{report.player.position}</Text>
-              </View>
-            )}
-            {report.playerPosition && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Position dans ce match:</Text>
-                <Text style={styles.infoValue}>{report.playerPosition}</Text>
-              </View>
-            )}
-            {report.playerMinutesPlayed !== undefined && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Minutes jouées:</Text>
-                <Text style={styles.infoValue}>{report.playerMinutesPlayed}'</Text>
-              </View>
-            )}
-          </View>
-        </View>
+          <InfoRow label="Nom" value={playerName} />
+          {report.player?.position && <InfoRow label="Position" value={report.player.position} />}
+          {report.playerPosition && <InfoRow label="Poste dans le match" value={report.playerPosition} />}
+          {report.playerMinutesPlayed !== undefined && (
+            <InfoRow label="Minutes jouées" value={`${report.playerMinutesPlayed}'`} />
+          )}
+        </GlassCard>
 
-        {/* Match Section */}
-        <View style={styles.section}>
+        <GlassCard variant="elevated" style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Match</Text>
-          <View style={styles.card}>
-            <Text style={styles.matchTitle}>{matchInfo}</Text>
-            {report.match?.date && (
-              <Text style={styles.matchDate}>
-                {new Date(report.match.date).toLocaleDateString('fr-FR', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-            )}
-            {(report.match?.homeScore !== undefined && report.match?.awayScore !== undefined) && (
-              <Text style={styles.matchScore}>
-                Score: {report.match.homeScore} - {report.match.awayScore}
-              </Text>
-            )}
-          </View>
-        </View>
+          <Text style={styles.matchTitle}>{matchInfo}</Text>
+          {report.match?.date && (
+            <Text style={styles.matchDate}>
+              {new Date(report.match.date).toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+          )}
+          {(report.match?.homeScore !== undefined && report.match?.awayScore !== undefined) && (
+            <Text style={styles.matchScore}>
+              Score: {report.match.homeScore} - {report.match.awayScore}
+            </Text>
+          )}
+        </GlassCard>
 
-        {/* Ratings Section */}
-        <View style={styles.section}>
+        <GlassCard variant="elevated" style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Évaluations</Text>
-          <View style={styles.card}>
-            {report.overallRating !== undefined && (
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingLabel}>Note globale</Text>
-                <View style={styles.ratingBar}>
-                  <View style={[styles.ratingFill, { width: `${report.overallRating}%` }]} />
-                  <Text style={styles.ratingValue}>{report.overallRating}/100</Text>
-                </View>
-              </View>
-            )}
-            {report.technicalRating !== undefined && (
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingLabel}>Technique</Text>
-                <View style={styles.ratingBar}>
-                  <View style={[styles.ratingFill, { width: `${report.technicalRating}%` }]} />
-                  <Text style={styles.ratingValue}>{report.technicalRating}/100</Text>
-                </View>
-              </View>
-            )}
-            {report.physicalRating !== undefined && (
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingLabel}>Physique</Text>
-                <View style={styles.ratingBar}>
-                  <View style={[styles.ratingFill, { width: `${report.physicalRating}%` }]} />
-                  <Text style={styles.ratingValue}>{report.physicalRating}/100</Text>
-                </View>
-              </View>
-            )}
-            {report.mentalRating !== undefined && (
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingLabel}>Mental</Text>
-                <View style={styles.ratingBar}>
-                  <View style={[styles.ratingFill, { width: `${report.mentalRating}%` }]} />
-                  <Text style={styles.ratingValue}>{report.mentalRating}/100</Text>
-                </View>
-              </View>
-            )}
-            {report.tacticalRating !== undefined && (
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingLabel}>Tactique</Text>
-                <View style={styles.ratingBar}>
-                  <View style={[styles.ratingFill, { width: `${report.tacticalRating}%` }]} />
-                  <Text style={styles.ratingValue}>{report.tacticalRating}/100</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
+          {renderRatingRow('Note globale', report.overallRating)}
+          {renderRatingRow('Technique', report.technicalRating)}
+          {renderRatingRow('Physique', report.physicalRating)}
+          {renderRatingRow('Mental', report.mentalRating)}
+          {renderRatingRow('Tactique', report.tacticalRating)}
+        </GlassCard>
 
-        {/* Analysis Section */}
-        {(report.strengths || report.weaknesses || report.conclusion) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Analyse</Text>
-            <View style={styles.card}>
-              {report.strengths && (
-                <View style={styles.analysisBlock}>
-                  <Text style={styles.analysisTitle}>Points forts</Text>
-                  <Text style={styles.analysisText}>{report.strengths}</Text>
-                </View>
-              )}
-              {report.weaknesses && (
-                <View style={styles.analysisBlock}>
-                  <Text style={styles.analysisTitle}>Points faibles</Text>
-                  <Text style={styles.analysisText}>{report.weaknesses}</Text>
-                </View>
-              )}
-              {report.conclusion && (
-                <View style={styles.analysisBlock}>
-                  <Text style={styles.analysisTitle}>Conclusion</Text>
-                  <Text style={styles.analysisText}>{report.conclusion}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
+        <GlassCard variant="elevated" style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Identité observée</Text>
+          <InfoRow
+            label="Pied fort"
+            value={formatOptionalText(report.observedDominantFoot || report.player?.preferredFoot)}
+          />
+          <InfoRow
+            label="Taille"
+            value={formatOptionalNumber(report.observedHeightCm ?? report.player?.height, ' cm')}
+          />
+          <InfoRow
+            label="Poids"
+            value={formatOptionalNumber(report.observedWeightKg ?? report.player?.weight, ' kg')}
+          />
+          <InfoRow label="Club observé" value={formatOptionalText(report.observedClubName)} />
+        </GlassCard>
 
-        {/* Recommendation Section */}
+        <GlassCard variant="elevated" style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Analyse pro</Text>
+          <AnalysisBlock
+            title="Habileté technique avec ballon"
+            content={formatOptionalText(report.withBallAnalysis)}
+          />
+          <AnalysisBlock
+            title="Jeu sans ballon"
+            content={formatOptionalText(report.offBallAnalysis)}
+          />
+          <AnalysisBlock
+            title="Réflexion / intelligence de jeu"
+            content={formatOptionalText(report.gameIntelligenceAnalysis)}
+          />
+          <AnalysisBlock title="Attitude" content={formatOptionalText(report.attitudeAnalysis)} />
+          <AnalysisBlock
+            title="Avis du scout-staff"
+            content={formatOptionalText(report.staffOpinion || report.conclusion)}
+          />
+          <AnalysisBlock title="Résumé global" content={formatOptionalText(report.summary)} />
+          <AnalysisBlock title="Points forts" content={formatOptionalText(report.strengths)} />
+          <AnalysisBlock title="Points faibles" content={formatOptionalText(report.weaknesses)} />
+        </GlassCard>
+
+        <GlassCard variant="elevated" style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Tests athlétiques</Text>
+          <InfoRow label="10m" value={formatOptionalNumber(report.sprint10mSec, ' s')} />
+          <InfoRow label="20m" value={formatOptionalNumber(report.sprint20mSec, ' s')} />
+          <InfoRow label="40m" value={formatOptionalNumber(report.sprint40mSec, ' s')} />
+          <InfoRow label="VMA" value={formatOptionalNumber(report.vmaKmh, ' km/h')} />
+        </GlassCard>
+
         {report.recommendation && (
-          <View style={styles.section}>
+          <GlassCard variant="elevated" style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Recommandation</Text>
-            <View style={styles.card}>
-              <View style={[styles.recommendationBadge, { backgroundColor: getRecommendationColor(report.recommendation) }]}>
-                <Text style={styles.recommendationText}>{getRecommendationLabel(report.recommendation)}</Text>
-              </View>
-              {report.recommendationNotes && (
-                <Text style={styles.recommendationNotes}>{report.recommendationNotes}</Text>
-              )}
+            <View
+              style={[
+                styles.recommendationBadge,
+                { backgroundColor: getRecommendationColor(report.recommendation) },
+              ]}
+            >
+              <Text style={styles.recommendationText}>{getRecommendationLabel(report.recommendation)}</Text>
             </View>
-          </View>
+            {report.recommendationNotes && (
+              <Text style={styles.recommendationNotes}>{report.recommendationNotes}</Text>
+            )}
+          </GlassCard>
         )}
 
-        {/* Tags Section */}
         {report.tags && report.tags.length > 0 && (
-          <View style={styles.section}>
+          <GlassCard variant="elevated" style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Tags</Text>
             <View style={styles.tagsContainer}>
-              {report.tags.map((tag, index) => (
-                <View key={index} style={styles.tag}>
+              {report.tags.map(tag => (
+                <View key={tag} style={styles.tag}>
                   <Text style={styles.tagText}>{tag}</Text>
                 </View>
               ))}
             </View>
-          </View>
+          </GlassCard>
         )}
 
-        {/* Scout Section */}
-        <View style={styles.section}>
+        <GlassCard variant="elevated" style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Scout</Text>
-          <View style={styles.card}>
-            <Text style={styles.scoutName}>{scoutName}</Text>
-            <Text style={styles.scoutEmail}>{report.scout?.email}</Text>
-            <Text style={styles.scoutDate}>
-              Créé le {new Date(report.createdAt).toLocaleDateString('fr-FR')}
-            </Text>
-            {report.submittedAt && (
-              <Text style={styles.scoutDate}>
-                Soumis le {new Date(report.submittedAt).toLocaleDateString('fr-FR')}
-              </Text>
-            )}
-            {report.reviewedAt && (
-              <Text style={styles.scoutDate}>
-                Reviewé le {new Date(report.reviewedAt).toLocaleDateString('fr-FR')}
-              </Text>
-            )}
-          </View>
-        </View>
+          <Text style={styles.scoutName}>{scoutName}</Text>
+          {report.scout?.email && <Text style={styles.scoutEmail}>{report.scout.email}</Text>}
+          <Text style={styles.scoutDate}>
+            Mis à jour le {new Date(report.updatedAt).toLocaleDateString('fr-FR')}
+          </Text>
+        </GlassCard>
       </ScrollView>
 
-      {/* Action Buttons */}
       {report.status === 'DRAFT' && (
-        <View style={styles.actionButtons}>
+        <View style={styles.actionBar}>
           <TouchableOpacity
+            testID="report-detail-submit"
             style={[styles.actionButton, styles.submitButton]}
             onPress={handleSubmit}
-            testID="report-detail-submit"
           >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+            <Icon name="paperPlane" size={18} color={colors.background.primary} />
             <Text style={styles.actionButtonText}>Soumettre</Text>
           </TouchableOpacity>
         </View>
@@ -382,10 +396,53 @@ const ReportDetailScreen = () => {
   );
 };
 
+const renderRatingRow = (label: string, value?: number) => {
+  if (value === undefined) return null;
+
+  return (
+    <View style={styles.ratingRow}>
+      <View style={styles.ratingRowHeader}>
+        <Text style={styles.ratingRowLabel}>{label}</Text>
+        <Text style={[styles.ratingRowValue, { color: getRatingColor(value) }]}>{value}/100</Text>
+      </View>
+      <View style={styles.ratingBar}>
+        <View style={[styles.ratingFill, { width: `${value}%` }]} />
+      </View>
+    </View>
+  );
+};
+
+const AnalysisBlock = ({ title, content }: { title: string; content: string }) => (
+  <View style={styles.analysisBlock}>
+    <Text style={styles.analysisTitle}>{title}</Text>
+    <Text style={styles.analysisText}>{content}</Text>
+  </View>
+);
+
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.infoRow}>
+    <Text style={styles.infoLabel}>{label}</Text>
+    <Text style={styles.infoValue}>{value}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ecf0f1',
+    backgroundColor: colors.background.primary,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing['2xl'],
+  },
+  iconButton: {
+    padding: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
   },
   loadingContainer: {
     flex: 1,
@@ -398,209 +455,235 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    fontSize: 18,
-    color: '#7f8c8d',
+    fontSize: typography.sizes.lg,
+    color: colors.text.secondary,
   },
-  header: {
+  heroCard: {
+    borderRadius: 32,
+    padding: spacing.xl,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  statusText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
+    color: colors.background.primary,
+  },
+  heroPlayer: {
+    fontSize: 28,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  heroSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
+  },
+  heroMetaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-  },
-  content: {
+  metaItem: {
     flex: 1,
   },
-  section: {
-    padding: 16,
+  metaLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  metaValue: {
+    fontSize: typography.sizes.base,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginTop: spacing.xs / 2,
+  },
+  ratingBubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  ratingBubbleLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  ratingBubble: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingBubbleValue: {
+    fontSize: 20,
+    fontFamily: typography.fonts.bold,
+  },
+  sectionCard: {
+    marginBottom: spacing.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 12,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusBadgeLarge: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: 'center',
-  },
-  statusTextLarge: {
-    fontSize: 16,
+    fontSize: typography.sizes.base,
     fontWeight: '700',
-    color: '#fff',
-  },
-  playerName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 12,
+    color: colors.text.primary,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surface.borderLight,
   },
   infoLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: typography.sizes.sm,
+    color: colors.text.primary,
     fontWeight: '600',
-    color: '#2c3e50',
   },
   matchTitle: {
-    fontSize: 16,
+    fontSize: typography.sizes.lg,
     fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
+    color: colors.text.primary,
   },
   matchDate: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 4,
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
   },
   matchScore: {
-    fontSize: 14,
+    fontSize: typography.sizes.sm,
     fontWeight: '600',
-    color: '#2c3e50',
+    color: colors.text.primary,
+    marginTop: spacing.xs,
   },
   ratingRow: {
-    marginBottom: 16,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
   },
-  ratingLabel: {
-    fontSize: 14,
+  ratingRowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  ratingRowLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
+  },
+  ratingRowValue: {
+    fontSize: typography.sizes.sm,
     fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
   },
   ratingBar: {
-    height: 32,
-    backgroundColor: '#ecf0f1',
-    borderRadius: 16,
-    position: 'relative',
-    justifyContent: 'center',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.surface.glassLight,
+    overflow: 'hidden',
   },
   ratingFill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#3498db',
-    borderRadius: 16,
-  },
-  ratingValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2c3e50',
-    textAlign: 'center',
-    zIndex: 1,
+    height: '100%',
+    backgroundColor: colors.brand.primary,
+    borderRadius: 5,
   },
   analysisBlock: {
-    marginBottom: 16,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
   },
   analysisTitle: {
-    fontSize: 14,
+    fontSize: typography.sizes.sm,
     fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
+    color: colors.text.primary,
   },
   analysisText: {
-    fontSize: 14,
-    color: '#34495e',
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
     lineHeight: 20,
   },
   recommendationBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
     alignSelf: 'flex-start',
-    marginBottom: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    marginBottom: spacing.sm,
   },
   recommendationText: {
-    fontSize: 14,
+    fontSize: typography.sizes.sm,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.background.primary,
   },
   recommendationNotes: {
-    fontSize: 14,
-    color: '#34495e',
+    fontSize: typography.sizes.sm,
+    color: colors.text.primary,
     lineHeight: 20,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   tag: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: '#3498db',
+    borderColor: colors.brand.primary,
   },
   tagText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#3498db',
+    fontSize: typography.sizes.xs,
+    color: colors.brand.primary,
+    fontWeight: '600',
   },
   scoutName: {
-    fontSize: 16,
+    fontSize: typography.sizes.base,
     fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 4,
+    color: colors.text.primary,
   },
   scoutEmail: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 8,
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
   },
   scoutDate: {
-    fontSize: 13,
-    color: '#95a5a6',
-    marginBottom: 2,
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
   },
-  actionButtons: {
-    padding: 16,
-    backgroundColor: '#fff',
+  actionBar: {
+    padding: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.surface.border,
+    backgroundColor: colors.background.primary,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 8,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.full,
   },
   submitButton: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: colors.brand.primary,
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: typography.sizes.base,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.background.primary,
   },
 });
 

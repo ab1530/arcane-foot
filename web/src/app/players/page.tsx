@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Card3D } from "@/components/ui/card-3d";
 import { AnimatedBackground } from "@/components/ui/animated-background";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import MainLayout from "@/components/layout/MainLayout";
 import { StatCard } from "@/components/stats";
 import Link from "next/link";
@@ -21,6 +21,7 @@ import { useFavorites } from "@/contexts/favorites-context";
 import { useComparison } from "@/contexts/comparison-context";
 import { Heart, GitCompare } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Player {
   id: string;
@@ -41,6 +42,9 @@ interface Player {
 
 export default function PlayersPage() {
   const router = useRouter();
+  const { dictionary, t, language } = useLanguage();
+  const playersCopy = dictionary.players;
+  const cardCopy = playersCopy.list.card;
   const { isFavorite, toggleFavorite } = useFavorites();
   const { comparisonPlayerIds, isInComparison, toggleComparison, comparisonCount } = useComparison();
   const [players, setPlayers] = useState<Player[]>([]);
@@ -71,13 +75,14 @@ export default function PlayersPage() {
   const fetchPlayers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getPlayers({});
+      // Backend limits to max 100 per request
+      const response = await apiClient.getPlayers({ limit: 100 });
       const list = normalizeList(response);
       setPlayers(list);
       setFilteredPlayers(list);
     } catch (error) {
       console.error("Error fetching players:", error);
-      toast.error("Erreur lors du chargement des joueurs");
+      toast.error(playersCopy.toast.loadError);
     } finally {
       setLoading(false);
     }
@@ -181,14 +186,45 @@ export default function PlayersPage() {
     toggleComparison(playerId);
   };
 
-  const positions = ["ALL", "FORWARD", "MIDFIELDER", "DEFENDER", "GOALKEEPER"];
+  const positionLabels = playersCopy.filters.positions;
+  const positions = Object.keys(positionLabels);
 
   // Get unique nationalities from players
   const nationalities = ["ALL", ...Array.from(new Set(players.map(p => p.nationality).filter(Boolean)))].sort();
 
-  const ageRanges = ["ALL", "U18", "18-21", "22-25", "26+"];
+  const ageLabels = playersCopy.filters.ages;
+  const ageRanges = Object.keys(ageLabels);
 
   const hasActiveFilters = positionFilter !== "ALL" || nationalityFilter !== "ALL" || ageRangeFilter !== "ALL";
+
+  // Calculate the number of active filters
+  const activeFilterCount = [
+    positionFilter !== "ALL" ? 1 : 0,
+    nationalityFilter !== "ALL" ? 1 : 0,
+    ageRangeFilter !== "ALL" ? 1 : 0
+  ].reduce((sum, val) => sum + val, 0);
+
+  const getPositionLabel = (value: string) =>
+    positionLabels[value as keyof typeof positionLabels] ?? value;
+  const getAgeLabel = (value: string) =>
+    ageLabels[value as keyof typeof ageLabels] ?? `${value} ${playersCopy.search.ageSuffix}`;
+  const resultSummaryText =
+    filteredPlayers.length === 1
+      ? t("players.results.summary.singular", { count: filteredPlayers.length })
+      : t("players.results.summary.plural", { count: filteredPlayers.length });
+  const filtersAppliedText =
+    activeFilterCount === 1
+      ? t("players.results.filtersApplied.singular", { count: activeFilterCount })
+      : t("players.results.filtersApplied.plural", { count: activeFilterCount });
+  const comparisonTitle =
+    comparisonCount === 1
+      ? t("players.comparison.title.singular", { count: comparisonCount })
+      : t("players.comparison.title.plural", { count: comparisonCount });
+  const comparisonSubtitle =
+    comparisonCount < 3
+      ? t("players.comparison.subtitle.remaining", { count: 3 - comparisonCount })
+      : playersCopy.comparison.subtitle.max;
+  const locale = language === "fr" ? "fr-FR" : "en-US";
 
   const stats = {
     totalPlayers: players.length,
@@ -202,7 +238,7 @@ export default function PlayersPage() {
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -214,15 +250,15 @@ export default function PlayersPage() {
               <div className="px-6 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h1 className="text-2xl font-black text-white">Players</h1>
-                    <p className="text-sm text-arcane-grey">Manage and view player profiles</p>
+                    <h1 className="text-2xl font-black text-white">{playersCopy.topBar.title}</h1>
+                    <p className="text-sm text-arcane-grey">{playersCopy.topBar.subtitle}</p>
                   </div>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Player
+                    {playersCopy.topBar.add}
                   </Button>
                 </div>
-                <Breadcrumb items={[{ label: "Players" }]} />
+                <Breadcrumb items={[{ label: playersCopy.topBar.breadcrumb }]} />
               </div>
             </div>
 
@@ -231,7 +267,7 @@ export default function PlayersPage() {
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
-                label="Total Players"
+                label={playersCopy.stats.totalPlayers}
                 value={stats.totalPlayers}
                 icon={Users}
                 color="text-arcane-accent"
@@ -240,7 +276,7 @@ export default function PlayersPage() {
                 index={0}
               />
               <StatCard
-                label="Average Rating"
+                label={playersCopy.stats.averageRating}
                 value={stats.averageRating}
                 icon={Star}
                 color="text-yellow-400"
@@ -249,7 +285,7 @@ export default function PlayersPage() {
                 index={1}
               />
               <StatCard
-                label="Scouting Reports"
+                label={playersCopy.stats.scoutingReports}
                 value={stats.totalReports}
                 icon={Trophy}
                 color="text-purple-400"
@@ -258,7 +294,7 @@ export default function PlayersPage() {
                 index={2}
               />
               <StatCard
-                label="Average Age"
+                label={playersCopy.stats.averageAge}
                 value={stats.avgAge}
                 icon={Activity}
                 color="text-blue-400"
@@ -279,7 +315,7 @@ export default function PlayersPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-arcane-grey" />
                       <input
                         type="text"
-                        placeholder="Search players..."
+                        placeholder={playersCopy.search.placeholder}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 bg-arcane-darkBorder/30 border border-arcane-darkBorder/50 rounded-lg text-white placeholder-arcane-grey focus:outline-none focus:border-arcane-accent/50 transition-colors"
@@ -296,7 +332,7 @@ export default function PlayersPage() {
                       >
                         {positions.map((pos) => (
                           <option key={pos} value={pos}>
-                            {pos === "ALL" ? "All Positions" : pos}
+                            {getPositionLabel(pos)}
                           </option>
                         ))}
                       </select>
@@ -310,10 +346,10 @@ export default function PlayersPage() {
                         onChange={(e) => setSortBy(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 bg-arcane-darkBorder/30 border border-arcane-darkBorder/50 rounded-lg text-white focus:outline-none focus:border-arcane-accent/50 transition-colors appearance-none cursor-pointer"
                       >
-                        <option value="name">Sort by Name</option>
-                        <option value="age">Sort by Age</option>
-                        <option value="reports">Sort by Reports</option>
-                        <option value="rating">Sort by Rating</option>
+                        <option value="name">{playersCopy.search.sort.name}</option>
+                        <option value="age">{playersCopy.search.sort.age}</option>
+                        <option value="reports">{playersCopy.search.sort.reports}</option>
+                        <option value="rating">{playersCopy.search.sort.rating}</option>
                       </select>
                     </div>
                   </div>
@@ -327,7 +363,9 @@ export default function PlayersPage() {
                       className="text-arcane-grey hover:text-arcane-accent"
                     >
                       <Sliders className="h-4 w-4 mr-2" />
-                      {showAdvancedFilters ? "Hide" : "Show"} Advanced Filters
+                      {showAdvancedFilters
+                        ? playersCopy.search.toggle.hide
+                        : playersCopy.search.toggle.show}
                     </Button>
 
                     {hasActiveFilters && (
@@ -342,7 +380,7 @@ export default function PlayersPage() {
                         className="text-red-400 hover:text-red-300"
                       >
                         <X className="h-4 w-4 mr-2" />
-                        Clear Filters
+                        {playersCopy.search.clearFilters}
                       </Button>
                     )}
                   </div>
@@ -365,7 +403,7 @@ export default function PlayersPage() {
                         >
                           {nationalities.map((nat) => (
                             <option key={nat} value={nat}>
-                              {nat === "ALL" ? "All Nationalities" : nat}
+                              {nat === "ALL" ? playersCopy.search.nationalityAll : nat}
                             </option>
                           ))}
                         </select>
@@ -381,7 +419,7 @@ export default function PlayersPage() {
                         >
                           {ageRanges.map((range) => (
                             <option key={range} value={range}>
-                              {range === "ALL" ? "All Ages" : `${range} years`}
+                              {range === "ALL" ? playersCopy.search.ageAll : getAgeLabel(range)}
                             </option>
                           ))}
                         </select>
@@ -394,7 +432,7 @@ export default function PlayersPage() {
                     <div className="flex flex-wrap gap-2 pt-2">
                       {positionFilter !== "ALL" && (
                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-arcane-accent/20 border border-arcane-accent/30 rounded-full text-xs text-arcane-accent">
-                          Position: {positionFilter}
+                          {playersCopy.filters.badges.position}: {getPositionLabel(positionFilter)}
                           <X
                             className="h-3 w-3 cursor-pointer hover:text-white"
                             onClick={() => setPositionFilter("ALL")}
@@ -403,7 +441,7 @@ export default function PlayersPage() {
                       )}
                       {nationalityFilter !== "ALL" && (
                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-xs text-blue-400">
-                          Nationality: {nationalityFilter}
+                          {playersCopy.filters.badges.nationality}: {nationalityFilter}
                           <X
                             className="h-3 w-3 cursor-pointer hover:text-white"
                             onClick={() => setNationalityFilter("ALL")}
@@ -412,7 +450,7 @@ export default function PlayersPage() {
                       )}
                       {ageRangeFilter !== "ALL" && (
                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-xs text-purple-400">
-                          Age: {ageRangeFilter}
+                          {playersCopy.filters.badges.age}: {getAgeLabel(ageRangeFilter)}
                           <X
                             className="h-3 w-3 cursor-pointer hover:text-white"
                             onClick={() => setAgeRangeFilter("ALL")}
@@ -425,18 +463,31 @@ export default function PlayersPage() {
               </GlassCard>
             </Card3D>
 
+            <div className="mb-6">
+              <p className="text-sm text-arcane-grey">
+                {loading ? (
+                  playersCopy.results.loading
+                ) : (
+                  <>
+                    {resultSummaryText}
+                    {hasActiveFilters && <> ({filtersAppliedText})</>}
+                  </>
+                )}
+              </p>
+            </div>
+
             {/* Players Grid */}
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-arcane-accent"></div>
-                <p className="text-arcane-grey mt-4">Loading players...</p>
+                <p className="text-arcane-grey mt-4">{playersCopy.list.loading}</p>
               </div>
             ) : filteredPlayers.length === 0 ? (
               <Card3D>
                 <GlassCard variant="elevated" className="p-12 text-center">
                   <Users className="h-16 w-16 text-arcane-grey mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-white mb-2">No players found</h3>
-                  <p className="text-arcane-grey">Try adjusting your search or filters</p>
+                  <h3 className="text-xl font-bold text-white mb-2">{playersCopy.list.empty.title}</h3>
+                  <p className="text-arcane-grey">{playersCopy.list.empty.description}</p>
                 </GlassCard>
               </Card3D>
             ) : (
@@ -460,7 +511,11 @@ export default function PlayersPage() {
                               <button
                                 onClick={(e) => handleToggleFavorite(player.id, e)}
                                 className="p-2 rounded-full bg-arcane-dark/80 backdrop-blur-sm border border-arcane-darkBorder/50 hover:border-arcane-accent/50 transition-all group/btn"
-                                aria-label={isFavorite(player.id) ? "Remove from favorites" : "Add to favorites"}
+                                aria-label={
+                                  isFavorite(player.id)
+                                    ? cardCopy.favorite.remove
+                                    : cardCopy.favorite.add
+                                }
                               >
                                 <Heart
                                   className={`h-5 w-5 transition-all group-hover/btn:scale-110 ${
@@ -473,7 +528,11 @@ export default function PlayersPage() {
                               <button
                                 onClick={(e) => handleToggleComparison(player.id, e)}
                                 className="p-2 rounded-full bg-arcane-dark/80 backdrop-blur-sm border border-arcane-darkBorder/50 hover:border-arcane-accent/50 transition-all group/btn"
-                                aria-label={isInComparison(player.id) ? "Remove from comparison" : "Add to comparison"}
+                                aria-label={
+                                  isInComparison(player.id)
+                                    ? cardCopy.compare.remove
+                                    : cardCopy.compare.add
+                                }
                               >
                                 <GitCompare
                                   className={`h-5 w-5 transition-all group-hover/btn:scale-110 ${
@@ -510,15 +569,15 @@ export default function PlayersPage() {
                               <div className="absolute inset-0 bg-gradient-to-t from-arcane-dark via-arcane-dark/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                                 <div className="absolute bottom-4 left-4 right-4 space-y-2">
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-arcane-grey">Reports</span>
+                                    <span className="text-arcane-grey">{cardCopy.overlay.reports}</span>
                                     <span className="text-white font-bold">{player.scoutingReports?.length || 0}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-arcane-grey">Height</span>
+                                    <span className="text-arcane-grey">{cardCopy.overlay.height}</span>
                                     <span className="text-white font-bold">{player.height} cm</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-arcane-grey">Foot</span>
+                                    <span className="text-arcane-grey">{cardCopy.overlay.foot}</span>
                                     <span className="text-white font-bold">{player.preferredFoot}</span>
                                   </div>
                                 </div>
@@ -547,7 +606,9 @@ export default function PlayersPage() {
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Calendar className="h-4 w-4 text-arcane-accent" />
-                                  <span className="text-arcane-grey">{age} years</span>
+                                  <span className="text-arcane-grey">
+                                    {t("players.list.card.age", { age })}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -555,7 +616,7 @@ export default function PlayersPage() {
                             {/* View Profile hint */}
                             <div className="mt-6 pt-4 border-t border-arcane-darkBorder/50 opacity-0 group-hover:opacity-100 transition-opacity">
                               <span className="text-arcane-accent text-sm font-bold">
-                                Click to view full profile →
+                                {cardCopy.viewProfile}
                               </span>
                             </div>
                           </GlassCard>
@@ -585,12 +646,8 @@ export default function PlayersPage() {
                         <GitCompare className="h-5 w-5 text-arcane-accent" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">
-                          {comparisonCount} Player{comparisonCount > 1 ? "s" : ""} Selected
-                        </p>
-                        <p className="text-xs text-arcane-grey">
-                          {comparisonCount < 3 ? `Add ${3 - comparisonCount} more` : "Max reached"}
-                        </p>
+                        <p className="text-sm font-bold text-white">{comparisonTitle}</p>
+                        <p className="text-xs text-arcane-grey">{comparisonSubtitle}</p>
                       </div>
                     </div>
                     <Button
@@ -598,7 +655,7 @@ export default function PlayersPage() {
                       size="sm"
                       className="bg-arcane-accent hover:bg-arcane-accent/80 text-arcane-dark font-bold"
                     >
-                      Compare
+                      {playersCopy.comparison.button}
                     </Button>
                   </div>
                 </GlassCard>
@@ -607,6 +664,6 @@ export default function PlayersPage() {
           )}
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

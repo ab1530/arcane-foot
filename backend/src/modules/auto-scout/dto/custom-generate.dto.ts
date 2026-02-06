@@ -1,6 +1,7 @@
-import { IsString, IsOptional, IsObject, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsObject, ValidateNested, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ReportType } from '../interfaces/report.interface';
 
 class TemplateSectionDto {
   @ApiProperty({ description: 'Section name', example: 'Match Overview' })
@@ -13,6 +14,10 @@ class TemplateSectionDto {
 }
 
 export class CustomTemplateDto {
+  @ApiProperty({ description: 'Template ID', example: 'custom-template-1' })
+  @IsString()
+  id: string;
+
   @ApiProperty({ description: 'Template name', example: 'Custom Match Analysis' })
   @IsString()
   name: string;
@@ -20,6 +25,22 @@ export class CustomTemplateDto {
   @ApiProperty({ description: 'Template description' })
   @IsString()
   description: string;
+
+  @ApiProperty({ description: 'Template icon', example: 'document' })
+  @IsString()
+  icon: string;
+
+  @ApiProperty({ description: 'Use case description', example: 'Custom analysis' })
+  @IsString()
+  useCase: string;
+
+  @ApiProperty({ description: 'Estimated cost', example: '$0.030' })
+  @IsString()
+  estimatedCost: string;
+
+  @ApiProperty({ description: 'Report type', enum: ReportType })
+  @IsEnum(ReportType)
+  reportType: ReportType;
 
   @ApiProperty({ description: 'Template sections', type: [TemplateSectionDto] })
   @ValidateNested({ each: true })

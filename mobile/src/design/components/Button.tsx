@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../theme';
 
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ButtonProps {
@@ -155,9 +156,10 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
+
 const styles = StyleSheet.create({
   button: {
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -174,23 +176,23 @@ const styles = StyleSheet.create({
 
   // Sizes
   button_sm: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     minHeight: 32,
   },
   button_md: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     minHeight: 40,
   },
   button_lg: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
     minHeight: 48,
   },
   button_xl: {
-    paddingHorizontal: theme.spacing['2xl'],
-    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: 48,
+    paddingVertical: 32,
     minHeight: 56,
   },
 
@@ -258,7 +260,7 @@ const styles = StyleSheet.create({
   },
 
   iconContainer: {
-    marginHorizontal: theme.spacing.xs,
+    marginHorizontal: 4,
   },
 
   fullWidth: {

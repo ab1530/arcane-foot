@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 export class ComparePlayersRequestDto {
   @ApiProperty({
     example: ['123e4567-e89b-12d3-a456-426614174000', '223e4567-e89b-12d3-a456-426614174001'],
-    description: 'Array of player IDs to compare (max 10)'
+    description: 'Array of player IDs to compare (max 10)',
   })
   @IsArray()
   @IsString({ each: true })

@@ -4,19 +4,26 @@ import { MarketplaceService } from './marketplace.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { PrismaClient, ScoutListingStatus, OfferStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('MarketplaceService', () => {
   let service: MarketplaceService;
   let prisma: DeepMockProxy<PrismaClient>;
+  let notificationsService: { sendToUser: jest.Mock };
 
   beforeEach(async () => {
     prisma = mockDeep<PrismaClient>();
+    notificationsService = { sendToUser: jest.fn().mockResolvedValue({}) };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MarketplaceService,
         {
           provide: PrismaService,
           useValue: prisma,
+        },
+        {
+          provide: NotificationsService,
+          useValue: notificationsService,
         },
       ],
     }).compile();
@@ -427,10 +434,7 @@ describe('MarketplaceService', () => {
           lastName: 'Scout',
           avatar: null,
         },
-        marketplace_reviews: [
-          { rating: 5 },
-          { rating: 4 },
-        ],
+        marketplace_reviews: [{ rating: 5 }, { rating: 4 }],
       },
       {
         id: 'listing-2',
@@ -453,9 +457,7 @@ describe('MarketplaceService', () => {
           lastName: 'Scout',
           avatar: null,
         },
-        marketplace_reviews: [
-          { rating: 3 },
-        ],
+        marketplace_reviews: [{ rating: 3 }],
       },
     ];
 
@@ -499,7 +501,11 @@ describe('MarketplaceService', () => {
     it('should filter by leagues', async () => {
       prisma.scout_listings.findMany.mockResolvedValue(mockListings as any);
 
-      const result = await service.searchListings({ leagues: ['Premier League'], page: 1, limit: 20 });
+      const result = await service.searchListings({
+        leagues: ['Premier League'],
+        page: 1,
+        limit: 20,
+      });
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].id).toBe('listing-1');
@@ -551,11 +557,13 @@ describe('MarketplaceService', () => {
     });
 
     it('should handle pagination correctly - page 2', async () => {
-      const manyListings = Array(25).fill(null).map((_, i) => ({
-        ...mockListings[0],
-        id: `listing-${i}`,
-        marketplace_reviews: [{ rating: 5 }],
-      }));
+      const manyListings = Array(25)
+        .fill(null)
+        .map((_, i) => ({
+          ...mockListings[0],
+          id: `listing-${i}`,
+          marketplace_reviews: [{ rating: 5 }],
+        }));
       prisma.scout_listings.findMany.mockResolvedValue(manyListings as any);
 
       const result = await service.searchListings({ page: 2, limit: 10 });
@@ -641,10 +649,7 @@ describe('MarketplaceService', () => {
         lastName: 'Scout',
         avatar: null,
       },
-      marketplace_reviews: [
-        { rating: 5 },
-        { rating: 4 },
-      ],
+      marketplace_reviews: [{ rating: 5 }, { rating: 4 }],
     };
 
     it('should get listing by ID successfully', async () => {
@@ -736,10 +741,7 @@ describe('MarketplaceService', () => {
           lastName: 'Scout',
           avatar: null,
         },
-        marketplace_reviews: [
-          { rating: 5 },
-          { rating: 4 },
-        ],
+        marketplace_reviews: [{ rating: 5 }, { rating: 4 }],
       },
     ];
 
@@ -803,10 +805,12 @@ describe('MarketplaceService', () => {
     });
 
     it('should return top 50 matches only', async () => {
-      const manyListings = Array(60).fill(null).map((_, i) => ({
-        ...mockListings[0],
-        id: `listing-${i}`,
-      }));
+      const manyListings = Array(60)
+        .fill(null)
+        .map((_, i) => ({
+          ...mockListings[0],
+          id: `listing-${i}`,
+        }));
       prisma.users.findUnique.mockResolvedValue(mockUser as any);
       prisma.scout_listings.findMany.mockResolvedValue(manyListings as any);
 
@@ -841,7 +845,9 @@ describe('MarketplaceService', () => {
       expect(result.results.length).toBeGreaterThan(0);
       // First result should have higher or equal score than second (if exists)
       if (result.results.length > 1) {
-        expect(result.results[0].matchingScore).toBeGreaterThanOrEqual(result.results[1].matchingScore);
+        expect(result.results[0].matchingScore).toBeGreaterThanOrEqual(
+          result.results[1].matchingScore,
+        );
       }
     });
   });
@@ -862,7 +868,11 @@ describe('MarketplaceService', () => {
       startDate: '2024-01-01',
       endDate: '2024-12-31',
       location: 'UK',
-      requirements: { matchId: 'match-123', playerId: 'player-123', criteria: { experience: '5 years' } },
+      requirements: {
+        matchId: 'match-123',
+        playerId: 'player-123',
+        criteria: { experience: '5 years' },
+      },
     };
 
     const mockListing = {
@@ -900,6 +910,13 @@ describe('MarketplaceService', () => {
 
       expect(prisma.scout_listings.findUnique).toHaveBeenCalledWith({
         where: { id: createOfferDto.scoutListingId },
+        include: {
+          marketplace_reviews: {
+            select: {
+              rating: true,
+            },
+          },
+        },
       });
       expect(prisma.marketplace_offers.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -1734,10 +1751,7 @@ describe('MarketplaceService', () => {
             lastName: 'Scout',
             avatar: null,
           },
-          marketplace_reviews: [
-            { rating: 5 },
-            { rating: 4 },
-          ],
+          marketplace_reviews: [{ rating: 5 }, { rating: 4 }],
         },
       },
       {
@@ -1751,9 +1765,7 @@ describe('MarketplaceService', () => {
             lastName: 'Scout',
             avatar: null,
           },
-          marketplace_reviews: [
-            { rating: 3 },
-          ],
+          marketplace_reviews: [{ rating: 3 }],
         },
       },
     ];
@@ -1865,7 +1877,10 @@ describe('MarketplaceService', () => {
       prisma.scout_favorites.findUnique.mockResolvedValue(mockFavorite as any);
       prisma.scout_favorites.update.mockResolvedValue(updatedFavorite as any);
 
-      const result = await service.updateFavorite(clubId, favoriteId, 'Updated notes', ['tag1', 'tag2']);
+      const result = await service.updateFavorite(clubId, favoriteId, 'Updated notes', [
+        'tag1',
+        'tag2',
+      ]);
 
       expect(prisma.scout_favorites.update).toHaveBeenCalledWith({
         where: { id: favoriteId },

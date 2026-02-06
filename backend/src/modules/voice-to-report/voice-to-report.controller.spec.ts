@@ -4,14 +4,8 @@ import { VoiceToReportController } from './voice-to-report.controller';
 import { VoiceToReportService } from './voice-to-report.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import {
-  ProcessVoiceReportDto,
-  SupportedLanguage,
-} from './dto/process-voice-report.dto';
-import {
-  VoiceReportResponseDto,
-  ExtractedReportData,
-} from './dto/voice-report-response.dto';
+import { ProcessVoiceReportDto, SupportedLanguage } from './dto/process-voice-report.dto';
+import { VoiceReportResponseDto, ExtractedReportData } from './dto/voice-report-response.dto';
 import { RecommendationType } from '@prisma/client';
 
 describe('VoiceToReportController', () => {
@@ -135,13 +129,13 @@ describe('VoiceToReportController', () => {
     });
 
     it('should throw BadRequestException when no file is provided', async () => {
-      await expect(
-        controller.processVoiceReport(null, mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.processVoiceReport(null, mockRequest)).rejects.toThrow(
+        BadRequestException,
+      );
 
-      await expect(
-        controller.processVoiceReport(null, mockRequest),
-      ).rejects.toThrow('No audio file provided');
+      await expect(controller.processVoiceReport(null, mockRequest)).rejects.toThrow(
+        'No audio file provided',
+      );
 
       expect(service.processVoiceReport).not.toHaveBeenCalled();
     });
@@ -173,11 +167,7 @@ describe('VoiceToReportController', () => {
       ];
 
       for (const language of supportedLanguages) {
-        await controller.processVoiceReport(
-          mockAudioFile,
-          mockRequest,
-          language,
-        );
+        await controller.processVoiceReport(mockAudioFile, mockRequest, language);
 
         expect(service.processVoiceReport).toHaveBeenCalledWith(
           mockAudioFile,
@@ -339,10 +329,7 @@ describe('VoiceToReportController', () => {
     it('should return processing time in response', async () => {
       service.processVoiceReport.mockResolvedValue(mockVoiceReportResponse);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result.processingTimeMs).toBeDefined();
       expect(typeof result.processingTimeMs).toBe('number');
@@ -352,10 +339,7 @@ describe('VoiceToReportController', () => {
     it('should return confidence score', async () => {
       service.processVoiceReport.mockResolvedValue(mockVoiceReportResponse);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result.confidence).toBeDefined();
       expect(result.confidence).toBeGreaterThanOrEqual(0);
@@ -365,10 +349,7 @@ describe('VoiceToReportController', () => {
     it('should return extracted data', async () => {
       service.processVoiceReport.mockResolvedValue(mockVoiceReportResponse);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result.extractedData).toBeDefined();
       expect(result.extractedData).toEqual(mockExtractedData);
@@ -377,10 +358,7 @@ describe('VoiceToReportController', () => {
     it('should return transcription text', async () => {
       service.processVoiceReport.mockResolvedValue(mockVoiceReportResponse);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result.transcription).toBeDefined();
       expect(typeof result.transcription).toBe('string');
@@ -393,10 +371,7 @@ describe('VoiceToReportController', () => {
       };
       service.processVoiceReport.mockResolvedValue(responseWithSuggestions);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result.suggestions).toBeDefined();
       expect(Array.isArray(result.suggestions)).toBe(true);
@@ -410,10 +385,7 @@ describe('VoiceToReportController', () => {
       };
       service.processVoiceReport.mockResolvedValue(responseWithWarnings);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result.warnings).toBeDefined();
       expect(Array.isArray(result.warnings)).toBe(true);
@@ -441,13 +413,11 @@ describe('VoiceToReportController', () => {
     });
 
     it('should propagate service errors', async () => {
-      service.processVoiceReport.mockRejectedValue(
-        new Error('Processing failed'),
-      );
+      service.processVoiceReport.mockRejectedValue(new Error('Processing failed'));
 
-      await expect(
-        controller.processVoiceReport(mockAudioFile, mockRequest),
-      ).rejects.toThrow('Processing failed');
+      await expect(controller.processVoiceReport(mockAudioFile, mockRequest)).rejects.toThrow(
+        'Processing failed',
+      );
     });
   });
 
@@ -606,23 +576,16 @@ describe('VoiceToReportController', () => {
     it('should test transcription with text input', async () => {
       // Mock the private methods accessed via (service as any)
       const extractReportData = jest.fn().mockResolvedValue(mockExtractedData);
-      const validateData = jest
-        .fn()
-        .mockResolvedValue({ data: mockExtractedData, warnings: [] });
+      const validateData = jest.fn().mockResolvedValue({ data: mockExtractedData, warnings: [] });
       const calculateConfidence = jest.fn().mockReturnValue(85);
-      const generateSuggestions = jest
-        .fn()
-        .mockReturnValue(['Add more details']);
+      const generateSuggestions = jest.fn().mockReturnValue(['Add more details']);
 
       (service as any).extractReportData = extractReportData;
       (service as any).validateData = validateData;
       (service as any).calculateConfidence = calculateConfidence;
       (service as any).generateSuggestions = generateSuggestions;
 
-      const result = await controller.testTranscription(
-        'This is test text',
-        'en',
-      );
+      const result = await controller.testTranscription('This is test text', 'en');
 
       expect(result).toBeDefined();
       expect(result.transcription).toBe('This is test text');
@@ -630,20 +593,14 @@ describe('VoiceToReportController', () => {
     });
 
     it('should throw BadRequestException when text is missing', async () => {
-      await expect(controller.testTranscription('', 'en')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(controller.testTranscription('', 'en')).rejects.toThrow(BadRequestException);
 
-      await expect(controller.testTranscription(null, 'en')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(controller.testTranscription(null, 'en')).rejects.toThrow(BadRequestException);
     });
 
     it('should default to English when language not provided', async () => {
       const extractReportData = jest.fn().mockResolvedValue(mockExtractedData);
-      const validateData = jest
-        .fn()
-        .mockResolvedValue({ data: mockExtractedData, warnings: [] });
+      const validateData = jest.fn().mockResolvedValue({ data: mockExtractedData, warnings: [] });
       const calculateConfidence = jest.fn().mockReturnValue(85);
       const generateSuggestions = jest.fn().mockReturnValue([]);
 
@@ -660,9 +617,7 @@ describe('VoiceToReportController', () => {
 
     it('should return extracted data', async () => {
       const extractReportData = jest.fn().mockResolvedValue(mockExtractedData);
-      const validateData = jest
-        .fn()
-        .mockResolvedValue({ data: mockExtractedData, warnings: [] });
+      const validateData = jest.fn().mockResolvedValue({ data: mockExtractedData, warnings: [] });
       const calculateConfidence = jest.fn().mockReturnValue(85);
       const generateSuggestions = jest.fn().mockReturnValue([]);
 
@@ -679,9 +634,7 @@ describe('VoiceToReportController', () => {
 
     it('should return confidence score', async () => {
       const extractReportData = jest.fn().mockResolvedValue(mockExtractedData);
-      const validateData = jest
-        .fn()
-        .mockResolvedValue({ data: mockExtractedData, warnings: [] });
+      const validateData = jest.fn().mockResolvedValue({ data: mockExtractedData, warnings: [] });
       const calculateConfidence = jest.fn().mockReturnValue(92);
       const generateSuggestions = jest.fn().mockReturnValue([]);
 
@@ -697,13 +650,9 @@ describe('VoiceToReportController', () => {
 
     it('should return suggestions', async () => {
       const extractReportData = jest.fn().mockResolvedValue(mockExtractedData);
-      const validateData = jest
-        .fn()
-        .mockResolvedValue({ data: mockExtractedData, warnings: [] });
+      const validateData = jest.fn().mockResolvedValue({ data: mockExtractedData, warnings: [] });
       const calculateConfidence = jest.fn().mockReturnValue(85);
-      const generateSuggestions = jest
-        .fn()
-        .mockReturnValue(['Add ratings', 'Include position']);
+      const generateSuggestions = jest.fn().mockReturnValue(['Add ratings', 'Include position']);
 
       (service as any).extractReportData = extractReportData;
       (service as any).validateData = validateData;
@@ -733,17 +682,12 @@ describe('VoiceToReportController', () => {
       const result = await controller.testTranscription('Test text', 'en');
 
       expect(result.warnings).toBeDefined();
-      expect(result.warnings).toEqual([
-        'Player name missing',
-        'No ratings found',
-      ]);
+      expect(result.warnings).toEqual(['Player name missing', 'No ratings found']);
     });
 
     it('should handle different languages', async () => {
       const extractReportData = jest.fn().mockResolvedValue(mockExtractedData);
-      const validateData = jest
-        .fn()
-        .mockResolvedValue({ data: mockExtractedData, warnings: [] });
+      const validateData = jest.fn().mockResolvedValue({ data: mockExtractedData, warnings: [] });
       const calculateConfidence = jest.fn().mockReturnValue(85);
       const generateSuggestions = jest.fn().mockReturnValue([]);
 
@@ -776,37 +720,31 @@ describe('VoiceToReportController', () => {
 
   describe('Error Handling', () => {
     it('should handle service errors gracefully', async () => {
-      service.processVoiceReport.mockRejectedValue(
-        new BadRequestException('Invalid audio format'),
-      );
+      service.processVoiceReport.mockRejectedValue(new BadRequestException('Invalid audio format'));
 
-      await expect(
-        controller.processVoiceReport(mockAudioFile, mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.processVoiceReport(mockAudioFile, mockRequest)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should validate file presence before processing', async () => {
-      await expect(
-        controller.processVoiceReport(null, mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.processVoiceReport(null, mockRequest)).rejects.toThrow(
+        BadRequestException,
+      );
 
-      await expect(
-        controller.processVoiceReport(undefined, mockRequest),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.processVoiceReport(undefined, mockRequest)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should validate text presence in test endpoint', async () => {
-      await expect(
-        controller.testTranscription('', 'en'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.testTranscription('', 'en')).rejects.toThrow(BadRequestException);
 
-      await expect(
-        controller.testTranscription(null, 'en'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.testTranscription(null, 'en')).rejects.toThrow(BadRequestException);
 
-      await expect(
-        controller.testTranscription(undefined, 'en'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.testTranscription(undefined, 'en')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -842,10 +780,7 @@ describe('VoiceToReportController', () => {
     it('should handle minimal parameters', async () => {
       service.processVoiceReport.mockResolvedValue(mockVoiceReportResponse);
 
-      const result = await controller.processVoiceReport(
-        mockAudioFile,
-        mockRequest,
-      );
+      const result = await controller.processVoiceReport(mockAudioFile, mockRequest);
 
       expect(result).toBeDefined();
       expect(service.processVoiceReport).toHaveBeenCalledWith(

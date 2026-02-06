@@ -173,7 +173,9 @@ async function simulateRbacEvents() {
           // 50% of CTA clicks result in conversion
           if (Math.random() < 0.5 && currentTier !== 'GOLD' && currentTier !== 'ENTERPRISE') {
             const conversionTime = new Date(ctaTime);
-            conversionTime.setMinutes(conversionTime.getMinutes() + Math.floor(Math.random() * 30) + 5);
+            conversionTime.setMinutes(
+              conversionTime.getMinutes() + Math.floor(Math.random() * 30) + 5,
+            );
 
             // Most users upgrade to GOLD
             const toTier = Math.random() < 0.7 ? 'GOLD' : 'PRO';
@@ -260,8 +262,7 @@ async function main() {
   }
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

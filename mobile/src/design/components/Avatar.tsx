@@ -16,6 +16,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
 
+
 interface AvatarProps {
   source?: ImageSourcePropType | string;
   name?: string;
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   variant_rounded: {
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
   },
   variant_square: {
     borderRadius: 0,

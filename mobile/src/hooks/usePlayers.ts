@@ -8,9 +8,12 @@ export const usePlayers = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchPlayers = useCallback(async () => {
+  const fetchPlayers = useCallback(async (options?: { background?: boolean }) => {
     try {
       setError(null);
+      if (!options?.background) {
+        setLoading(true);
+      }
       const result = await api.getPlayers();
       const list = result.items ?? result.data ?? result ?? [];
       setPlayers(Array.isArray(list) ? list : []);
@@ -19,14 +22,16 @@ export const usePlayers = () => {
       setError(err as Error);
       setPlayers([]);
     } finally {
-      setLoading(false);
+      if (!options?.background) {
+        setLoading(false);
+      }
       setRefreshing(false);
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(() => {
     setRefreshing(true);
-    await fetchPlayers();
+    fetchPlayers({ background: true });
   }, [fetchPlayers]);
 
   useEffect(() => {

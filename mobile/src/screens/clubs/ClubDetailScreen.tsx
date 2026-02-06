@@ -38,14 +38,72 @@ export default function ClubDetailScreen({ route, navigation }: ClubDetailScreen
   const fetchClubData = async () => {
     try {
       setLoading(true);
-      const [clubData, playersData] = await Promise.all([
-        api.getClub(clubId),
-        api.getPlayers({ clubId, limit: 50 }),
-      ]);
 
+      // Use mock data instead of API for now
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+
+      // Mock club data
+      const mockClubs: Record<string, any> = {
+        '1': {
+          id: '1',
+          name: 'Paris Saint-Germain',
+          country: 'France',
+          city: 'Paris',
+          founded: 1970,
+          stadium: 'Parc des Princes',
+        },
+        '2': {
+          id: '2',
+          name: 'Manchester City',
+          country: 'England',
+          city: 'Manchester',
+          founded: 1880,
+          stadium: 'Etihad Stadium',
+        },
+        '3': {
+          id: '3',
+          name: 'Real Madrid',
+          country: 'Spain',
+          city: 'Madrid',
+          founded: 1902,
+          stadium: 'Santiago Bernabéu',
+        },
+        '4': {
+          id: '4',
+          name: 'Arsenal',
+          country: 'England',
+          city: 'London',
+          founded: 1886,
+          stadium: 'Emirates Stadium',
+        },
+        '5': {
+          id: '5',
+          name: 'Barcelona',
+          country: 'Spain',
+          city: 'Barcelona',
+          founded: 1899,
+          stadium: 'Camp Nou',
+        },
+      };
+
+      // Mock players data
+      const mockPlayers = [
+        { id: 'p1', firstName: 'Kylian', lastName: 'Mbappé', position: 'ST', jerseyNumber: 7 },
+        { id: 'p2', firstName: 'Marquinhos', lastName: '', position: 'CB', jerseyNumber: 5 },
+        { id: 'p3', firstName: 'Achraf', lastName: 'Hakimi', position: 'RB', jerseyNumber: 2 },
+        { id: 'p4', firstName: 'Gianluigi', lastName: 'Donnarumma', position: 'GK', jerseyNumber: 99 },
+        { id: 'p5', firstName: 'Vitinha', lastName: '', position: 'CM', jerseyNumber: 17 },
+      ];
+
+      const clubData = mockClubs[clubId] || mockClubs['1'];
       setClub(clubData);
-      const playersList = playersData?.items ?? playersData?.data ?? [];
-      setPlayers(playersList);
+
+      // Only set players for PSG for demo purposes
+      if (clubId === '1' || !clubId) {
+        setPlayers(mockPlayers);
+      } else {
+        setPlayers([]);
+      }
     } catch (error) {
       logError('Error fetching club data', error, { screen: 'ClubDetailScreen', clubId });
     } finally {

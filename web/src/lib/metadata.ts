@@ -103,6 +103,7 @@ export function generateMetadata(options: PageMetadataOptions = {}): Metadata {
   const pageUrl = url || DEFAULT_METADATA.openGraph.url;
 
   return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://arcane-football.com'),
     title: pageTitle,
     description: pageDescription,
     keywords: pageKeywords,

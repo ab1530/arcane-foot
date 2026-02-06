@@ -25,9 +25,12 @@
               "NSExceptionAllowsInsecureHTTPLoads": true
             }
           }
-        }
+        },
+        "NSBluetoothAlwaysUsageDescription": "Arcane a besoin de Bluetooth pour se connecter à votre tracker GPS.",
+        "NSBluetoothPeripheralUsageDescription": "Arcane utilise le Bluetooth pour synchroniser vos données GPS."
       },
-      "bundleIdentifier": "com.anonymous.mobile"
+      "bundleIdentifier": "com.arcane.football",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,8 +38,27 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json",
+      "package": "com.arcane.football"
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#E4FF3B",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Arcane Football"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E4FF3B",
+          "sounds": []
+        }
+      ],
+      "./plugins/withQCBand"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

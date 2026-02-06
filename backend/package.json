@@ -7,6 +7,7 @@
     "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
+    "prestart:dev": "node scripts/ensure-dist-entry.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main",
@@ -21,6 +22,7 @@
     "test:rbac": "jest --config ./test/jest-e2e.json rbac-validation.e2e-spec.ts",
     "setup-test-users": "ts-node scripts/setup-test-users.ts",
     "cleanup-test-users": "ts-node scripts/setup-test-users.ts --cleanup",
+    "sync:club-logos": "ts-node scripts/backfill-club-logos.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
@@ -54,9 +56,9 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/form-data": "^2.2.1",
     "@types/multer": "^2.0.0",
+    "@types/pdfkit": "^0.17.3",
     "axios": "^1.13.1",
     "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.2",
     "cache-manager": "^7.2.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -74,6 +76,7 @@
     "openai": "^6.8.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pdfkit": "^0.17.2",
     "puppeteer": "^24.26.1",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
@@ -86,6 +89,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.38.0",
+    "@faker-js/faker": "^10.1.0",
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.6",
@@ -98,6 +102,7 @@
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.46.1",
     "@typescript-eslint/parser": "^8.46.1",
+    "bcryptjs": "^3.0.2",
     "chalk": "^4.1.2",
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",
@@ -111,6 +116,7 @@
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "uuid": "^13.0.0"
   }
 }

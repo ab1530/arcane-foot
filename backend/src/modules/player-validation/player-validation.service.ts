@@ -1,17 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import {
-  PlayerType,
-  VerificationStatus,
-  UserRole,
-  Prisma,
-} from '@prisma/client';
+import { PlayerType, VerificationStatus, UserRole, Prisma } from '@prisma/client';
 import { ValidatePlayerDto, RejectPlayerDto, ConvertToAgencyDto } from './dto/validate-player.dto';
 import { randomUUID } from 'crypto';
 
@@ -83,11 +73,7 @@ export class PlayerValidationService {
   /**
    * Get players by verification status
    */
-  async getPlayersByStatus(
-    status: VerificationStatus,
-    page: number = 1,
-    limit: number = 20,
-  ) {
+  async getPlayersByStatus(status: VerificationStatus, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
 
     const where: Prisma.playersWhereInput = {
@@ -143,11 +129,7 @@ export class PlayerValidationService {
   /**
    * Validate a player profile
    */
-  async validatePlayer(
-    playerId: string,
-    verifiedById: string,
-    dto: ValidatePlayerDto,
-  ) {
+  async validatePlayer(playerId: string, verifiedById: string, dto: ValidatePlayerDto) {
     // Check if player exists
     const player = await this.prisma.players.findUnique({
       where: { id: playerId },
@@ -162,9 +144,7 @@ export class PlayerValidationService {
 
     // Check if player is PUBLIC type
     if (player.playerType !== PlayerType.PUBLIC) {
-      throw new BadRequestException(
-        'Only PUBLIC players can be validated through this endpoint',
-      );
+      throw new BadRequestException('Only PUBLIC players can be validated through this endpoint');
     }
 
     // Check if already verified
@@ -229,15 +209,11 @@ export class PlayerValidationService {
         },
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to send notification to user ${player.userId}: ${error.message}`,
-      );
+      this.logger.error(`Failed to send notification to user ${player.userId}: ${error.message}`);
       // Don't throw error - notification failure shouldn't stop the validation
     }
 
-    this.logger.log(
-      `Player ${playerId} validated by user ${verifiedById}`,
-    );
+    this.logger.log(`Player ${playerId} validated by user ${verifiedById}`);
 
     return updatedPlayer;
   }
@@ -245,11 +221,7 @@ export class PlayerValidationService {
   /**
    * Reject a player profile
    */
-  async rejectPlayer(
-    playerId: string,
-    rejectedById: string,
-    dto: RejectPlayerDto,
-  ) {
+  async rejectPlayer(playerId: string, rejectedById: string, dto: RejectPlayerDto) {
     // Check if player exists
     const player = await this.prisma.players.findUnique({
       where: { id: playerId },
@@ -264,9 +236,7 @@ export class PlayerValidationService {
 
     // Check if player is PUBLIC type
     if (player.playerType !== PlayerType.PUBLIC) {
-      throw new BadRequestException(
-        'Only PUBLIC players can be rejected through this endpoint',
-      );
+      throw new BadRequestException('Only PUBLIC players can be rejected through this endpoint');
     }
 
     // Update player status using transaction
@@ -326,14 +296,10 @@ export class PlayerValidationService {
         },
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to send notification to user ${player.userId}: ${error.message}`,
-      );
+      this.logger.error(`Failed to send notification to user ${player.userId}: ${error.message}`);
     }
 
-    this.logger.log(
-      `Player ${playerId} rejected by user ${rejectedById}`,
-    );
+    this.logger.log(`Player ${playerId} rejected by user ${rejectedById}`);
 
     return updatedPlayer;
   }
@@ -341,11 +307,7 @@ export class PlayerValidationService {
   /**
    * Mark player as suspicious
    */
-  async markAsSuspicious(
-    playerId: string,
-    markedById: string,
-    reason: string,
-  ) {
+  async markAsSuspicious(playerId: string, markedById: string, reason: string) {
     // Check if player exists
     const player = await this.prisma.players.findUnique({
       where: { id: playerId },
@@ -401,9 +363,7 @@ export class PlayerValidationService {
       return updated;
     });
 
-    this.logger.warn(
-      `Player ${playerId} marked as suspicious by user ${markedById}: ${reason}`,
-    );
+    this.logger.warn(`Player ${playerId} marked as suspicious by user ${markedById}: ${reason}`);
 
     return updatedPlayer;
   }
@@ -411,11 +371,7 @@ export class PlayerValidationService {
   /**
    * Convert PUBLIC player to AGENCY type
    */
-  async convertToAgency(
-    playerId: string,
-    convertedById: string,
-    dto: ConvertToAgencyDto,
-  ) {
+  async convertToAgency(playerId: string, convertedById: string, dto: ConvertToAgencyDto) {
     // Check if player exists
     const player = await this.prisma.players.findUnique({
       where: { id: playerId },
@@ -430,16 +386,12 @@ export class PlayerValidationService {
 
     // Check if player is PUBLIC type
     if (player.playerType !== PlayerType.PUBLIC) {
-      throw new BadRequestException(
-        'Only PUBLIC players can be converted to AGENCY type',
-      );
+      throw new BadRequestException('Only PUBLIC players can be converted to AGENCY type');
     }
 
     // Check if player is verified
     if (player.verificationStatus !== VerificationStatus.VERIFIED) {
-      throw new BadRequestException(
-        'Player must be verified before converting to AGENCY type',
-      );
+      throw new BadRequestException('Player must be verified before converting to AGENCY type');
     }
 
     // Convert player using transaction
@@ -508,14 +460,10 @@ export class PlayerValidationService {
         },
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to send notification to user ${player.userId}: ${error.message}`,
-      );
+      this.logger.error(`Failed to send notification to user ${player.userId}: ${error.message}`);
     }
 
-    this.logger.log(
-      `Player ${playerId} converted to AGENCY by user ${convertedById}`,
-    );
+    this.logger.log(`Player ${playerId} converted to AGENCY by user ${convertedById}`);
 
     return convertedPlayer;
   }

@@ -3,11 +3,13 @@
  * Base URL: http://localhost:3000
  */
 
-import * as Sentry from "@sentry/nextjs";
 import { analytics } from "./analytics";
 import { handleSubscriptionError } from "./api-interceptor";
+import { logger } from "./logger";
+import { CreateHardwareSessionPayload, HardwareSession } from "@/types/hardware";
+import { CreateOfferPayload } from "@/types/marketplace";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
 interface ApiConfig {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -25,12 +27,14 @@ class ApiClient {
 
   private getAuthToken(): string | null {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("arcane_auth_token");
+    const token = localStorage.getItem("arcane_auth_token");
+    return token ? token.trim() : null;
   }
 
-  private async request<T>(endpoint: string, config: ApiConfig = {}): Promise<T> {
+  async request<T>(endpoint: string, config: ApiConfig = {}): Promise<T> {
     const { method = "GET", headers = {}, body, token } = config;
     const startTime = Date.now();
+    const requestId = logger.createRequestId();
 
     const authToken = token || this.getAuthToken();
 
@@ -43,16 +47,25 @@ class ApiClient {
       requestHeaders["Authorization"] = `Bearer ${authToken}`;
     }
 
-    const requestConfig: RequestInit = {
+    const requestConfig: RequestInit & { __arcaneLog?: boolean } = {
       method,
       headers: requestHeaders,
     };
+    // Avoid duplicate logs: api-client already logs request lifecycle.
+    requestConfig.__arcaneLog = false;
 
     if (body && method !== "GET") {
       requestConfig.body = JSON.stringify(body);
     }
 
     try {
+      logger.debug("API request start", {
+        scope: "API",
+        endpoint,
+        method,
+        requestId,
+      });
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, requestConfig);
       const duration = Date.now() - startTime;
 
@@ -62,9 +75,17 @@ class ApiClient {
       // Handle non-JSON responses
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        if (!response.ok) {
-          const error = new Error(`HTTP error! status: ${response.status}`);
-          this.handleError(error, endpoint, method, response.status);
+      if (!response.ok) {
+        const error = new Error(`HTTP error! status: ${response.status}`);
+          // Don't handle error for 401 on subscription/notification endpoints (silent fail for non-authenticated users)
+          const isSilent401 = response.status === 401 && (
+            endpoint.includes('/subscriptions') ||
+            endpoint.includes('/notifications')
+          );
+
+          if (!isSilent401) {
+            this.handleError(error, endpoint, method, response.status, undefined, requestId);
+          }
           throw error;
         }
         return {} as T;
@@ -86,14 +107,31 @@ class ApiClient {
 
           // If it's a subscription error, still throw but it's handled by modal
           if (handled) {
-            this.handleError(error, endpoint, method, response.status, data);
+            this.handleError(error, endpoint, method, response.status, data, requestId);
             throw error;
           }
         }
 
-        this.handleError(error, endpoint, method, response.status, data);
+        // Don't handle error for 401 on subscription/notification endpoints (silent fail for non-authenticated users)
+        const isSilent401 = response.status === 401 && (
+          endpoint.includes('/subscriptions') ||
+          endpoint.includes('/notifications')
+        );
+
+        if (!isSilent401) {
+          this.handleError(error, endpoint, method, response.status, data, requestId);
+        }
         throw error;
       }
+
+      logger.info("API request complete", {
+        scope: "API",
+        endpoint,
+        method,
+        status: response.status,
+        duration,
+        requestId,
+      });
 
       return data;
     } catch (error) {
@@ -102,9 +140,23 @@ class ApiClient {
       // Track failed API call
       analytics.apiCall(endpoint, method, duration, 0);
 
-      // Log and track error
-      console.error(`API request failed: ${method} ${endpoint}`, error);
-      this.handleError(error as Error, endpoint, method, 0);
+      // Don't log errors for 401 on subscription/notification endpoints (silent fail for non-authenticated users)
+      const errorMessage = (error as Error).message || '';
+      const isSilent401 = (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) &&
+                          (endpoint.includes('/subscriptions') || endpoint.includes('/notifications'));
+
+      if (!isSilent401) {
+        // Log and track error
+        logger.error("API request failed", error as Error, {
+          scope: "API",
+          endpoint,
+          method,
+          status: 0,
+          duration,
+          requestId,
+        });
+        this.handleError(error as Error, endpoint, method, 0, undefined, requestId);
+      }
 
       throw error;
     }
@@ -126,26 +178,24 @@ class ApiClient {
     return 'FREE';
   }
 
-  private handleError(error: Error, endpoint: string, method: string, status: number, data?: any) {
+  private handleError(
+    error: Error,
+    endpoint: string,
+    method: string,
+    status: number,
+    data?: any,
+    requestId?: string
+  ) {
     // Track error in analytics
     analytics.error('api_error', error.message, endpoint);
 
-    // Send to Sentry with context
-    Sentry.captureException(error, {
-      tags: {
-        api_endpoint: endpoint,
-        api_method: method,
-        api_status: status,
-      },
-      contexts: {
-        api: {
-          endpoint,
-          method,
-          status,
-          response: data,
-        },
-      },
-      level: status >= 500 ? 'error' : 'warning',
+    logger.error("API error", error, {
+      scope: "API",
+      endpoint,
+      method,
+      status,
+      response: data,
+      requestId,
     });
   }
 
@@ -248,6 +298,7 @@ class ApiClient {
     phone?: string;
     type: string;
     message: string;
+    company?: string;
   }) {
     return this.request<{ success: boolean }>("/api/contact", {
       method: "POST",
@@ -267,22 +318,60 @@ class ApiClient {
     });
   }
 
-  // Dashboard endpoints
-  async getDashboardStats() {
-    return this.request<{ stats: any }>("/api/dashboard/stats");
+  // Analytics / Dashboard endpoints
+  async getDashboardAnalytics() {
+    return this.request<any>("/api/analytics/dashboard");
   }
 
-  async getUpcomingMatches() {
-    return this.request<{ matches: any[] }>("/api/dashboard/matches");
+  async getPlatformOverviewAnalytics() {
+    return this.request<any>("/api/analytics/overview");
   }
 
-  async getNotifications(userId?: string) {
-    // If no userId provided and we're authenticated, the backend should infer from JWT
-    // For now, return empty array if no userId (will use mock data in component)
-    if (!userId) {
-      return { notifications: [] };
+  async getNotifications(unreadOnly: boolean = false) {
+    // Get authenticated user's notifications using /me endpoint
+    const query = unreadOnly ? '?unreadOnly=true' : '';
+    return this.request<any[]>(`/api/notifications/me${query}`);
+  }
+
+  async getUserNotifications(userId: string, unreadOnly: boolean = false) {
+    // Get specific user's notifications (requires proper permissions)
+    const query = unreadOnly ? '?unreadOnly=true' : '';
+    return this.request<any[]>(`/api/notifications/user/${userId}${query}`);
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    const authToken = this.getAuthToken();
+    if (!authToken) {
+      throw new Error('Authentication required');
     }
-    return this.request<{ notifications: any[] }>(`/api/notifications/user/${userId}`);
+
+    // Extract userId from token (simple base64 decode of JWT payload)
+    try {
+      const payload = JSON.parse(atob(authToken.split('.')[1]));
+      return this.request<any>(`/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        body: { userId: payload.sub },
+      });
+    } catch (error) {
+      throw new Error('Invalid authentication token');
+    }
+  }
+
+  async markAllNotificationsAsRead() {
+    const authToken = this.getAuthToken();
+    if (!authToken) {
+      throw new Error('Authentication required');
+    }
+
+    // Extract userId from token
+    try {
+      const payload = JSON.parse(atob(authToken.split('.')[1]));
+      return this.request<any>(`/api/notifications/user/${payload.sub}/read-all`, {
+        method: 'PATCH',
+      });
+    } catch (error) {
+      throw new Error('Invalid authentication token');
+    }
   }
 
   // Analytics endpoints
@@ -848,6 +937,13 @@ class ApiClient {
     }>(`/api/marketplace/reviews/listing/${listingId}`);
   }
 
+  async createMarketplaceOffer(data: CreateOfferPayload) {
+    return this.request<any>("/api/marketplace/offers", {
+      method: "POST",
+      body: data,
+    });
+  }
+
   async addFavorite(scoutListingId: string, notes?: string, tags?: string[]) {
     return this.request<any>("/api/marketplace/favorites", {
       method: "POST",
@@ -1042,6 +1138,14 @@ class ApiClient {
     }>(`/api/auto-scout/player/${playerId}/history`);
   }
 
+  async getAllAutoScoutHistory() {
+    return this.request<{
+      success: boolean;
+      data?: any[];
+      message?: string;
+    }>("/api/auto-scout/history");
+  }
+
   async getAutoScoutCostEstimate(reportType?: string) {
     const query = reportType ? `?reportType=${reportType}` : "";
     return this.request<{
@@ -1134,6 +1238,22 @@ class ApiClient {
     });
   }
 
+  // Hardware / GPS endpoints
+  async getHardwareSessions(playerId: string) {
+    return this.request<HardwareSession[]>(`/api/hardware/sessions/player/${playerId}`);
+  }
+
+  async getHardwareSession(sessionId: string) {
+    return this.request<HardwareSession>(`/api/hardware/sessions/${sessionId}`);
+  }
+
+  async createHardwareSession(data: CreateHardwareSessionPayload) {
+    return this.request<HardwareSession>('/api/hardware/sessions', {
+      method: 'POST',
+      body: data,
+    });
+  }
+
   // SmartScout endpoints
   async getSmartScoutSuggestions(partialReport: any, context?: any) {
     return this.request<any>('/api/smart-scout/suggestions', {
@@ -1177,6 +1297,331 @@ class ApiClient {
     }>('/api/smart-scout/reindex-all', {
       method: 'POST',
     });
+  }
+
+  // Passport endpoints
+  async createPassport(data: { playerId: string; additionalData?: any }) {
+    return this.request<any>("/api/passport", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async getPassportByPlayer(playerId: string) {
+    return this.request<any>(`/api/passport/player/${playerId}`);
+  }
+
+  async getPassportByToken(token: string) {
+    return this.request<any>(`/api/passport/token/${token}`);
+  }
+
+  async verifyPassport(playerId: string, data: { verified: boolean; adminNotes?: string }) {
+    return this.request<any>(`/api/passport/player/${playerId}/verify`, {
+      method: "PUT",
+      body: data,
+    });
+  }
+
+  async deletePassport(playerId: string) {
+    return this.request(`/api/passport/player/${playerId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getPassportQRCode(token: string) {
+    return this.request<any>(`/api/passport/qr/${token}`);
+  }
+
+  // Notifications endpoints (FCM)
+  async registerDevice(data: { fcmToken: string; userId?: string }) {
+    return this.request<{ message: string; success: boolean }>("/api/notifications/register-device", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async unregisterDevice(data: { userId: string; fcmToken: string }) {
+    return this.request<{ message: string; success: boolean }>("/api/notifications/unregister-device", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async sendNotification(data: {
+    userId: string;
+    title: string;
+    body: string;
+    type?: string;
+    data?: Record<string, any>;
+  }) {
+    return this.request<{ message: string; success: boolean }>("/api/notifications/send", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async sendNotificationToMultiple(data: {
+    userIds: string[];
+    title: string;
+    body: string;
+    type?: string;
+    data?: Record<string, any>;
+  }) {
+    return this.request<{ message: string; success: boolean; successCount: number; failureCount: number }>(
+      "/api/notifications/send-multiple",
+      {
+        method: "POST",
+        body: data,
+      }
+    );
+  }
+
+  async sendNotificationToTopic(data: {
+    topic: string;
+    title: string;
+    body: string;
+    data?: Record<string, any>;
+  }) {
+    return this.request<{ message: string; success: boolean }>("/api/notifications/send-topic", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async subscribeToTopic(data: { userIds: string[]; topic: string }) {
+    return this.request<{ message: string; success: boolean }>("/api/notifications/subscribe-topic", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async unsubscribeFromTopic(data: { userIds: string[]; topic: string }) {
+    return this.request<{ message: string; success: boolean }>("/api/notifications/unsubscribe-topic", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async sendMatchReminder(matchId: string) {
+    return this.request<{ message: string; success: boolean }>(
+      `/api/notifications/match/${matchId}/reminder`,
+      {
+        method: "POST",
+      }
+    );
+  }
+
+  async sendReportNotification(reportId: string) {
+    return this.request<{ message: string; success: boolean }>(
+      `/api/notifications/report/${reportId}/notify`,
+      {
+        method: "POST",
+      }
+    );
+  }
+
+  // Gamification endpoints
+  async getGamificationProfile() {
+    return this.request<{
+      user: any;
+      stats: {
+        totalPoints: number;
+        currentLevel: number;
+        pointsToNextLevel: number;
+        currentStreak: number;
+        longestStreak: number;
+        goalsScored: number;
+        playersValidated: number;
+        reportsCreated: number;
+        reportsSubmitted: number;
+        reportsApproved: number;
+        lastActivityAt: string;
+      };
+      badges: any[];
+      achievements: any[];
+      levelInfo: {
+        currentLevel: number;
+        pointsRequired: number;
+        pointsEarned: number;
+        percentageComplete: number;
+      };
+    }>("/api/gamification/profile");
+  }
+
+  async getGamificationAchievements() {
+    return this.request<{
+      unlocked: any[];
+      locked: any[];
+      total: number;
+    }>("/api/gamification/achievements");
+  }
+
+  async getGamificationBadges() {
+    return this.request<{
+      badges: any[];
+      pinnedBadges: any[];
+    }>("/api/gamification/badges");
+  }
+
+  async getGamificationLeaderboard(category: string) {
+    return this.request<{
+      leaderboard: any[];
+      currentUser: any;
+    }>(`/api/gamification/leaderboard/${category}`);
+  }
+
+  async trackGamificationAction(action: string) {
+    return this.request<{
+      success: boolean;
+      pointsEarned: number;
+      newAchievements: any[];
+    }>(`/api/gamification/track-action/${action}`, {
+      method: "POST",
+    });
+  }
+
+  // Events endpoints
+  async getEvents(params?: {
+    type?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    assignedUserId?: string;
+    matchId?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.type) queryParams.append("type", params.type);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.startDate) queryParams.append("startDate", params.startDate);
+    if (params?.endDate) queryParams.append("endDate", params.endDate);
+    if (params?.assignedUserId) queryParams.append("assignedUserId", params.assignedUserId);
+    if (params?.matchId) queryParams.append("matchId", params.matchId);
+
+    const query = queryParams.toString();
+    return this.request<any[]>(`/api/events${query ? `?${query}` : ""}`);
+  }
+
+  async getUpcomingEvents(limit?: number) {
+    const query = limit ? `?limit=${limit}` : "";
+    return this.request<any[]>(`/api/events/upcoming${query}`);
+  }
+
+  async getMyEvents(params?: {
+    type?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    matchId?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.type) queryParams.append("type", params.type);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.startDate) queryParams.append("startDate", params.startDate);
+    if (params?.endDate) queryParams.append("endDate", params.endDate);
+    if (params?.matchId) queryParams.append("matchId", params.matchId);
+
+    const query = queryParams.toString();
+    return this.request<any[]>(`/api/events/my-events${query ? `?${query}` : ""}`);
+  }
+
+  async getEvent(id: string) {
+    return this.request<any>(`/api/events/${id}`);
+  }
+
+  async createEvent(data: {
+    title: string;
+    description?: string;
+    type?: string;
+    status?: string;
+    startDate: string;
+    endDate: string;
+    location: string;
+    latitude?: number;
+    longitude?: number;
+    matchId?: string;
+    assignedUserIds?: string[];
+  }) {
+    return this.request<any>("/api/events", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async updateEvent(id: string, data: Partial<{
+    title: string;
+    description?: string;
+    type?: string;
+    status?: string;
+    startDate: string;
+    endDate: string;
+    location: string;
+    latitude?: number;
+    longitude?: number;
+    matchId?: string;
+    assignedUserIds?: string[];
+  }>) {
+    return this.request<any>(`/api/events/${id}`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  async deleteEvent(id: string) {
+    return this.request(`/api/events/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Data sync actions (admin)
+  async triggerCompetitionSync(source: string) {
+    return this.request<{ message: string }>("/admin/data-sync/competitions", {
+      method: "POST",
+      body: { source },
+    });
+  }
+
+  async triggerClubSync(competitionId: string, source: string) {
+    return this.request<{ message: string }>("/admin/data-sync/clubs", {
+      method: "POST",
+      body: { competitionId, source },
+    });
+  }
+
+  async triggerPlayerSync(clubId: string, source: string) {
+    return this.request<{ message: string }>("/admin/data-sync/players", {
+      method: "POST",
+      body: { clubId, source },
+    });
+  }
+
+  async triggerMatchSync(competitionId: string, source: string) {
+    return this.request<{ message: string }>("/admin/data-sync/matches", {
+      method: "POST",
+      body: { competitionId, source },
+    });
+  }
+
+  async triggerFullSync(competitionIds: string[]) {
+    return this.request<{ message: string }>("/admin/data-sync/full", {
+      method: "POST",
+      body: { competitionIds },
+    });
+  }
+
+  async getCoaches<T = any>(
+    params: Record<string, string | number | boolean | string[] | undefined> = {},
+  ) {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") return;
+      if (Array.isArray(value)) {
+        value.forEach((val) => queryParams.append(key, String(val)));
+      } else {
+        queryParams.append(key, String(value));
+      }
+    });
+    const query = queryParams.toString();
+    return this.request<T>(`/api/coaching/coaches${query ? `?${query}` : ""}`);
   }
 }
 

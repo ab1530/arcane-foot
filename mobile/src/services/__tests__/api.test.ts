@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { STORAGE_KEYS } from '../../constants/config';
 
+jest.mock('expo-file-system/legacy', () => ({
+  documentDirectory: '/tmp',
+  readAsStringAsync: jest.fn(),
+  writeAsStringAsync: jest.fn(),
+  deleteAsync: jest.fn(),
+}));
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -91,6 +98,7 @@ describe('ApiClient', () => {
       expect(AsyncStorage.multiRemove).toHaveBeenCalledWith([
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.REFRESH_TOKEN,
       ]);
     });
 
@@ -102,6 +110,7 @@ describe('ApiClient', () => {
       expect(AsyncStorage.multiRemove).toHaveBeenCalledWith([
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.REFRESH_TOKEN,
       ]);
     });
   });
@@ -556,15 +565,42 @@ describe('ApiClient', () => {
       expect(result.firstName).toBe('Updated');
     });
 
-    it('should get player passport', async () => {
+    it('should get player passport (legacy helper)', async () => {
       const mockPassport = {
         playerId: 'p1',
         qrCode: 'base64...',
       };
 
-      mock.onGet('/passport/token-123').reply(200, mockPassport);
+      mock.onGet('/passport/token/token-123').reply(200, mockPassport);
 
       const result = await api.getPassport('token-123');
+
+      expect(result).toEqual(mockPassport);
+    });
+
+    it('should get player passport by public token helper', async () => {
+      const mockPassport = {
+        playerId: 'p1',
+        qrCode: 'base64...',
+      };
+
+      mock.onGet('/passport/token/token-123').reply(200, mockPassport);
+
+      const result = await api.getPassportByToken('token-123');
+
+      expect(result).toEqual(mockPassport);
+    });
+
+    it('should get current user passport via /passport/me', async () => {
+      const mockPassport = {
+        id: 'passport-123',
+        playerId: 'player-123',
+        status: 'VERIFIED',
+      };
+
+      mock.onGet('/passport/me').reply(200, mockPassport);
+
+      const result = await api.getMyPassport();
 
       expect(result).toEqual(mockPassport);
     });

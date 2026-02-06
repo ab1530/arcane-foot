@@ -9,17 +9,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscriptionsService } from './subscriptions.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
-import { getPublicPricingPlans, calculateMRRIncrease } from './subscription-pricing.config';
+import { getPublicPricingPlans } from './subscription-pricing.config';
 
 @ApiTags('Subscriptions')
 @Controller('subscriptions')
@@ -29,7 +24,8 @@ export class SubscriptionsController {
   @Get('pricing')
   @ApiOperation({
     summary: 'Get subscription pricing plans',
-    description: 'Returns all available subscription tiers with pricing and features (public endpoint)',
+    description:
+      'Returns all available subscription tiers with pricing and features (public endpoint)',
   })
   @ApiResponse({
     status: 200,
@@ -71,7 +67,7 @@ export class SubscriptionsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Récupérer mon abonnement',
-    description: 'Récupère les détails de l\'abonnement de l\'utilisateur connecté',
+    description: "Récupère les détails de l'abonnement de l'utilisateur connecté",
   })
   @ApiResponse({ status: 200, description: 'Abonnement récupéré avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -85,7 +81,7 @@ export class SubscriptionsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Créer ou mettre à jour un abonnement',
-    description: 'Crée un nouvel abonnement ou met à jour l\'abonnement existant',
+    description: "Crée un nouvel abonnement ou met à jour l'abonnement existant",
   })
   @ApiResponse({ status: 201, description: 'Abonnement créé/mis à jour avec succès' })
   @ApiResponse({ status: 400, description: 'Données invalides' })
@@ -100,10 +96,10 @@ export class SubscriptionsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Annuler mon abonnement',
-    description: 'Annule l\'abonnement actif de l\'utilisateur',
+    description: "Annule l'abonnement actif de l'utilisateur",
   })
   @ApiResponse({ status: 200, description: 'Abonnement annulé avec succès' })
-  @ApiResponse({ status: 400, description: 'Impossible d\'annuler l\'abonnement' })
+  @ApiResponse({ status: 400, description: "Impossible d'annuler l'abonnement" })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
   @ApiResponse({ status: 404, description: 'Abonnement non trouvé' })
   cancelSubscription(@Req() req, @Body() dto: CancelSubscriptionDto) {
@@ -119,7 +115,7 @@ export class SubscriptionsController {
     description: 'Réactive un abonnement précédemment annulé',
   })
   @ApiResponse({ status: 200, description: 'Abonnement réactivé avec succès' })
-  @ApiResponse({ status: 400, description: 'Impossible de réactiver l\'abonnement' })
+  @ApiResponse({ status: 400, description: "Impossible de réactiver l'abonnement" })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
   @ApiResponse({ status: 404, description: 'Abonnement non trouvé' })
   reactivateSubscription(@Req() req) {
@@ -131,10 +127,10 @@ export class SubscriptionsController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Changer de niveau d\'abonnement',
-    description: 'Upgrade ou downgrade le niveau d\'abonnement',
+    summary: "Changer de niveau d'abonnement",
+    description: "Upgrade ou downgrade le niveau d'abonnement",
   })
-  @ApiResponse({ status: 200, description: 'Niveau d\'abonnement changé avec succès' })
+  @ApiResponse({ status: 200, description: "Niveau d'abonnement changé avec succès" })
   @ApiResponse({ status: 400, description: 'Impossible de changer le niveau' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
   @ApiResponse({ status: 404, description: 'Abonnement non trouvé' })

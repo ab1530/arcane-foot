@@ -19,114 +19,56 @@ import {
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedBackground } from "@/components/ui/animated-background";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useSubscription, type SubscriptionTier } from "@/hooks/useSubscription";
 import MainLayout from "@/components/layout/MainLayout";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
+import { RequireTier } from "@/components/auth/RequireTier";
+import { useLanguage } from "@/contexts/language-context";
+import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 
-const aiFeatures = [
-  {
-    id: "arkane-index",
-    name: "ArkaneIndex",
-    tagline: "Le système de notation IA le plus précis",
-    description:
-      "Analyse 200+ paramètres en temps réel pour évaluer chaque joueur avec une précision scientifique. Technique, physique, mental, tactique - tout est mesuré.",
-    icon: Brain,
-    gradient: "from-yellow-500 to-orange-500",
-    href: "/ai/arkane-index",
-    features: [
-      "Notation sur 100 avec 6 catégories",
-      "Analyse de 200+ paramètres",
-      "Mise à jour en temps réel",
-      "Historique et tendances",
-      "Comparaisons de joueurs",
-    ],
-    minTier: "GOLD",
-    stats: {
-      accuracy: "98.5%",
-      players: "500K+",
-      updates: "Temps réel",
-    },
-  },
-  {
-    id: "arkane-gpt",
-    name: "ArkaneGPT",
-    tagline: "Votre expert football personnel",
-    description:
-      "Posez n'importe quelle question sur le football. ArkaneGPT analyse des milliers de données pour vous fournir des réponses expertes sur les joueurs, tactiques et tendances.",
-    icon: MessageSquare,
-    gradient: "from-green-500 to-emerald-500",
-    href: "/ai/arkane-gpt",
-    features: [
-      "Conversations intelligentes",
-      "Analyses tactiques détaillées",
-      "Comparaisons de joueurs",
-      "Conseils de recrutement",
-      "Tendances du marché",
-    ],
-    minTier: "BASIC",
-    stats: {
-      accuracy: "96.2%",
-      questions: "1M+",
-      languages: "5",
-    },
-  },
-  {
-    id: "arkane-scout",
-    name: "ArkaneScoutAI",
-    tagline: "Rapports de scouting automatisés",
-    description:
-      "Générez des rapports de scouting professionnels en quelques secondes. L'IA analyse les performances, identifie les points forts/faibles et fournit des recommandations.",
-    icon: FileText,
-    gradient: "from-blue-500 to-cyan-500",
-    href: "/reports",
-    features: [
-      "Génération automatique de rapports",
-      "Analyse vidéo IA",
-      "Recommandations personnalisées",
-      "Export PDF professionnel",
-      "Détection de talents",
-    ],
-    minTier: "PRO",
-    stats: {
-      reports: "250K+",
-      time: "< 30s",
-      accuracy: "94.8%",
-    },
-  },
-];
+const featureIconMap = {
+  brain: Brain,
+  message: MessageSquare,
+  file: FileText,
+} as const;
 
-const benefits = [
-  {
-    icon: Zap,
-    title: "Rapidité",
-    description: "Analyses instantanées qui prendraient des heures manuellement",
-  },
-  {
-    icon: Target,
-    title: "Précision",
-    description: "Algorithmes entraînés sur des millions de données historiques",
-  },
-  {
-    icon: TrendingUp,
-    title: "Évolution",
-    description: "IA qui s'améliore continuellement avec chaque nouvelle donnée",
-  },
-  {
-    icon: Users,
-    title: "Collaboration",
-    description: "Partagez insights et rapports avec votre équipe",
-  },
-];
+const benefitIconMap = {
+  zap: Zap,
+  target: Target,
+  trending: TrendingUp,
+  users: Users,
+} as const;
 
 export default function AIHubPage() {
   const router = useRouter();
   const { hasMinimumTier, getTierName, subscription } = useSubscription();
+  const { dictionary } = useLanguage();
+  const { requireAccess } = useSubscriptionGuard();
+  const aiCopy = dictionary.aiHub;
 
-  const canAccessFeature = (minTier: string) => {
-    return hasMinimumTier(minTier as any);
+  const aiFeatures = aiCopy.features.map((feature) => ({
+    ...feature,
+    Icon: featureIconMap[feature.icon as keyof typeof featureIconMap] ?? Brain,
+  }));
+
+  const benefits = aiCopy.benefits.map((benefit) => ({
+    ...benefit,
+    Icon: benefitIconMap[benefit.icon as keyof typeof benefitIconMap] ?? Sparkles,
+  }));
+
+  const canAccessFeature = (minTier: string) => hasMinimumTier(minTier as SubscriptionTier);
+
+  const handleFeatureAccess = (href: string, minTier: SubscriptionTier, featureName: string) => {
+    if (!requireAccess(minTier, featureName)) {
+      return;
+    }
+    router.push(href);
   };
 
   return (
     <MainLayout>
+      <ProtectedPage>
+        <RequireTier minTier="BASIC">
       <div className="min-h-screen overflow-hidden relative">
         <AnimatedBackground />
 
@@ -139,32 +81,31 @@ export default function AIHubPage() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-arcane-accent/20 border border-arcane-accent/30 mb-6">
             <Sparkles className="h-4 w-4 text-arcane-accent" />
-            <span className="text-arcane-accent font-bold text-sm">
-              Intelligence Artificielle
+            <span className="text-arcane-accent font-bold text-sm" data-test="ai-hero-badge-text">
+              {aiCopy.hero.eyebrow}
             </span>
           </div>
 
-          <h1 className="text-6xl md:text-7xl font-black text-white mb-6 uppercase tracking-tight">
-            Arkane <span className="text-arcane-accent">AI</span>
+          <h1 className="text-6xl md:text-7xl font-black text-white mb-6 uppercase tracking-tight" data-test="ai-hero-title">
+            {aiCopy.hero.title} <span className="text-arcane-accent">{aiCopy.hero.highlight}</span>
           </h1>
 
           <p className="text-xl text-arcane-grey max-w-3xl mx-auto mb-8">
-            La suite d'intelligence artificielle la plus avancée du football.
-            Analyses ultra-précises, prédictions fiables, insights instantanés.
+            {aiCopy.hero.description}
           </p>
 
           <div className="flex items-center justify-center gap-4">
             <Button
-              onClick={() => router.push("/ai/arkane-gpt")}
+              onClick={() => router.push(aiCopy.hero.primaryCta.href)}
               className="bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80"
               size="lg"
             >
               <MessageSquare className="h-5 w-5 mr-2" />
-              Essayer ArkaneGPT
+              {aiCopy.hero.primaryCta.label}
             </Button>
-            <Button variant="outline" size="lg">
+            <Button variant="outline" size="lg" onClick={() => router.push(aiCopy.hero.secondaryCta.href)}>
               <FileText className="h-4 w-4 mr-2" />
-              Documentation
+              {aiCopy.hero.secondaryCta.label}
             </Button>
           </div>
         </motion.div>
@@ -172,8 +113,10 @@ export default function AIHubPage() {
         {/* AI Features Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-16">
           {aiFeatures.map((feature, index) => {
-            const Icon = feature.icon;
+            const IconComponent = feature.Icon;
+            const minTier = feature.minTier as SubscriptionTier;
             const hasAccess = canAccessFeature(feature.minTier);
+            const tierLabel = getTierName(minTier);
 
             return (
               <motion.div
@@ -194,12 +137,12 @@ export default function AIHubPage() {
                   >
                     <div className="absolute inset-0 bg-black/30" />
                     <div className="relative z-10 p-6 flex items-center justify-between h-full">
-                      <Icon className="h-16 w-16 text-white" />
+                      <IconComponent className="h-16 w-16 text-white" />
                       {!hasAccess && (
                         <div className="px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center gap-2">
                           <Lock className="h-3 w-3 text-white" />
                           <span className="text-xs text-white font-bold">
-                            {getTierName(feature.minTier as any)}+
+                            {aiCopy.featuresCtas.lockedBadge.replace("{{tier}}", tierLabel)}
                           </span>
                         </div>
                       )}
@@ -219,17 +162,17 @@ export default function AIHubPage() {
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-3 mb-6 pb-6 border-b border-arcane-darkBorder">
-                      {Object.entries(feature.stats).map(([key, value]) => (
-                        <div key={key} className="text-center">
-                          <p className="text-white font-black text-lg">{value}</p>
-                          <p className="text-arcane-grey text-xs capitalize">{key}</p>
+                      {feature.stats.map((stat) => (
+                        <div key={stat.label} className="text-center">
+                          <p className="text-white font-black text-lg">{stat.value}</p>
+                          <p className="text-arcane-grey text-xs capitalize">{stat.label}</p>
                         </div>
                       ))}
                     </div>
 
                     {/* Features List */}
                     <div className="space-y-2 mb-6">
-                      {feature.features.map((feat, idx) => (
+                      {feature.bullets.map((feat, idx) => (
                         <div key={idx} className="flex items-start gap-2">
                           <CheckCircle className="h-4 w-4 text-arcane-accent flex-shrink-0 mt-0.5" />
                           <span className="text-sm text-arcane-grey">{feat}</span>
@@ -238,24 +181,23 @@ export default function AIHubPage() {
                     </div>
 
                     {/* CTA */}
-                    {hasAccess ? (
-                      <Button
-                        onClick={() => router.push(feature.href)}
-                        className="w-full bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80"
-                      >
-                        Accéder
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => router.push("/pricing")}
-                        variant="outline"
-                        className="w-full border-arcane-accent/30 text-arcane-accent hover:bg-arcane-accent/10"
-                      >
-                        <Crown className="h-4 w-4 mr-2" />
-                        Upgrade vers {getTierName(feature.minTier as any)}
-                      </Button>
-                    )}
+                    <Button
+                      onClick={() => handleFeatureAccess(feature.href, minTier, feature.name)}
+                      className={`w-full ${hasAccess ? "bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80" : "border border-arcane-accent/30 text-arcane-accent hover:bg-arcane-accent/10"}`}
+                      variant={hasAccess ? "default" : "outline"}
+                    >
+                      {hasAccess ? (
+                        <>
+                          {aiCopy.featuresCtas.access}
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      ) : (
+                        <>
+                          <Crown className="h-4 w-4 mr-2" />
+                          {aiCopy.featuresCtas.upgrade.replace("{{tier}}", tierLabel)}
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </GlassCard>
               </motion.div>
@@ -271,12 +213,12 @@ export default function AIHubPage() {
           className="mb-16"
         >
           <h2 className="text-3xl font-black text-white mb-8 text-center uppercase tracking-tight">
-            Pourquoi choisir Arkane AI ?
+            {aiCopy.benefitsTitle}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {benefits.map((benefit, index) => {
-              const Icon = benefit.icon;
+              const Icon = benefit.Icon;
               return (
                 <motion.div
                   key={index}
@@ -306,39 +248,40 @@ export default function AIHubPage() {
           <GlassCard className="p-12 text-center bg-gradient-to-r from-arcane-accent/10 via-transparent to-arcane-accent/5 border-arcane-accent/30">
             <Sparkles className="h-12 w-12 text-arcane-accent mx-auto mb-4" />
             <h2 className="text-3xl font-black text-white mb-4">
-              Prêt à révolutionner votre scouting ?
+              {aiCopy.cta.title}
             </h2>
             <p className="text-arcane-grey mb-8 max-w-2xl mx-auto">
-              Rejoignez les milliers de recruteurs, coachs et clubs qui utilisent déjà
-              Arkane AI pour découvrir les talents de demain.
+              {aiCopy.cta.description}
             </p>
             <div className="flex items-center justify-center gap-4">
               <Button
-                onClick={() => router.push("/ai/arkane-gpt")}
+                onClick={() => router.push(aiCopy.cta.primary.href)}
                 className="bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80"
                 size="lg"
               >
-                Commencer gratuitement
+                {aiCopy.cta.primary.label}
               </Button>
               <Button
-                onClick={() => router.push("/pricing")}
+                onClick={() => router.push(aiCopy.cta.secondary.href)}
                 variant="outline"
                 size="lg"
               >
                 <Crown className="h-4 w-4 mr-2" />
-                Voir les tarifs
+                {aiCopy.cta.secondary.label}
               </Button>
             </div>
 
             {subscription && (
               <p className="text-xs text-arcane-grey mt-6">
-                Votre plan actuel : {getTierName(subscription.tier)}
+                {aiCopy.cta.planLabel.replace("{{tier}}", getTierName(subscription.tier))}
               </p>
             )}
           </GlassCard>
         </motion.div>
         </div>
       </div>
+        </RequireTier>
+      </ProtectedPage>
     </MainLayout>
   );
 }

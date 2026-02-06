@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -10,9 +10,21 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @Get('dashboard')
+  @ApiOperation({
+    summary: 'Dashboard utilisateur personnel',
+    description: "Statistiques personnalisées pour le dashboard de l'utilisateur connecté",
+  })
+  @ApiResponse({ status: 200, description: 'Statistiques du dashboard récupérées avec succès' })
+  @ApiResponse({ status: 401, description: 'Non autorisé' })
+  async getUserDashboard(@Request() req) {
+    const user = req.user;
+    return this.analyticsService.getUserDashboard(user.id, user.role);
+  }
+
   @Get('overview')
   @ApiOperation({
-    summary: 'Vue d\'ensemble de la plateforme',
+    summary: "Vue d'ensemble de la plateforme",
     description: 'Statistiques globales et activité récente de la plateforme',
   })
   @ApiResponse({ status: 200, description: 'Statistiques récupérées avec succès' })
@@ -73,10 +85,15 @@ export class AnalyticsController {
 
   @Get('activity-trends')
   @ApiOperation({
-    summary: 'Tendances d\'activité',
-    description: 'Évolution de l\'activité de la plateforme sur une période donnée',
+    summary: "Tendances d'activité",
+    description: "Évolution de l'activité de la plateforme sur une période donnée",
   })
-  @ApiQuery({ name: 'days', required: false, description: 'Nombre de jours (défaut: 30)', example: 30 })
+  @ApiQuery({
+    name: 'days',
+    required: false,
+    description: 'Nombre de jours (défaut: 30)',
+    example: 30,
+  })
   @ApiResponse({ status: 200, description: 'Tendances récupérées avec succès' })
   getActivityTrends(@Query('days') days?: string) {
     return this.analyticsService.getActivityTrends(days ? parseInt(days) : 30);
@@ -89,7 +106,8 @@ export class AnalyticsController {
   @Get('rbac-metrics')
   @ApiOperation({
     summary: 'RBAC Monitoring Dashboard',
-    description: 'Comprehensive metrics for 403 errors, subscription conversions, and feature blocking analytics',
+    description:
+      'Comprehensive metrics for 403 errors, subscription conversions, and feature blocking analytics',
   })
   @ApiQuery({
     name: 'days',
@@ -120,12 +138,12 @@ export class AnalyticsController {
           conversion_rate: 14.5,
           revenue_generated: 749.85,
           by_tier: {
-            'FREE_to_GOLD': 12,
-            'FREE_to_PRO': 2,
-            'BASIC_to_GOLD': 1,
+            FREE_to_GOLD: 12,
+            FREE_to_PRO: 2,
+            BASIC_to_GOLD: 1,
           },
           by_source: [
-            { source: 'ai_features_403', count: 10, revenue: 499.90 },
+            { source: 'ai_features_403', count: 10, revenue: 499.9 },
             { source: 'upgrade_modal', count: 5, revenue: 249.95 },
           ],
         },
@@ -162,10 +180,7 @@ export class AnalyticsController {
     description: 'End date (ISO format)',
   })
   @ApiResponse({ status: 200, description: '403 rate calculated successfully' })
-  get403Rate(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
+  get403Rate(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate) : new Date();
     return this.analyticsService.get403Rate(start, end);
@@ -187,10 +202,7 @@ export class AnalyticsController {
     description: 'End date (ISO format)',
   })
   @ApiResponse({ status: 200, description: 'Conversion rate calculated successfully' })
-  getConversionRate(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
+  getConversionRate(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate) : new Date();
     return this.analyticsService.getConversionRate(start, end);

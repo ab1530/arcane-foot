@@ -72,8 +72,7 @@ export class MarketValueService {
       // Calculate age
       const age = player.dateOfBirth
         ? Math.floor(
-            (Date.now() - new Date(player.dateOfBirth).getTime()) /
-              (365.25 * 24 * 60 * 60 * 1000),
+            (Date.now() - new Date(player.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000),
           )
         : 25;
 
@@ -83,10 +82,8 @@ export class MarketValueService {
       // Use overall rating from scouting reports
       const avgRating =
         appearances > 0
-          ? player.scouting_reports.reduce(
-              (sum, sr) => sum + (sr.overallRating || 0),
-              0,
-            ) / appearances
+          ? player.scouting_reports.reduce((sum, sr) => sum + (sr.overallRating || 0), 0) /
+            appearances
           : 6.5;
 
       // Get scout ratings for ML model
@@ -183,10 +180,7 @@ export class MarketValueService {
   /**
    * Update valuation history in database
    */
-  async updateValuationHistory(
-    playerId: string,
-    valuation: PlayerValuationDto,
-  ): Promise<void> {
+  async updateValuationHistory(playerId: string, valuation: PlayerValuationDto): Promise<void> {
     try {
       await this.prisma.player_valuations.create({
         data: {
@@ -238,12 +232,9 @@ export class MarketValueService {
       }
 
       const currentValue = valuations[0].estimatedValue;
-      const previousValue =
-        valuations.length > 1 ? valuations[1].estimatedValue : currentValue;
+      const previousValue = valuations.length > 1 ? valuations[1].estimatedValue : currentValue;
       const changePercent =
-        previousValue > 0
-          ? ((currentValue - previousValue) / previousValue) * 100
-          : 0;
+        previousValue > 0 ? ((currentValue - previousValue) / previousValue) * 100 : 0;
 
       let trend: 'up' | 'down' | 'stable';
       if (changePercent > 5) trend = 'up';
@@ -275,15 +266,10 @@ export class MarketValueService {
   /**
    * Compare valuations of multiple players
    */
-  async compareValuations(
-    playerIds: string[],
-  ): Promise<ComparePlayersResponseDto> {
+  async compareValuations(playerIds: string[]): Promise<ComparePlayersResponseDto> {
     try {
       if (playerIds.length > 10) {
-        throw new HttpException(
-          'Maximum 10 players can be compared',
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException('Maximum 10 players can be compared', HttpStatus.BAD_REQUEST);
       }
 
       // Get valuations for all players
@@ -311,20 +297,12 @@ export class MarketValueService {
           });
 
           const appearances = player.scouting_reports.length;
-          const goals = this.estimateGoalsFromReports(
-            player.position,
-            player.scouting_reports,
-          );
-          const assists = this.estimateAssistsFromReports(
-            player.position,
-            player.scouting_reports,
-          );
+          const goals = this.estimateGoalsFromReports(player.position, player.scouting_reports);
+          const assists = this.estimateAssistsFromReports(player.position, player.scouting_reports);
           const avgRating =
             appearances > 0
-              ? player.scouting_reports.reduce(
-                  (sum, sr) => sum + (sr.overallRating || 0),
-                  0,
-                ) / appearances
+              ? player.scouting_reports.reduce((sum, sr) => sum + (sr.overallRating || 0), 0) /
+                appearances
               : 0;
 
           const age = player.dateOfBirth
@@ -355,13 +333,11 @@ export class MarketValueService {
       const highestValuePlayerId = comparisons.find(
         (c) => c.estimatedValue === highestValue,
       ).playerId;
-      const averageValue =
-        values.reduce((sum, v) => sum + v, 0) / values.length;
+      const averageValue = values.reduce((sum, v) => sum + v, 0) / values.length;
 
       // Calculate standard deviation
       const variance =
-        values.reduce((sum, v) => sum + Math.pow(v - averageValue, 2), 0) /
-        values.length;
+        values.reduce((sum, v) => sum + Math.pow(v - averageValue, 2), 0) / values.length;
       const valueStdDev = Math.sqrt(variance);
 
       return {
@@ -376,10 +352,7 @@ export class MarketValueService {
         throw error;
       }
       this.logger.error('Error comparing players:', error.message);
-      throw new HttpException(
-        'Could not compare players',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException('Could not compare players', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -400,15 +373,14 @@ export class MarketValueService {
 
       // Note: Cache doesn't have a reset() method in this version
       // Cached valuations will expire after 24 hours
-      this.logger.warn('Cache cannot be programmatically cleared - valuations will expire after 24h');
+      this.logger.warn(
+        'Cache cannot be programmatically cleared - valuations will expire after 24h',
+      );
 
       return response.data;
     } catch (error) {
       this.logger.error('Error triggering model retrain:', error.message);
-      throw new HttpException(
-        'Could not trigger model retraining',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException('Could not trigger model retraining', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
@@ -417,9 +389,7 @@ export class MarketValueService {
    */
   async checkAIServiceHealth(): Promise<any> {
     try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${this.aiServiceUrl}/health`),
-      );
+      const response = await firstValueFrom(this.httpService.get(`${this.aiServiceUrl}/health`));
       return response.data;
     } catch (error) {
       return {
@@ -445,8 +415,7 @@ export class MarketValueService {
 
     const multiplier = positionMultipliers[position] || 0.2;
     const avgTechnical =
-      reports.reduce((sum, r) => sum + (r.technicalRating || 7), 0) /
-      reports.length;
+      reports.reduce((sum, r) => sum + (r.technicalRating || 7), 0) / reports.length;
 
     return Math.round((reports.length * multiplier * avgTechnical) / 7);
   }
@@ -467,8 +436,7 @@ export class MarketValueService {
 
     const multiplier = positionMultipliers[position] || 0.2;
     const avgTactical =
-      reports.reduce((sum, r) => sum + (r.tacticalRating || 7), 0) /
-      reports.length;
+      reports.reduce((sum, r) => sum + (r.tacticalRating || 7), 0) / reports.length;
 
     return Math.round((reports.length * multiplier * avgTactical) / 7);
   }
@@ -500,8 +468,7 @@ export class MarketValueService {
 
     const now = new Date();
     const contract = new Date(contractUntil);
-    const yearsRemaining =
-      (contract.getTime() - now.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    const yearsRemaining = (contract.getTime() - now.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 
     return Math.max(0, Math.min(yearsRemaining, 5));
   }

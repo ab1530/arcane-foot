@@ -4,14 +4,16 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { STORAGE_KEYS } from '../constants/config';
-import { UserRole } from '../types';
 
 // Mock dependencies
 jest.mock('@react-native-async-storage/async-storage');
 jest.mock('../services/api', () => ({
   api: {
     setAuthToken: jest.fn(),
+    setAuthHandlers: jest.fn(),
     signup: jest.fn(),
+    getCurrentUser: jest.fn().mockRejectedValue(new Error('No current user mock')),
+    refreshAccessToken: jest.fn(),
   },
 }));
 
@@ -26,6 +28,13 @@ describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockAsyncStorage.getItem.mockResolvedValue(null);
+    mockAsyncStorage.setItem.mockResolvedValue(undefined);
+    mockAsyncStorage.multiSet.mockResolvedValue(undefined);
+    mockAsyncStorage.multiRemove.mockResolvedValue(undefined);
+    if (mockAsyncStorage.removeItem) {
+      mockAsyncStorage.removeItem.mockResolvedValue(undefined);
+    }
   });
 
   afterEach(() => {
@@ -37,7 +46,7 @@ describe('useAuth', () => {
     email: 'test@example.com',
     firstName: 'John',
     lastName: 'Doe',
-    role: UserRole.PLAYER,
+    role: 'PLAYER',
     createdAt: '2024-01-01T00:00:00Z',
   };
 
@@ -178,6 +187,7 @@ describe('useAuth', () => {
         password: signupData.password,
         firstName: signupData.firstName,
         lastName: signupData.lastName,
+        role: 'PUBLIC',
       });
       expect(result.current.user).toEqual(mockUser);
       expect(result.current.token).toBe(mockToken);
@@ -217,6 +227,7 @@ describe('useAuth', () => {
         password: signupData.password,
         firstName: 'Jane',
         lastName: 'Marie Smith',
+        role: 'PUBLIC',
       });
     });
 
@@ -308,6 +319,8 @@ describe('useAuth', () => {
       expect(mockAsyncStorage.multiRemove).toHaveBeenCalledWith([
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.REFRESH_TOKEN,
+        STORAGE_KEYS.ACTIVE_ROLE,
       ]);
       expect(result.current.user).toBeNull();
       expect(result.current.token).toBeNull();
@@ -402,6 +415,81 @@ describe('useAuth', () => {
       });
 
       expect(console.error).toHaveBeenCalledWith('Failed to update user:', error);
+    });
+  });
+
+  describe('Active Role', () => {
+    it('should auto-select single role', async () => {
+      mockAsyncStorage.getItem.mockImplementation((key) => {
+        if (key === STORAGE_KEYS.AUTH_TOKEN) return Promise.resolve(mockToken);
+        if (key === STORAGE_KEYS.USER_DATA) {
+          return Promise.resolve(JSON.stringify({ ...mockUser, role: 'PLAYER' }));
+        }
+        return Promise.resolve(null);
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.availableRoles).toEqual(['PLAYER']);
+      expect(result.current.activeRole).toBe('PLAYER');
+    });
+
+    it('should keep activeRole null for multi-role user without selection', async () => {
+      mockAsyncStorage.getItem.mockImplementation((key) => {
+        if (key === STORAGE_KEYS.AUTH_TOKEN) return Promise.resolve(mockToken);
+        if (key === STORAGE_KEYS.USER_DATA) {
+          return Promise.resolve(
+            JSON.stringify({
+              ...mockUser,
+              role: 'PLAYER',
+              roles: ['PLAYER', 'SCOUT'],
+            })
+          );
+        }
+        return Promise.resolve(null);
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.availableRoles).toEqual(['PLAYER', 'SCOUT']);
+      expect(result.current.activeRole).toBeNull();
+    });
+
+    it('should persist selected active role', async () => {
+      mockAsyncStorage.getItem.mockImplementation((key) => {
+        if (key === STORAGE_KEYS.AUTH_TOKEN) return Promise.resolve(mockToken);
+        if (key === STORAGE_KEYS.USER_DATA) {
+          return Promise.resolve(
+            JSON.stringify({
+              ...mockUser,
+              role: 'PLAYER',
+              roles: ['PLAYER', 'SCOUT'],
+            })
+          );
+        }
+        return Promise.resolve(null);
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      await act(async () => {
+        await result.current.setActiveRole('SCOUT');
+      });
+
+      expect(result.current.activeRole).toBe('SCOUT');
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(STORAGE_KEYS.ACTIVE_ROLE, 'SCOUT');
     });
   });
 

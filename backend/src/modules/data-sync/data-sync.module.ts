@@ -12,11 +12,7 @@ import { NormalizerUtil } from './mappers/normalizer.util';
 import { DataSyncCron } from './cron/data-sync.cron';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ConfigModule,
-    ScheduleModule.forRoot(),
-  ],
+  imports: [PrismaModule, ConfigModule, ScheduleModule.forRoot()],
   providers: [
     DataSyncService,
     ApiFootballService,

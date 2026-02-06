@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react
 import { Icon } from '../ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import type { ReportSection as ReportSectionType } from '../../types/auto-scout';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 interface ReportSectionProps {
   title: string;
@@ -17,6 +18,8 @@ export const ReportSection: React.FC<ReportSectionProps> = ({
   icon,
   defaultExpanded = false,
 }) => {
+  const { dictionary } = useLocalization();
+  const copy = dictionary.autoScout.wizard.preview.sectionDetails;
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const toggleExpanded = () => {
@@ -39,7 +42,7 @@ export const ReportSection: React.FC<ReportSectionProps> = ({
       stars.push(
         <Icon
           key="half"
-          name="starHalf"
+          name="star"
           size={16}
           color={colors.status.warning}
         />
@@ -96,7 +99,7 @@ export const ReportSection: React.FC<ReportSectionProps> = ({
           {/* Strengths */}
           {section.strengths.length > 0 && (
             <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Strengths</Text>
+              <Text style={styles.subsectionTitle}>{copy.strengths}</Text>
               <View style={styles.list}>
                 {section.strengths.map((strength, index) => (
                   <View key={index} style={styles.listItem}>
@@ -113,7 +116,7 @@ export const ReportSection: React.FC<ReportSectionProps> = ({
           {/* Weaknesses */}
           {section.weaknesses.length > 0 && (
             <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Weaknesses</Text>
+              <Text style={styles.subsectionTitle}>{copy.weaknesses}</Text>
               <View style={styles.list}>
                 {section.weaknesses.map((weakness, index) => (
                   <View key={index} style={styles.listItem}>
@@ -130,7 +133,7 @@ export const ReportSection: React.FC<ReportSectionProps> = ({
           {/* Details */}
           {section.details && (
             <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>Details</Text>
+              <Text style={styles.subsectionTitle}>{copy.details}</Text>
               <Text style={styles.detailsText}>{section.details}</Text>
             </View>
           )}

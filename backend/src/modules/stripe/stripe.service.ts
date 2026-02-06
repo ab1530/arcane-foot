@@ -110,7 +110,10 @@ export class StripeService {
    * @param immediately - Cancel immediately or at period end
    * @returns Cancelled subscription
    */
-  async cancelSubscription(subscriptionId: string, immediately: boolean = false): Promise<Stripe.Subscription> {
+  async cancelSubscription(
+    subscriptionId: string,
+    immediately: boolean = false,
+  ): Promise<Stripe.Subscription> {
     let subscription: Stripe.Subscription;
 
     if (immediately) {

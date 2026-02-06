@@ -15,32 +15,40 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeMode } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocalization, Language } from '../../contexts/LocalizationContext';
 import { GlassCard, GradientText } from '../../components/ui';
 import { spacing, typography, radius } from '../../design/theme';
 
 export const SettingsScreen = ({ navigation }: any) => {
   const { themeMode, setThemeMode, colors, isDark } = useTheme();
   const { user, logout } = useAuth();
+  const { language, setLanguage, dictionary } = useLocalization();
+  const t = dictionary.settings;
 
   const handleThemeChange = (mode: ThemeMode) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setThemeMode(mode);
   };
 
+  const handleLanguageChange = async (lang: Language) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await setLanguage(lang);
+  };
+
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t.logout.alertTitle,
+      t.logout.alertMessage,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.logout.cancel, style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: t.logout.confirm,
           style: 'destructive',
           onPress: async () => {
             await logout();
             navigation.reset({
               index: 0,
-              routes: [{ name: 'Auth' }],
+              routes: [{ name: 'Login' }],
             });
           },
         },
@@ -50,12 +58,12 @@ export const SettingsScreen = ({ navigation }: any) => {
 
   const handleClearCache = async () => {
     Alert.alert(
-      'Vider le cache',
-      'Cela supprimera toutes les données temporaires. Continuer ?',
+      t.sections.data.clearCache.alertTitle,
+      t.sections.data.clearCache.alertMessage,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: dictionary.common.actions.cancel, style: 'cancel' },
         {
-          text: 'Vider',
+          text: dictionary.common.actions.delete,
           style: 'destructive',
           onPress: async () => {
             try {
@@ -63,9 +71,9 @@ export const SettingsScreen = ({ navigation }: any) => {
               const keysToKeep = ['@arcane_theme_mode', '@arcane_favorite_players', '@arcane_auth_token'];
               const keysToRemove = keys.filter(key => !keysToKeep.includes(key));
               await AsyncStorage.multiRemove(keysToRemove);
-              Alert.alert('Succès', 'Le cache a été vidé avec succès');
+              Alert.alert(t.sections.data.clearCache.successTitle, t.sections.data.clearCache.successMessage);
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de vider le cache');
+              Alert.alert(t.sections.data.clearCache.errorTitle, t.sections.data.clearCache.errorMessage);
             }
           },
         },
@@ -75,70 +83,102 @@ export const SettingsScreen = ({ navigation }: any) => {
 
   const settingSections = [
     {
-      title: 'Apparence',
+      title: t.sections.appearance.title,
       icon: 'color-palette',
       items: [
         {
           id: 'theme',
-          title: 'Thème',
-          subtitle: 'Choisir le thème de l\'application',
+          title: t.sections.appearance.theme.title,
+          subtitle: t.sections.appearance.theme.subtitle,
           type: 'theme-selector' as const,
         },
       ],
     },
+    ...(__DEV__ ? [{
+      title: 'Developer Tools',
+      icon: 'code-slash',
+      items: [
+        {
+          id: 'logging_test',
+          title: 'Logging Test',
+          subtitle: 'Test all logging functionality',
+          type: 'navigation' as const,
+          target: 'LoggingTest',
+        },
+        {
+          id: 'log_console',
+          title: 'Log Console',
+          subtitle: 'View and search app logs',
+          type: 'navigation' as const,
+          target: 'LogConsole',
+        },
+      ],
+    }] : []),
     {
-      title: 'Notifications',
+      title: t.sections.language.title,
+      icon: 'language',
+      items: [
+        {
+          id: 'language',
+          title: t.sections.language.subtitle,
+          subtitle: t.sections.language.description,
+          type: 'language-selector' as const,
+        },
+      ],
+    },
+    {
+      title: t.sections.notifications.title,
       icon: 'notifications',
       items: [
         {
           id: 'push',
-          title: 'Notifications push',
-          subtitle: 'Recevoir des alertes',
+          title: t.sections.notifications.push.title,
+          subtitle: t.sections.notifications.push.subtitle,
           type: 'switch' as const,
           value: true,
         },
         {
           id: 'match_reminders',
-          title: 'Rappels de matchs',
-          subtitle: 'Alertes avant les matchs',
+          title: t.sections.notifications.matchReminders.title,
+          subtitle: t.sections.notifications.matchReminders.subtitle,
           type: 'switch' as const,
           value: true,
         },
       ],
     },
     {
-      title: 'Données',
+      title: t.sections.data.title,
       icon: 'server',
       items: [
         {
           id: 'clear_cache',
-          title: 'Vider le cache',
-          subtitle: 'Libérer de l\'espace',
+          title: t.sections.data.clearCache.title,
+          subtitle: t.sections.data.clearCache.subtitle,
           type: 'action' as const,
           action: handleClearCache,
         },
       ],
     },
     {
-      title: 'À propos',
+      title: t.sections.about.title,
       icon: 'information-circle',
       items: [
         {
           id: 'version',
-          title: 'Version',
-          subtitle: '1.0.0',
+          title: t.sections.about.version.title,
+          subtitle: t.sections.about.version.value,
           type: 'info' as const,
         },
         {
           id: 'terms',
-          title: 'Conditions d\'utilisation',
-          subtitle: 'Lire les CGU',
+          title: t.sections.about.terms.title,
+          subtitle: t.sections.about.terms.subtitle,
           type: 'link' as const,
         },
         {
           id: 'privacy',
-          title: 'Politique de confidentialité',
-          subtitle: 'Gestion de vos données',
+          title: t.sections.about.privacy.title,
+          subtitle: t.sections.about.privacy.subtitle,
           type: 'link' as const,
         },
       ],
@@ -147,9 +187,9 @@ export const SettingsScreen = ({ navigation }: any) => {
 
   const ThemeSelector = () => {
     const themes: { mode: ThemeMode; label: string; icon: string }[] = [
-      { mode: 'light', label: 'Clair', icon: 'sunny' },
-      { mode: 'dark', label: 'Sombre', icon: 'moon' },
-      { mode: 'system', label: 'Système', icon: 'phone-portrait' },
+      { mode: 'light', label: t.sections.appearance.theme.options.light, icon: 'sunny' },
+      { mode: 'dark', label: t.sections.appearance.theme.options.dark, icon: 'moon' },
+      { mode: 'system', label: t.sections.appearance.theme.options.system, icon: 'phone-portrait' },
     ];
 
     return (
@@ -192,10 +232,55 @@ export const SettingsScreen = ({ navigation }: any) => {
     );
   };
 
+  const LanguageSelector = () => {
+    const languages: { lang: Language; label: string; flag: string }[] = [
+      { lang: 'fr', label: t.sections.language.options.fr, flag: '🇫🇷' },
+      { lang: 'en', label: t.sections.language.options.en, flag: '🇬🇧' },
+    ];
+
+    return (
+      <View style={styles.languageSelector}>
+        {languages.map((lang) => {
+          const isSelected = language === lang.lang;
+          return (
+            <TouchableOpacity
+              key={lang.lang}
+              style={[
+                styles.languageOption,
+                { backgroundColor: colors.glass },
+                isSelected && {
+                  borderColor: colors.accent,
+                  backgroundColor: colors.glassLight,
+                },
+              ]}
+              onPress={() => handleLanguageChange(lang.lang)}
+            >
+              {isSelected && (
+                <View style={[styles.selectedIndicator, { backgroundColor: colors.accent }]} />
+              )}
+              <Text style={styles.languageFlag}>{lang.flag}</Text>
+              <Text
+                style={[
+                  styles.languageLabel,
+                  { color: isSelected ? colors.accent : colors.textSecondary },
+                ]}
+              >
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderSettingItem = (item: any) => {
     switch (item.type) {
       case 'theme-selector':
         return <ThemeSelector />;
+
+      case 'language-selector':
+        return <LanguageSelector />;
 
       case 'switch':
         return (
@@ -218,6 +303,11 @@ export const SettingsScreen = ({ navigation }: any) => {
         );
 
       case 'link':
+        return (
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        );
+
+      case 'navigation':
         return (
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         );
@@ -255,7 +345,7 @@ export const SettingsScreen = ({ navigation }: any) => {
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <GradientText variant="arcane" style={styles.headerTitle}>
-            Paramètres
+            {t.title}
           </GradientText>
           <View style={{ width: 40 }} />
         </View>
@@ -274,10 +364,10 @@ export const SettingsScreen = ({ navigation }: any) => {
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: colors.textPrimary }]}>
-              {user?.name || 'Utilisateur'}
+              {user?.name || t.profile.defaultName}
             </Text>
             <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
-              {user?.email || 'email@example.com'}
+              {user?.email || t.profile.defaultEmail}
             </Text>
           </View>
           <TouchableOpacity
@@ -301,7 +391,7 @@ export const SettingsScreen = ({ navigation }: any) => {
             <GlassCard variant="default" style={styles.sectionCard}>
               {section.items.map((item, index) => (
                 <View key={item.id}>
-                  {item.type === 'theme-selector' ? (
+                  {item.type === 'theme-selector' || item.type === 'language-selector' ? (
                     <View style={styles.themeItem}>
                       <View style={styles.itemLeft}>
                         <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>
@@ -325,6 +415,9 @@ export const SettingsScreen = ({ navigation }: any) => {
                       onPress={() => {
                         if (item.type === 'action' && item.action) {
                           item.action();
+                        } else if (item.type === 'navigation' && item.target) {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          navigation.navigate(item.target);
                         } else {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         }
@@ -355,7 +448,7 @@ export const SettingsScreen = ({ navigation }: any) => {
         >
           <Ionicons name="log-out-outline" size={24} color={colors.error} />
           <Text style={[styles.logoutText, { color: colors.error }]}>
-            Déconnexion
+            {t.logout.button}
           </Text>
         </TouchableOpacity>
 
@@ -489,6 +582,28 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   themeLabel: {
+    fontSize: typography.sizes.xs,
+    marginTop: 4,
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  languageOption: {
+    flex: 1,
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    position: 'relative',
+  },
+  languageFlag: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  languageLabel: {
     fontSize: typography.sizes.xs,
     marginTop: 4,
   },

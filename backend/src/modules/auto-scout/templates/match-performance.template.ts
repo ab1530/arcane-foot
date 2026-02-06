@@ -1,8 +1,13 @@
 import { ReportTemplate, ReportType } from '../interfaces/report.interface';
 
 export const matchPerformanceTemplate: ReportTemplate = {
-  name: 'Match Performance Report',
+  id: 'match-performance',
+  name: 'Match Performance',
   description: 'Detailed analysis of player performance in a specific match',
+  icon: 'football',
+  useCase: 'Post-match analysis',
+  estimatedCost: '$0.024',
+  reportType: ReportType.MATCH_PERFORMANCE,
   sections: [
     {
       name: 'Match Overview',

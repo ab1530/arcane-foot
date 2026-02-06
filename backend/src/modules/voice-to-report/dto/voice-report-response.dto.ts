@@ -41,16 +41,25 @@ export class ExtractedReportData {
   @ApiPropertyOptional({ description: 'Overall rating (0-100)', example: 84 })
   overallRating?: number;
 
-  @ApiPropertyOptional({ description: 'Player strengths', example: 'Excellent positioning, strong in the air' })
+  @ApiPropertyOptional({
+    description: 'Player strengths',
+    example: 'Excellent positioning, strong in the air',
+  })
   strengths?: string;
 
   @ApiPropertyOptional({ description: 'Player weaknesses', example: 'Can be slow to turn' })
   weaknesses?: string;
 
-  @ApiPropertyOptional({ description: 'Key moments during match', example: 'Crucial block in 67th minute' })
+  @ApiPropertyOptional({
+    description: 'Key moments during match',
+    example: 'Crucial block in 67th minute',
+  })
   keyMoments?: string;
 
-  @ApiPropertyOptional({ description: 'General observations', example: 'Top-quality defender with Champions League potential' })
+  @ApiPropertyOptional({
+    description: 'General observations',
+    example: 'Top-quality defender with Champions League potential',
+  })
   observations?: string;
 
   @ApiPropertyOptional({ description: 'Minutes played', example: 90 })
@@ -63,12 +72,18 @@ export class ExtractedReportData {
   })
   recommendation?: RecommendationType;
 
-  @ApiPropertyOptional({ description: 'Tags extracted from report', example: ['fast', 'technical', 'leader'] })
+  @ApiPropertyOptional({
+    description: 'Tags extracted from report',
+    example: ['fast', 'technical', 'leader'],
+  })
   tags?: string[];
 }
 
 export class VoiceReportResponseDto {
-  @ApiProperty({ description: 'Transcribed text from audio', example: 'This is a scouting report for...' })
+  @ApiProperty({
+    description: 'Transcribed text from audio',
+    example: 'This is a scouting report for...',
+  })
   transcription: string;
 
   @ApiProperty({ description: 'Extracted scouting report data', type: ExtractedReportData })
@@ -77,16 +92,28 @@ export class VoiceReportResponseDto {
   @ApiProperty({ description: 'Confidence score of extraction (0-100)', example: 92 })
   confidence: number;
 
-  @ApiProperty({ description: 'Suggestions for improving the report', example: ['Add more details about tactical awareness'] })
+  @ApiProperty({
+    description: 'Suggestions for improving the report',
+    example: ['Add more details about tactical awareness'],
+  })
   suggestions: string[];
 
-  @ApiPropertyOptional({ description: 'Audio URL if saved', example: 'https://storage.example.com/audio/report-123.mp3' })
+  @ApiPropertyOptional({
+    description: 'Audio URL if saved',
+    example: 'https://storage.example.com/audio/report-123.mp3',
+  })
   audioUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Whether client-side transcription is needed', example: false })
+  @ApiPropertyOptional({
+    description: 'Whether client-side transcription is needed',
+    example: false,
+  })
   useClientSide?: boolean;
 
-  @ApiPropertyOptional({ description: 'Warnings about missing or invalid data', example: ['No match date specified'] })
+  @ApiPropertyOptional({
+    description: 'Warnings about missing or invalid data',
+    example: ['No match date specified'],
+  })
   warnings?: string[];
 
   @ApiProperty({ description: 'Language detected or used', example: 'en' })

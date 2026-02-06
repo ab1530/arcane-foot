@@ -4,7 +4,6 @@ import { GenerateSummaryDto, MatchmakingRequestDto } from './dto/ai.dto';
 import { PlayersService } from '../players/players.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
-import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class AiService {
@@ -24,12 +23,13 @@ export class AiService {
 
   async generateSummary(dto: GenerateSummaryDto) {
     try {
-      const response = await this.post<{ summary: string; confidence?: number; tokens_used?: number }>(
-        '/summary',
-        {
-          prompt: dto.prompt,
-        },
-      );
+      const response = await this.post<{
+        summary: string;
+        confidence?: number;
+        tokens_used?: number;
+      }>('/summary', {
+        prompt: dto.prompt,
+      });
 
       return {
         summary: response.summary,
@@ -58,7 +58,7 @@ export class AiService {
       }
 
       // Extract metrics from player data
-      const statsJson = player.statsJson as any || {};
+      const statsJson = (player.statsJson as any) || {};
 
       // Parse stats with sensible defaults
       const metrics = {
@@ -70,7 +70,9 @@ export class AiService {
         potential: this.parseStatValue(statsJson.potential, 50),
       };
 
-      this.logger.log(`Fetching AI index for player ${playerId} with metrics: ${JSON.stringify(metrics)}`);
+      this.logger.log(
+        `Fetching AI index for player ${playerId} with metrics: ${JSON.stringify(metrics)}`,
+      );
 
       const response = await this.post<{
         player_id: string;
@@ -138,14 +140,13 @@ export class AiService {
     }
 
     try {
-      const response = await this.post<{ matches: Array<{ player_id: string; club_id: string; score: number }> }>(
-        '/matchmaking',
-        {
-          players,
-          clubs,
-          top: 5,
-        },
-      );
+      const response = await this.post<{
+        matches: Array<{ player_id: string; club_id: string; score: number }>;
+      }>('/matchmaking', {
+        players,
+        clubs,
+        top: 5,
+      });
 
       return {
         matches: response.matches,
@@ -233,7 +234,7 @@ export class AiService {
       potentialAbility: Math.min(100, performanceScore + (100 - ageScore) * 0.3),
       peakAge: this.predictPeakAge(player.position),
       developmentCurve: this.generateDevelopmentCurve(player),
-      confidence: 0.75 + (consistencyScore * 0.25),
+      confidence: 0.75 + consistencyScore * 0.25,
       factors: {
         age: ageScore,
         performance: performanceScore,
@@ -265,7 +266,7 @@ export class AiService {
       include: { players: true },
     });
 
-    const matches = clubs.map(club => ({
+    const matches = clubs.map((club) => ({
       clubId: club.id,
       clubName: club.name,
       compatibilityScore: this.calculateCompatibility(player, club),
@@ -311,7 +312,7 @@ export class AiService {
     }
 
     // Check for unrealistic stats
-    const statsJson = player.statsJson as any || {};
+    const statsJson = (player.statsJson as any) || {};
     if (this.hasUnrealisticStats(statsJson)) {
       suspicionFactors.push('Unrealistic performance statistics');
       suspicionScore += 30;
@@ -341,16 +342,19 @@ export class AiService {
       suspicionScore: Math.min(100, suspicionScore),
       isSuspicious: suspicionScore > 50,
       factors: suspicionFactors,
-      recommendation: suspicionScore > 70 ? 'REVIEW_IMMEDIATELY' :
-                     suspicionScore > 50 ? 'FLAG_FOR_REVIEW' :
-                     'APPEARS_LEGITIMATE',
+      recommendation:
+        suspicionScore > 70
+          ? 'REVIEW_IMMEDIATELY'
+          : suspicionScore > 50
+            ? 'FLAG_FOR_REVIEW'
+            : 'APPEARS_LEGITIMATE',
       checkedAt: new Date(),
     };
   }
 
   // Helper methods for calculations
   private calculateOverallRating(player: any): number {
-    const statsJson = player.statsJson as any || {};
+    const statsJson = (player.statsJson as any) || {};
     const ratings = [
       statsJson.technical || 50,
       statsJson.physical || 50,
@@ -361,7 +365,7 @@ export class AiService {
   }
 
   private analyzeStrengthsWeaknesses(player: any) {
-    const statsJson = player.statsJson as any || {};
+    const statsJson = (player.statsJson as any) || {};
     const attributes = {
       technical: statsJson.technical || 50,
       physical: statsJson.physical || 50,
@@ -420,8 +424,10 @@ export class AiService {
     if (!olderReports.length) return 'STABLE';
 
     // Compare average ratings
-    const recentAvg = recentReports.reduce((sum, r) => sum + (r.overallRating || 50), 0) / recentReports.length;
-    const olderAvg = olderReports.reduce((sum, r) => sum + (r.overallRating || 50), 0) / olderReports.length;
+    const recentAvg =
+      recentReports.reduce((sum, r) => sum + (r.overallRating || 50), 0) / recentReports.length;
+    const olderAvg =
+      olderReports.reduce((sum, r) => sum + (r.overallRating || 50), 0) / olderReports.length;
 
     if (recentAvg > olderAvg + 5) return 'IMPROVING';
     if (recentAvg < olderAvg - 5) return 'DECLINING';
@@ -430,7 +436,7 @@ export class AiService {
 
   private generateRecommendations(player: any): string[] {
     const recommendations = [];
-    const statsJson = player.statsJson as any || {};
+    const statsJson = (player.statsJson as any) || {};
 
     if (statsJson.physical < 60) {
       recommendations.push('Focus on physical conditioning');
@@ -471,7 +477,7 @@ export class AiService {
     return this.calculateOverallRating(player);
   }
 
-  private calculateConsistencyScore(player: any): number {
+  private calculateConsistencyScore(_player: any): number {
     // Simplified consistency score
     return 0.7 + Math.random() * 0.3;
   }
@@ -486,11 +492,16 @@ export class AiService {
 
   private predictPeakAge(position: string): number {
     switch (position) {
-      case 'GOALKEEPER': return 32;
-      case 'DEFENDER': return 29;
-      case 'MIDFIELDER': return 28;
-      case 'FORWARD': return 27;
-      default: return 28;
+      case 'GOALKEEPER':
+        return 32;
+      case 'DEFENDER':
+        return 29;
+      case 'MIDFIELDER':
+        return 28;
+      case 'FORWARD':
+        return 27;
+      default:
+        return 28;
     }
   }
 
@@ -522,13 +533,13 @@ export class AiService {
     return Math.min(100, score);
   }
 
-  private assessTacticalFit(player: any, club: any): string {
+  private assessTacticalFit(_player: any, _club: any): string {
     // Simplified tactical assessment
     const fits = ['PERFECT', 'GOOD', 'MODERATE', 'POOR'];
     return fits[Math.floor(Math.random() * fits.length)];
   }
 
-  private assessFinancialFit(player: any, club: any): boolean {
+  private assessFinancialFit(_player: any, _club: any): boolean {
     // Simplified financial assessment
     return Math.random() > 0.3;
   }
@@ -542,7 +553,7 @@ export class AiService {
 
   private assessPositionNeed(position: string, club: any): number {
     // Count players in position
-    const playersInPosition = club.players?.filter(p => p.position === position).length || 0;
+    const playersInPosition = club.players?.filter((p) => p.position === position).length || 0;
 
     if (playersInPosition === 0) return 1;
     if (playersInPosition < 2) return 0.7;
@@ -553,10 +564,10 @@ export class AiService {
   private hasUnrealisticStats(stats: any): boolean {
     if (!stats) return false;
 
-    const values = Object.values(stats).filter(v => typeof v === 'number') as number[];
+    const values = Object.values(stats).filter((v) => typeof v === 'number') as number[];
 
     // Check if all stats are maxed out (suspicious)
-    if (values.every(v => v > 95)) return true;
+    if (values.every((v) => v > 95)) return true;
 
     // Check if stats are too uniform (suspicious)
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -582,9 +593,9 @@ export class AiService {
     });
 
     // Filter by similar names
-    return similar.filter(p =>
-      p.users.firstName === player.users.firstName &&
-      p.users.lastName === player.users.lastName
+    return similar.filter(
+      (p) =>
+        p.users.firstName === player.users.firstName && p.users.lastName === player.users.lastName,
     );
   }
 

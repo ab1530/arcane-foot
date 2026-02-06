@@ -57,6 +57,7 @@ export interface SearchListingsFilters {
   verifiedOnly?: boolean;
   page?: number;
   limit?: number;
+  ids?: string[];
 }
 
 export interface MarketplaceOffer {

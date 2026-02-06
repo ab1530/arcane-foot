@@ -1,6 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchStatus } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -25,10 +26,7 @@ export class PerformancePredictorService {
   /**
    * Predict performance for a single player in an upcoming match
    */
-  async predictPerformance(
-    playerId: string,
-    matchId: string,
-  ): Promise<PerformancePredictionDto> {
+  async predictPerformance(playerId: string, matchId: string): Promise<PerformancePredictionDto> {
     this.logger.log(`Predicting performance for player ${playerId} in match ${matchId}`);
 
     // Fetch player with history
@@ -58,12 +56,18 @@ export class PerformancePredictorService {
     const seasonStats = await this.getSeasonStats(playerId, match.season);
 
     // Prepare request for AI service
+    const opponentStrength =
+      player.clubId &&
+      (player.clubId === match.homeClubId || player.clubId === match.awayClubId)
+        ? await this.calculateOpponentStrength(match, player.clubId)
+        : 3;
+
     const requestData: PredictionRequestDto = {
       playerId: player.id,
       matchContext: {
         venue: player.clubId === match.homeClubId ? 'home' : 'away',
         importance: this.getMatchImportance(match),
-        opponent_strength: 3, // TODO: Calculate based on league position/historical results
+        opponent_strength: opponentStrength,
         days_rest: await this.getDaysSinceLastMatch(playerId),
         season_progress: this.getSeasonProgress(match.scheduledAt),
         playing_position: player.position,
@@ -93,10 +97,7 @@ export class PerformancePredictorService {
       return prediction;
     } catch (error) {
       this.logger.error(`AI service error: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Prediction service unavailable',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException('Prediction service unavailable', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
@@ -133,6 +134,54 @@ export class PerformancePredictorService {
     );
 
     return predictions;
+  }
+
+  private async calculateOpponentStrength(match: any, playerClubId: string): Promise<number> {
+    const opponentClubId =
+      playerClubId === match.homeClubId ? match.awayClubId : match.homeClubId;
+
+    if (!opponentClubId) {
+      return 3;
+    }
+
+    const completedMatches = await this.prisma.matches.findMany({
+      where: {
+        season: match.season,
+        status: MatchStatus.COMPLETED,
+        OR: [{ homeClubId: opponentClubId }, { awayClubId: opponentClubId }],
+        homeScore: { not: null },
+        awayScore: { not: null },
+      },
+      select: {
+        homeClubId: true,
+        awayClubId: true,
+        homeScore: true,
+        awayScore: true,
+      },
+    });
+
+    if (completedMatches.length === 0) {
+      return 3;
+    }
+
+    let points = 0;
+    for (const completed of completedMatches) {
+      const isHome = completed.homeClubId === opponentClubId;
+      const homeScore = completed.homeScore ?? 0;
+      const awayScore = completed.awayScore ?? 0;
+
+      if (homeScore === awayScore) {
+        points += 1;
+      } else if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) {
+        points += 3;
+      }
+    }
+
+    const maxPoints = completedMatches.length * 3;
+    const ratio = maxPoints > 0 ? points / maxPoints : 0.5;
+    const normalized = 1 + ratio * 4;
+
+    return Number(normalized.toFixed(1));
   }
 
   /**
@@ -173,10 +222,7 @@ export class PerformancePredictorService {
       return response.data.features;
     } catch (error) {
       this.logger.error(`Failed to get feature importance: ${error.message}`);
-      throw new HttpException(
-        'Feature importance unavailable',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException('Feature importance unavailable', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
@@ -262,11 +308,19 @@ export class PerformancePredictorService {
       };
     }
 
-    const avgTechnical = this.avg(seasonReports.map((r) => r.technicalRating).filter((v) => v !== null));
-    const avgTactical = this.avg(seasonReports.map((r) => r.tacticalRating).filter((v) => v !== null));
-    const avgPhysical = this.avg(seasonReports.map((r) => r.physicalRating).filter((v) => v !== null));
+    const avgTechnical = this.avg(
+      seasonReports.map((r) => r.technicalRating).filter((v) => v !== null),
+    );
+    const avgTactical = this.avg(
+      seasonReports.map((r) => r.tacticalRating).filter((v) => v !== null),
+    );
+    const avgPhysical = this.avg(
+      seasonReports.map((r) => r.physicalRating).filter((v) => v !== null),
+    );
     const avgMental = this.avg(seasonReports.map((r) => r.mentalRating).filter((v) => v !== null));
-    const avgMinutes = this.avg(seasonReports.map((r) => r.playerMinutesPlayed).filter((v) => v !== null));
+    const avgMinutes = this.avg(
+      seasonReports.map((r) => r.playerMinutesPlayed).filter((v) => v !== null),
+    );
 
     return {
       avg_minutes: avgMinutes || 90,
@@ -284,7 +338,7 @@ export class PerformancePredictorService {
       'Primera División': 4,
       'Premier League': 4,
       'Serie A': 4,
-      'Bundesliga': 4,
+      Bundesliga: 4,
       'Ligue 1': 4,
       'FA Cup': 3,
       'Copa del Rey': 3,
@@ -427,7 +481,9 @@ export class PerformancePredictorService {
             },
           });
 
-          this.logger.log(`Updated prediction ${prediction.id} with actual rating ${actualReport.overallRating}`);
+          this.logger.log(
+            `Updated prediction ${prediction.id} with actual rating ${actualReport.overallRating}`,
+          );
         }
       }
 

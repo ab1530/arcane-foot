@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { PassportService } from './passport.service';
 import { CreatePassportDto, VerifyPassportDto } from './dto/passport.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -20,6 +30,13 @@ export class PassportController {
     );
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyPassport(@Request() req) {
+    const userId = req.user.userId || req.user.id;
+    return this.passportService.getPassportForUser(userId);
+  }
+
   @Get('player/:playerId')
   @UseGuards(JwtAuthGuard)
   async getPassportByPlayer(@Param('playerId') playerId: string) {
@@ -30,7 +47,7 @@ export class PassportController {
   async getPassportByToken(@Param('token') token: string) {
     const passport = await this.passportService.getPassportByToken(token);
     const qrCode = await this.passportService.generateQRCode(passport.publicToken);
-    
+
     return {
       ...passport,
       qrCodeUrl: qrCode,

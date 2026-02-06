@@ -1,13 +1,16 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { HealthService } from './health.service';
 
 @ApiTags('Health')
 @Controller('health')
+@SkipThrottle() // Skip rate limiting for health endpoints
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
+  @SkipThrottle() // Skip rate limiting for health check
   @ApiOperation({
     summary: 'Health check',
     description: 'Returns overall health status including database and external services',
@@ -19,6 +22,7 @@ export class HealthController {
   }
 
   @Get('ready')
+  @SkipThrottle() // Skip rate limiting for readiness check
   @ApiOperation({
     summary: 'Readiness check',
     description: 'Checks if the service is ready to accept traffic',
@@ -30,6 +34,7 @@ export class HealthController {
   }
 
   @Get('live')
+  @SkipThrottle() // Skip rate limiting for liveness check
   @ApiOperation({
     summary: 'Liveness check',
     description: 'Checks if the service is alive and running',

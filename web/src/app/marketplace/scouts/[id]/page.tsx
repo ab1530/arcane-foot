@@ -13,6 +13,7 @@ import { ScoutStats } from "@/components/marketplace/scout/ScoutStats";
 import { ScoutExpertiseBadge } from "@/components/marketplace/scout/ScoutExpertiseBadge";
 import { RatingDistribution } from "@/components/marketplace/scout/RatingDistribution";
 import { ReviewList } from "@/components/marketplace/reviews/ReviewList";
+import { SendOfferModal } from "@/components/marketplace/offers/SendOfferModal";
 import { ScoutListing, Review, ReviewStats } from "@/types/marketplace";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/contexts/auth-context";
@@ -32,6 +33,7 @@ export default function ScoutProfileDetailPage() {
   const [favoriteId, setFavoriteId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchScoutData = async () => {
@@ -99,8 +101,15 @@ export default function ScoutProfileDetailPage() {
   };
 
   const handleSendOffer = () => {
-    // TODO: Open modal or navigate to offer form
-    alert("Send Offer feature coming soon!");
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (user.accountType !== "club") {
+      alert("Only clubs can send offers");
+      return;
+    }
+    setOfferModalOpen(true);
   };
 
   const getLanguageFlag = (language: string) => {
@@ -240,6 +249,13 @@ export default function ScoutProfileDetailPage() {
             </div>
           </div>
         </GlassCard>
+
+        <SendOfferModal
+          isOpen={offerModalOpen}
+          onClose={() => setOfferModalOpen(false)}
+          scoutId={scout.id}
+          scoutName={`${scout.users.firstName} ${scout.users.lastName}`}
+        />
 
         {/* Stats Cards */}
         <ScoutStats

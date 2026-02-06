@@ -9,12 +9,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { KanbanService } from './kanban.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { CreateColumnDto } from './dto/create-column.dto';
@@ -148,7 +143,7 @@ export class KanbanController {
   }
 
   @Get('cards/:id/activities')
-  @ApiOperation({ summary: 'Obtenir l\'historique des activités d\'une carte' })
+  @ApiOperation({ summary: "Obtenir l'historique des activités d'une carte" })
   @ApiResponse({ status: 200, description: 'Liste des activités' })
   getCardActivities(@Param('id') id: string) {
     return this.kanbanService.getCardActivities(id);

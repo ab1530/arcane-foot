@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from '../stripe/stripe.service';
@@ -107,9 +112,8 @@ export class CoachingService {
         .filter((b) => b.userRating !== null)
         .map((b) => b.userRating!);
 
-      const averageRating = ratings.length > 0
-        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
-        : null;
+      const averageRating =
+        ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
       return {
         ...coach,
@@ -168,9 +172,8 @@ export class CoachingService {
       .filter((b) => b.userRating !== null)
       .map((b) => b.userRating!);
 
-    const averageRating = ratings.length > 0
-      ? ratings.reduce((a, b) => a + b, 0) / ratings.length
-      : null;
+    const averageRating =
+      ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
     return {
       ...coach,
@@ -245,12 +248,15 @@ export class CoachingService {
     }
 
     if (!coach.isActive) {
-      throw new BadRequestException('Ce coach n\'est pas disponible actuellement');
+      throw new BadRequestException("Ce coach n'est pas disponible actuellement");
     }
 
     // Vérifier le tier minimum requis
     if (coach.minTierRequired) {
-      const hasAccess = await this.subscriptionsService.hasMinimumTier(userId, coach.minTierRequired);
+      const hasAccess = await this.subscriptionsService.hasMinimumTier(
+        userId,
+        coach.minTierRequired,
+      );
       if (!hasAccess) {
         throw new ForbiddenException(
           `Ce coach nécessite un abonnement ${coach.minTierRequired} ou supérieur`,
@@ -357,7 +363,7 @@ export class CoachingService {
     }
 
     if (booking.userId !== userId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à voir cette réservation');
+      throw new ForbiddenException("Vous n'êtes pas autorisé à voir cette réservation");
     }
 
     return booking;
@@ -376,11 +382,11 @@ export class CoachingService {
     }
 
     if (booking.userId !== userId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à annuler cette réservation');
+      throw new ForbiddenException("Vous n'êtes pas autorisé à annuler cette réservation");
     }
 
     if (booking.status === CoachingBookingStatus.COMPLETED) {
-      throw new BadRequestException('Impossible d\'annuler une séance terminée');
+      throw new BadRequestException("Impossible d'annuler une séance terminée");
     }
 
     if (booking.status === CoachingBookingStatus.CANCELLED) {
@@ -411,11 +417,11 @@ export class CoachingService {
     }
 
     if (booking.userId !== userId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à noter cette réservation');
+      throw new ForbiddenException("Vous n'êtes pas autorisé à noter cette réservation");
     }
 
     if (booking.status !== CoachingBookingStatus.COMPLETED) {
-      throw new BadRequestException('Vous ne pouvez noter qu\'une séance terminée');
+      throw new BadRequestException("Vous ne pouvez noter qu'une séance terminée");
     }
 
     const updated = await this.prisma.coaching_bookings.update({

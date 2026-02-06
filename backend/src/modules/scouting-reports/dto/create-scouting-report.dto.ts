@@ -4,11 +4,13 @@ import {
   IsNotEmpty,
   IsOptional,
   IsInt,
+  IsNumber,
   IsEnum,
   IsArray,
   Min,
   Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ReportStatus, RecommendationType } from '@prisma/client';
 
 export class CreateScoutingReportDto {
@@ -129,4 +131,83 @@ export class CreateScoutingReportDto {
   @IsString()
   @IsOptional()
   playerPosition?: string;
+
+  @ApiPropertyOptional({ description: 'Analyse technique avec ballon' })
+  @IsString()
+  @IsOptional()
+  withBallAnalysis?: string;
+
+  @ApiPropertyOptional({ description: 'Analyse du jeu sans ballon' })
+  @IsString()
+  @IsOptional()
+  offBallAnalysis?: string;
+
+  @ApiPropertyOptional({ description: "Analyse de l'intelligence de jeu" })
+  @IsString()
+  @IsOptional()
+  gameIntelligenceAnalysis?: string;
+
+  @ApiPropertyOptional({ description: "Analyse de l'attitude du joueur" })
+  @IsString()
+  @IsOptional()
+  attitudeAnalysis?: string;
+
+  @ApiPropertyOptional({ description: 'Avis consolidé du staff' })
+  @IsString()
+  @IsOptional()
+  staffOpinion?: string;
+
+  @ApiPropertyOptional({ description: 'Pied fort observé pendant le match' })
+  @IsString()
+  @IsOptional()
+  observedDominantFoot?: string;
+
+  @ApiPropertyOptional({ description: 'Taille observée (cm)', minimum: 100, maximum: 260 })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(260)
+  observedHeightCm?: number;
+
+  @ApiPropertyOptional({ description: 'Poids observé (kg)', minimum: 30, maximum: 200 })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  @Min(30)
+  @Max(200)
+  observedWeightKg?: number;
+
+  @ApiPropertyOptional({ description: 'Nom du club observé lors du match' })
+  @IsString()
+  @IsOptional()
+  observedClubName?: string;
+
+  @ApiPropertyOptional({ description: 'Sprint 10m (secondes)', minimum: 0 })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
+  @Min(0)
+  sprint10mSec?: number;
+
+  @ApiPropertyOptional({ description: 'Sprint 20m (secondes)', minimum: 0 })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
+  @Min(0)
+  sprint20mSec?: number;
+
+  @ApiPropertyOptional({ description: 'Sprint 40m (secondes)', minimum: 0 })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
+  @Min(0)
+  sprint40mSec?: number;
+
+  @ApiPropertyOptional({ description: 'VMA (km/h)', minimum: 0 })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
+  @Min(0)
+  vmaKmh?: number;
 }

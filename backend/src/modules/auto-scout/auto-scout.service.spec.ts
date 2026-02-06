@@ -347,8 +347,13 @@ describe('AutoScoutService', () => {
     // Skip these tests as they require OpenAI integration
     it.skip('should generate report with custom template', async () => {
       const customTemplate = {
+        id: 'custom-template-1',
         name: 'Custom Template',
         description: 'A custom template for testing',
+        icon: 'document',
+        useCase: 'Testing',
+        estimatedCost: '$0.025',
+        reportType: ReportType.SEASON_OVERVIEW,
         promptTemplate: 'Analyze {player_name} who plays as {position}. Stats: {stats}',
         sections: [
           { name: 'Technical Skills', fields: ['passing', 'dribbling'] },
@@ -366,12 +371,15 @@ describe('AutoScoutService', () => {
 
     it.skip('should use custom prompt if provided', async () => {
       const customTemplate = {
+        id: 'test-template-1',
         name: 'Test Template',
         description: 'Test',
+        icon: 'document',
+        useCase: 'Testing',
+        estimatedCost: '$0.020',
+        reportType: ReportType.QUICK_SCAN,
         promptTemplate: 'Test {player_name}',
-        sections: [
-          { name: 'Overview', fields: ['summary'] },
-        ],
+        sections: [{ name: 'Overview', fields: ['summary'] }],
       };
 
       mockStatsAggregator.getPlayerStats.mockResolvedValue(mockPlayerStats);
@@ -399,25 +407,25 @@ describe('AutoScoutService', () => {
 
     it('should return match performance template', () => {
       const templates = service.getReportTemplates();
-      const matchTemplate = templates.find(t => t.name.includes('Match Performance'));
+      const matchTemplate = templates.find((t) => t.name.includes('Match Performance'));
       expect(matchTemplate).toBeDefined();
     });
 
     it('should return season overview template', () => {
       const templates = service.getReportTemplates();
-      const seasonTemplate = templates.find(t => t.name.includes('Season Overview'));
+      const seasonTemplate = templates.find((t) => t.name.includes('Season Overview'));
       expect(seasonTemplate).toBeDefined();
     });
 
     it('should return transfer target template', () => {
       const templates = service.getReportTemplates();
-      const transferTemplate = templates.find(t => t.name.includes('Transfer Target'));
+      const transferTemplate = templates.find((t) => t.name.includes('Transfer Target'));
       expect(transferTemplate).toBeDefined();
     });
 
     it('should return youth prospect template', () => {
       const templates = service.getReportTemplates();
-      const youthTemplate = templates.find(t => t.name.includes('Youth Prospect'));
+      const youthTemplate = templates.find((t) => t.name.includes('Youth Prospect'));
       expect(youthTemplate).toBeDefined();
     });
   });
@@ -484,7 +492,8 @@ describe('AutoScoutService', () => {
         playerId: 'player-123',
         playerName: 'John Doe',
         position: 'Midfielder',
-        summary: 'A talented midfielder with excellent technical ability and strong tactical awareness.',
+        summary:
+          'A talented midfielder with excellent technical ability and strong tactical awareness.',
         technicalSkills: {
           rating: 8,
           strengths: ['Excellent passing', 'Good dribbling'],
@@ -519,9 +528,9 @@ describe('AutoScoutService', () => {
             dataCompleteness: 0,
             insightDepth: 0,
             technicalAccuracy: 0,
-            actionability: 0
+            actionability: 0,
           },
-          grade: 'C' as const
+          grade: 'C' as const,
         },
         generatedAt: new Date(),
         model: 'gpt-4-turbo-preview',
@@ -622,7 +631,8 @@ describe('AutoScoutService', () => {
 
     it('should score insight depth correctly', () => {
       const mockReport = {
-        summary: 'A comprehensive analysis of the player showing excellent technical skills and tactical awareness.',
+        summary:
+          'A comprehensive analysis of the player showing excellent technical skills and tactical awareness.',
         technicalSkills: {
           rating: 8,
           strengths: ['Passing', 'Dribbling', 'Control'],
@@ -935,9 +945,7 @@ describe('AutoScoutService', () => {
       mockCacheManager.set.mockResolvedValue(undefined);
       mockPrismaService.auto_generated_reports.create.mockResolvedValue({});
 
-      const promises = Array.from({ length: 5 }, (_, i) =>
-        service.generateReport(`player-${i}`)
-      );
+      const promises = Array.from({ length: 5 }, (_, i) => service.generateReport(`player-${i}`));
 
       const results = await Promise.all(promises);
       expect(results).toHaveLength(5);

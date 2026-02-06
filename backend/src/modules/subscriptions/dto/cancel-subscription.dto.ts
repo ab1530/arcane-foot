@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CancelSubscriptionDto {
   @ApiPropertyOptional({
@@ -10,4 +10,12 @@ export class CancelSubscriptionDto {
   @IsBoolean()
   @IsOptional()
   immediately?: boolean = false;
+
+  @ApiPropertyOptional({
+    description: 'Reason for cancellation',
+    example: 'No longer needed',
+  })
+  @IsString()
+  @IsOptional()
+  reason?: string;
 }

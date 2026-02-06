@@ -13,18 +13,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Input } from '../../components/ui/Input';
 import { colors, spacing, typography, radius } from '../../design/theme';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../contexts/AuthContext';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 
 const SignupScreen: React.FC<Props> = ({ navigation }) => {
-  const { signup, isLoading, error, clearError } = useAuthStore();
+  const { signup } = useAuth();
+  const { dictionary } = useLocalization();
+  const signupCopy = dictionary.auth.signup;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isValid =
     firstName.trim().length > 0 &&
@@ -38,6 +43,9 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    setError(null);
+    setIsSubmitting(true);
+
     try {
       await signup({
         email: email.trim(),
@@ -45,14 +53,21 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Mobile signup failed:', err);
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        signupCopy.errors.generic;
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const onChangeSafe = (setter: (value: string) => void) => (value: string) => {
     if (error) {
-      clearError();
+      setError(null);
     }
     setter(value);
   };
@@ -68,46 +83,46 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Créer un compte</Text>
-            <Text style={styles.subtitle}>Rejoins la plateforme Arkane</Text>
+            <Text style={styles.title}>{signupCopy.title}</Text>
+            <Text style={styles.subtitle}>{signupCopy.subtitle}</Text>
           </View>
 
           <Input
-            label="Prénom"
+            label={signupCopy.inputs.firstName}
             value={firstName}
             onChangeText={onChangeSafe(setFirstName)}
-            placeholder="Abdou"
+            placeholder={signupCopy.placeholders.firstName}
           />
           <Input
-            label="Nom"
+            label={signupCopy.inputs.lastName}
             value={lastName}
             onChangeText={onChangeSafe(setLastName)}
-            placeholder="Lakhdari"
+            placeholder={signupCopy.placeholders.lastName}
           />
           <Input
-            label="Email"
+            label={signupCopy.inputs.email}
             autoCapitalize="none"
             keyboardType="email-address"
             value={email}
             onChangeText={onChangeSafe(setEmail)}
-            placeholder="club@arcane.gg"
+            placeholder={signupCopy.placeholders.email}
           />
           <Input
-            label="Mot de passe"
+            label={signupCopy.inputs.password}
             secureTextEntry
             value={password}
             onChangeText={onChangeSafe(setPassword)}
-            placeholder="••••••••"
+            placeholder={signupCopy.placeholders.password}
           />
           <Input
-            label="Confirmer le mot de passe"
+            label={signupCopy.inputs.confirmPassword}
             secureTextEntry
             value={confirmPassword}
             onChangeText={onChangeSafe(setConfirmPassword)}
-            placeholder="••••••••"
+            placeholder={signupCopy.placeholders.confirmPassword}
             error={
               confirmPassword && confirmPassword !== password
-                ? 'Les mots de passe ne correspondent pas'
+                ? signupCopy.errors.mismatch
                 : undefined
             }
           />
@@ -117,15 +132,15 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             testID="signup-submit-button"
             accessibilityRole="button"
-            accessibilityState={{ disabled: !isValid || isLoading }}
-            style={[styles.primaryButton, (!isValid || isLoading) && styles.buttonDisabled]}
+            accessibilityState={{ disabled: !isValid || isSubmitting }}
+            style={[styles.primaryButton, (!isValid || isSubmitting) && styles.buttonDisabled]}
             onPress={handleSignup}
-            disabled={!isValid || isLoading}
+            disabled={!isValid || isSubmitting}
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <ActivityIndicator testID="signup-loading-indicator" color={colors.background.primary} />
             ) : (
-              <Text style={styles.primaryButtonText}>Créer mon compte</Text>
+              <Text style={styles.primaryButtonText}>{signupCopy.button}</Text>
             )}
           </TouchableOpacity>
 
@@ -133,7 +148,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.switchAuth}
             onPress={() => navigation.navigate('Login')}
           >
-            <Text style={styles.switchAuthText}>Déjà inscrit ? Se connecter</Text>
+            <Text style={styles.switchAuthText}>{signupCopy.haveAccount}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

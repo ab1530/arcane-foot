@@ -46,7 +46,7 @@ export const FactorBar: React.FC<FactorBarProps> = ({
       .join(' ');
   };
 
-  const getGradientColors = () => {
+  const getGradientColors = (): [string, string] => {
     const percentage = (value / maxValue) * 100;
     if (percentage >= 80) return [colors.semantic.success, colors.semantic.success + '80'];
     if (percentage >= 60) return [colors.brand.primary, colors.brand.primaryLight];

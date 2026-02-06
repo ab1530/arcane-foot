@@ -103,7 +103,9 @@ export class CreateCampDto {
   @IsOptional()
   requiredTier?: SubscriptionTier;
 
-  @ApiPropertyOptional({ example: 'Programme complet avec tests physiques, techniques et tactiques' })
+  @ApiPropertyOptional({
+    example: 'Programme complet avec tests physiques, techniques et tactiques',
+  })
   @IsString()
   @IsOptional()
   programDetails?: string;
@@ -135,7 +137,9 @@ export class CreateCampDto {
   @IsOptional()
   coverImage?: string;
 
-  @ApiPropertyOptional({ example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'] })
+  @ApiPropertyOptional({
+    example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

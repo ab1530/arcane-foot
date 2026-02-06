@@ -12,13 +12,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CampsService } from './camps.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateCampDto } from './dto/create-camp.dto';
@@ -72,7 +66,7 @@ export class CampsController {
   @Get(':id')
   @ApiOperation({
     summary: 'Récupérer un camp par ID',
-    description: 'Récupère les détails complets d\'un camp',
+    description: "Récupère les détails complets d'un camp",
   })
   @ApiResponse({ status: 200, description: 'Camp récupéré avec succès' })
   @ApiResponse({ status: 404, description: 'Camp non trouvé' })
@@ -85,7 +79,7 @@ export class CampsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Mettre à jour un camp',
-    description: 'Mettre à jour les informations d\'un camp (agents/admins uniquement)',
+    description: "Mettre à jour les informations d'un camp (agents/admins uniquement)",
   })
   @ApiResponse({ status: 200, description: 'Camp mis à jour avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -113,13 +107,16 @@ export class CampsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'S\'inscrire à un camp',
-    description: 'Inscription d\'un joueur à un camp/détection',
+    summary: "S'inscrire à un camp",
+    description: "Inscription d'un joueur à un camp/détection",
   })
   @ApiResponse({ status: 201, description: 'Inscription réussie' })
-  @ApiResponse({ status: 400, description: 'Inscription impossible (camp complet, déjà inscrit, etc.)' })
+  @ApiResponse({
+    status: 400,
+    description: 'Inscription impossible (camp complet, déjà inscrit, etc.)',
+  })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
-  @ApiResponse({ status: 403, description: 'Tier d\'abonnement insuffisant' })
+  @ApiResponse({ status: 403, description: "Tier d'abonnement insuffisant" })
   @ApiResponse({ status: 404, description: 'Camp non trouvé' })
   registerForCamp(@Req() req, @Param('id') id: string, @Body() dto: RegisterCampDto) {
     return this.campsService.registerForCamp(req.user.id, id, dto);
@@ -130,7 +127,7 @@ export class CampsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Récupérer mes inscriptions',
-    description: 'Récupère toutes les inscriptions aux camps de l\'utilisateur connecté',
+    description: "Récupère toutes les inscriptions aux camps de l'utilisateur connecté",
   })
   @ApiResponse({ status: 200, description: 'Inscriptions récupérées avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -158,8 +155,8 @@ export class CampsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Récupérer les participants d\'un camp',
-    description: 'Récupère la liste de tous les participants d\'un camp (agents/admins uniquement)',
+    summary: "Récupérer les participants d'un camp",
+    description: "Récupère la liste de tous les participants d'un camp (agents/admins uniquement)",
   })
   @ApiResponse({ status: 200, description: 'Participants récupérés avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -173,7 +170,7 @@ export class CampsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Évaluer un participant',
-    description: 'Évaluer la performance d\'un participant au camp (scouts/agents uniquement)',
+    description: "Évaluer la performance d'un participant au camp (scouts/agents uniquement)",
   })
   @ApiResponse({ status: 200, description: 'Participant évalué avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })

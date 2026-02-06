@@ -9,7 +9,7 @@ import { Card3D } from "@/components/ui/card-3d";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { GradientText } from "@/components/ui/gradient-text";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
 import {
@@ -216,7 +216,7 @@ export default function PlayerComparePage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -228,13 +228,13 @@ export default function PlayerComparePage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
   if (players.length === 0) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -255,12 +255,12 @@ export default function PlayerComparePage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -434,6 +434,6 @@ export default function PlayerComparePage() {
           </div>
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

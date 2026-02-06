@@ -1,17 +1,18 @@
 /**
  * PassportScreen - Digital Player Passport with QR Code
- * Professional digital ID card for players with shareable QR code
+ * Professional digital ID card for players.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
@@ -21,47 +22,105 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { Icon, GlassCard, GradientText, AnimatedBadge } from '../../components/ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
-import { showSuccess, showError } from '../../services/toast';
-import {
-  Card,
-  Text as DesignText,
-  Heading,
-  Caption,
-  Button,
-  Avatar,
-  Badge,
-  theme as designTheme
-} from '../../design/components';
+import { showError } from '../../services/toast';
+import { useMyPassport } from '../../hooks/usePassport';
+import passportService from '../../services/passportService';
+import { PassportVerificationStatus } from '../../types/passport';
 
 export const PassportScreen = ({ navigation }: any) => {
   const { user } = useAuth();
+  const { passport, loading, error, refreshing, refresh } = useMyPassport();
   const [showQR, setShowQR] = useState(true);
+  const canGoBack = navigation?.canGoBack?.() ?? false;
 
-  // Generate unique passport URL
-  const passportUrl = `https://arcane-football.com/player/${user?.id}`;
-  const passportData = JSON.stringify({
-    id: user?.id,
-    name: `${user?.firstName} ${user?.lastName}`,
-    role: user?.role,
-    timestamp: Date.now(),
-  });
+  const player = passport?.player;
 
-  const handleShare = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    try {
-      await Share.share({
-        message: `Consultez mon profil Arcane Football: ${passportUrl}`,
-        url: passportUrl,
-        title: 'Mon Passeport Joueur',
-      });
-      showSuccess('Partagé avec succès');
-    } catch (error) {
-      showError('Erreur de partage');
+  const playerName = useMemo(() => {
+    if (player?.user) {
+      return `${player.user.firstName ?? ''} ${player.user.lastName ?? ''}`.trim();
     }
-  };
+    return `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Mon passeport Arcane';
+  }, [player?.user, user?.firstName, user?.lastName]);
+
+  const initials = useMemo(() => {
+    if (!playerName) return 'AR';
+    const parts = playerName.split(' ').filter(Boolean);
+    if (!parts.length) {
+      return playerName.slice(0, 2).toUpperCase();
+    }
+    return parts
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  }, [playerName]);
+
+  const contactEmail = player?.user?.email ?? user?.email ?? 'N/A';
+  const phoneNumber = user?.phone ?? player?.user?.phone ?? 'N/A';
+  const joinedAt = passport?.createdAt ?? user?.createdAt ?? null;
+  const formattedJoinDate = joinedAt
+    ? new Date(joinedAt).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : 'N/A';
+
+  const qrValue = useMemo(() => {
+    if (passport) {
+      return passportService.generateQRCodeValue(passport.token);
+    }
+    return JSON.stringify({
+      id: user?.id,
+      name: playerName,
+      role: user?.role,
+      timestamp: Date.now(),
+    });
+  }, [passport, playerName, user?.id, user?.role]);
+
+  const verificationInfo = useMemo(() => {
+    if (passport) {
+      return passportService.getVerificationStatusInfo(passport.verificationStatus);
+    }
+    return {
+      label: 'Statut inconnu',
+      color: colors.semantic.warning,
+      icon: 'shield' as const,
+    };
+  }, [passport]);
+
+  const passportIdDisplay =
+    passport?.id?.slice(0, 8) ?? user?.id?.slice(0, 8) ?? 'N/A';
+  const tokenSnippet = passport?.token?.slice(0, 10);
+  const hasPassport = Boolean(passport);
+
+  const infoItems = useMemo(
+    () => [
+      { icon: 'person', label: 'Rôle', value: user?.role ?? 'N/A' },
+      { icon: 'mail', label: 'Email', value: contactEmail, small: true },
+      { icon: 'call', label: 'Téléphone', value: phoneNumber },
+      { icon: 'shield', label: 'Club', value: player?.club?.name ?? 'Libre' },
+      { icon: 'football', label: 'Position', value: player?.position ?? 'N/A' },
+      { icon: 'location', label: 'Nationalité', value: player?.nationality ?? 'N/A' },
+      { icon: 'calendar', label: 'Création', value: formattedJoinDate },
+    ],
+    [
+      user?.role,
+      contactEmail,
+      phoneNumber,
+      player?.club?.name,
+      player?.position,
+      player?.nationality,
+      formattedJoinDate,
+    ]
+  );
 
   const handleDownload = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!hasPassport) {
+      showError('Aucun passeport à télécharger');
+      return;
+    }
     Alert.alert(
       'Téléchargement',
       'Le téléchargement du passeport sera bientôt disponible',
@@ -69,219 +128,207 @@ export const PassportScreen = ({ navigation }: any) => {
     );
   };
 
-  const getVerificationLevel = () => {
-    // Logic to determine verification level based on user data
-    if (user?.role === 'PLAYER') return 'verified';
-    if (user?.role === 'SCOUT' || user?.role === 'AGENT') return 'professional';
-    return 'basic';
+  const handleRefresh = () => {
+    refresh();
   };
-
-  const verificationLevel = getVerificationLevel();
-
-  const verificationConfig = {
-    verified: {
-      label: 'Vérifié',
-      icon: 'checkmark' as const,
-      color: colors.semantic.success,
-    },
-    professional: {
-      label: 'Professionnel',
-      icon: 'shield' as const,
-      color: colors.semantic.info,
-    },
-    basic: {
-      label: 'Standard',
-      icon: 'person' as const,
-      color: colors.semantic.warning,
-    },
-  };
-
-  const verification = verificationConfig[verificationLevel];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Header */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.brand.primary}
+          />
+        }
+      >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrowBack" size="md" color={colors.text.primary} />
-          </TouchableOpacity>
+          {canGoBack ? (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrowBack" size="md" color={colors.text.primary} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.backButtonPlaceholder} />
+          )}
           <GradientText variant="arcane" style={styles.headerTitle}>
             Passeport Joueur
           </GradientText>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <Icon name="share" size="md" color={colors.brand.primary} />
-          </TouchableOpacity>
+          <View style={styles.backButtonPlaceholder} />
         </View>
 
-        {/* Passport Card */}
-        <GlassCard variant="elevated" style={styles.passportCard}>
-          <LinearGradient
-            colors={[colors.brand.primary + '20', colors.surface.glass]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientOverlay}
-          >
-            {/* Card Header with Badge */}
-            <View style={styles.cardHeader}>
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {user?.firstName?.[0]}
-                    {user?.lastName?.[0]}
-                  </Text>
-                </View>
-                <View style={styles.badgeContainer}>
-                  <AnimatedBadge
-                    variant="dot"
-                    color={verification.color}
-                    animation="pulse"
-                    size="md"
-                  />
-                </View>
-              </View>
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={handleRefresh}>
+              <Text style={styles.errorRetry}>Réessayer</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-              <View style={styles.cardHeaderInfo}>
-                <Text style={styles.playerName}>
-                  {user?.firstName} {user?.lastName}
-                </Text>
-                <View style={styles.verificationBadge}>
+        {loading && !hasPassport ? (
+          <View style={styles.loader}>
+            <ActivityIndicator color={colors.brand.primary} size="large" />
+          </View>
+        ) : null}
+
+        {hasPassport ? (
+          <>
+            <GlassCard variant="elevated" style={styles.passportCard}>
+              <LinearGradient
+                colors={[colors.brand.primary + '20', colors.surface.glass]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientOverlay}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.avatarContainer}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{initials}</Text>
+                    </View>
+                    <View style={styles.badgeContainer}>
+                      <AnimatedBadge
+                        variant="dot"
+                        color={verificationInfo.color}
+                        animation="pulse"
+                        size="md"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.cardHeaderInfo}>
+                    <Text style={styles.playerName}>{playerName}</Text>
+                    <View style={styles.verificationBadge}>
+                      <Icon
+                        name={verificationInfo.icon}
+                        size={14}
+                        color={verificationInfo.color}
+                      />
+                      <Text
+                        style={[
+                          styles.verificationText,
+                          { color: verificationInfo.color },
+                        ]}
+                      >
+                        {verificationInfo.label}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.infoGrid}>
+                  {infoItems.map((item) => (
+                    <InfoItem
+                      key={item.label}
+                      icon={item.icon}
+                      label={item.label}
+                      value={item.value}
+                      small={item.small}
+                    />
+                  ))}
+                </View>
+
+                {showQR && (
+                  <View style={styles.qrSection}>
+                    <Text style={styles.qrLabel}>Scannez pour voir le profil</Text>
+                    <View style={styles.qrContainer}>
+                      <QRCode
+                        value={qrValue}
+                        size={180}
+                        color={colors.background.primary}
+                        backgroundColor="white"
+                        logo={require('../../../assets/icon.png')}
+                        logoSize={40}
+                        logoBackgroundColor="white"
+                        logoBorderRadius={8}
+                      />
+                    </View>
+                    <Text style={styles.qrId}>
+                      Passeport #{passportIdDisplay}
+                      {tokenSnippet ? ` • ${tokenSnippet}…` : ''}
+                    </Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.toggleButton}
+                  onPress={() => setShowQR((prev) => !prev)}
+                >
                   <Icon
-                    name={verification.icon}
-                    size={14}
-                    color={verification.color}
+                    name={showQR ? 'eyeOff' : 'eye'}
+                    size="sm"
+                    color={colors.text.secondary}
                   />
-                  <Text
-                    style={[styles.verificationText, { color: verification.color }]}
-                  >
-                    {verification.label}
+                  <Text style={styles.toggleText}>
+                    {showQR ? 'Masquer le QR Code' : 'Afficher le QR Code'}
                   </Text>
-                </View>
-              </View>
+                </TouchableOpacity>
+              </LinearGradient>
+            </GlassCard>
+
+            <View style={styles.actionsSection}>
+              <Text style={styles.sectionTitle}>Actions Rapides</Text>
+
+              <GlassCard variant="elevated">
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={handleDownload}
+                >
+                  <View style={styles.actionLeft}>
+                    <View style={styles.actionIcon}>
+                      <Icon name="download" size="md" color={colors.semantic.info} />
+                    </View>
+                    <Text style={styles.actionText}>Télécharger en PDF</Text>
+                  </View>
+                  <Icon name="chevronForward" size={20} color={colors.text.secondary} />
+                </TouchableOpacity>
+
+                <View style={styles.divider} />
+
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => setShowQR((prev) => !prev)}
+                >
+                  <View style={styles.actionLeft}>
+                    <View style={styles.actionIcon}>
+                      <Icon name={showQR ? 'eyeOff' : 'eye'} size="md" color={colors.semantic.success} />
+                    </View>
+                    <Text style={styles.actionText}>
+                      {showQR ? 'Masquer le QR code' : 'Afficher le QR code'}
+                    </Text>
+                  </View>
+                  <Icon name="chevronForward" size={20} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </GlassCard>
             </View>
-
-            {/* Player Info Grid */}
-            <View style={styles.infoGrid}>
-              <InfoItem
-                icon="person"
-                label="Rôle"
-                value={user?.role || 'N/A'}
-              />
-              <InfoItem
-                icon="mail"
-                label="Email"
-                value={user?.email || 'N/A'}
-                small
-              />
-              {user?.phone && (
-                <InfoItem icon="call" label="Téléphone" value={user.phone} />
-              )}
-              <InfoItem
-                icon="calendar"
-                label="Membre depuis"
-                value={
-                  user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString('fr-FR', {
-                        month: 'short',
-                        year: 'numeric',
-                      })
-                    : 'N/A'
-                }
-              />
-            </View>
-
-            {/* QR Code Section */}
-            {showQR && (
-              <View style={styles.qrSection}>
-                <Text style={styles.qrLabel}>Scannez pour voir le profil</Text>
-                <View style={styles.qrContainer}>
-                  <QRCode
-                    value={passportData}
-                    size={180}
-                    color={colors.background.primary}
-                    backgroundColor="white"
-                    logo={require('../../../assets/icon.png')}
-                    logoSize={40}
-                    logoBackgroundColor="white"
-                    logoBorderRadius={8}
-                  />
-                </View>
-                <Text style={styles.qrId}>ID: {user?.id?.slice(0, 8)}...</Text>
-              </View>
-            )}
-
-            {/* Toggle QR Button */}
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={() => setShowQR(!showQR)}
-            >
-              <Icon
-                name={showQR ? 'eyeOff' : 'eye'}
-                size="sm"
-                color={colors.text.secondary}
-              />
-              <Text style={styles.toggleText}>
-                {showQR ? 'Masquer le QR Code' : 'Afficher le QR Code'}
+          </>
+        ) : (
+          !loading && (
+            <GlassCard variant="elevated" style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Aucun passeport trouvé</Text>
+              <Text style={styles.emptySubtitle}>
+                Connectez-vous avec un compte joueur vérifié ou contactez un administrateur
+                pour générer votre passeport numérique.
               </Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        </GlassCard>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleRefresh}>
+                <Text style={styles.primaryButtonText}>Recharger</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          )
+        )}
 
-        {/* Actions */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Actions Rapides</Text>
-
-          <GlassCard variant="elevated">
-            <TouchableOpacity style={styles.actionItem} onPress={handleShare}>
-              <View style={styles.actionLeft}>
-                <View style={styles.actionIcon}>
-                  <Icon name="share" size="md" color={colors.brand.primary} />
-                </View>
-                <Text style={styles.actionText}>Partager mon passeport</Text>
-              </View>
-              <Icon name="chevronForward" size={20} color={colors.text.secondary} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.actionItem} onPress={handleDownload}>
-              <View style={styles.actionLeft}>
-                <View style={styles.actionIcon}>
-                  <Icon name="download" size="md" color={colors.semantic.info} />
-                </View>
-                <Text style={styles.actionText}>Télécharger en PDF</Text>
-              </View>
-              <Icon name="chevronForward" size={20} color={colors.text.secondary} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity
-              style={styles.actionItem}
-              onPress={() => Alert.alert('QR Code', 'Copié dans le presse-papier')}
-            >
-              <View style={styles.actionLeft}>
-                <View style={styles.actionIcon}>
-                  <Icon name="copy" size="md" color={colors.semantic.success} />
-                </View>
-                <Text style={styles.actionText}>Copier le lien</Text>
-              </View>
-              <Icon name="chevronForward" size={20} color={colors.text.secondary} />
-            </TouchableOpacity>
-          </GlassCard>
-        </View>
-
-        {/* Info Section */}
         <View style={styles.infoSection}>
           <GlassCard variant="subtle">
             <View style={styles.infoBox}>
               <Icon name="info" size="md" color={colors.brand.primary} />
               <Text style={styles.infoBoxText}>
-                Votre passeport numérique vous permet de partager facilement votre
-                profil avec des recruteurs, agents ou clubs professionnels.
+                Votre passeport numérique vous aide à présenter vos informations
+                sportives de manière claire et professionnelle.
               </Text>
             </View>
           </GlassCard>
@@ -333,12 +380,34 @@ const styles = StyleSheet.create({
   backButton: {
     padding: spacing.sm,
   },
+  backButtonPlaceholder: {
+    width: 44,
+  },
   headerTitle: {
     fontSize: typography.sizes.h3,
     fontWeight: 'bold',
   },
-  shareButton: {
-    padding: spacing.sm,
+  errorBanner: {
+    backgroundColor: colors.semantic.warning + '20',
+    borderColor: colors.semantic.warning + '40',
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  errorText: {
+    color: colors.semantic.warning,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  errorRetry: {
+    color: colors.brand.primary,
+    fontWeight: '600',
+  },
+  loader: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   passportCard: {
     marginBottom: spacing.lg,
@@ -477,6 +546,33 @@ const styles = StyleSheet.create({
   },
   actionsSection: {
     marginBottom: spacing.lg,
+  },
+  emptyCard: {
+    marginBottom: spacing.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  emptySubtitle: {
+    fontSize: typography.sizes.base,
+    color: colors.text.secondary,
+    lineHeight: 20,
+  },
+  primaryButton: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.primary,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    fontSize: typography.sizes.base,
+    fontWeight: '700',
+    color: colors.background.primary,
   },
   sectionTitle: {
     fontSize: typography.sizes.lg,

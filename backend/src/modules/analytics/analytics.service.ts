@@ -1,14 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../cache/redis.service';
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(AnalyticsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+  ) {}
 
   /**
    * Récupère les statistiques globales de la plateforme
+   * Cached for 5 minutes
    */
   async getPlatformOverview() {
+    // Try cache first
+    const cacheKey = 'analytics:platform_overview';
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const [
       totalUsers,
       totalPlayers,
@@ -45,7 +58,7 @@ export class AnalyticsService {
       this.prisma.club_requests.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
     ]);
 
-    return {
+    const result = {
       overview: {
         totalUsers,
         totalPlayers,
@@ -64,12 +77,108 @@ export class AnalyticsService {
       },
       timestamp: new Date(),
     };
+
+    // Cache for 5 minutes (300 seconds)
+    await this.redisService.set(cacheKey, result, 300);
+    return result;
+  }
+
+  /**
+   * Get personalized dashboard stats for current user
+   * Based on user role
+   */
+  async getUserDashboard(userId: string, role: string) {
+    // Try cache first
+    const cacheKey = `analytics:user_dashboard:${userId}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    let result: any = {
+      userId,
+      role,
+    };
+
+    if (role === 'SCOUT' || role === 'ADMIN' || role === 'SUPER_ADMIN') {
+      // Scout dashboard: reports stats
+      const [totalReports, reportsLast7Days, reportsLast30Days] = await Promise.all([
+        this.prisma.scouting_reports.count({ where: { scoutId: userId } }),
+        this.prisma.scouting_reports.count({
+          where: {
+            scoutId: userId,
+            createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        this.prisma.scouting_reports.count({
+          where: {
+            scoutId: userId,
+            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+      ]);
+
+      result = {
+        ...result,
+        totalReports,
+        reportsLast7Days,
+        reportsLast30Days,
+        totalPlayers: await this.prisma.players.count(),
+        totalClubs: await this.prisma.clubs.count(),
+      };
+    }
+
+    if (role === 'PLAYER') {
+      // Player dashboard: their own stats
+      const player = await this.prisma.players.findUnique({
+        where: { userId },
+        include: {
+          _count: {
+            select: {
+              scouting_reports: true,
+              media: true,
+            },
+          },
+        },
+      });
+
+      if (player) {
+        result = {
+          ...result,
+          reportsAboutMe: player._count.scouting_reports,
+          mediaCount: player._count.media,
+          marketValue: player.marketValue,
+          position: player.position,
+        };
+      }
+    }
+
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+      // Admin dashboard: platform overview
+      const platformStats: any = await this.getPlatformOverview();
+      result = {
+        ...result,
+        ...platformStats.overview,
+        recentActivity: platformStats.recentActivity,
+      };
+    }
+
+    // Cache for 2 minutes (120 seconds)
+    await this.redisService.set(cacheKey, result, 120);
+    return result;
   }
 
   /**
    * Statistiques des joueurs
+   * Cached for 10 minutes
    */
   async getPlayersAnalytics() {
+    // Try cache first
+    const cacheKey = 'analytics:players';
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     // Répartition par statut
     const playersByStatus = await this.prisma.players.groupBy({
       by: ['status'],
@@ -95,8 +204,8 @@ export class AnalyticsService {
       select: { dateOfBirth: true },
       where: {
         dateOfBirth: {
-          not: undefined
-        }
+          not: undefined,
+        },
       },
     });
 
@@ -134,10 +243,13 @@ export class AnalyticsService {
       },
     });
 
-    return {
+    const result = {
       byStatus: playersByStatus.map((s) => ({ status: s.status, count: s._count })),
       byPosition: playersByPosition.map((p) => ({ position: p.position, count: p._count })),
-      byNationality: playersByNationality.map((n) => ({ nationality: n.nationality, count: n._count })),
+      byNationality: playersByNationality.map((n) => ({
+        nationality: n.nationality,
+        count: n._count,
+      })),
       ageStats: {
         average: Math.round(averageAge * 10) / 10,
         min: minAge,
@@ -145,12 +257,23 @@ export class AnalyticsService {
       },
       topRatedPlayers,
     };
+
+    // Cache for 10 minutes (600 seconds)
+    await this.redisService.set(cacheKey, result, 600);
+    return result;
   }
 
   /**
    * Statistiques des clubs
+   * Cached for 10 minutes
    */
   async getClubsAnalytics() {
+    // Try cache first
+    const cacheKey = 'analytics:clubs';
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const totalClubs = await this.prisma.clubs.count();
 
     // Répartition par pays (top 10)
@@ -193,18 +316,29 @@ export class AnalyticsService {
       },
     });
 
-    return {
+    const result = {
       total: totalClubs,
       byCountry: clubsByCountry.map((c) => ({ country: c.country, count: c._count })),
       withMostPlayers: clubsWithMostPlayers,
       mostActive: mostActiveClubs,
     };
+
+    // Cache for 10 minutes (600 seconds)
+    await this.redisService.set(cacheKey, result, 600);
+    return result;
   }
 
   /**
    * Statistiques des rapports de scouting
+   * Cached for 5 minutes
    */
   async getScoutingReportsAnalytics() {
+    // Try cache first
+    const cacheKey = 'analytics:scouting_reports';
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     // Répartition par statut
     const reportsByStatus = await this.prisma.scouting_reports.groupBy({
       by: ['status'],
@@ -215,8 +349,8 @@ export class AnalyticsService {
     const ratingStats = await this.prisma.scouting_reports.aggregate({
       where: {
         overallRating: {
-          not: undefined
-        }
+          not: undefined,
+        },
       },
       _avg: { overallRating: true },
       _min: { overallRating: true },
@@ -259,7 +393,7 @@ export class AnalyticsService {
       where: { createdAt: { gte: sevenDaysAgo } },
     });
 
-    return {
+    const result = {
       byStatus: reportsByStatus.map((r) => ({ status: r.status, count: r._count })),
       ratingStats: {
         average: ratingStats._avg.overallRating,
@@ -270,6 +404,10 @@ export class AnalyticsService {
       mostActiveScouts,
       recentCount: recentReportsCount,
     };
+
+    // Cache for 5 minutes (300 seconds)
+    await this.redisService.set(cacheKey, result, 300);
+    return result;
   }
 
   /**
@@ -290,13 +428,14 @@ export class AnalyticsService {
       where: { status: 'COMPLETED' },
     });
 
-    const successRate = totalRequests > 0 ? ((acceptedRequests + completedRequests) / totalRequests) * 100 : 0;
+    const successRate =
+      totalRequests > 0 ? ((acceptedRequests + completedRequests) / totalRequests) * 100 : 0;
 
     // Temps moyen de réponse
     const requestsWithResponse = await this.prisma.club_requests.findMany({
       where: {
         respondedAt: {
-          not: undefined
+          not: undefined,
         },
       },
       select: {
@@ -398,10 +537,18 @@ export class AnalyticsService {
     ]);
 
     // Create lookup maps for O(1) access
-    const usersMap = new Map(usersData.map(d => [d.date.toISOString().split('T')[0], Number(d.count)]));
-    const playersMap = new Map(playersData.map(d => [d.date.toISOString().split('T')[0], Number(d.count)]));
-    const reportsMap = new Map(reportsData.map(d => [d.date.toISOString().split('T')[0], Number(d.count)]));
-    const requestsMap = new Map(requestsData.map(d => [d.date.toISOString().split('T')[0], Number(d.count)]));
+    const usersMap = new Map(
+      usersData.map((d) => [d.date.toISOString().split('T')[0], Number(d.count)]),
+    );
+    const playersMap = new Map(
+      playersData.map((d) => [d.date.toISOString().split('T')[0], Number(d.count)]),
+    );
+    const reportsMap = new Map(
+      reportsData.map((d) => [d.date.toISOString().split('T')[0], Number(d.count)]),
+    );
+    const requestsMap = new Map(
+      requestsData.map((d) => [d.date.toISOString().split('T')[0], Number(d.count)]),
+    );
 
     // Build daily activity array with all days (including zeros for days with no activity)
     const dailyActivity = [];
@@ -437,7 +584,7 @@ export class AnalyticsService {
   /**
    * Track when a feature is blocked due to insufficient tier
    */
-  async trackFeatureBlocked(userId: string, feature: string, requiredTier: string) {
+  async trackFeatureBlocked(userId: string, feature: string, _requiredTier: string) {
     // This is handled by the Sentry interceptor
     // But we can also track it here for immediate dashboard access
     const event = await this.prisma.rbac_events.findFirst({
@@ -600,8 +747,15 @@ export class AnalyticsService {
 
   /**
    * Get comprehensive RBAC metrics for dashboard
+   * Cached for 5 minutes
    */
   async getRbacMetrics(days: number = 7) {
+    // Try cache first
+    const cacheKey = `analytics:rbac_metrics:${days}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const endDate = new Date();
@@ -624,21 +778,8 @@ export class AnalyticsService {
         },
       }),
 
-      // Most blocked features
-      this.prisma.rbac_events.groupBy({
-        by: ['feature'],
-        where: {
-          eventType: 'FEATURE_BLOCKED',
-          timestamp: { gte: startDate },
-        },
-        _count: true,
-        orderBy: {
-          _count: {
-            feature: 'desc',
-          },
-        },
-        take: 10,
-      }),
+      // Most blocked features (avoid Prisma groupBy instability on rbac_events)
+      this.getMostBlockedFeatures(startDate),
 
       // Modal stats
       this.prisma.upgrade_modals.findMany({
@@ -705,7 +846,7 @@ export class AnalyticsService {
 
     const conversionRate = total403Events > 0 ? (conversions.length / total403Events) * 100 : 0;
 
-    return {
+    const result = {
       period: `last_${days}_days`,
       dateRange: {
         start: startDate.toISOString(),
@@ -713,10 +854,7 @@ export class AnalyticsService {
       },
       total_403_errors: total403Events,
       '403_rate': rateData.rate403Percentage,
-      most_blocked_features: mostBlockedFeatures.map((f) => ({
-        feature: f.feature,
-        count: f._count,
-      })),
+      most_blocked_features: mostBlockedFeatures,
       conversions: {
         free_to_gold: freeToGoldConversions,
         total: conversions.length,
@@ -738,7 +876,8 @@ export class AnalyticsService {
         dismissed: totalDismissed,
         cta_clicked: totalCtaClicked,
         ctr: Math.round(ctr * 100) / 100,
-        dismiss_rate: totalModalsShown > 0 ? Math.round((totalDismissed / totalModalsShown) * 10000) / 100 : 0,
+        dismiss_rate:
+          totalModalsShown > 0 ? Math.round((totalDismissed / totalModalsShown) * 10000) / 100 : 0,
       },
       recommendations: this.generateRecommendations(
         rateData.rate403Percentage,
@@ -746,16 +885,55 @@ export class AnalyticsService {
         ctr,
       ),
     };
+
+    // Cache for 5 minutes (300 seconds)
+    await this.redisService.set(cacheKey, result, 300);
+    return result;
+  }
+
+  /**
+   * Build top blocked features with a resilient JS aggregation.
+   * If this analytics-only computation fails, we degrade to an empty list
+   * instead of impacting auth/runtime flows.
+   */
+  private async getMostBlockedFeatures(startDate: Date): Promise<Array<{ feature: string; count: number }>> {
+    try {
+      const blockedEvents = await this.prisma.rbac_events.findMany({
+        where: {
+          eventType: 'FEATURE_BLOCKED',
+          timestamp: { gte: startDate },
+        },
+        select: {
+          feature: true,
+        },
+      });
+
+      if (blockedEvents.length === 0) {
+        return [];
+      }
+
+      const counts = blockedEvents.reduce<Record<string, number>>((acc, event) => {
+        acc[event.feature] = (acc[event.feature] || 0) + 1;
+        return acc;
+      }, {});
+
+      return Object.entries(counts)
+        .map(([feature, count]) => ({ feature, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    } catch (error) {
+      this.logger.error(
+        'Failed to compute most blocked features; returning empty fallback list.',
+        error instanceof Error ? error.stack : String(error),
+      );
+      return [];
+    }
   }
 
   /**
    * Generate recommendations based on metrics
    */
-  private generateRecommendations(
-    rate403: number,
-    conversionRate: number,
-    ctr: number,
-  ): string[] {
+  private generateRecommendations(rate403: number, conversionRate: number, ctr: number): string[] {
     const recommendations: string[] = [];
 
     if (rate403 > 10) {

@@ -14,6 +14,7 @@ const mockedApi = api as jest.Mocked<typeof api>;
 // Mock navigation
 const mockNavigation = {
   navigate: jest.fn(),
+  getParent: jest.fn().mockReturnValue(undefined),
 };
 
 // Mock logger

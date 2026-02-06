@@ -1,15 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import {
-  BadRequestException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { VoiceToReportService } from './voice-to-report.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import {
-  ProcessVoiceReportDto,
-  SupportedLanguage,
-} from './dto/process-voice-report.dto';
+import { ProcessVoiceReportDto, SupportedLanguage } from './dto/process-voice-report.dto';
 import { RecommendationType } from '@prisma/client';
 import * as fs from 'fs';
 
@@ -133,8 +127,7 @@ describe('VoiceToReportService', () => {
         ],
       }).compile();
 
-      const serviceWithoutOpenAI =
-        module.get<VoiceToReportService>(VoiceToReportService);
+      const serviceWithoutOpenAI = module.get<VoiceToReportService>(VoiceToReportService);
       expect(serviceWithoutOpenAI['hasOpenAI']).toBe(false);
     });
 
@@ -159,9 +152,7 @@ describe('VoiceToReportService', () => {
 
     beforeEach(() => {
       // Mock transcription
-      mockOpenAI.audio.transcriptions.create.mockResolvedValue(
-        mockTranscription,
-      );
+      mockOpenAI.audio.transcriptions.create.mockResolvedValue(mockTranscription);
       // Mock extraction
       mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [
@@ -179,11 +170,7 @@ describe('VoiceToReportService', () => {
     });
 
     it('should successfully process voice report', async () => {
-      const result = await service.processVoiceReport(
-        mockAudioFile,
-        userId,
-        dto,
-      );
+      const result = await service.processVoiceReport(mockAudioFile, userId, dto);
 
       expect(result).toBeDefined();
       expect(result.transcription).toBe(mockTranscription);
@@ -194,9 +181,44 @@ describe('VoiceToReportService', () => {
     });
 
     it('should validate audio file before processing', async () => {
-      await expect(
-        service.processVoiceReport(null as any, userId, dto),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.processVoiceReport(null as any, userId, dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should return fallback response with client-side flag when OpenAI is disabled', async () => {
+      const mockConfigWithoutKey = {
+        get: jest.fn((key: string) => {
+          if (key === 'OPENAI_API_KEY') return undefined;
+          if (key === 'MAX_AUDIO_SIZE_MB') return 25;
+          if (key === 'OPENAI_MODEL') return 'gpt-4o-mini';
+          return undefined;
+        }),
+      } as any;
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          VoiceToReportService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigWithoutKey,
+          },
+          {
+            provide: SupabaseService,
+            useValue: supabaseService,
+          },
+        ],
+      }).compile();
+
+      const fallbackService = module.get<VoiceToReportService>(VoiceToReportService);
+
+      const result = await fallbackService.processVoiceReport(mockAudioFile, userId, dto);
+
+      expect(result.useClientSide).toBe(true);
+      expect(result.warnings).toContain(
+        'Voice-to-Report running in fallback mode (OPENAI_API_KEY missing).',
+      );
+      expect(result.transcription).toContain('Server-side transcription unavailable');
     });
 
     it('should include audio URL when keepAudio is true', async () => {
@@ -225,24 +247,18 @@ describe('VoiceToReportService', () => {
         playerId: 'player-456',
       };
 
-      const result = await service.processVoiceReport(
-        mockAudioFile,
-        userId,
-        dtoWithIds,
-      );
+      const result = await service.processVoiceReport(mockAudioFile, userId, dtoWithIds);
 
       expect(result.extractedData['matchId']).toBe('match-123');
       expect(result.extractedData['playerId']).toBe('player-456');
     });
 
     it('should handle transcription failure', async () => {
-      mockOpenAI.audio.transcriptions.create.mockRejectedValue(
-        new Error('Transcription failed'),
-      );
+      mockOpenAI.audio.transcriptions.create.mockRejectedValue(new Error('Transcription failed'));
 
-      await expect(
-        service.processVoiceReport(mockAudioFile, userId, dto),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.processVoiceReport(mockAudioFile, userId, dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
 
     it('should provide warnings and suggestions', async () => {
@@ -256,11 +272,7 @@ describe('VoiceToReportService', () => {
         ],
       });
 
-      const result = await service.processVoiceReport(
-        mockAudioFile,
-        userId,
-        dto,
-      );
+      const result = await service.processVoiceReport(mockAudioFile, userId, dto);
 
       expect(result.warnings).toBeDefined();
       expect(Array.isArray(result.warnings)).toBe(true);
@@ -270,11 +282,7 @@ describe('VoiceToReportService', () => {
     });
 
     it('should calculate confidence score', async () => {
-      const result = await service.processVoiceReport(
-        mockAudioFile,
-        userId,
-        dto,
-      );
+      const result = await service.processVoiceReport(mockAudioFile, userId, dto);
 
       expect(result.confidence).toBeGreaterThanOrEqual(0);
       expect(result.confidence).toBeLessThanOrEqual(100);
@@ -284,11 +292,7 @@ describe('VoiceToReportService', () => {
       const dtoWithoutLanguage = { ...dto };
       delete dtoWithoutLanguage.language;
 
-      const result = await service.processVoiceReport(
-        mockAudioFile,
-        userId,
-        dtoWithoutLanguage,
-      );
+      const result = await service.processVoiceReport(mockAudioFile, userId, dtoWithoutLanguage);
 
       expect(result.language).toBe(SupportedLanguage.EN);
     });
@@ -300,12 +304,8 @@ describe('VoiceToReportService', () => {
     });
 
     it('should throw BadRequestException when file is null', () => {
-      expect(() => service['validateAudioFile'](null)).toThrow(
-        BadRequestException,
-      );
-      expect(() => service['validateAudioFile'](null)).toThrow(
-        'No audio file provided',
-      );
+      expect(() => service['validateAudioFile'](null)).toThrow(BadRequestException);
+      expect(() => service['validateAudioFile'](null)).toThrow('No audio file provided');
     });
 
     it('should throw BadRequestException for oversized files', () => {
@@ -314,12 +314,8 @@ describe('VoiceToReportService', () => {
         size: 30 * 1024 * 1024, // 30MB
       };
 
-      expect(() => service['validateAudioFile'](largeFile)).toThrow(
-        BadRequestException,
-      );
-      expect(() => service['validateAudioFile'](largeFile)).toThrow(
-        'File size exceeds maximum',
-      );
+      expect(() => service['validateAudioFile'](largeFile)).toThrow(BadRequestException);
+      expect(() => service['validateAudioFile'](largeFile)).toThrow('File size exceeds maximum');
     });
 
     it('should throw BadRequestException for unsupported MIME types', () => {
@@ -328,12 +324,8 @@ describe('VoiceToReportService', () => {
         mimetype: 'video/mp4',
       };
 
-      expect(() => service['validateAudioFile'](invalidFile)).toThrow(
-        BadRequestException,
-      );
-      expect(() => service['validateAudioFile'](invalidFile)).toThrow(
-        'Unsupported audio format',
-      );
+      expect(() => service['validateAudioFile'](invalidFile)).toThrow(BadRequestException);
+      expect(() => service['validateAudioFile'](invalidFile)).toThrow('Unsupported audio format');
     });
 
     it('should accept all supported audio formats', () => {
@@ -355,23 +347,18 @@ describe('VoiceToReportService', () => {
   describe('transcribeAudio', () => {
     it('should transcribe audio using Whisper when OpenAI is available', async () => {
       const mockTranscription = 'Test transcription';
-      mockOpenAI.audio.transcriptions.create.mockResolvedValue(
-        mockTranscription,
-      );
+      mockOpenAI.audio.transcriptions.create.mockResolvedValue(mockTranscription);
       (fs.promises.writeFile as jest.Mock).mockResolvedValue(undefined);
       (fs.promises.unlink as jest.Mock).mockResolvedValue(undefined);
       (fs.createReadStream as jest.Mock).mockReturnValue({});
 
-      const result = await service['transcribeAudio'](
-        mockAudioFile,
-        SupportedLanguage.EN,
-      );
+      const result = await service['transcribeAudio'](mockAudioFile, SupportedLanguage.EN);
 
       expect(result).toBe(mockTranscription);
       expect(mockOpenAI.audio.transcriptions.create).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException when OpenAI is not available', async () => {
+    it('should return placeholder transcription when OpenAI is not available', async () => {
       // Create service without OpenAI
       const mockConfigWithoutKey = {
         get: jest.fn((key: string) => {
@@ -395,15 +382,14 @@ describe('VoiceToReportService', () => {
         ],
       }).compile();
 
-      const serviceWithoutOpenAI =
-        module.get<VoiceToReportService>(VoiceToReportService);
+      const serviceWithoutOpenAI = module.get<VoiceToReportService>(VoiceToReportService);
 
-      await expect(
-        serviceWithoutOpenAI['transcribeAudio'](
-          mockAudioFile,
-          SupportedLanguage.EN,
-        ),
-      ).rejects.toThrow(BadRequestException);
+      const transcription = await serviceWithoutOpenAI['transcribeAudio'](
+        mockAudioFile,
+        SupportedLanguage.EN,
+      );
+
+      expect(transcription).toBe('Transcription unavailable');
     });
 
     it('should pass language to Whisper API for non-English', async () => {
@@ -436,13 +422,11 @@ describe('VoiceToReportService', () => {
       (fs.promises.writeFile as jest.Mock).mockResolvedValue(undefined);
       (fs.promises.unlink as jest.Mock).mockResolvedValue(undefined);
       (fs.createReadStream as jest.Mock).mockReturnValue({});
-      mockOpenAI.audio.transcriptions.create.mockRejectedValue(
-        new Error('Transcription failed'),
-      );
+      mockOpenAI.audio.transcriptions.create.mockRejectedValue(new Error('Transcription failed'));
 
-      await expect(
-        service['transcribeAudio'](mockAudioFile, SupportedLanguage.EN),
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service['transcribeAudio'](mockAudioFile, SupportedLanguage.EN)).rejects.toThrow(
+        InternalServerErrorException,
+      );
 
       expect(fs.promises.unlink).toHaveBeenCalled();
     });
@@ -458,24 +442,52 @@ describe('VoiceToReportService', () => {
         choices: [{ message: { content: JSON.stringify(mockData) } }],
       });
 
-      const result = await service['extractReportData'](
-        mockTranscription,
-        SupportedLanguage.EN,
-      );
+      const result = await service['extractReportData'](mockTranscription, SupportedLanguage.EN);
 
       expect(result).toBeDefined();
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalled();
     });
 
-    it('should fallback to rule-based extraction on AI failure', async () => {
-      mockOpenAI.chat.completions.create.mockRejectedValue(
-        new Error('AI failed'),
-      );
+    it('should use rule-based extraction when OpenAI is not configured', async () => {
+      // Create service without OpenAI
+      const mockConfigWithoutKey = {
+        get: jest.fn((key: string) => {
+          if (key === 'OPENAI_API_KEY') return undefined;
+          if (key === 'MAX_AUDIO_SIZE_MB') return 25;
+          return undefined;
+        }),
+      } as any;
 
-      const result = await service['extractReportData'](
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          VoiceToReportService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigWithoutKey,
+          },
+          {
+            provide: SupabaseService,
+            useValue: supabaseService,
+          },
+        ],
+      }).compile();
+
+      const serviceWithoutOpenAI = module.get<VoiceToReportService>(VoiceToReportService);
+
+      const result = await serviceWithoutOpenAI['extractReportData'](
         mockTranscription,
         SupportedLanguage.EN,
       );
+
+      expect(result).toBeDefined();
+      expect(result.playerName).toContain('John Doe');
+      expect(result.position).toBe('Forward');
+    });
+
+    it('should fallback to rule-based extraction on AI failure', async () => {
+      mockOpenAI.chat.completions.create.mockRejectedValue(new Error('AI failed'));
+
+      const result = await service['extractReportData'](mockTranscription, SupportedLanguage.EN);
 
       expect(result).toBeDefined();
       // Rule-based extraction should still find some data
@@ -486,10 +498,7 @@ describe('VoiceToReportService', () => {
         choices: [{ message: { content: JSON.stringify({}) } }],
       });
 
-      await service['extractReportData'](
-        mockTranscription,
-        SupportedLanguage.EN,
-      );
+      await service['extractReportData'](mockTranscription, SupportedLanguage.EN);
 
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -522,8 +531,7 @@ describe('VoiceToReportService', () => {
     });
 
     it('should extract team names', () => {
-      const transcription =
-        'Playing for Real Madrid against Barcelona in the match.';
+      const transcription = 'Playing for Real Madrid against Barcelona in the match.';
       const result = service['extractWithRules'](transcription);
 
       expect(result.team).toBeDefined();
@@ -547,8 +555,7 @@ describe('VoiceToReportService', () => {
     });
 
     it('should extract strengths and weaknesses', () => {
-      const transcription =
-        'Strengths: excellent passing. Weaknesses: slow pace.';
+      const transcription = 'Strengths: excellent passing. Weaknesses: slow pace.';
       const result = service['extractWithRules'](transcription);
 
       expect(result.strengths).toContain('excellent passing');
@@ -680,11 +687,7 @@ describe('VoiceToReportService', () => {
   describe('validateData', () => {
     it('should add matchId and playerId when provided', async () => {
       const data = { playerName: 'John Doe' };
-      const result = await service['validateData'](
-        data,
-        'match-123',
-        'player-456',
-      );
+      const result = await service['validateData'](data, 'match-123', 'player-456');
 
       expect(result.data['matchId']).toBe('match-123');
       expect(result.data['playerId']).toBe('player-456');
@@ -694,18 +697,14 @@ describe('VoiceToReportService', () => {
       const data = { position: 'Forward' };
       const result = await service['validateData'](data);
 
-      expect(result.warnings).toContain(
-        'Player name not identified - please specify manually',
-      );
+      expect(result.warnings).toContain('Player name not identified - please specify manually');
     });
 
     it('should not warn about missing player name when playerId is provided', async () => {
       const data = { position: 'Forward' };
       const result = await service['validateData'](data, undefined, 'player-123');
 
-      const playerWarning = result.warnings.find((w) =>
-        w.includes('Player name'),
-      );
+      const playerWarning = result.warnings.find((w) => w.includes('Player name'));
       expect(playerWarning).toBeUndefined();
     });
 
@@ -713,9 +712,7 @@ describe('VoiceToReportService', () => {
       const data = { playerName: 'John Doe', position: 'Forward' };
       const result = await service['validateData'](data);
 
-      expect(result.warnings).toContain(
-        'No performance ratings detected - consider adding them',
-      );
+      expect(result.warnings).toContain('No performance ratings detected - consider adding them');
     });
 
     it('should calculate overall rating from other ratings', async () => {
@@ -748,9 +745,7 @@ describe('VoiceToReportService', () => {
       const data = { matchDate: '15/02/2024' };
       const result = await service['validateData'](data);
 
-      expect(result.warnings).toContain(
-        'Match date format may be incorrect - expected YYYY-MM-DD',
-      );
+      expect(result.warnings).toContain('Match date format may be incorrect - expected YYYY-MM-DD');
     });
 
     it('should not warn for correct date format', async () => {
@@ -779,7 +774,8 @@ describe('VoiceToReportService', () => {
         recommendation: RecommendationType.BUY_NOW,
       };
 
-      const transcription = 'A very detailed transcription with lots of information about the player and their performance in the match.';
+      const transcription =
+        'A very detailed transcription with lots of information about the player and their performance in the match.';
       const confidence = service['calculateConfidence'](data, transcription);
 
       expect(confidence).toBeGreaterThanOrEqual(80);
@@ -801,15 +797,9 @@ describe('VoiceToReportService', () => {
 
       const transcription = 'Test transcription';
 
-      const scoreWithName = service['calculateConfidence'](
-        withName,
-        transcription,
-      );
+      const scoreWithName = service['calculateConfidence'](withName, transcription);
       const scoreWithId = service['calculateConfidence'](withId, transcription);
-      const scoreNeither = service['calculateConfidence'](
-        neither,
-        transcription,
-      );
+      const scoreNeither = service['calculateConfidence'](neither, transcription);
 
       expect(scoreWithName).toBeGreaterThan(scoreWithId);
       expect(scoreWithId).toBeGreaterThan(scoreNeither);
@@ -818,12 +808,12 @@ describe('VoiceToReportService', () => {
     it('should adjust score based on transcription length', () => {
       const data = { playerName: 'John Doe' };
       const shortTranscription = 'Short';
-      const longTranscription = 'This is a very long and detailed transcription that contains a lot of information about the player and their performance. '.repeat(5);
+      const longTranscription =
+        'This is a very long and detailed transcription that contains a lot of information about the player and their performance. '.repeat(
+          5,
+        );
 
-      const shortScore = service['calculateConfidence'](
-        data,
-        shortTranscription,
-      );
+      const shortScore = service['calculateConfidence'](data, shortTranscription);
       const longScore = service['calculateConfidence'](data, longTranscription);
 
       expect(longScore).toBeGreaterThan(shortScore);
@@ -847,10 +837,7 @@ describe('VoiceToReportService', () => {
       };
 
       const veryLongTranscription = 'word '.repeat(1000);
-      const confidence = service['calculateConfidence'](
-        perfectData,
-        veryLongTranscription,
-      );
+      const confidence = service['calculateConfidence'](perfectData, veryLongTranscription);
 
       expect(confidence).toBeLessThanOrEqual(100);
     });
@@ -934,10 +921,7 @@ describe('VoiceToReportService', () => {
 
       expect(filepath).toContain('/tmp');
       expect(filepath).toContain(mockAudioFile.originalname);
-      expect(fs.promises.writeFile).toHaveBeenCalledWith(
-        filepath,
-        mockAudioFile.buffer,
-      );
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(filepath, mockAudioFile.buffer);
     });
 
     it('should include timestamp in filename', async () => {
@@ -962,10 +946,7 @@ describe('VoiceToReportService', () => {
       const audioUrl = 'https://storage.example.com/audio.mp3';
       supabaseService.uploadFile.mockResolvedValue(audioUrl);
 
-      const result = await service['saveAudioPermanently'](
-        mockAudioFile,
-        userId,
-      );
+      const result = await service['saveAudioPermanently'](mockAudioFile, userId);
 
       expect(result).toBe(audioUrl);
       expect(supabaseService.uploadFile).toHaveBeenCalledWith(
@@ -981,8 +962,7 @@ describe('VoiceToReportService', () => {
 
       await service['saveAudioPermanently'](mockAudioFile, userId);
 
-      const uploadCall = (supabaseService.uploadFile as jest.Mock).mock
-        .calls[0];
+      const uploadCall = (supabaseService.uploadFile as jest.Mock).mock.calls[0];
       const filename = uploadCall[1];
       expect(filename).toContain(userId);
     });
@@ -990,10 +970,7 @@ describe('VoiceToReportService', () => {
     it('should return undefined on upload failure', async () => {
       supabaseService.uploadFile.mockRejectedValue(new Error('Upload failed'));
 
-      const result = await service['saveAudioPermanently'](
-        mockAudioFile,
-        userId,
-      );
+      const result = await service['saveAudioPermanently'](mockAudioFile, userId);
 
       expect(result).toBeUndefined();
     });
@@ -1009,13 +986,9 @@ describe('VoiceToReportService', () => {
     });
 
     it('should not throw error on cleanup failure', async () => {
-      (fs.promises.unlink as jest.Mock).mockRejectedValue(
-        new Error('File not found'),
-      );
+      (fs.promises.unlink as jest.Mock).mockRejectedValue(new Error('File not found'));
 
-      await expect(
-        service['cleanupAudioFile']('/tmp/test-file.mp3'),
-      ).resolves.not.toThrow();
+      await expect(service['cleanupAudioFile']('/tmp/test-file.mp3')).resolves.not.toThrow();
     });
   });
 

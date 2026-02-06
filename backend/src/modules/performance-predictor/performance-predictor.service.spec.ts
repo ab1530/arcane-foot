@@ -97,8 +97,8 @@ describe('PerformancePredictorService', () => {
       ratingDistribution: {
         poor_0_5: 0.05,
         average_5_7: 0.25,
-        good_7_8: 0.50,
-        excellent_8_plus: 0.20,
+        good_7_8: 0.5,
+        excellent_8_plus: 0.2,
       },
       keyFactors: [
         {
@@ -116,8 +116,22 @@ describe('PerformancePredictorService', () => {
       mockPrismaService.players.findUnique.mockResolvedValue(mockPlayer);
       mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
       mockPrismaService.scouting_reports.findMany.mockResolvedValue([
-        { overallRating: 7.0, technicalRating: 7.0, tacticalRating: 6.8, physicalRating: 7.2, mentalRating: 6.9, playerMinutesPlayed: 85 },
-        { overallRating: 7.2, technicalRating: 7.1, tacticalRating: 6.9, physicalRating: 7.1, mentalRating: 7.0, playerMinutesPlayed: 90 },
+        {
+          overallRating: 7.0,
+          technicalRating: 7.0,
+          tacticalRating: 6.8,
+          physicalRating: 7.2,
+          mentalRating: 6.9,
+          playerMinutesPlayed: 85,
+        },
+        {
+          overallRating: 7.2,
+          technicalRating: 7.1,
+          tacticalRating: 6.9,
+          physicalRating: 7.1,
+          mentalRating: 7.0,
+          playerMinutesPlayed: 90,
+        },
       ]);
       mockPrismaService.scouting_reports.findFirst.mockResolvedValue({
         matches: { scheduledAt: new Date() },
@@ -156,13 +170,20 @@ describe('PerformancePredictorService', () => {
       mockPrismaService.players.findUnique.mockResolvedValue(mockPlayer);
       mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
       mockPrismaService.scouting_reports.findMany.mockResolvedValue([
-        { overallRating: 7.0, technicalRating: 7.0, tacticalRating: 6.8, physicalRating: 7.2, mentalRating: 6.9, playerMinutesPlayed: 85 },
+        {
+          overallRating: 7.0,
+          technicalRating: 7.0,
+          tacticalRating: 6.8,
+          physicalRating: 7.2,
+          mentalRating: 6.9,
+          playerMinutesPlayed: 85,
+        },
       ]);
       mockPrismaService.scouting_reports.findFirst.mockResolvedValue({
         matches: { scheduledAt: new Date() },
       });
       mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('AI service connection failed'))
+        throwError(() => new Error('AI service connection failed')),
       );
 
       await expect(service.predictPerformance('player-1', 'match-1')).rejects.toThrow(
@@ -184,7 +205,14 @@ describe('PerformancePredictorService', () => {
       mockPrismaService.players.findUnique.mockResolvedValue(playerNoStats);
       mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
       mockPrismaService.scouting_reports.findMany.mockResolvedValue([
-        { overallRating: 7.0, technicalRating: 7.0, tacticalRating: 6.8, physicalRating: 7.2, mentalRating: 6.9, playerMinutesPlayed: 85 },
+        {
+          overallRating: 7.0,
+          technicalRating: 7.0,
+          tacticalRating: 6.8,
+          physicalRating: 7.2,
+          mentalRating: 6.9,
+          playerMinutesPlayed: 85,
+        },
       ]);
       mockPrismaService.scouting_reports.findFirst.mockResolvedValue({
         matches: { scheduledAt: new Date() },
@@ -208,7 +236,14 @@ describe('PerformancePredictorService', () => {
       mockPrismaService.players.findUnique.mockResolvedValue(mockPlayer);
       mockPrismaService.matches.findUnique.mockResolvedValue(awayMatch);
       mockPrismaService.scouting_reports.findMany.mockResolvedValue([
-        { overallRating: 7.0, technicalRating: 7.0, tacticalRating: 6.8, physicalRating: 7.2, mentalRating: 6.9, playerMinutesPlayed: 85 },
+        {
+          overallRating: 7.0,
+          technicalRating: 7.0,
+          tacticalRating: 6.8,
+          physicalRating: 7.2,
+          mentalRating: 6.9,
+          playerMinutesPlayed: 85,
+        },
       ]);
       mockPrismaService.scouting_reports.findFirst.mockResolvedValue({
         matches: { scheduledAt: new Date() },
@@ -224,7 +259,7 @@ describe('PerformancePredictorService', () => {
           matchContext: expect.objectContaining({
             venue: 'away',
           }),
-        })
+        }),
       );
     });
   });
@@ -256,31 +291,50 @@ describe('PerformancePredictorService', () => {
       mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
 
       // Mock predictPerformance for each player
-      jest.spyOn(service, 'predictPerformance').mockResolvedValueOnce({
-        playerId: 'player-1',
-        predictedRating: 7.0,
-        confidenceInterval: [6.0, 8.0],
-        confidence: 0.8,
-        ratingDistribution: { poor_0_5: 0.1, average_5_7: 0.3, good_7_8: 0.4, excellent_8_plus: 0.2 },
-        keyFactors: [],
-        recommendations: [],
-      }).mockResolvedValueOnce({
-        playerId: 'player-2',
-        predictedRating: 6.8,
-        confidenceInterval: [5.8, 7.8],
-        confidence: 0.75,
-        ratingDistribution: { poor_0_5: 0.15, average_5_7: 0.35, good_7_8: 0.35, excellent_8_plus: 0.15 },
-        keyFactors: [],
-        recommendations: [],
-      }).mockResolvedValueOnce({
-        playerId: 'player-3',
-        predictedRating: 7.2,
-        confidenceInterval: [6.2, 8.2],
-        confidence: 0.82,
-        ratingDistribution: { poor_0_5: 0.08, average_5_7: 0.28, good_7_8: 0.42, excellent_8_plus: 0.22 },
-        keyFactors: [],
-        recommendations: [],
-      });
+      jest
+        .spyOn(service, 'predictPerformance')
+        .mockResolvedValueOnce({
+          playerId: 'player-1',
+          predictedRating: 7.0,
+          confidenceInterval: [6.0, 8.0],
+          confidence: 0.8,
+          ratingDistribution: {
+            poor_0_5: 0.1,
+            average_5_7: 0.3,
+            good_7_8: 0.4,
+            excellent_8_plus: 0.2,
+          },
+          keyFactors: [],
+          recommendations: [],
+        })
+        .mockResolvedValueOnce({
+          playerId: 'player-2',
+          predictedRating: 6.8,
+          confidenceInterval: [5.8, 7.8],
+          confidence: 0.75,
+          ratingDistribution: {
+            poor_0_5: 0.15,
+            average_5_7: 0.35,
+            good_7_8: 0.35,
+            excellent_8_plus: 0.15,
+          },
+          keyFactors: [],
+          recommendations: [],
+        })
+        .mockResolvedValueOnce({
+          playerId: 'player-3',
+          predictedRating: 7.2,
+          confidenceInterval: [6.2, 8.2],
+          confidence: 0.82,
+          ratingDistribution: {
+            poor_0_5: 0.08,
+            average_5_7: 0.28,
+            good_7_8: 0.42,
+            excellent_8_plus: 0.22,
+          },
+          keyFactors: [],
+          recommendations: [],
+        });
 
       const result = await service.batchPredictForMatch('match-1');
 
@@ -343,7 +397,7 @@ describe('PerformancePredictorService', () => {
           totalPredictions: 50,
           avgError: 0.75,
           rmse: 0.95,
-          withinCI: 0.80,
+          withinCI: 0.8,
           r2Score: 0.72,
           dateRange: '2024-01',
           modelVersion: 'v1',
@@ -358,7 +412,7 @@ describe('PerformancePredictorService', () => {
       expect(mockPrismaService.prediction_accuracy_log.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ playerId: 'player-1' }),
-        })
+        }),
       );
       expect(result).toHaveLength(1);
     });
@@ -368,9 +422,9 @@ describe('PerformancePredictorService', () => {
         {
           totalPredictions: 75,
           avgError: 0.78,
-          rmse: 1.00,
+          rmse: 1.0,
           withinCI: 0.77,
-          r2Score: 0.70,
+          r2Score: 0.7,
           dateRange: '2024-02',
           modelVersion: 'v1',
           calculatedAt: new Date(),
@@ -384,7 +438,7 @@ describe('PerformancePredictorService', () => {
       expect(mockPrismaService.prediction_accuracy_log.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ dateRange: '2024-02' }),
-        })
+        }),
       );
       expect(result).toHaveLength(1);
     });
@@ -417,7 +471,7 @@ describe('PerformancePredictorService', () => {
         features: [
           { feature: 'form_l5', importance: 0.15 },
           { feature: 'opponent_strength', importance: 0.12 },
-          { feature: 'venue', importance: 0.10 },
+          { feature: 'venue', importance: 0.1 },
         ],
       };
 
@@ -431,9 +485,7 @@ describe('PerformancePredictorService', () => {
     });
 
     it('should handle AI service failure for feature importance', async () => {
-      mockHttpService.get.mockReturnValue(
-        throwError(() => new Error('AI service unavailable'))
-      );
+      mockHttpService.get.mockReturnValue(throwError(() => new Error('AI service unavailable')));
 
       await expect(service.getFeatureImportance()).rejects.toThrow(HttpException);
       await expect(service.getFeatureImportance()).rejects.toThrow(
@@ -458,19 +510,15 @@ describe('PerformancePredictorService', () => {
       expect(result).toEqual(mockResponse);
       expect(mockHttpService.post).toHaveBeenCalledWith(
         expect.stringContaining('/performance/train'),
-        {}
+        {},
       );
     });
 
     it('should handle model retraining failure', async () => {
-      mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('Training failed'))
-      );
+      mockHttpService.post.mockReturnValue(throwError(() => new Error('Training failed')));
 
       await expect(service.retrainModel()).rejects.toThrow(HttpException);
-      await expect(service.retrainModel()).rejects.toThrow(
-        'Model retraining failed',
-      );
+      await expect(service.retrainModel()).rejects.toThrow('Model retraining failed');
     });
   });
 
@@ -516,7 +564,7 @@ describe('PerformancePredictorService', () => {
 
     it('should handle errors during accuracy update gracefully', async () => {
       mockPrismaService.performance_predictions.findMany.mockRejectedValue(
-        new Error('Database error')
+        new Error('Database error'),
       );
 
       // Should not throw, just log error
@@ -592,7 +640,7 @@ describe('PerformancePredictorService', () => {
             rmse: 0.3,
             withinCI: 1.0,
           }),
-        })
+        }),
       );
 
       jest.useRealTimers();

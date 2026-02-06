@@ -1,45 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
+  FileText,
   Users,
   Trophy,
-  FileText,
   TrendingUp,
-  Calendar,
-  Target,
-  Zap,
-  Brain,
-  Crown,
-  ArrowRight,
-  Activity,
   Plus,
+  Search as SearchIcon,
+  BarChart3,
+  Brain,
+  Zap,
+  Target,
   Clock,
   CheckCircle,
   AlertCircle,
+  ArrowRight,
+  Sparkles,
+  Activity,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/ui/glass-card";
-import { AnimatedBackground } from "@/components/ui/animated-background";
-import { AnimatedCounter } from "@/components/ui/animated-counter";
+
+// Arcane Design System Components
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { Sidebar } from "@/components/composite/Navigation/Sidebar";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { ArcaneCard } from "@/components/primitives/Card/ArcaneCard";
+import { CardHeader } from "@/components/primitives/Card/CardHeader";
+import { CardContent } from "@/components/primitives/Card/CardContent";
+import { ArcaneButton } from "@/components/primitives/Button/ArcaneButton";
+import { Heading } from "@/components/primitives/Typography/Heading";
+import { Text } from "@/components/primitives/Typography/Text";
+import { Badge } from "@/components/primitives/Badge/Badge";
+import { List } from "@/components/composite/DataDisplay/List";
+import { Skeleton } from "@/components/composite/Progress/Skeleton";
+import { useLanguage } from "@/contexts/language-context";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
+
+// Hooks and Utils
 import { useSubscription } from "@/hooks/useSubscription";
-import MainLayout from "@/components/layout/MainLayout";
+import { useAuth } from "@/contexts/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
-import Link from "next/link";
-import { LineChart, BarChart, PieChart, AreaChart } from "@/components/charts";
+import { cn } from "@/lib/utils";
+import { useDashboardStats } from "@/hooks/useData";
 
-interface DashboardStats {
-  totalPlayers: number;
-  totalReports: number;
-  totalCamps: number;
-  activeCamps: number;
-  upcomingMatches: number;
-  pendingReports: number;
-}
-
+// Types
 interface RecentActivity {
   id: string;
   type: "player" | "report" | "camp" | "match";
@@ -52,610 +58,572 @@ interface RecentActivity {
 export default function DashboardPage() {
   const router = useRouter();
   const { subscription, getTierName, hasMinimumTier } = useSubscription();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalPlayers: 0,
-    totalReports: 0,
-    totalCamps: 0,
-    activeCamps: 0,
-    upcomingMatches: 0,
-    pendingReports: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const { logout, user } = useAuth();
+  const {
+    data: dashboardData,
+    isLoading: analyticsLoading,
+    isError: analyticsError,
+  } = useDashboardStats();
 
+  // State
+  const [gamification, setGamification] = useState<{ totalPoints: number; currentLevel: number }>({
+    totalPoints: 0,
+    currentLevel: 1,
+  });
+  const [gamificationLoading, setGamificationLoading] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const { dictionary, t, language } = useLanguage();
+  const dashboardCopy = dictionary.dashboard;
+  const locale = language === "fr" ? "fr-FR" : "en-US";
+
+  // Gamification stats for XP/level
   useEffect(() => {
-    fetchDashboardData();
+    let cancelled = false;
+    const fetchGamification = async () => {
+      try {
+        setGamificationLoading(true);
+        const response = await apiClient.getGamificationProfile().catch(() => null);
+        if (!cancelled && response?.stats) {
+          setGamification({
+            totalPoints: response.stats.totalPoints || 0,
+            currentLevel: response.stats.currentLevel || 1,
+          });
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) {
+          setGamificationLoading(false);
+        }
+      }
+    };
+    fetchGamification();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch stats from various endpoints
-      const [playersRes, reportsRes, campsRes] = await Promise.all([
-        apiClient.getPlayers().catch(() => []),
-        apiClient.getReports().catch(() => []),
-        apiClient.getCamps().catch(() => []),
-      ]);
-
-      const normalize = (payload: any) =>
-        Array.isArray(payload) ? payload : payload?.items ?? payload?.data ?? [];
-
-      const players = normalize(playersRes);
-      const reports = normalize(reportsRes);
-      const camps = normalize(campsRes);
-
-      setStats({
-        totalPlayers: players.length,
-        totalReports: reports.length,
-        totalCamps: camps.length,
-        activeCamps: camps.filter((c: any) => c.status === "ACTIVE").length,
-        upcomingMatches: 0, // Would come from matches API
-        pendingReports: reports.filter((r: any) => r.status === "DRAFT").length,
+  useEffect(() => {
+    if (analyticsError) {
+      const errorText =
+        (dashboardCopy.toasts as { error?: string })?.error || "Failed to load dashboard data";
+      toast.error(errorText, {
+        description: "Please try refreshing the page",
       });
-
-      // Generate recent activity from latest items
-      const activities: RecentActivity[] = [];
-
-      if (reports.length > 0) {
-        activities.push({
-          id: "1",
-          type: "report",
-          title: "Nouveau rapport créé",
-          description: reports[0].title || "Rapport de scouting",
-          timestamp: reports[0].createdAt,
-          icon: FileText,
-        });
-      }
-
-      if (camps.length > 0) {
-        activities.push({
-          id: "2",
-          type: "camp",
-          title: "Camp disponible",
-          description: camps[0].name || "Camp de formation",
-          timestamp: camps[0].createdAt,
-          icon: Trophy,
-        });
-      }
-
-      if (players.length > 0) {
-        activities.push({
-          id: "3",
-          type: "player",
-          title: "Nouveau joueur ajouté",
-          description: `${players[0].firstName ?? players[0].user?.firstName ?? ""} ${players[0].lastName ?? players[0].user?.lastName ?? ""}`.trim() || "Nouveau joueur",
-          timestamp: players[0].createdAt ?? new Date().toISOString(),
-          icon: Users,
-        });
-      }
-
-      setRecentActivity(activities);
-    } catch (error: any) {
-      console.error("Failed to fetch dashboard data:", error);
-      // Set mock data for demo
-      setStats({
-        totalPlayers: 42,
-        totalReports: 18,
-        totalCamps: 5,
-        activeCamps: 3,
-        upcomingMatches: 7,
-        pendingReports: 4,
-      });
-    } finally {
-      setLoading(false);
     }
+  }, [analyticsError, dashboardCopy.toasts]);
+
+  const analytics = dashboardData || {};
+  const stats = useMemo(() => {
+    const overview = analytics.overview || {};
+    return {
+      totalPlayers: analytics.totalPlayers ?? overview.totalPlayers ?? 0,
+      totalReports:
+        analytics.totalReports ??
+        analytics.totalScoutingReports ??
+        overview.totalScoutingReports ??
+        0,
+      totalCamps: overview.totalEvents ?? 0,
+      activeCamps: analytics.activeCamps ?? overview.totalEvents ?? 0,
+      upcomingMatches: analytics.totalMatches ?? overview.totalMatches ?? 0,
+      pendingReports: analytics.pendingReports ?? analytics.reportsLast7Days ?? 0,
+      totalXP: gamification.totalPoints,
+      currentLevel: gamification.currentLevel,
+    };
+  }, [analytics, gamification]);
+
+  const recentActivity = useMemo<RecentActivity[]>(() => {
+    const items = dashboardCopy.activity.items;
+    const activity: RecentActivity[] = [];
+    const localized = (en: string, fr: string) => (language === "fr" ? fr : en);
+
+    if (analytics.reportsLast7Days !== undefined) {
+      activity.push({
+        id: "reports_week",
+        type: "report",
+        title: items.reportCreated.title,
+        description: `${analytics.reportsLast7Days.toLocaleString(locale)} ${localized(
+          "reports created this week",
+          "rapports créés cette semaine",
+        )}`,
+        timestamp: new Date().toISOString(),
+        icon: FileText,
+      });
+    }
+
+    if (analytics.recentActivity?.newUsersLast7Days !== undefined) {
+      activity.push({
+        id: "new_users",
+        type: "player",
+        title: items.playerAdded.title,
+        description: `${analytics.recentActivity.newUsersLast7Days.toLocaleString(locale)} ${localized(
+          "new users in the last 7 days",
+          "nouveaux utilisateurs ces 7 derniers jours",
+        )}`,
+        timestamp: new Date().toISOString(),
+        icon: Users,
+      });
+    }
+
+    if (analytics.recentActivity?.newScoutingReportsLast7Days !== undefined) {
+      activity.push({
+        id: "new_reports",
+        type: "report",
+        title: items.reportCreated.title,
+        description: `${analytics.recentActivity.newScoutingReportsLast7Days.toLocaleString(
+          locale,
+        )} ${localized("reports submitted by scouts", "rapports soumis par les scouts")}`,
+        timestamp: new Date().toISOString(),
+        icon: FileText,
+      });
+    }
+
+    if (analytics.recentActivity?.newClubRequestsLast7Days !== undefined) {
+      activity.push({
+        id: "club_requests",
+        type: "camp",
+        title: items.campAvailable.title,
+        description: `${analytics.recentActivity.newClubRequestsLast7Days.toLocaleString(
+          locale,
+        )} ${localized("club requests this week", "demandes de clubs cette semaine")}`,
+        timestamp: new Date().toISOString(),
+        icon: Trophy,
+      });
+    }
+
+    return activity;
+  }, [analytics, dashboardCopy.activity.items, language, locale]);
+
+  const loading = analyticsLoading || gamificationLoading;
+
+  // Sidebar navigation items
+  const sidebarItems = [
+    {
+      id: "dashboard",
+      label: dashboardCopy.sidebar.dashboard,
+      icon: BarChart3,
+      href: "/dashboard",
+    },
+    {
+      id: "players",
+      label: dashboardCopy.sidebar.players,
+      icon: Users,
+      href: "/players",
+      badge: stats.totalPlayers > 0 ? stats.totalPlayers : undefined,
+    },
+    {
+      id: "reports",
+      label: dashboardCopy.sidebar.reports,
+      icon: FileText,
+      href: "/reports",
+      badge: stats.pendingReports > 0 ? stats.pendingReports : undefined,
+      badgeVariant: "warning" as const,
+    },
+    {
+      id: "camps",
+      label: dashboardCopy.sidebar.camps,
+      icon: Trophy,
+      href: "/camps",
+    },
+    {
+      id: "ai",
+      label: dashboardCopy.sidebar.ai,
+      icon: Brain,
+      children: [
+        {
+          id: "ai-index",
+          label: dashboardCopy.sidebar.aiIndex,
+          icon: Target,
+          href: "/ai/arkane-index",
+        },
+        {
+          id: "ai-gpt",
+          label: dashboardCopy.sidebar.aiGpt,
+          icon: Zap,
+          href: "/ai/arkane-gpt",
+        },
+      ],
+    },
+  ];
+
+  // Handlers
+  const handleSearch = (value: string) => {
+    setSearchValue(value);
+    // Implement search logic
   };
 
-  const quickStats = [
+  const handleSearchSubmit = (value: string) => {
+    console.log("Search submitted:", value);
+    // Navigate to search results or filter content
+  };
+
+  const handleSettingsClick = () => {
+    router.push("/settings");
+  };
+
+  const handleLogout = () => {
+    toast.success(dashboardCopy.toasts.logout);
+    logout(); // Use the auth context logout function
+  };
+
+  const xpToNextLevel = Math.max(0, 1000 - (stats.totalXP % 1000)) || 1000;
+
+  const statCardConfig = [
     {
-      label: "Joueurs",
-      value: stats.totalPlayers,
-      icon: Users,
-      color: "text-blue-400",
-      bgColor: "bg-blue-500/20",
-      href: "/players",
-      trend: "+12%",
-    },
-    {
-      label: "Rapports",
+      key: 'totalReports',
+      label: dashboardCopy.stats.totalReports.label,
       value: stats.totalReports,
       icon: FileText,
-      color: "text-purple-400",
-      bgColor: "bg-purple-500/20",
-      href: "/reports",
-      trend: "+8%",
+      trend: dashboardCopy.stats.totalReports.trend,
+      trendDirection: 'up' as const,
+      comparison: dashboardCopy.stats.totalReports.comparison,
+      accentColor: 'purple' as const,
+      action: () => router.push('/reports'),
     },
     {
-      label: "Camps Actifs",
-      value: stats.activeCamps,
-      icon: Trophy,
-      color: "text-arcane-accent",
-      bgColor: "bg-arcane-accent/20",
-      href: "/camps",
-      trend: "+3",
-    },
-    {
-      label: "Matches à venir",
-      value: stats.upcomingMatches,
-      icon: Calendar,
-      color: "text-green-400",
-      bgColor: "bg-green-500/20",
-      href: "/calendar",
-      trend: "Cette semaine",
-    },
-  ];
-
-  const aiFeatures = [
-    {
-      name: "ArkaneIndex",
-      description: "Système de notation IA",
-      icon: Brain,
-      gradient: "from-yellow-500 to-orange-500",
-      href: "/ai/arkane-index",
-      minTier: "GOLD",
-    },
-    {
-      name: "ArkaneGPT",
-      description: "Assistant IA Football",
-      icon: Zap,
-      gradient: "from-green-500 to-emerald-500",
-      href: "/ai/arkane-gpt",
-      minTier: "BASIC",
-    },
-    {
-      name: "Scout AI",
-      description: "Rapports automatisés",
-      icon: Target,
-      gradient: "from-blue-500 to-cyan-500",
-      href: "/reports",
-      minTier: "PRO",
-    },
-  ];
-
-  const quickActions = [
-    {
-      label: "Nouveau Rapport",
-      icon: Plus,
-      href: "/reports/new",
-      variant: "default" as const,
-    },
-    {
-      label: "Ajouter Joueur",
+      key: 'totalPlayers',
+      label: dashboardCopy.stats.totalPlayers.label,
+      value: stats.totalPlayers,
       icon: Users,
-      href: "/players/new",
-      variant: "secondary" as const,
+      trend: dashboardCopy.stats.totalPlayers.trend,
+      trendDirection: 'up' as const,
+      comparison: dashboardCopy.stats.totalPlayers.comparison,
+      accentColor: 'blue' as const,
+      action: () => router.push('/players'),
     },
     {
-      label: "Voir Camps",
+      key: 'matches',
+      label: dashboardCopy.stats.matches.label,
+      value: stats.upcomingMatches,
+      icon: Activity,
+      trend: dashboardCopy.stats.matches.trend,
+      trendDirection: 'neutral' as const,
+      comparison: dashboardCopy.stats.matches.comparison,
+      accentColor: 'green' as const,
+      action: () => router.push('/calendar'),
+    },
+    {
+      key: 'totalXP',
+      label: dashboardCopy.stats.totalXP.label,
+      value: stats.totalXP,
       icon: Trophy,
-      href: "/camps",
-      variant: "secondary" as const,
-    },
-    {
-      label: "Marché",
-      icon: TrendingUp,
-      href: "/market",
-      variant: "secondary" as const,
+      trend: t('dashboard.stats.totalXP.trend', { level: stats.currentLevel }),
+      trendDirection: 'up' as const,
+      comparison: t('dashboard.stats.totalXP.comparison', { xp: xpToNextLevel }),
+      accentColor: 'yellow' as const,
+      action: () => router.push('/profile'),
     },
   ];
+
+  const quickActionLabels = dashboardCopy.quickActions.items;
+
+  const quickActionConfig = [
+    {
+      id: 'createReport',
+      icon: Plus,
+      variant: 'primary' as const,
+      action: () => router.push('/reports/new'),
+    },
+    {
+      id: 'findCoach',
+      icon: SearchIcon,
+      variant: 'secondary' as const,
+      action: () => router.push('/coaches'),
+    },
+    {
+      id: 'viewAnalytics',
+      icon: BarChart3,
+      variant: 'secondary' as const,
+      action: () => router.push('/analytics'),
+    },
+  ];
+
+  const aiFeatureMeta = {
+    'arkane-index': {
+      icon: Brain,
+      gradient: 'from-yellow-500 to-orange-500',
+      href: '/ai/arkane-index',
+      minTier: 'GOLD',
+    },
+    'arkane-gpt': {
+      icon: Zap,
+      gradient: 'from-green-500 to-emerald-500',
+      href: '/ai/arkane-gpt',
+      minTier: 'BASIC',
+    },
+    'scout-ai': {
+      icon: Target,
+      gradient: 'from-blue-500 to-cyan-500',
+      href: '/reports',
+      minTier: 'PRO',
+    },
+  } as const;
+
+  const aiFeatures = dashboardCopy.ai.features.map((feature) => ({
+    ...feature,
+    ...aiFeatureMeta[feature.id as keyof typeof aiFeatureMeta],
+  }));
+
+  // Activity item renderer
+  const renderActivityItem = (activity: RecentActivity, index: number) => {
+    const Icon = activity.icon;
+    return (
+      <div
+        className={cn(
+          "flex items-start gap-3 p-3 rounded-lg",
+          "hover:bg-arcane-charcoal/50 transition-colors cursor-pointer"
+        )}
+      >
+        <div className="h-10 w-10 rounded-lg bg-arcane-yellow/20 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-5 w-5 text-arcane-yellow" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <Text size="sm" weight="semibold" className="mb-1">
+            {activity.title}
+          </Text>
+          <Text size="xs" color="secondary" className="truncate mb-1">
+            {activity.description}
+          </Text>
+          <Text size="xs" color="tertiary" className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {new Date(activity.timestamp).toLocaleDateString(locale, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: language !== "fr",
+            })}
+          </Text>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <MainLayout>
-      <div className="min-h-screen relative">
-        <AnimatedBackground />
-
-        <div className="relative z-10 container mx-auto px-4 py-8">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight mb-2">
-                  Dashboard
-                </h1>
-                <p className="text-arcane-grey">
-                  Bienvenue sur votre tableau de bord Arcane Football
-                </p>
-              </div>
-
-              {subscription && (
-                <Link href="/pricing">
-                  <GlassCard className="px-4 py-2 hover:border-arcane-accent/50 transition-all cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-arcane-accent" />
-                      <span className="text-sm font-bold text-arcane-accent">
-                        {getTierName(subscription.tier)}
-                      </span>
-                    </div>
-                  </GlassCard>
-                </Link>
-              )}
+    <ProtectedPage>
+      <div className="min-h-screen bg-arcane-black">
+        {/* Sidebar */}
+        <Sidebar
+        items={sidebarItems}
+        activeId="dashboard"
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+        logo={
+          <div className="flex items-center gap-2">
+            <div className="h-10 w-10 rounded-lg bg-arcane-yellow flex items-center justify-center">
+              <span className="text-arcane-black font-black text-xl">A</span>
             </div>
-          </motion.div>
+            {(!sidebarCollapsed || mobileSidebarOpen) && (
+              <Heading level={5} className="text-arcane-yellow">
+                ARCANE
+              </Heading>
+            )}
+          </div>
+        }
+      />
 
-          {/* Quick Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-          >
-            {quickStats.map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1 * index }}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <Link href={stat.href}>
-                    <GlassCard
-                      variant="elevated"
-                      className="p-6 hover:border-arcane-accent/30 transition-all cursor-pointer h-full"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div
-                          className={`h-12 w-12 rounded-lg ${stat.bgColor} flex items-center justify-center`}
-                        >
-                          <Icon className={`h-6 w-6 ${stat.color}`} />
-                        </div>
-                        <span className="text-xs text-arcane-accent font-bold px-2 py-1 rounded-full bg-arcane-accent/10">
-                          {stat.trend}
-                        </span>
-                      </div>
-                      <div className="text-3xl font-black text-white mb-1">
-                        {loading ? (
-                          <div className="h-9 w-16 bg-arcane-darkBorder/50 rounded animate-pulse" />
-                        ) : (
-                          <AnimatedCounter to={stat.value} duration={1.5} />
-                        )}
-                      </div>
-                      <div className="text-sm text-arcane-grey">{stat.label}</div>
-                    </GlassCard>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+      {/* Main Content */}
+      <div
+        className={cn(
+          "transition-all duration-300",
+          sidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
+        )}
+      >
+        {/* Header */}
+        <DashboardHeader
+          title={dashboardCopy.header.title}
+          subtitle={dashboardCopy.header.subtitle}
+          userName={user?.fullName || "User"}
+          userEmail={user?.email || ""}
+          userAvatar={user?.avatar}
+          subscriptionTier={subscription?.tier || "FREE"}
+          searchValue={searchValue}
+          onSearchChange={handleSearch}
+          onSearchSubmit={handleSearchSubmit}
+          onSettingsClick={handleSettingsClick}
+          onLogout={handleLogout}
+        />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* AI Features */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="lg:col-span-2"
-            >
-              <GlassCard variant="elevated" className="p-6 h-full">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                    <Brain className="h-6 w-6 text-arcane-accent" />
-                    Arkane AI
-                  </h2>
-                  <Link href="/ai">
-                    <Button variant="outline" size="sm">
-                      Voir tout
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
+        {/* Dashboard Content */}
+        <main className="container mx-auto px-4 py-8 space-y-8">
+          {/* Stats Grid - 4 Columns */}
+          <section>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statCardConfig.map((card) => (
+                <StatCard
+                  key={card.key}
+                  label={card.label}
+                  value={card.value}
+                  icon={card.icon}
+                  trend={card.trend}
+                  trendDirection={card.trendDirection}
+                  comparison={card.comparison}
+                  accentColor={card.accentColor}
+                  loading={loading}
+                  onClick={card.action}
+                />
+              ))}
+            </div>
+          </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {aiFeatures.map((feature) => {
-                    const Icon = feature.icon;
-                    const hasAccess = hasMinimumTier(feature.minTier as any);
-
-                    return (
-                      <div
-                        key={feature.name}
-                        onClick={() =>
-                          hasAccess
-                            ? router.push(feature.href)
-                            : toast.error(
-                                `Nécessite un abonnement ${feature.minTier}+`
-                              )
-                        }
-                        className="cursor-pointer"
-                      >
-                        <GlassCard
-                          className={`p-4 h-full transition-all ${
-                            hasAccess
-                              ? "hover:border-arcane-accent/50"
-                              : "opacity-75"
-                          }`}
-                        >
-                          <div
-                            className={`h-12 w-12 rounded-lg bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-3`}
-                          >
-                            <Icon className="h-6 w-6 text-white" />
-                          </div>
-                          <h3 className="text-white font-bold mb-1">
-                            {feature.name}
-                          </h3>
-                          <p className="text-xs text-arcane-grey mb-2">
-                            {feature.description}
-                          </p>
-                          {!hasAccess && (
-                            <span className="inline-flex items-center gap-1 text-xs text-arcane-accent">
-                              <Crown className="h-3 w-3" />
-                              {feature.minTier}+
-                            </span>
-                          )}
-                        </GlassCard>
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            </motion.div>
-
+          {/* Quick Actions & AI Insights */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Quick Actions */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <GlassCard variant="elevated" className="p-6 h-full">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-                  <Zap className="h-6 w-6 text-arcane-accent" />
-                  Actions Rapides
-                </h2>
-                <div className="space-y-3">
-                  {quickActions.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <Link key={action.label} href={action.href}>
-                        <Button
-                          variant={action.variant}
-                          className="w-full justify-start"
-                        >
-                          <Icon className="h-4 w-4 mr-2" />
-                          {action.label}
-                        </Button>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            </motion.div>
-          </div>
+            <div className="lg:col-span-1">
+              <ArcaneCard variant="standard" className="h-full">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-arcane-yellow" />
+                    <Heading level={4} className="text-xl">
+                      {dashboardCopy.quickActions.title}
+                    </Heading>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {quickActionConfig.map((action) => (
+                    <ArcaneButton
+                      key={action.id}
+                      variant={action.variant}
+                      size="md"
+                      icon={<action.icon />}
+                      fullWidth
+                      onClick={action.action}
+                    >
+                      {quickActionLabels[action.id as keyof typeof quickActionLabels]}
+                    </ArcaneButton>
+                  ))}
+                </CardContent>
+              </ArcaneCard>
+            </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Activity Trend - Line Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <LineChart
-                title="Activité sur 7 jours"
-                data={[
-                  { name: "Lun", rapports: 4, joueurs: 2, camps: 1 },
-                  { name: "Mar", rapports: 6, joueurs: 3, camps: 0 },
-                  { name: "Mer", rapports: 5, joueurs: 4, camps: 2 },
-                  { name: "Jeu", rapports: 8, joueurs: 1, camps: 1 },
-                  { name: "Ven", rapports: 7, joueurs: 5, camps: 0 },
-                  { name: "Sam", rapports: 3, joueurs: 2, camps: 3 },
-                  { name: "Dim", rapports: 4, joueurs: 3, camps: 1 },
-                ]}
-                lines={[
-                  { dataKey: "rapports", color: "#A78BFA", name: "Rapports" },
-                  { dataKey: "joueurs", color: "#60A5FA", name: "Joueurs" },
-                  { dataKey: "camps", color: "#E4FF3B", name: "Camps" },
-                ]}
-                height={300}
-              />
-            </motion.div>
-
-            {/* Reports by Status - Pie Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <PieChart
-                title="Rapports par Statut"
-                data={[
-                  { name: "Approuvés", value: stats.totalReports - stats.pendingReports },
-                  { name: "En brouillon", value: stats.pendingReports },
-                  { name: "En révision", value: Math.floor(stats.totalReports * 0.15) },
-                ]}
-                colors={["#10B981", "#F59E0B", "#3B82F6"]}
-                height={300}
-                innerRadius={60}
-              />
-            </motion.div>
-
-            {/* Monthly Growth - Area Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <AreaChart
-                title="Croissance Mensuelle"
-                data={[
-                  { name: "Jan", joueurs: 10, rapports: 15 },
-                  { name: "Fév", joueurs: 15, rapports: 22 },
-                  { name: "Mar", joueurs: 22, rapports: 28 },
-                  { name: "Avr", joueurs: 28, rapports: 35 },
-                  { name: "Mai", joueurs: 35, rapports: 42 },
-                  { name: "Juin", joueurs: 42, rapports: 48 },
-                ]}
-                areas={[
-                  { dataKey: "joueurs", color: "#60A5FA", name: "Joueurs" },
-                  { dataKey: "rapports", color: "#A78BFA", name: "Rapports" },
-                ]}
-                height={300}
-              />
-            </motion.div>
-
-            {/* Players by Position - Bar Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-            >
-              <BarChart
-                title="Joueurs par Position"
-                data={[
-                  { name: "Attaquants", count: Math.floor(stats.totalPlayers * 0.3) },
-                  { name: "Milieux", count: Math.floor(stats.totalPlayers * 0.35) },
-                  { name: "Défenseurs", count: Math.floor(stats.totalPlayers * 0.25) },
-                  { name: "Gardiens", count: Math.floor(stats.totalPlayers * 0.1) },
-                ]}
-                bars={[
-                  { dataKey: "count", color: "#E4FF3B", name: "Joueurs" },
-                ]}
-                height={300}
-              />
-            </motion.div>
-          </div>
-
-          {/* Recent Activity & Pending Tasks */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Activity */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <GlassCard variant="elevated" className="p-6">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-                  <Activity className="h-6 w-6 text-arcane-accent" />
-                  Activité Récente
-                </h2>
-
-                {loading ? (
+            {/* AI Insights Widget */}
+            <div className="lg:col-span-2">
+              <ArcaneCard variant="feature" className="h-full">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-arcane-yellow" />
+                      <Heading level={4} className="text-xl">
+                        {dashboardCopy.ai.title}
+                      </Heading>
+                    </div>
+                    <Badge variant="premium" size="sm" icon={<Sparkles />}>
+                      {dashboardCopy.ai.badge}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="h-16 bg-arcane-darkBorder/50 rounded-lg animate-pulse"
-                      />
+                    {/* AI Features Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {aiFeatures.map((feature) => {
+                        const Icon = feature.icon;
+                        const hasAccess = hasMinimumTier(feature.minTier as any);
+
+                        return (
+                          <div
+                            key={feature.id}
+                            onClick={() =>
+                              hasAccess
+                                ? router.push(feature.href)
+                                : toast.error(t('dashboard.ai.requirement', { tier: feature.minTier }))
+                            }
+                              className={cn(
+                                "p-4 rounded-lg border border-arcane-slate/30",
+                                "bg-arcane-anthracite/50",
+                                "hover:border-arcane-yellow/30 hover:bg-arcane-charcoal/50",
+                                "transition-all duration-200 cursor-pointer",
+                                !hasAccess && "opacity-75"
+                              )}
+                          >
+                            <div
+                              className={cn(
+                                "h-10 w-10 rounded-lg mb-3",
+                                "flex items-center justify-center",
+                                `bg-gradient-to-br ${feature.gradient}`
+                              )}
+                            >
+                              <Icon className="h-5 w-5 text-white" />
+                            </div>
+                            <Text size="sm" weight="semibold" className="mb-1">
+                              {feature.name}
+                            </Text>
+                            <Text size="xs" color="tertiary">
+                              {feature.description}
+                            </Text>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* View All Button */}
+                    <div className="pt-2">
+                      <ArcaneButton
+                        variant="ghost"
+                        size="sm"
+                        iconRight={<ArrowRight />}
+                        onClick={() => router.push("/ai")}
+                      >
+                        {dashboardCopy.ai.cta}
+                      </ArcaneButton>
+                    </div>
+                  </div>
+                </CardContent>
+              </ArcaneCard>
+            </div>
+          </section>
+
+          {/* Recent Activity */}
+          <section>
+            <ArcaneCard variant="standard">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-arcane-yellow" />
+                    <Heading level={4} className="text-xl">
+                      {dashboardCopy.activity.title}
+                    </Heading>
+                  </div>
+                  <ArcaneButton
+                    variant="ghost"
+                    size="sm"
+                    iconRight={<ArrowRight />}
+                    onClick={() => router.push("/activity")}
+                  >
+                    {dashboardCopy.activity.viewAll}
+                  </ArcaneButton>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} type="custom" height="64px" />
                     ))}
                   </div>
                 ) : recentActivity.length > 0 ? (
-                  <div className="space-y-3">
-                    {recentActivity.map((activity) => {
-                      const Icon = activity.icon;
-                      return (
-                        <div
-                          key={activity.id}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-arcane-darkBorder/30 hover:bg-arcane-darkBorder/50 transition-colors"
-                        >
-                          <div className="h-10 w-10 rounded-lg bg-arcane-accent/20 flex items-center justify-center flex-shrink-0">
-                            <Icon className="h-5 w-5 text-arcane-accent" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white font-bold text-sm">
-                              {activity.title}
-                            </p>
-                            <p className="text-arcane-grey text-xs truncate">
-                              {activity.description}
-                            </p>
-                            <p className="text-arcane-grey text-xs mt-1">
-                              <Clock className="h-3 w-3 inline mr-1" />
-                              {new Date(activity.timestamp).toLocaleDateString(
-                                "fr-FR"
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <List
+                    data={recentActivity}
+                    renderItem={renderActivityItem}
+                    spacing="sm"
+                    emptyMessage={dashboardCopy.activity.empty}
+                  />
                 ) : (
-                  <div className="text-center py-8 text-arcane-grey">
-                    <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>Aucune activité récente</p>
+                  <div className="text-center py-12">
+                    <Activity className="h-12 w-12 mx-auto mb-3 text-arcane-gray-500 opacity-50" />
+                    <Text color="secondary">{dashboardCopy.activity.empty}</Text>
                   </div>
                 )}
-              </GlassCard>
-            </motion.div>
-
-            {/* Pending Tasks */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <GlassCard variant="elevated" className="p-6">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-                  <CheckCircle className="h-6 w-6 text-arcane-accent" />
-                  Tâches en Attente
-                </h2>
-
-                <div className="space-y-3">
-                  {stats.pendingReports > 0 && (
-                    <Link href="/reports">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/20 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <AlertCircle className="h-5 w-5 text-yellow-400" />
-                          <div>
-                            <p className="text-white font-bold text-sm">
-                              Rapports en brouillon
-                            </p>
-                            <p className="text-arcane-grey text-xs">
-                              {stats.pendingReports} rapport(s) à finaliser
-                            </p>
-                          </div>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-yellow-400" />
-                      </div>
-                    </Link>
-                  )}
-
-                  {stats.upcomingMatches > 0 && (
-                    <Link href="/calendar">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <Calendar className="h-5 w-5 text-blue-400" />
-                          <div>
-                            <p className="text-white font-bold text-sm">
-                              Matches à venir
-                            </p>
-                            <p className="text-arcane-grey text-xs">
-                              {stats.upcomingMatches} match(es) planifiés
-                            </p>
-                          </div>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-blue-400" />
-                      </div>
-                    </Link>
-                  )}
-
-                  {!subscription || subscription.tier === "FREE" && (
-                    <Link href="/pricing">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-arcane-accent/10 border border-arcane-accent/30 hover:bg-arcane-accent/20 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <Crown className="h-5 w-5 text-arcane-accent" />
-                          <div>
-                            <p className="text-white font-bold text-sm">
-                              Débloquer les fonctionnalités IA
-                            </p>
-                            <p className="text-arcane-grey text-xs">
-                              Passez à GOLD pour ArkaneIndex
-                            </p>
-                          </div>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-arcane-accent" />
-                      </div>
-                    </Link>
-                  )}
-                </div>
-              </GlassCard>
-            </motion.div>
-          </div>
-        </div>
+              </CardContent>
+            </ArcaneCard>
+          </section>
+        </main>
       </div>
-    </MainLayout>
+    </div>
+    </ProtectedPage>
   );
 }

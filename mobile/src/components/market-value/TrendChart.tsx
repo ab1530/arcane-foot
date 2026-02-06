@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryLine, VictoryChart, VictoryAxis, VictoryTheme, VictoryArea } from 'victory-native';
+// TODO: victory-native v41+ has a new API. Need to migrate from VictoryLine/VictoryChart to CartesianChart/Line
+// import { VictoryLine, VictoryChart, VictoryAxis, VictoryTheme, VictoryArea } from 'victory-native';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import { Icon } from '../ui';
 import type { ValuationDataPoint } from '../../types/market-value';
@@ -87,74 +88,13 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       </View>
 
       <View style={styles.chartContainer}>
-        <VictoryChart
-          width={screenWidth - 32}
-          height={height}
-          padding={{ top: 20, bottom: 40, left: 50, right: 20 }}
-          theme={VictoryTheme.material}
-        >
-          {/* Y-axis */}
-          <VictoryAxis
-            dependentAxis
-            style={{
-              axis: { stroke: colors.surface.border },
-              tickLabels: {
-                fill: colors.text.secondary,
-                fontSize: 10,
-              },
-              grid: {
-                stroke: colors.surface.borderLight,
-                strokeDasharray: '4,4',
-              },
-            }}
-            tickFormat={(t) => `€${t}M`}
-          />
-
-          {/* X-axis */}
-          <VictoryAxis
-            style={{
-              axis: { stroke: colors.surface.border },
-              tickLabels: {
-                fill: colors.text.secondary,
-                fontSize: 10,
-                angle: -45,
-                textAnchor: 'end',
-              },
-            }}
-            tickFormat={(t) => {
-              const index = Math.round(t);
-              if (index >= 0 && index < dataPoints.length) {
-                return formatDate(dataPoints[index].timestamp);
-              }
-              return '';
-            }}
-            tickCount={Math.min(5, dataPoints.length)}
-          />
-
-          {/* Area gradient */}
-          <VictoryArea
-            data={chartData}
-            style={{
-              data: {
-                fill: `url(#gradient)`,
-                opacity: 0.2,
-              },
-            }}
-            interpolation="natural"
-          />
-
-          {/* Line */}
-          <VictoryLine
-            data={chartData}
-            style={{
-              data: {
-                stroke: colors.brand.primary,
-                strokeWidth: 3,
-              },
-            }}
-            interpolation="natural"
-          />
-        </VictoryChart>
+        {/* TODO: Replace with victory-native v41+ CartesianChart implementation */}
+        <View style={styles.chartPlaceholder}>
+          <Text style={styles.placeholderText}>Chart visualization</Text>
+          <Text style={styles.placeholderSubtext}>
+            {dataPoints.length} data points
+          </Text>
+        </View>
       </View>
 
       <View style={styles.footer}>
@@ -201,6 +141,27 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     marginBottom: spacing.md,
+  },
+  chartPlaceholder: {
+    width: screenWidth - 64,
+    height: 220,
+    backgroundColor: colors.surface.glassLight,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
+  },
+  placeholderSubtext: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.tertiary,
   },
   footer: {
     paddingTop: spacing.md,

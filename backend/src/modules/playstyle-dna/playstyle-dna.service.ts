@@ -172,7 +172,10 @@ export class PlaystyleDnaService {
 
     const similarityScore = this.calculateSimilarity(profile1, profile2);
     const styleDifferences = this.identifyStyleDifferences(profile1, profile2);
-    const attributeDifferences = this.calculateAttributeDifferences(profile1.attributes, profile2.attributes);
+    const attributeDifferences = this.calculateAttributeDifferences(
+      profile1.attributes,
+      profile2.attributes,
+    );
 
     return {
       player1: {
@@ -233,13 +236,22 @@ export class PlaystyleDnaService {
       return {};
     }
 
-    const attributes = ['technical', 'physical', 'mental', 'tactical', 'speed', 'finishing', 'passing', 'defending', 'dribbling', 'positioning'];
+    const attributes = [
+      'technical',
+      'physical',
+      'mental',
+      'tactical',
+      'speed',
+      'finishing',
+      'passing',
+      'defending',
+      'dribbling',
+      'positioning',
+    ];
     const result: Record<string, number> = {};
 
-    attributes.forEach(attr => {
-      const values = reports
-        .map(r => r[attr])
-        .filter(v => typeof v === 'number' && !isNaN(v));
+    attributes.forEach((attr) => {
+      const values = reports.map((r) => r[attr]).filter((v) => typeof v === 'number' && !isNaN(v));
 
       if (values.length > 0) {
         result[attr] = values.reduce((sum, v) => sum + v, 0) / values.length;
@@ -292,7 +304,10 @@ export class PlaystyleDnaService {
   /**
    * Calculate style scores based on attributes
    */
-  private calculateStyleScores(attributes: PlayerAttributes, position: string): Record<PlayingStyle, number> {
+  private calculateStyleScores(
+    attributes: PlayerAttributes,
+    position: string,
+  ): Record<PlayingStyle, number> {
     const scores: Record<PlayingStyle, number> = {
       [PlayingStyle.STRIKER]: this.calculateStrikerScore(attributes),
       [PlayingStyle.POACHER]: this.calculatePoacherScore(attributes),
@@ -316,51 +331,53 @@ export class PlaystyleDnaService {
 
   // Individual style score calculators
   private calculateStrikerScore(attr: PlayerAttributes): number {
-    return (attr.finishing * 0.4 + attr.positioning * 0.3 + attr.speed * 0.2 + attr.technical * 0.1);
+    return attr.finishing * 0.4 + attr.positioning * 0.3 + attr.speed * 0.2 + attr.technical * 0.1;
   }
 
   private calculatePoacherScore(attr: PlayerAttributes): number {
-    return (attr.finishing * 0.5 + attr.positioning * 0.4 + attr.mental * 0.1);
+    return attr.finishing * 0.5 + attr.positioning * 0.4 + attr.mental * 0.1;
   }
 
   private calculateTargetManScore(attr: PlayerAttributes): number {
-    return (attr.physical * 0.4 + attr.finishing * 0.3 + attr.positioning * 0.2 + attr.technical * 0.1);
+    return (
+      attr.physical * 0.4 + attr.finishing * 0.3 + attr.positioning * 0.2 + attr.technical * 0.1
+    );
   }
 
   private calculatePlaymakerScore(attr: PlayerAttributes): number {
-    return (attr.passing * 0.4 + attr.technical * 0.3 + attr.tactical * 0.2 + attr.mental * 0.1);
+    return attr.passing * 0.4 + attr.technical * 0.3 + attr.tactical * 0.2 + attr.mental * 0.1;
   }
 
   private calculateBoxToBoxScore(attr: PlayerAttributes): number {
-    return (attr.physical * 0.25 + attr.passing * 0.25 + attr.tactical * 0.25 + attr.mental * 0.25);
+    return attr.physical * 0.25 + attr.passing * 0.25 + attr.tactical * 0.25 + attr.mental * 0.25;
   }
 
   private calculateDeepLyingPlaymakerScore(attr: PlayerAttributes): number {
-    return (attr.passing * 0.4 + attr.tactical * 0.3 + attr.mental * 0.2 + attr.technical * 0.1);
+    return attr.passing * 0.4 + attr.tactical * 0.3 + attr.mental * 0.2 + attr.technical * 0.1;
   }
 
   private calculateWingerScore(attr: PlayerAttributes): number {
-    return (attr.speed * 0.3 + attr.dribbling * 0.3 + attr.technical * 0.2 + attr.passing * 0.2);
+    return attr.speed * 0.3 + attr.dribbling * 0.3 + attr.technical * 0.2 + attr.passing * 0.2;
   }
 
   private calculateWingBackScore(attr: PlayerAttributes): number {
-    return (attr.physical * 0.25 + attr.defending * 0.25 + attr.speed * 0.25 + attr.tactical * 0.25);
+    return attr.physical * 0.25 + attr.defending * 0.25 + attr.speed * 0.25 + attr.tactical * 0.25;
   }
 
   private calculateBallPlayingDefenderScore(attr: PlayerAttributes): number {
-    return (attr.defending * 0.3 + attr.passing * 0.3 + attr.tactical * 0.2 + attr.technical * 0.2);
+    return attr.defending * 0.3 + attr.passing * 0.3 + attr.tactical * 0.2 + attr.technical * 0.2;
   }
 
   private calculateDestroyerScore(attr: PlayerAttributes): number {
-    return (attr.defending * 0.4 + attr.physical * 0.3 + attr.tactical * 0.2 + attr.mental * 0.1);
+    return attr.defending * 0.4 + attr.physical * 0.3 + attr.tactical * 0.2 + attr.mental * 0.1;
   }
 
   private calculateSweeperScore(attr: PlayerAttributes): number {
-    return (attr.defending * 0.3 + attr.tactical * 0.3 + attr.positioning * 0.2 + attr.speed * 0.2);
+    return attr.defending * 0.3 + attr.tactical * 0.3 + attr.positioning * 0.2 + attr.speed * 0.2;
   }
 
   private calculateGoalkeeperSweeperScore(attr: PlayerAttributes): number {
-    return (attr.positioning * 0.4 + attr.mental * 0.3 + attr.physical * 0.2 + attr.tactical * 0.1);
+    return attr.positioning * 0.4 + attr.mental * 0.3 + attr.physical * 0.2 + attr.tactical * 0.1;
   }
 
   /**
@@ -369,13 +386,17 @@ export class PlaystyleDnaService {
   private applyPositionBonuses(scores: Record<PlayingStyle, number>, position: string): void {
     const bonusMap: Record<string, PlayingStyle[]> = {
       FORWARD: [PlayingStyle.STRIKER, PlayingStyle.POACHER, PlayingStyle.TARGET_MAN],
-      MIDFIELDER: [PlayingStyle.PLAYMAKER, PlayingStyle.BOX_TO_BOX, PlayingStyle.DEEP_LYING_PLAYMAKER],
+      MIDFIELDER: [
+        PlayingStyle.PLAYMAKER,
+        PlayingStyle.BOX_TO_BOX,
+        PlayingStyle.DEEP_LYING_PLAYMAKER,
+      ],
       DEFENDER: [PlayingStyle.BALL_PLAYING_DEFENDER, PlayingStyle.DESTROYER, PlayingStyle.SWEEPER],
       GOALKEEPER: [PlayingStyle.GOALKEEPER_SWEEPER],
     };
 
     const bonusStyles = bonusMap[position] || [];
-    bonusStyles.forEach(style => {
+    bonusStyles.forEach((style) => {
       scores[style] *= 1.2; // 20% bonus for position-appropriate styles
     });
   }
@@ -385,7 +406,16 @@ export class PlaystyleDnaService {
    */
   private generateRadarData(attributes: PlayerAttributes): RadarChartData {
     return {
-      labels: ['Technical', 'Physical', 'Mental', 'Tactical', 'Speed', 'Finishing', 'Passing', 'Defending'],
+      labels: [
+        'Technical',
+        'Physical',
+        'Mental',
+        'Tactical',
+        'Speed',
+        'Finishing',
+        'Passing',
+        'Defending',
+      ],
       values: [
         attributes.technical,
         attributes.physical,
@@ -407,7 +437,10 @@ export class PlaystyleDnaService {
     let styleSimilarity = 0;
     if (profile1.primaryStyle === profile2.primaryStyle) styleSimilarity += 0.6;
     if (profile1.secondaryStyle === profile2.secondaryStyle) styleSimilarity += 0.2;
-    if (profile1.primaryStyle === profile2.secondaryStyle || profile1.secondaryStyle === profile2.primaryStyle) {
+    if (
+      profile1.primaryStyle === profile2.secondaryStyle ||
+      profile1.secondaryStyle === profile2.primaryStyle
+    ) {
       styleSimilarity += 0.2;
     }
 
@@ -416,9 +449,9 @@ export class PlaystyleDnaService {
     const attr2 = profile2.attributes;
     const attrKeys = Object.keys(attr1) as (keyof PlayerAttributes)[];
 
-    const attrDiffs = attrKeys.map(key => Math.abs(attr1[key] - attr2[key]));
+    const attrDiffs = attrKeys.map((key) => Math.abs(attr1[key] - attr2[key]));
     const avgDiff = attrDiffs.reduce((sum, diff) => sum + diff, 0) / attrDiffs.length;
-    const attrSimilarity = Math.max(0, 1 - (avgDiff / 100));
+    const attrSimilarity = Math.max(0, 1 - avgDiff / 100);
 
     return Math.round((styleSimilarity * 0.4 + attrSimilarity * 0.6) * 100);
   }
@@ -426,7 +459,10 @@ export class PlaystyleDnaService {
   /**
    * Identify shared attributes between profiles
    */
-  private identifySharedAttributes(profile1: PlayStyleProfile, profile2: PlayStyleProfile): string[] {
+  private identifySharedAttributes(
+    profile1: PlayStyleProfile,
+    profile2: PlayStyleProfile,
+  ): string[] {
     const shared: string[] = [];
     const attr1 = profile1.attributes;
     const attr2 = profile2.attributes;
@@ -444,7 +480,10 @@ export class PlaystyleDnaService {
   /**
    * Identify style differences
    */
-  private identifyStyleDifferences(profile1: PlayStyleProfile, profile2: PlayStyleProfile): string[] {
+  private identifyStyleDifferences(
+    profile1: PlayStyleProfile,
+    profile2: PlayStyleProfile,
+  ): string[] {
     const differences: string[] = [];
 
     if (profile1.primaryStyle !== profile2.primaryStyle) {
@@ -466,7 +505,7 @@ export class PlaystyleDnaService {
       .slice(0, 3)
       .map(([style]) => style);
 
-    const uniqueStyles = top1.filter(style => !top2.includes(style));
+    const uniqueStyles = top1.filter((style) => !top2.includes(style));
     if (uniqueStyles.length > 0) {
       differences.push(`Unique strengths: ${uniqueStyles.join(', ')}`);
     }
@@ -483,7 +522,7 @@ export class PlaystyleDnaService {
   ): Record<string, { player1: number; player2: number; diff: number }> {
     const result: Record<string, { player1: number; player2: number; diff: number }> = {};
 
-    Object.keys(attr1).forEach(key => {
+    Object.keys(attr1).forEach((key) => {
       const k = key as keyof PlayerAttributes;
       result[key] = {
         player1: attr1[k],

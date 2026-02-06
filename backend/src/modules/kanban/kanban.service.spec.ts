@@ -112,9 +112,7 @@ describe('KanbanService', () => {
       {
         id: 'board-1',
         name: 'Board 1',
-        columns: [
-          { id: 'col-1', _count: { cards: 5 } },
-        ],
+        columns: [{ id: 'col-1', _count: { cards: 5 } }],
       },
       {
         id: 'board-2',
@@ -231,9 +229,9 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if board not found', async () => {
       mockPrismaService.kanban_boards.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.updateBoard('invalid-id', updateData),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateBoard('invalid-id', updateData)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -259,9 +257,7 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if board not found', async () => {
       mockPrismaService.kanban_boards.findUnique.mockResolvedValue(null);
 
-      await expect(service.deleteBoard('invalid-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.deleteBoard('invalid-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -311,9 +307,9 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if board not found', async () => {
       mockPrismaService.kanban_boards.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.createColumn('invalid-id', createColumnDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.createColumn('invalid-id', createColumnDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -349,9 +345,7 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if column not found', async () => {
       mockPrismaService.kanban_columns.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.updateColumn('invalid-id', updateData),
-      ).rejects.toThrow(
+      await expect(service.updateColumn('invalid-id', updateData)).rejects.toThrow(
         new NotFoundException(`Colonne avec l'ID invalid-id introuvable`),
       );
     });
@@ -494,9 +488,7 @@ describe('KanbanService', () => {
       mockPrismaService.kanban_columns.findUnique.mockResolvedValue(limitedColumn);
 
       await expect(service.createCard(createCardDto)).rejects.toThrow(
-        new BadRequestException(
-          `La colonne "To Scout" a atteint sa limite de 5 cartes`,
-        ),
+        new BadRequestException(`La colonne "To Scout" a atteint sa limite de 5 cartes`),
       );
     });
 
@@ -504,9 +496,7 @@ describe('KanbanService', () => {
       mockPrismaService.kanban_cards.findUnique.mockResolvedValue({ id: 'existing-card' });
 
       await expect(service.createCard(createCardDto)).rejects.toThrow(
-        new ConflictException(
-          `Le joueur est déjà présent dans la colonne "To Scout"`,
-        ),
+        new ConflictException(`Le joueur est déjà présent dans la colonne "To Scout"`),
       );
     });
 
@@ -612,9 +602,7 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if card not found', async () => {
       mockPrismaService.kanban_cards.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.updateCard('invalid-id', updateData),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateCard('invalid-id', updateData)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -679,10 +667,10 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if target column not found', async () => {
       mockPrismaService.kanban_columns.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.moveCard('card-123', moveCardDto),
-      ).rejects.toThrow(
-        new NotFoundException(`Colonne de destination avec l'ID ${moveCardDto.targetColumnId} introuvable`),
+      await expect(service.moveCard('card-123', moveCardDto)).rejects.toThrow(
+        new NotFoundException(
+          `Colonne de destination avec l'ID ${moveCardDto.targetColumnId} introuvable`,
+        ),
       );
     });
 
@@ -694,12 +682,8 @@ describe('KanbanService', () => {
       };
       mockPrismaService.kanban_columns.findUnique.mockResolvedValue(limitedColumn);
 
-      await expect(
-        service.moveCard('card-123', moveCardDto),
-      ).rejects.toThrow(
-        new BadRequestException(
-          `La colonne "Target Column" a atteint sa limite de 1 cartes`,
-        ),
+      await expect(service.moveCard('card-123', moveCardDto)).rejects.toThrow(
+        new BadRequestException(`La colonne "Target Column" a atteint sa limite de 1 cartes`),
       );
     });
 
@@ -741,9 +725,7 @@ describe('KanbanService', () => {
     it('should throw NotFoundException if card not found', async () => {
       mockPrismaService.kanban_cards.findUnique.mockResolvedValue(null);
 
-      await expect(service.deleteCard('invalid-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.deleteCard('invalid-id')).rejects.toThrow(NotFoundException);
     });
   });
 

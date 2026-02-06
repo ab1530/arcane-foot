@@ -46,11 +46,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Return user with userId and clubId for backward compatibility
+    // Return user with userId, clubId, and playerId for backward compatibility
     return {
       ...user,
       userId: user.id, // Add userId alias for controllers that use req.user.userId
       clubId: user.clubs?.id || null, // Extract clubId from clubs relation
+      playerId: (user as any).playerId || null,
     };
   }
 }

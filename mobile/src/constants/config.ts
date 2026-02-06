@@ -1,7 +1,7 @@
 // API Configuration
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
-  (__DEV__ ? 'http://192.168.1.64:3000/api' : 'https://arcane-foot-staging.up.railway.app/api');
+  (__DEV__ ? 'http://192.168.1.64:5002/api' : 'https://arcane-foot-staging.up.railway.app/api');
 
 export const API_TIMEOUT = 30000; // 30 seconds
 
@@ -12,7 +12,12 @@ export const APP_VERSION = '1.0.0';
 // Storage Keys
 export const STORAGE_KEYS = {
   AUTH_TOKEN: '@arcane/auth_token',
+  REFRESH_TOKEN: '@arcane/refresh_token',
   USER_DATA: '@arcane/user_data',
+  ACTIVE_ROLE: '@arcane/active_role',
+  MVP_FOLLOWED_PLAYERS: '@arcane/mvp_followed_players',
+  MVP_SCOUT_NOTES: '@arcane/mvp_scout_notes',
+  RECENT_PLAYERS: '@arcane/recent_players',
   THEME: '@arcane/theme',
 } as const;
 

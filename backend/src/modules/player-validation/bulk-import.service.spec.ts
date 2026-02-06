@@ -566,7 +566,7 @@ John,Doe,john@example.com,Forward,1998-01-15,FR,,,`;
       const errors = await service.validateBulkData(players as any);
 
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors.filter(e => e.row === 1)).toHaveLength(6);
+      expect(errors.filter((e) => e.row === 1)).toHaveLength(6);
     });
   });
 
@@ -1152,7 +1152,7 @@ John,Doe,john@example.com,Forward,1998-01-15,FR,,,`;
       const result = await service.exportPlayersToCSV();
 
       const lines = result.split('\n');
-      lines.slice(1).forEach(line => {
+      lines.slice(1).forEach((line) => {
         if (line) {
           expect(line).toMatch(/^".+"/); // Line starts and ends with quotes
         }

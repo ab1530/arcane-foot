@@ -140,12 +140,21 @@ export const ArkaneMatchScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleScoutPress = (scoutId: string) => {
-    // TODO: Navigate to scout profile when implemented
-    Alert.alert(
-      'Scout Profile',
-      `Scout profile screen will be implemented soon.\nScout ID: ${scoutId}`,
-      [{ text: 'OK' }]
-    );
+    if (!scoutId) {
+      Alert.alert('Scout Profile', 'Unable to open this profile right now.');
+      return;
+    }
+
+    try {
+      navigation.navigate('ScoutDetail', { scoutId });
+    } catch (error) {
+      console.warn('Failed to navigate to scout profile', error);
+      Alert.alert(
+        'Scout Profile',
+        `Scout profile screen is not available at the moment.\nScout ID: ${scoutId}`,
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleClearConversation = () => {

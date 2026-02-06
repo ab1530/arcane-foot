@@ -32,8 +32,10 @@ export interface OnboardingFlow {
  */
 const PLAYER_FLOW: OnboardingFlow = {
   role: 'PLAYER',
-  welcomeMessage: 'Bienvenue sur Arcane Football! Créez votre profil de joueur professionnel et soyez découvert par des recruteurs du monde entier.',
-  completionMessage: 'Félicitations! Votre profil est configuré. Continuez à l\'enrichir avec des vidéos et statistiques pour maximiser votre visibilité.',
+  welcomeMessage:
+    'Bienvenue sur Arcane Football! Créez votre profil de joueur professionnel et soyez découvert par des recruteurs du monde entier.',
+  completionMessage:
+    "Félicitations! Votre profil est configuré. Continuez à l'enrichir avec des vidéos et statistiques pour maximiser votre visibilité.",
   steps: [
     {
       key: 'complete_profile',
@@ -109,8 +111,10 @@ const PLAYER_FLOW: OnboardingFlow = {
  */
 const SCOUT_FLOW: OnboardingFlow = {
   role: 'SCOUT',
-  welcomeMessage: 'Bienvenue dans votre espace Scout! Découvrez nos outils professionnels pour analyser, évaluer et suivre les talents.',
-  completionMessage: 'Parfait! Vous êtes prêt à utiliser tous nos outils de scouting. Commencez à créer vos premiers rapports!',
+  welcomeMessage:
+    'Bienvenue dans votre espace Scout! Découvrez nos outils professionnels pour analyser, évaluer et suivre les talents.',
+  completionMessage:
+    'Parfait! Vous êtes prêt à utiliser tous nos outils de scouting. Commencez à créer vos premiers rapports!',
   steps: [
     {
       key: 'tour_dashboard',
@@ -186,8 +190,10 @@ const SCOUT_FLOW: OnboardingFlow = {
  */
 const CLUB_CONTACT_FLOW: OnboardingFlow = {
   role: 'CLUB_CONTACT',
-  welcomeMessage: 'Bienvenue sur Arcane Football! Configurez votre club et commencez à découvrir les meilleurs talents.',
-  completionMessage: 'Excellent! Votre club est configuré. Commencez à explorer notre base de données de joueurs.',
+  welcomeMessage:
+    'Bienvenue sur Arcane Football! Configurez votre club et commencez à découvrir les meilleurs talents.',
+  completionMessage:
+    'Excellent! Votre club est configuré. Commencez à explorer notre base de données de joueurs.',
   steps: [
     {
       key: 'setup_club_profile',
@@ -206,7 +212,8 @@ const CLUB_CONTACT_FLOW: OnboardingFlow = {
       key: 'discover_players',
       order: 2,
       title: 'Découvrez les joueurs',
-      description: 'Utilisez nos filtres avancés pour trouver les profils qui correspondent à vos besoins',
+      description:
+        'Utilisez nos filtres avancés pour trouver les profils qui correspondent à vos besoins',
       icon: '🔍',
       isRequired: true,
       estimatedMinutes: 5,
@@ -219,7 +226,7 @@ const CLUB_CONTACT_FLOW: OnboardingFlow = {
       key: 'send_first_request',
       order: 3,
       title: 'Envoyez votre première demande',
-      description: 'Contactez un joueur pour un essai, une offre ou plus d\'informations',
+      description: "Contactez un joueur pour un essai, une offre ou plus d'informations",
       icon: '📨',
       isRequired: false,
       estimatedMinutes: 3,
@@ -250,8 +257,10 @@ const CLUB_CONTACT_FLOW: OnboardingFlow = {
  */
 const AGENT_FLOW: OnboardingFlow = {
   role: 'AGENT',
-  welcomeMessage: 'Bienvenue Agent! Gérez votre portfolio de joueurs et connectez-les aux meilleures opportunités.',
-  completionMessage: 'Parfait! Vous pouvez maintenant gérer efficacement votre portfolio de joueurs.',
+  welcomeMessage:
+    'Bienvenue Agent! Gérez votre portfolio de joueurs et connectez-les aux meilleures opportunités.',
+  completionMessage:
+    'Parfait! Vous pouvez maintenant gérer efficacement votre portfolio de joueurs.',
   steps: [
     {
       key: 'create_portfolio',
@@ -301,7 +310,8 @@ const AGENT_FLOW: OnboardingFlow = {
  */
 const PUBLIC_FLOW: OnboardingFlow = {
   role: 'PUBLIC',
-  welcomeMessage: 'Bienvenue sur Arcane Football! Découvrez comment nous révolutionnons le recrutement dans le football.',
+  welcomeMessage:
+    'Bienvenue sur Arcane Football! Découvrez comment nous révolutionnons le recrutement dans le football.',
   completionMessage: 'Merci de votre intérêt! Explorez notre plateforme et découvrez nos offres.',
   steps: [
     {
@@ -369,11 +379,5 @@ export function getOnboardingFlow(role: string): OnboardingFlow {
  * Get all available onboarding flows
  */
 export function getAllOnboardingFlows(): OnboardingFlow[] {
-  return [
-    PLAYER_FLOW,
-    SCOUT_FLOW,
-    CLUB_CONTACT_FLOW,
-    AGENT_FLOW,
-    PUBLIC_FLOW,
-  ];
+  return [PLAYER_FLOW, SCOUT_FLOW, CLUB_CONTACT_FLOW, AGENT_FLOW, PUBLIC_FLOW];
 }

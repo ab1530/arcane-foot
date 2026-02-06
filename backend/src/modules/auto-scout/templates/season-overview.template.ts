@@ -1,8 +1,13 @@
 import { ReportTemplate, ReportType } from '../interfaces/report.interface';
 
 export const seasonOverviewTemplate: ReportTemplate = {
-  name: 'Season Overview Report',
-  description: 'Comprehensive analysis of player performance across the season',
+  id: 'season-overview',
+  name: 'Season Overview',
+  description: 'Comprehensive season performance and development tracking',
+  icon: 'barChart',
+  useCase: 'End of season review',
+  estimatedCost: '$0.028',
+  reportType: ReportType.SEASON_OVERVIEW,
   sections: [
     {
       name: 'Season Statistics',

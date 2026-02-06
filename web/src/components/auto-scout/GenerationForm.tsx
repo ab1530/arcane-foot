@@ -28,11 +28,39 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
   const [matches, setMatches] = useState<any[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedPlayerName, setSelectedPlayerName] = useState('');
 
-  // Load players
+  // Load matches on mount
   useEffect(() => {
-    loadPlayers();
-  }, [searchQuery]);
+    loadMatches();
+  }, []);
+
+  // Load players with debounce
+  useEffect(() => {
+    // Don't search if we already have a player selected and user hasn't changed the query
+    if (selectedPlayerName && searchQuery === selectedPlayerName) {
+      return;
+    }
+
+    // If user is changing the query after selecting a player, reset the selection
+    if (selectedPlayerName && searchQuery !== selectedPlayerName) {
+      setPlayerId('');
+      setSelectedPlayerName('');
+    }
+
+    const timer = setTimeout(() => {
+      if (searchQuery.length >= 2) {
+        loadPlayers();
+        setShowDropdown(true);
+      } else {
+        setPlayers([]);
+        setShowDropdown(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedPlayerName]);
 
   // Load cost estimate
   useEffect(() => {
@@ -45,11 +73,24 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
     try {
       setLoadingPlayers(true);
       const response = await apiClient.getPlayers({ search: searchQuery, limit: 50 });
-      setPlayers(response.data || []);
+      // Backend returns array directly, not { data: [...] }
+      const playersData = Array.isArray(response) ? response : (response.data || []);
+      setPlayers(playersData);
     } catch (error) {
       console.error('Failed to load players:', error);
+      setPlayers([]);
     } finally {
       setLoadingPlayers(false);
+    }
+  };
+
+  const loadMatches = async () => {
+    try {
+      const response = await apiClient.getMatches({ limit: 50 });
+      const matchesData = response.data || [];
+      setMatches(matchesData);
+    } catch (error) {
+      console.error('Failed to load matches:', error);
     }
   };
 
@@ -136,7 +177,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
         </div>
 
         {/* Player dropdown */}
-        {searchQuery && (
+        {showDropdown && searchQuery && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -158,15 +199,18 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
                     type="button"
                     onClick={() => {
                       setPlayerId(player.id);
-                      setSearchQuery(`${player.fullName || player.firstName + ' ' + player.lastName}`);
+                      const fullName = player.user ? `${player.user.firstName} ${player.user.lastName}` : 'Unknown';
+                      setSearchQuery(fullName);
+                      setSelectedPlayerName(fullName);
+                      setShowDropdown(false);
                     }}
                     className="w-full px-4 py-3 text-left hover:bg-white/5 transition-colors"
                   >
                     <p className="text-sm font-semibold text-white">
-                      {player.fullName || `${player.firstName} ${player.lastName}`}
+                      {player.user ? `${player.user.firstName} ${player.user.lastName}` : 'Unknown Player'}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {player.position} • {player.currentClub || 'Free Agent'}
+                      {player.position} • {player.club?.name || 'Free Agent'}
                     </p>
                   </button>
                 ))}
@@ -189,7 +233,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
           <option value="">Select a match (optional)</option>
           {matches.map((match) => (
             <option key={match.id} value={match.id}>
-              {match.homeClub?.name} vs {match.awayClub?.name}
+              {match.homeClub?.name || 'Unknown'} vs {match.awayClub?.name || 'Unknown'} - {new Date(match.scheduledAt).toLocaleDateString()}
             </option>
           ))}
         </select>

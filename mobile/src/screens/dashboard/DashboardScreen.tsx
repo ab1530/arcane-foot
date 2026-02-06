@@ -1,91 +1,1022 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * ARCANE DASHBOARD SCREEN
+ * Premium mobile dashboard with world-class UX
+ *
+ * Features:
+ * - Hero section with personalized greeting and XP progress
+ * - 2x2 stat cards grid with trend indicators
+ * - Quick actions horizontal scroll
+ * - Recent activity list
+ * - AI insights card with visualization
+ * - Today's challenge with gamification
+ * - Upcoming matches list
+ * - Pull-to-refresh functionality
+ * - Smooth scroll animations
+ * - Loading states
+ *
+ * @version 2.0.0
+ * @design Arcane Design System 2.0
+ */
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GlassCard, GradientText, AnimatedBadge } from '../../components/ui';
-import { Icon } from '../../components/ui';
-import { colors, spacing, typography, radius } from '../../design/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import { tokens } from '../../design/tokens';
+import { typographyPresets as typography } from '../../design/typography';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocalization } from '../../contexts/LocalizationContext';
 import api from '../../services/api';
 import { logError } from '../../utils/logger';
-import { LineChart, PieChart, BarChart } from '../../components/charts';
-import { lightImpact } from '../../utils/haptics';
+import { StatCard, QuickActionCard, ActivityItem } from './components';
+import type { HardwareSession } from '../../types/hardware';
+import type { Player } from '../../types';
+import { DEFAULT_ROLE } from '../../lib/roles';
+import type { UserRole } from '../../lib/roles';
+import { isFeatureEnabled } from '../../constants/features';
+import { qcBand, formatBatteryPercent, formatDistanceKm } from '../../services/wearables/qcBand';
+
+const STAT_CARD_META = [
+  {
+    key: 'reports',
+    icon: 'document-text',
+    color: tokens.colors.yellow.DEFAULT,
+    target: 'Reports',
+    trendValue: '+12%',
+    valueGetter: (stats: DashboardStats) => stats.totalReports,
+  },
+  {
+    key: 'players',
+    icon: 'people',
+    color: tokens.colors.feature.scouting,
+    target: 'Players',
+    trendValue: '+8',
+    valueGetter: (stats: DashboardStats) => stats.playersScouted,
+  },
+  {
+    key: 'matches',
+    icon: 'football',
+    color: tokens.colors.semantic.success,
+    target: 'Calendar',
+    trendValue: '+5',
+    valueGetter: (stats: DashboardStats) => stats.matchesAttended,
+  },
+  {
+    key: 'xp',
+    icon: 'trophy',
+    color: tokens.colors.feature.gamification,
+    target: undefined,
+    trendValue: '+250',
+    valueGetter: (stats: DashboardStats) => stats.totalXP.toLocaleString(),
+  },
+];
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface DashboardStats {
+  totalReports: number;
+  playersScouted: number;
+  matchesAttended: number;
+  totalXP: number;
+}
+
+interface Activity {
+  id: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
+interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  total: number;
+  xpReward: number;
+}
+
+interface Match {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: string;
+  time: string;
+}
+
+type BraceletStatus = 'unsupported' | 'disconnected' | 'connecting' | 'connected' | 'error';
+
+interface PlayerPerformanceSummary {
+  totalDistanceM: number;
+  totalDurationMin: number;
+  maxSpeedKmh: number;
+}
+
+const EMPTY_PLAYER_SUMMARY: PlayerPerformanceSummary = {
+  totalDistanceM: 0,
+  totalDurationMin: 0,
+  maxSpeedKmh: 0,
+};
+
+const computeAgeFromDate = (dateOfBirth?: string | null): number | null => {
+  if (!dateOfBirth) {
+    return null;
+  }
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+
+  return age > 0 ? age : null;
+};
+
+const computePlayerPerformance = (sessions: HardwareSession[]): PlayerPerformanceSummary => {
+  return sessions.reduce<PlayerPerformanceSummary>(
+    (accumulator, session) => {
+      const metrics = session.metrics || {};
+      return {
+        totalDistanceM: accumulator.totalDistanceM + (metrics.movementDistanceM ?? 0),
+        totalDurationMin: accumulator.totalDurationMin + (metrics.totalTimeMin ?? 0),
+        maxSpeedKmh: Math.max(accumulator.maxSpeedKmh, metrics.maxSpeedKmh ?? 0),
+      };
+    },
+    { ...EMPTY_PLAYER_SUMMARY },
+  );
+};
+
+const formatDistance = (distanceM: number) => `${(distanceM / 1000).toFixed(1)} km`;
+const formatDuration = (durationMin: number) => `${Math.round(durationMin)} min`;
+const formatSpeed = (speedKmh: number) => `${speedKmh.toFixed(1)} km/h`;
+const formatLastSync = (value?: string | null) =>
+  value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+
+const withTimeout = async <T,>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
+// ============================================================================
+// DASHBOARD SCREEN COMPONENT
+// ============================================================================
 
 export const DashboardScreen = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const { dictionary, t } = useLocalization();
+  const dashboardCopy = dictionary.dashboard;
+  const playerCopy = dashboardCopy.player;
+  const effectiveRole = (activeRole ?? user?.role ?? DEFAULT_ROLE) as UserRole;
+  const isPlayerRole = effectiveRole === 'PLAYER';
+  const playerDashboardV2Enabled = isFeatureEnabled('playerDashboardV2');
+  const braceletCardEnabled = isFeatureEnabled('playerBraceletCard');
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({
+  const [loading, setLoading] = useState(true);
+
+  // State
+  const [stats, setStats] = useState<DashboardStats>({
     totalReports: 0,
-    pendingReports: 0,
-    totalPlayers: 0,
-    upcomingMatches: 0,
-    activeCamps: 0,
-    totalCamps: 0,
+    playersScouted: 0,
+    matchesAttended: 0,
+    totalXP: 0,
   });
-  const [activityData, setActivityData] = useState([
-    { name: 'Lun', rapports: 4, joueurs: 2, camps: 1 },
-    { name: 'Mar', rapports: 6, joueurs: 3, camps: 0 },
-    { name: 'Mer', rapports: 5, joueurs: 4, camps: 2 },
-    { name: 'Jeu', rapports: 8, joueurs: 1, camps: 1 },
-    { name: 'Ven', rapports: 7, joueurs: 5, camps: 0 },
-    { name: 'Sam', rapports: 3, joueurs: 2, camps: 3 },
-    { name: 'Dim', rapports: 4, joueurs: 3, camps: 1 },
-  ]);
+
+  const [userLevel, setUserLevel] = useState({
+    level: 1,
+    currentXP: 0,
+    nextLevelXP: 1000,
+  });
+
+  const [recentActivities, setRecentActivities] = useState<Activity[]>(
+    dashboardCopy.activity.samples,
+  );
+
+  const [todayChallenge, setTodayChallenge] = useState<Challenge>({
+    id: 'challenge-1',
+    title: dashboardCopy.challenge.sample.title,
+    description: dashboardCopy.challenge.sample.description,
+    progress: 1,
+    total: 3,
+    xpReward: 500,
+  });
+
+  const [upcomingMatches, setUpcomingMatches] = useState<Match[]>(
+    dashboardCopy.matches.samples,
+  );
+  const [playerSessions, setPlayerSessions] = useState<HardwareSession[]>([]);
+  const [playerSummary, setPlayerSummary] =
+    useState<PlayerPerformanceSummary>(EMPTY_PLAYER_SUMMARY);
+  const [playerProfile, setPlayerProfile] = useState<Partial<Player> | null>(null);
+  const [braceletStatus, setBraceletStatus] = useState<BraceletStatus>('unsupported');
+  const [braceletBatteryPercent, setBraceletBatteryPercent] = useState<number | undefined>();
+  const [braceletSteps, setBraceletSteps] = useState<number | undefined>();
+  const [braceletDistanceKm, setBraceletDistanceKm] = useState<string | undefined>();
+  const [braceletHr, setBraceletHr] = useState<number | null>(null);
+  const [braceletLastSync, setBraceletLastSync] = useState<string | null>(null);
+
+  // ============================================================================
+  // DATA FETCHING
+  // ============================================================================
+
+  const handleApiFailure = useCallback((error: unknown, scope: string) => {
+    logError('Error fetching dashboard data', error, { screen: 'DashboardScreen', scope });
+  }, []);
+
+  const resetBraceletMetrics = useCallback(() => {
+    setBraceletBatteryPercent(undefined);
+    setBraceletSteps(undefined);
+    setBraceletDistanceKm(undefined);
+    setBraceletHr(null);
+    setBraceletLastSync(null);
+  }, []);
+
+  const refreshBraceletMetrics = useCallback(async () => {
+    if (!braceletCardEnabled) {
+      return;
+    }
+    if (Platform.OS !== 'ios') {
+      setBraceletStatus('unsupported');
+      return;
+    }
+
+    try {
+      const [battery, currentSteps, todayStats] = await Promise.all([
+        withTimeout(qcBand.getBattery(), 2000, 'Battery timeout'),
+        withTimeout(qcBand.getCurrentSteps(), 2000, 'Steps timeout'),
+        withTimeout(qcBand.getTodayStats(), 2000, 'Today stats timeout'),
+      ]);
+
+      setBraceletBatteryPercent(
+        formatBatteryPercent(battery?.level) ?? battery?.percent ?? undefined,
+      );
+      setBraceletSteps(currentSteps?.steps ?? todayStats?.steps ?? undefined);
+      const distanceSource = todayStats?.distanceM ?? currentSteps?.distanceM ?? 0;
+      setBraceletDistanceKm(formatDistanceKm(distanceSource));
+      setBraceletStatus('connected');
+      setBraceletLastSync(new Date().toISOString());
+    } catch (error) {
+      handleApiFailure(error, 'playerDashboard.bracelet.refresh');
+      setBraceletStatus('error');
+    }
+  }, [braceletCardEnabled, handleApiFailure]);
+
+  const bootstrapBraceletCard = useCallback(async () => {
+    if (!braceletCardEnabled) {
+      return;
+    }
+    if (Platform.OS !== 'ios') {
+      setBraceletStatus('unsupported');
+      return;
+    }
+    try {
+      const lastSeen = await withTimeout(
+        qcBand.getLastSeenDevice(),
+        1200,
+        'Last seen device timeout',
+      );
+      if (!lastSeen?.id) {
+        setBraceletStatus('disconnected');
+        return;
+      }
+      setBraceletStatus('disconnected');
+    } catch (error) {
+      handleApiFailure(error, 'playerDashboard.bracelet.bootstrap');
+      setBraceletStatus('error');
+    }
+  }, [braceletCardEnabled, handleApiFailure]);
+
+  const connectBracelet = useCallback(async () => {
+    if (Platform.OS !== 'ios') {
+      return;
+    }
+    setBraceletStatus('connecting');
+    try {
+      await withTimeout(qcBand.connectLastSeen(), 2000, 'Connect last seen timeout');
+      await refreshBraceletMetrics();
+    } catch (error) {
+      handleApiFailure(error, 'playerDashboard.bracelet.connect');
+      setBraceletStatus('error');
+    }
+  }, [refreshBraceletMetrics, handleApiFailure]);
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch dashboard statistics and real data
-      const [overviewData, playersData, reportsData, campsData] = await Promise.all([
-        api.getDashboardStats().catch(() => null),
-        api.getPlayers().catch(() => ({ items: [], data: [] })),
-        api.getReports().catch(() => ({ items: [], data: [] })),
-        api.getCamps().catch(() => []),
+      if (isPlayerRole) {
+        const currentPlayerId = user?.playerId;
+        if (!currentPlayerId) {
+          setPlayerSessions([]);
+          setPlayerSummary(EMPTY_PLAYER_SUMMARY);
+          setPlayerProfile(null);
+          if (braceletCardEnabled) {
+            if (Platform.OS === 'ios') {
+              setBraceletStatus('disconnected');
+            } else {
+              setBraceletStatus('unsupported');
+            }
+            resetBraceletMetrics();
+          }
+          return;
+        }
+
+        const [playerData, sessions] = await Promise.all([
+          api.getPlayer(currentPlayerId).catch(error => {
+            handleApiFailure(error, 'getPlayer');
+            return null;
+          }),
+          api.getHardwareSessions(currentPlayerId).catch(error => {
+            handleApiFailure(error, 'getHardwareSessions');
+            return [] as HardwareSession[];
+          }),
+        ]);
+
+        const safeSessions = Array.isArray(sessions) ? sessions : [];
+        setPlayerProfile(playerData);
+        setPlayerSessions(safeSessions);
+        setPlayerSummary(computePlayerPerformance(safeSessions));
+        if (braceletCardEnabled) {
+          await bootstrapBraceletCard();
+        }
+        return;
+      }
+
+      const [overviewData, playersData, reportsData] = await Promise.all([
+        api.getDashboardStats().catch(error => {
+          handleApiFailure(error, 'getDashboardStats');
+          return null;
+        }),
+        api.getPlayers().catch(error => {
+          handleApiFailure(error, 'getPlayers');
+          return { items: [], data: [] };
+        }),
+        api.getReports().catch(error => {
+          handleApiFailure(error, 'getReports');
+          return { items: [], data: [] };
+        }),
       ]);
 
       const players = playersData?.items ?? playersData?.data ?? [];
       const reports = reportsData?.items ?? reportsData?.data ?? [];
-      const camps = Array.isArray(campsData) ? campsData : campsData?.items ?? campsData?.data ?? [];
 
       setStats({
         totalReports: overviewData?.totalReports ?? reports.length,
-        pendingReports: overviewData?.pendingReports ?? reports.filter((r: any) => r.status === 'DRAFT').length,
-        totalPlayers: overviewData?.totalPlayers ?? players.length,
-        upcomingMatches: overviewData?.upcomingMatches ?? 0,
-        activeCamps: camps.filter((c: any) => c.status === 'ACTIVE').length,
-        totalCamps: camps.length,
+        playersScouted: overviewData?.totalPlayers ?? players.length,
+        matchesAttended: overviewData?.matchesAttended ?? Math.floor(reports.length * 0.8),
+        totalXP: overviewData?.totalXP ?? reports.length * 100 + players.length * 50,
       });
+
+      // Calculate user level based on XP
+      const totalXP = reports.length * 100 + players.length * 50;
+      const level = Math.floor(totalXP / 1000) + 1;
+      const currentXP = totalXP % 1000;
+      const nextLevelXP = 1000;
+
+      setUserLevel({ level, currentXP, nextLevelXP });
     } catch (error) {
       logError('Error fetching dashboard data', error, { screen: 'DashboardScreen' });
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [isPlayerRole, user?.playerId, braceletCardEnabled, bootstrapBraceletCard, resetBraceletMetrics]);
+
+  useEffect(() => {
+    if (!isPlayerRole || !braceletCardEnabled || Platform.OS !== 'ios') {
+      return;
+    }
+    const subscription = qcBand.addHeartRateListener((bpm) => {
+      setBraceletHr(bpm);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [isPlayerRole, braceletCardEnabled]);
+
+  const displayName = useMemo(() => {
+    if (user?.firstName || user?.lastName) {
+      return [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    }
+    return t('dashboard.hero.defaultName');
+  }, [t, user?.firstName, user?.lastName]);
+
+  const avatarFallback = useMemo(
+    () =>
+      user?.firstName?.charAt(0) ||
+      user?.lastName?.charAt(0) ||
+      t('profile.fallbacks.avatarInitial'),
+    [t, user?.firstName, user?.lastName],
+  );
+
+  const playerPosition = useMemo(
+    () => playerProfile?.position || (user as any)?.position || null,
+    [playerProfile?.position, user],
+  );
+
+  const playerAge = useMemo(() => {
+    const fromProfile = computeAgeFromDate(playerProfile?.dateOfBirth ?? null);
+    if (fromProfile) {
+      return fromProfile;
+    }
+    return computeAgeFromDate((user as any)?.dateOfBirth ?? null);
+  }, [playerProfile?.dateOfBirth, user]);
+
+  const braceletStateCopy = useMemo(() => {
+    const fallback = {
+      unsupported: 'Live bracelet available on iOS',
+      disconnected: 'Bracelet disconnected',
+      connecting: 'Connecting...',
+      connected: 'Bracelet connected',
+      error: 'Bracelet unavailable',
+    };
+    return {
+      unsupported: playerCopy?.braceletStateUnsupported || fallback.unsupported,
+      disconnected: playerCopy?.braceletStateDisconnected || fallback.disconnected,
+      connecting: playerCopy?.braceletStateConnecting || fallback.connecting,
+      connected: playerCopy?.braceletStateConnected || fallback.connected,
+      error: playerCopy?.braceletStateError || fallback.error,
+    };
+  }, [playerCopy]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchDashboardData();
+    if (isPlayerRole && braceletCardEnabled && Platform.OS === 'ios' && braceletStatus === 'connected') {
+      await refreshBraceletMetrics();
+    }
     setRefreshing(false);
   };
 
-  const StatCard = ({ title, value, color, onPress, testID }: any) => (
-    <TouchableOpacity testID={testID} style={styles.statCardWrapper} onPress={onPress}>
-      <GlassCard variant="elevated">
-        <View style={styles.statCard}>
-          <Text testID={`${testID}-value`} style={styles.statValue}>{value}</Text>
-          <Text style={styles.statTitle}>{title}</Text>
-          <View style={[styles.statIndicator, { backgroundColor: color }]} />
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
+
+  const handleNavigate = (screen: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate(screen);
+  };
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={tokens.colors.yellow.DEFAULT} />
+          <Text style={styles.loadingText}>{dashboardCopy.loading}</Text>
         </View>
-      </GlassCard>
-    </TouchableOpacity>
-  );
+      </SafeAreaView>
+    );
+  }
+
+  const xpProgress = (userLevel.currentXP / userLevel.nextLevelXP) * 100;
+
+  if (isPlayerRole) {
+    if (playerDashboardV2Enabled) {
+      return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <ScrollView
+            testID="dashboard-scroll"
+            style={styles.scrollView}
+            contentContainerStyle={styles.content}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={tokens.colors.yellow.DEFAULT}
+                colors={[tokens.colors.yellow.DEFAULT]}
+              />
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            <LinearGradient
+              colors={[tokens.colors.arcane.charcoal, tokens.colors.arcane.anthracite]}
+              style={styles.playerHeroCard}
+            >
+              <View style={styles.heroHeader}>
+                <View style={styles.heroText}>
+                  <Text style={styles.greeting}>{dashboardCopy.hero.greeting}</Text>
+                  <Text style={styles.userName}>{displayName}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.profileButton}
+                  onPress={() => handleNavigate('Profile')}
+                >
+                  <View style={styles.profileAvatar}>
+                    <Text style={styles.profileInitial}>{avatarFallback}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.xpContainer}>
+                <View style={styles.xpHeader}>
+                  <View style={styles.xpLevel}>
+                    <Ionicons
+                      name="shield"
+                      size={tokens.iconSize.sm}
+                      color={tokens.colors.yellow.DEFAULT}
+                    />
+                    <Text style={styles.xpLevelText}>
+                      {t('dashboard.hero.level', { level: userLevel.level })}
+                    </Text>
+                  </View>
+                  <Text style={styles.xpText}>
+                    {t('dashboard.hero.xp', {
+                      current: userLevel.currentXP,
+                      next: userLevel.nextLevelXP,
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.xpBar}>
+                  <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
+                </View>
+              </View>
+
+              <View style={styles.playerTagRow}>
+                <View style={styles.playerTag}>
+                  <Text style={styles.playerTagLabel}>{playerCopy?.profilePositionLabel || 'Position'}</Text>
+                  <Text style={styles.playerTagValue}>
+                    {playerPosition ?? (playerCopy?.notProvided || 'Not provided')}
+                  </Text>
+                </View>
+                <View style={styles.playerTag}>
+                  <Text style={styles.playerTagLabel}>{playerCopy?.profileAgeLabel || 'Age'}</Text>
+                  <Text style={styles.playerTagValue}>
+                    {playerAge ? String(playerAge) : playerCopy?.notProvided || 'Not provided'}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{playerCopy?.profileTitle || 'Profile summary'}</Text>
+              <View style={styles.playerSummaryCard}>
+                <View style={styles.playerSummaryRow}>
+                  <Text style={styles.playerSummaryLabel}>
+                    {playerCopy?.profileNameLabel || 'Name'}
+                  </Text>
+                  <Text style={styles.playerSummaryValue}>{displayName}</Text>
+                </View>
+                <View style={styles.playerSummaryRow}>
+                  <Text style={styles.playerSummaryLabel}>
+                    {playerCopy?.profilePositionLabel || 'Position'}
+                  </Text>
+                  <Text style={styles.playerSummaryValue}>
+                    {playerPosition ?? (playerCopy?.notProvided || 'Not provided')}
+                  </Text>
+                </View>
+                <View style={styles.playerSummaryRow}>
+                  <Text style={styles.playerSummaryLabel}>
+                    {playerCopy?.profileAgeLabel || 'Age'}
+                  </Text>
+                  <Text style={styles.playerSummaryValue}>
+                    {playerAge ? String(playerAge) : playerCopy?.notProvided || 'Not provided'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{playerCopy?.performanceTitle || 'Performance'}</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('HardwareSessions', {
+                      playerId: user?.playerId,
+                      playerName: displayName,
+                    })
+                  }
+                >
+                  <Text style={styles.viewAllLink}>
+                    {playerCopy?.viewSessionsCta || 'View sessions'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.playerPerformanceGrid}>
+                <LinearGradient
+                  colors={[tokens.colors.arcane.charcoal, tokens.colors.arcane.anthracite]}
+                  style={styles.playerMetricCard}
+                >
+                  <Text style={styles.playerMetricLabel}>
+                    {playerCopy?.distanceLabel || 'Distance'}
+                  </Text>
+                  <Text style={styles.playerMetricValue}>
+                    {formatDistance(playerSummary.totalDistanceM)}
+                  </Text>
+                </LinearGradient>
+                <LinearGradient
+                  colors={[tokens.colors.arcane.charcoal, tokens.colors.arcane.anthracite]}
+                  style={styles.playerMetricCard}
+                >
+                  <Text style={styles.playerMetricLabel}>
+                    {playerCopy?.durationLabel || 'Duration'}
+                  </Text>
+                  <Text style={styles.playerMetricValue}>
+                    {formatDuration(playerSummary.totalDurationMin)}
+                  </Text>
+                </LinearGradient>
+                <LinearGradient
+                  colors={[tokens.colors.arcane.charcoal, tokens.colors.arcane.anthracite]}
+                  style={styles.playerMetricCard}
+                >
+                  <Text style={styles.playerMetricLabel}>
+                    {playerCopy?.maxSpeedLabel || 'Max speed'}
+                  </Text>
+                  <Text style={styles.playerMetricValue}>
+                    {formatSpeed(playerSummary.maxSpeedKmh)}
+                  </Text>
+                </LinearGradient>
+              </View>
+            </View>
+
+            {braceletCardEnabled && (
+              <View style={styles.section}>
+                <LinearGradient
+                  colors={[tokens.colors.arcane.charcoal, tokens.colors.feature.ai + '20']}
+                  style={styles.braceletCard}
+                >
+                  <View style={styles.braceletHeader}>
+                    <View>
+                      <Text style={styles.braceletTitle}>
+                        {playerCopy?.braceletTitle || 'QC Band bracelet'}
+                      </Text>
+                      <Text style={styles.braceletStatusText}>{braceletStateCopy[braceletStatus]}</Text>
+                    </View>
+                    <View style={styles.braceletPill}>
+                      <Text style={styles.braceletPillText}>
+                        {Platform.OS === 'ios'
+                          ? playerCopy?.braceletIosLabel || 'iOS Live'
+                          : playerCopy?.braceletIosOnlyLabel || 'iOS only'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.braceletMetricsRow}>
+                    <View style={styles.braceletMetric}>
+                      <Text style={styles.braceletMetricLabel}>
+                        {playerCopy?.braceletBatteryLabel || 'Battery'}
+                      </Text>
+                      <Text style={styles.braceletMetricValue}>
+                        {braceletBatteryPercent !== undefined ? `${braceletBatteryPercent}%` : '--'}
+                      </Text>
+                    </View>
+                    <View style={styles.braceletMetric}>
+                      <Text style={styles.braceletMetricLabel}>
+                        {playerCopy?.braceletStepsLabel || 'Steps'}
+                      </Text>
+                      <Text style={styles.braceletMetricValue}>
+                        {braceletSteps !== undefined ? braceletSteps.toLocaleString() : '--'}
+                      </Text>
+                    </View>
+                    <View style={styles.braceletMetric}>
+                      <Text style={styles.braceletMetricLabel}>
+                        {playerCopy?.braceletDistanceLabel || 'Distance'}
+                      </Text>
+                      <Text style={styles.braceletMetricValue}>{braceletDistanceKm ?? '--'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.braceletFooter}>
+                    <Text style={styles.braceletHint}>
+                      {playerCopy?.braceletHrLabel || 'HR'}: {braceletHr ?? '--'} ·{' '}
+                      {playerCopy?.braceletLastSyncLabel || 'Sync'}: {formatLastSync(braceletLastSync)}
+                    </Text>
+                    <View style={styles.braceletActions}>
+                      {Platform.OS === 'ios' ? (
+                        <>
+                          {braceletStatus === 'connected' ? (
+                            <TouchableOpacity style={styles.braceletActionBtn} onPress={refreshBraceletMetrics}>
+                              <Text style={styles.braceletActionText}>
+                                {playerCopy?.braceletRefreshCta || 'Refresh'}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.braceletActionBtn}
+                              onPress={connectBracelet}
+                              disabled={braceletStatus === 'connecting'}
+                            >
+                              <Text style={styles.braceletActionText}>
+                                {braceletStatus === 'connecting'
+                                  ? playerCopy?.braceletConnectingCta || 'Connecting...'
+                                  : playerCopy?.braceletConnectCta || 'Connect'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={[styles.braceletActionBtn, styles.braceletActionBtnSecondary]}
+                            onPress={() => navigation.navigate('QCBand')}
+                          >
+                            <Text style={styles.braceletActionTextSecondary}>
+                              {playerCopy?.braceletOpenCta || 'Open bracelet'}
+                            </Text>
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.braceletActionBtn, styles.braceletActionBtnSecondary]}
+                          onPress={() =>
+                            navigation.navigate('HardwareSessions', {
+                              playerId: user?.playerId,
+                              playerName: displayName,
+                            })
+                          }
+                        >
+                          <Text style={styles.braceletActionTextSecondary}>
+                            {playerCopy?.braceletAndroidCta || 'View sessions'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                </LinearGradient>
+              </View>
+            )}
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{playerCopy?.sessionsTitle || 'Training sessions'}</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('HardwareSessions', {
+                      playerId: user?.playerId,
+                      playerName: displayName,
+                    })
+                  }
+                >
+                  <Text style={styles.viewAllLink}>{playerCopy?.viewAllLabel || 'View all'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.playerSessionsCard}>
+                {playerSessions.length === 0 ? (
+                  <Text style={styles.playerEmptyText}>
+                    {playerCopy?.emptySessions || 'No sessions available'}
+                  </Text>
+                ) : (
+                  playerSessions.slice(0, 5).map((session) => (
+                    <View key={session.id} style={styles.playerSessionItem}>
+                      <View style={styles.playerSessionHeader}>
+                        <Text style={styles.playerSessionType}>{session.type.toUpperCase()}</Text>
+                        <Text style={styles.playerSessionDate}>
+                          {new Date(session.startedAt).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <Text style={styles.playerSessionStats}>
+                        {formatDistance(session.metrics?.movementDistanceM ?? 0)} •{' '}
+                        {formatDuration(session.metrics?.totalTimeMin ?? 0)} •{' '}
+                        {formatSpeed(session.metrics?.maxSpeedKmh ?? 0)}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
+
+            <View style={styles.playerBottomActions}>
+              <TouchableOpacity
+                style={styles.playerBottomActionPrimary}
+                onPress={() =>
+                  navigation.navigate('HardwareSessions', {
+                    playerId: user?.playerId,
+                    playerName: displayName,
+                  })
+                }
+              >
+                <Ionicons
+                  name="pulse-outline"
+                  size={tokens.iconSize.sm}
+                  color={tokens.colors.arcane.black}
+                />
+                <Text style={styles.playerBottomActionPrimaryText}>
+                  {playerCopy?.viewSessionsCta || 'View sessions'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.playerBottomActionSecondary}
+                onPress={() => navigation.navigate('QCBand')}
+              >
+                <Ionicons
+                  name="watch-outline"
+                  size={tokens.iconSize.sm}
+                  color={tokens.colors.gray[100]}
+                />
+                <Text style={styles.playerBottomActionSecondaryText}>
+                  {playerCopy?.braceletOpenCta || 'Open bracelet'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView
+          testID="dashboard-scroll"
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={tokens.colors.yellow.DEFAULT}
+              colors={[tokens.colors.yellow.DEFAULT]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.hero}>
+            <View style={styles.heroHeader}>
+              <View style={styles.heroText}>
+                <Text style={styles.greeting}>{dashboardCopy.hero.greeting}</Text>
+                <Text style={styles.userName}>{displayName}</Text>
+              </View>
+              <TouchableOpacity style={styles.profileButton} onPress={() => handleNavigate('Profile')}>
+                <View style={styles.profileAvatar}>
+                  <Text style={styles.profileInitial}>{avatarFallback}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.xpContainer}>
+              <View style={styles.xpHeader}>
+                <View style={styles.xpLevel}>
+                  <Ionicons
+                    name="shield"
+                    size={tokens.iconSize.sm}
+                    color={tokens.colors.yellow.DEFAULT}
+                  />
+                  <Text style={styles.xpLevelText}>
+                    {t('dashboard.hero.level', { level: userLevel.level })}
+                  </Text>
+                </View>
+                <Text style={styles.xpText}>
+                  {t('dashboard.hero.xp', {
+                    current: userLevel.currentXP,
+                    next: userLevel.nextLevelXP,
+                  })}
+                </Text>
+              </View>
+              <View style={styles.xpBar}>
+                <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{playerCopy?.profileTitle || 'Profile summary'}</Text>
+            <View style={styles.playerSummaryCard}>
+              <View style={styles.playerSummaryRow}>
+                <Text style={styles.playerSummaryLabel}>
+                  {playerCopy?.profileNameLabel || 'Name'}
+                </Text>
+                <Text style={styles.playerSummaryValue}>{displayName}</Text>
+              </View>
+              <View style={styles.playerSummaryRow}>
+                <Text style={styles.playerSummaryLabel}>
+                  {playerCopy?.profilePositionLabel || 'Position'}
+                </Text>
+                <Text style={styles.playerSummaryValue}>
+                  {playerPosition ?? (playerCopy?.notProvided || 'Not provided')}
+                </Text>
+              </View>
+              <View style={styles.playerSummaryRow}>
+                <Text style={styles.playerSummaryLabel}>{playerCopy?.profileAgeLabel || 'Age'}</Text>
+                <Text style={styles.playerSummaryValue}>
+                  {playerAge ? String(playerAge) : playerCopy?.notProvided || 'Not provided'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{playerCopy?.performanceTitle || 'Performance'}</Text>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('HardwareSessions', {
+                    playerId: user?.playerId,
+                    playerName: displayName,
+                  })
+                }
+              >
+                <Text style={styles.viewAllLink}>
+                  {playerCopy?.viewSessionsCta || 'View sessions'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.playerPerformanceGrid}>
+              <View style={styles.playerMetricCard}>
+                <Text style={styles.playerMetricLabel}>
+                  {playerCopy?.distanceLabel || 'Distance'}
+                </Text>
+                <Text style={styles.playerMetricValue}>
+                  {formatDistance(playerSummary.totalDistanceM)}
+                </Text>
+              </View>
+              <View style={styles.playerMetricCard}>
+                <Text style={styles.playerMetricLabel}>
+                  {playerCopy?.durationLabel || 'Duration'}
+                </Text>
+                <Text style={styles.playerMetricValue}>
+                  {formatDuration(playerSummary.totalDurationMin)}
+                </Text>
+              </View>
+              <View style={styles.playerMetricCard}>
+                <Text style={styles.playerMetricLabel}>
+                  {playerCopy?.maxSpeedLabel || 'Max speed'}
+                </Text>
+                <Text style={styles.playerMetricValue}>
+                  {formatSpeed(playerSummary.maxSpeedKmh)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{playerCopy?.sessionsTitle || 'Training sessions'}</Text>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('HardwareSessions', {
+                    playerId: user?.playerId,
+                    playerName: displayName,
+                  })
+                }
+              >
+                <Text style={styles.viewAllLink}>
+                  {playerCopy?.viewAllLabel || 'View all'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.playerSessionsCard}>
+              {playerSessions.length === 0 ? (
+                <Text style={styles.playerEmptyText}>
+                  {playerCopy?.emptySessions || 'No sessions available'}
+                </Text>
+              ) : (
+                playerSessions.slice(0, 5).map((session) => (
+                  <View key={session.id} style={styles.playerSessionItem}>
+                    <View style={styles.playerSessionHeader}>
+                      <Text style={styles.playerSessionType}>{session.type.toUpperCase()}</Text>
+                      <Text style={styles.playerSessionDate}>
+                        {new Date(session.startedAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text style={styles.playerSessionStats}>
+                      {formatDistance(session.metrics?.movementDistanceM ?? 0)} • {formatDuration(session.metrics?.totalTimeMin ?? 0)} • {formatSpeed(session.metrics?.maxSpeedKmh ?? 0)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
+
+          <View style={styles.lastSection} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -94,604 +1025,966 @@ export const DashboardScreen = ({ navigation }: any) => {
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={tokens.colors.yellow.DEFAULT}
+            colors={[tokens.colors.yellow.DEFAULT]}
+          />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.firstName || 'User'}</Text>
+        {/* ================================================================ */}
+        {/* HERO SECTION */}
+        {/* ================================================================ */}
+        <View style={styles.hero}>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroText}>
+              <Text style={styles.greeting}>{dashboardCopy.hero.greeting}</Text>
+              <Text style={styles.userName}>{displayName}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={() => handleNavigate('Profile')}
+            >
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileInitial}>{avatarFallback}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* XP Progress */}
+          <View style={styles.xpContainer}>
+            <View style={styles.xpHeader}>
+              <View style={styles.xpLevel}>
+                <Ionicons
+                  name="shield"
+                  size={tokens.iconSize.sm}
+                  color={tokens.colors.yellow.DEFAULT}
+                />
+                <Text style={styles.xpLevelText}>
+                  {t('dashboard.hero.level', { level: userLevel.level })}
+                </Text>
+              </View>
+              <Text style={styles.xpText}>
+                {t('dashboard.hero.xp', {
+                  current: userLevel.currentXP,
+                  next: userLevel.nextLevelXP,
+                })}
+              </Text>
+            </View>
+            <View style={styles.xpBar}>
+              <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
+            </View>
+          </View>
+        </View>
+
+        {/* ================================================================ */}
+        {/* STAT CARDS GRID (2x2) */}
+        {/* ================================================================ */}
+        <View style={styles.section}>
+          <View style={styles.statsGrid}>
+            {STAT_CARD_META.map(meta => {
+              const copy = dashboardCopy.stats.cards.find(card => card.key === meta.key);
+              return (
+                <View style={styles.statCardWrapper} key={meta.key}>
+                  <StatCard
+                    title={copy?.title || ''}
+                    value={meta.valueGetter(stats)}
+                    icon={meta.icon}
+                    trend={{
+                      direction: 'up',
+                      value: meta.trendValue,
+                      label: copy?.trendLabel || '',
+                    }}
+                    color={meta.color}
+                    onPress={meta.target ? () => handleNavigate(meta.target) : undefined}
+                    testID={`stat-${meta.key}`}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ================================================================ */}
+        {/* QUICK ACTIONS */}
+        {/* ================================================================ */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{dashboardCopy.quickActions.title}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickActionsScroll}
+          >
+            {dashboardCopy.quickActions.items.map(action => (
+              <QuickActionCard
+                key={action.label}
+                icon={action.icon as any}
+                label={action.label}
+                onPress={() => handleNavigate(action.target)}
+                variant={(action.variant as any) ?? 'secondary'}
+                testID={`quick-action-${action.target?.toLowerCase()}`}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* ================================================================ */}
+        {/* AI INSIGHTS CARD */}
+        {/* ================================================================ */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{dashboardCopy.ai.sectionTitle}</Text>
+            <TouchableOpacity onPress={() => handleNavigate('AI')}>
+              <Ionicons
+                name="chevron-forward"
+                size={tokens.iconSize.sm}
+                color={tokens.colors.yellow.DEFAULT}
+              />
+            </TouchableOpacity>
           </View>
           <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => navigation.navigate('Profile')}
+            style={styles.aiCard}
+            onPress={() => handleNavigate('AI')}
+            activeOpacity={0.8}
           >
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileInitial}>
-                {user?.firstName?.charAt(0) || 'U'}
+            {/* Glow Background */}
+            <View style={styles.aiGlow} />
+
+            <View style={styles.aiContent}>
+              <View style={styles.aiHeader}>
+                <View style={styles.aiIconContainer}>
+                  <Ionicons
+                    name="sparkles"
+                    size={tokens.iconSize.lg}
+                    color={tokens.colors.feature.ai}
+                  />
+                </View>
+                <View style={styles.aiHeaderText}>
+                  <Text style={styles.aiTitle}>{dashboardCopy.ai.cardTitle}</Text>
+                  <Text style={styles.aiSubtitle}>
+                    {dashboardCopy.ai.subtitle}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Mini Chart Placeholder */}
+              <View style={styles.aiChart}>
+                <View style={styles.aiChartBar} />
+                <View style={[styles.aiChartBar, { height: 60 }]} />
+                <View style={[styles.aiChartBar, { height: 45 }]} />
+                <View style={[styles.aiChartBar, { height: 70 }]} />
+                <View style={[styles.aiChartBar, { height: 55 }]} />
+              </View>
+
+              <Text style={styles.aiDescription}>
+                {stats.playersScouted > 0
+                  ? t('dashboard.ai.descriptionWithData', {
+                      count: Math.min(5, Math.floor(stats.playersScouted * 0.2)),
+                    })
+                  : dashboardCopy.ai.descriptionEmpty}
               </Text>
+
+              <View style={styles.aiButton}>
+                <Text style={styles.aiButtonText}>{dashboardCopy.ai.cta}</Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={tokens.iconSize.sm}
+                  color={tokens.colors.arcane.black}
+                />
+              </View>
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <StatCard
-            testID="dashboard-stat-totalReports"
-            title="Total Reports"
-            value={stats.totalReports}
-            color={colors.brand.primary}
-            onPress={() => navigation.navigate('Reports')}
-          />
-          <StatCard
-            testID="dashboard-stat-pendingReports"
-            title="Pending"
-            value={stats.pendingReports}
-            color={colors.semantic.warning}
-            onPress={() => navigation.navigate('Reports')}
-          />
-          <StatCard
-            testID="dashboard-stat-totalPlayers"
-            title="Players"
-            value={stats.totalPlayers}
-            color={colors.semantic.info}
-            onPress={() => navigation.navigate('Players')}
-          />
-          <StatCard
-            testID="dashboard-stat-upcomingMatches"
-            title="Matches"
-            value={stats.upcomingMatches}
-            color={colors.semantic.success}
-            onPress={() => navigation.navigate('Calendar')}
-          />
-        </View>
-
-        {/* Quick Actions */}
+        {/* ================================================================ */}
+        {/* TODAY'S CHALLENGE */}
+        {/* ================================================================ */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <GlassCard variant="elevated">
-            <View style={styles.actionsContainer}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  lightImpact();
-                  navigation.navigate('CreateReport');
-                }}
-              >
-                <View style={styles.actionIcon}>
-                  <Icon name="add" size={28} color={colors.brand.primary} />
-                </View>
-                <Text style={styles.actionText}>New Report</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  lightImpact();
-                  navigation.navigate('Players');
-                }}
-              >
-                <View style={styles.actionIcon}>
-                  <Icon name="people" size={28} color={colors.brand.primary} />
-                </View>
-                <Text style={styles.actionText}>View Players</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  lightImpact();
-                  navigation.navigate('Calendar');
-                }}
-              >
-                <View style={styles.actionIcon}>
-                  <Icon name="calendar" size={28} color={colors.brand.primary} />
-                </View>
-                <Text style={styles.actionText}>Calendar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  lightImpact();
-                  navigation.navigate('Kanban');
-                }}
-              >
-                <View style={styles.actionIcon}>
-                  <Icon name="clipboard" size={28} color={colors.brand.primary} />
-                </View>
-                <Text style={styles.actionText}>Kanban</Text>
-              </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{dashboardCopy.challenge.title}</Text>
+            <View style={styles.xpBadge}>
+              <Ionicons
+                name="star"
+                size={tokens.iconSize.xs}
+                color={tokens.colors.feature.gamification}
+              />
+              <Text style={styles.xpBadgeText}>
+                {t('dashboard.challenge.xpLabel', { xp: todayChallenge.xpReward })}
+              </Text>
             </View>
-          </GlassCard>
-        </View>
-
-        {/* Analytics Charts */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Activity Trends (7 Days)</Text>
-          <LineChart
-            data={activityData}
-            lines={[
-              { dataKey: 'rapports', color: colors.brand.primary, name: 'Rapports' },
-              { dataKey: 'joueurs', color: colors.semantic.info, name: 'Joueurs' },
-              { dataKey: 'camps', color: colors.semantic.success, name: 'Camps' },
-            ]}
-            height={200}
-          />
-        </View>
-
-        {/* Reports Distribution */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reports Distribution</Text>
-          <PieChart
-            data={[
-              { name: 'Approved', value: Math.max(0, stats.totalReports - stats.pendingReports) },
-              { name: 'Pending', value: stats.pendingReports },
-              { name: 'In Review', value: Math.floor(stats.totalReports * 0.15) },
-            ]}
-            colors={[colors.semantic.success, colors.semantic.warning, colors.semantic.info]}
-            height={180}
-          />
-        </View>
-
-        {/* Players by Position */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Players by Position</Text>
-          <BarChart
-            data={[
-              { name: 'Forwards', count: Math.floor(stats.totalPlayers * 0.3) },
-              { name: 'Midfielders', count: Math.floor(stats.totalPlayers * 0.35) },
-              { name: 'Defenders', count: Math.floor(stats.totalPlayers * 0.25) },
-              { name: 'Goalkeepers', count: Math.floor(stats.totalPlayers * 0.1) },
-            ]}
-            bars={[{ dataKey: 'count', color: colors.brand.primary, name: 'Players' }]}
-            height={200}
-          />
-        </View>
-
-        {/* AI Recommendations */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <GradientText variant="arcane" style={styles.aiTitle}>
-              AI Recommendations
-            </GradientText>
-            <TouchableOpacity onPress={() => navigation.navigate('AI')}>
-              <Icon name="chevronForward" size={20} color={colors.brand.primary} />
-            </TouchableOpacity>
           </View>
-          <GlassCard variant="elevated">
-            <TouchableOpacity
-              style={styles.aiCard}
-              onPress={() => navigation.navigate('AI')}
-            >
-              <View style={styles.aiIconContainer}>
-                <Icon name="ai" size={32} color={colors.brand.primary} />
-              </View>
-              <View style={styles.aiContent}>
-                <Text style={styles.aiCardTitle}>Discover Top Talents</Text>
-                <Text style={styles.aiCardDesc}>
-                  {stats.totalPlayers > 0
-                    ? `Arcane AI has identified ${Math.min(5, Math.floor(stats.totalPlayers * 0.2))} promising players based on performance analytics`
-                    : 'Use Arcane AI to discover and analyze players'}
-                </Text>
-                <View style={styles.aiFeatures}>
-                  <View style={styles.aiFeature}>
-                    <Icon name="checkmark" size={16} color={colors.semantic.success} />
-                    <Text style={styles.aiFeatureText}>Performance Analysis</Text>
-                  </View>
-                  <View style={styles.aiFeature}>
-                    <Icon name="checkmark" size={16} color={colors.semantic.success} />
-                    <Text style={styles.aiFeatureText}>Smart Matching</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </GlassCard>
-        </View>
-
-        {/* Pending Tasks */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Pending Tasks</Text>
-            <AnimatedBadge count={stats.pendingReports} size="sm" animation="bounce" />
-          </View>
-          <GlassCard variant="elevated">
-            {stats.pendingReports > 0 ? (
-              <View style={styles.tasksContainer}>
-                <TaskItem
-                  icon="document"
-                  title="Complete Pending Reports"
-                  count={stats.pendingReports}
-                  color={colors.semantic.warning}
-                  onPress={() => navigation.navigate('Reports')}
+          <View style={styles.challengeCard}>
+            <View style={styles.challengeHeader}>
+              <View style={styles.challengeIcon}>
+                <Ionicons
+                  name="trophy"
+                  size={tokens.iconSize.md}
+                  color={tokens.colors.feature.gamification}
                 />
-                {stats.upcomingMatches > 0 && (
-                  <TaskItem
-                    icon="calendar"
-                    title="Upcoming Matches to Scout"
-                    count={stats.upcomingMatches}
-                    color={colors.semantic.info}
-                    onPress={() => navigation.navigate('Calendar')}
-                  />
-                )}
-                {stats.activeCamps > 0 && (
-                  <TaskItem
-                    icon="fitness"
-                    title="Active Training Camps"
-                    count={stats.activeCamps}
-                    color={colors.semantic.success}
-                    onPress={() => navigation.navigate('Camps')}
-                  />
-                )}
               </View>
-            ) : (
-              <View style={styles.emptyTasks}>
-                <Icon name="checkmark" size={48} color={colors.semantic.success} />
-                <Text style={styles.emptyTasksText}>All caught up!</Text>
-                <Text style={styles.emptyTasksSubtext}>No pending tasks at the moment</Text>
+              <View style={styles.challengeTextContainer}>
+                <Text style={styles.challengeTitle}>{todayChallenge.title}</Text>
+                <Text style={styles.challengeDescription}>
+                  {todayChallenge.description}
+                </Text>
               </View>
-            )}
-          </GlassCard>
+            </View>
+
+            {/* Progress Bar */}
+            <View style={styles.challengeProgress}>
+              <View style={styles.challengeProgressBar}>
+                <View
+                  style={[
+                    styles.challengeProgressFill,
+                    {
+                      width: `${(todayChallenge.progress / todayChallenge.total) * 100}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.challengeProgressText}>
+                {todayChallenge.progress} / {todayChallenge.total}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.challengeButton}
+              onPress={() => handleNavigate('CreateReport')}
+            >
+              <Text style={styles.challengeButtonText}>{dashboardCopy.challenge.button}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Recent Activity Timeline */}
+        {/* ================================================================ */}
+        {/* RECENT ACTIVITY */}
+        {/* ================================================================ */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <GlassCard variant="elevated">
-            <View style={styles.timelineContainer}>
-              <TimelineItem
-                icon="document"
-                iconColor={colors.brand.primary}
-                title="Report Created"
-                description="New scouting report for player analysis"
-                time="2 hours ago"
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{dashboardCopy.activity.title}</Text>
+            <TouchableOpacity onPress={() => handleNavigate('Activity')}>
+              <Text style={styles.viewAllLink}>{dashboardCopy.activity.viewAll}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.activityCard}>
+            {recentActivities.slice(0, 5).map((activity, index) => (
+              <ActivityItem
+                key={activity.id}
+                icon={activity.icon}
+                iconColor={activity.iconColor}
+                title={activity.title}
+                description={activity.description}
+                timestamp={activity.timestamp}
+                showSeparator={index < recentActivities.length - 1}
               />
-              <TimelineItem
-                icon="people"
-                iconColor={colors.semantic.info}
-                title="Player Added"
-                description="New player profile added to database"
-                time="5 hours ago"
-              />
-              <TimelineItem
-                icon="calendar"
-                iconColor={colors.semantic.success}
-                title="Match Scheduled"
-                description="Upcoming scouting match scheduled"
-                time="1 day ago"
-              />
-              <TimelineItem
-                icon="analytics"
-                iconColor={colors.semantic.warning}
-                title="Analytics Updated"
-                description="Performance metrics recalculated"
-                time="2 days ago"
-                isLast
-              />
-            </View>
-          </GlassCard>
+            ))}
+          </View>
+        </View>
+
+        {/* ================================================================ */}
+        {/* UPCOMING MATCHES */}
+        {/* ================================================================ */}
+        <View style={[styles.section, styles.lastSection]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{dashboardCopy.matches.title}</Text>
+            <TouchableOpacity onPress={() => handleNavigate('Calendar')}>
+              <Text style={styles.viewAllLink}>{dashboardCopy.matches.viewAll}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.matchesCard}>
+            {upcomingMatches.map((match, index) => (
+              <TouchableOpacity
+                key={match.id}
+                style={[
+                  styles.matchItem,
+                  index < upcomingMatches.length - 1 && styles.matchItemWithBorder,
+                ]}
+                onPress={() => handleNavigate('MatchDetails')}
+              >
+                <View style={styles.matchTeams}>
+                  <View style={styles.matchTeamLogo}>
+                    <Text style={styles.matchTeamInitial}>
+                      {match.homeTeam.charAt(0)}
+                    </Text>
+                  </View>
+                  <Text style={styles.matchVs}>{dashboardCopy.matches.vs}</Text>
+                  <View style={styles.matchTeamLogo}>
+                    <Text style={styles.matchTeamInitial}>
+                      {match.awayTeam.charAt(0)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.matchDetails}>
+                  <Text style={styles.matchTeamsText}>
+                    {match.homeTeam} vs {match.awayTeam}
+                  </Text>
+                  <View style={styles.matchDateTime}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={tokens.iconSize.xs}
+                      color={tokens.colors.gray[400]}
+                    />
+                    <Text style={styles.matchDate}>{match.date}</Text>
+                    <Ionicons
+                      name="time-outline"
+                      size={tokens.iconSize.xs}
+                      color={tokens.colors.gray[400]}
+                    />
+                    <Text style={styles.matchTime}>{match.time}</Text>
+                  </View>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={tokens.iconSize.sm}
+                  color={tokens.colors.gray[500]}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const TaskItem = ({
-  icon,
-  title,
-  count,
-  color,
-  onPress,
-}: {
-  icon: any;
-  title: string;
-  count: number;
-  color: string;
-  onPress: () => void;
-}) => (
-  <TouchableOpacity style={styles.taskItem} onPress={onPress}>
-    <View style={[styles.taskIconContainer, { backgroundColor: color + '20' }]}>
-      <Icon name={icon} size={20} color={color} />
-    </View>
-    <View style={styles.taskContent}>
-      <Text style={styles.taskTitle}>{title}</Text>
-      <Text style={styles.taskCount}>{count} pending</Text>
-    </View>
-    <Icon name="chevronForward" size={20} color={colors.text.secondary} />
-  </TouchableOpacity>
-);
-
-const TimelineItem = ({
-  icon,
-  iconColor,
-  title,
-  description,
-  time,
-  isLast = false,
-}: {
-  icon: any;
-  iconColor: string;
-  title: string;
-  description: string;
-  time: string;
-  isLast?: boolean;
-}) => (
-  <View style={styles.timelineItem}>
-    <View style={styles.timelineLeft}>
-      <View style={[styles.timelineDot, { backgroundColor: iconColor }]}>
-        <Icon name={icon} size={16} color={colors.background.primary} />
-      </View>
-      {!isLast && <View style={styles.timelineLine} />}
-    </View>
-    <View style={styles.timelineRight}>
-      <Text style={styles.timelineTitle}>{title}</Text>
-      <Text style={styles.timelineDesc}>{description}</Text>
-      <Text style={styles.timelineTime}>{time}</Text>
-    </View>
-  </View>
-);
+// ============================================================================
+// STYLES
+// ============================================================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: tokens.colors.arcane.black,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: spacing.md,
+    padding: 16,
+    paddingBottom: 80,
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[400],
+  },
+
+  // Hero Section
+  hero: {
+    marginBottom: 24,
+  },
+  heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: 16,
+  },
+  heroText: {
+    flex: 1,
   },
   greeting: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
+    ...typography.bodyBase,
+    color: tokens.colors.gray[400],
+    marginBottom: 4,
   },
   userName: {
-    fontSize: typography.sizes.h2,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    ...typography.heading2,
+    color: tokens.colors.gray[50],
   },
   profileButton: {
-    padding: spacing.xs,
+    padding: 4,
   },
   profileAvatar: {
     width: 48,
     height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
+    borderRadius: 9999,
+    backgroundColor: tokens.colors.yellow.DEFAULT,
     alignItems: 'center',
     justifyContent: 'center',
+    ...tokens.shadows.md,
   },
   profileInitial: {
-    fontSize: typography.sizes.xl,
-    fontWeight: 'bold',
-    color: colors.background.primary,
+    ...typography.heading4,
+    color: tokens.colors.arcane.black,
+    fontWeight: tokens.fontWeight.bold,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -spacing.xs,
-    marginBottom: spacing.lg,
-  },
-  statCardWrapper: {
-    width: '50%',
-    padding: spacing.xs,
-  },
-  statCard: {
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: typography.sizes.h2,
-    fontWeight: 'bold',
-    color: colors.brand.primary,
-    marginBottom: spacing.xs,
-  },
-  statTitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  statIndicator: {
-    width: 40,
-    height: 4,
-    borderRadius: radius.sm,
-    marginTop: spacing.sm,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: spacing.sm,
-  },
-  actionButton: {
-    width: '50%',
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  actionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface.glassLight,
+
+  // XP Progress
+  xpContainer: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: colors.surface.border,
+    borderColor: tokens.colors.arcane.slate + '60',
+  },
+  xpHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
-  actionIconText: {
-    fontSize: typography.sizes.h3,
-  },
-  actionText: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.primary,
-    textAlign: 'center',
-  },
-  activityContainer: {
-    padding: spacing.xl,
+  xpLevel: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  emptyText: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
+  xpLevelText: {
+    ...typography.heading5,
+    color: tokens.colors.yellow.DEFAULT,
+  },
+  xpText: {
+    ...typography.bodySmall,
+    color: tokens.colors.gray[400],
+  },
+  xpBar: {
+    height: 8,
+    backgroundColor: tokens.colors.arcane.anthracite,
+    borderRadius: 9999,
+    overflow: 'hidden',
+  },
+  xpProgress: {
+    height: '100%',
+    backgroundColor: tokens.colors.yellow.DEFAULT,
+    borderRadius: 9999,
+    ...tokens.shadows.glowYellow,
+  },
+
+  // Section
+  section: {
+    marginBottom: 24,
+  },
+  lastSection: {
+    marginBottom: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  aiTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: 'bold',
+  sectionTitle: {
+    ...typography.heading3,
+    color: tokens.colors.gray[100],
   },
-  aiCard: {
+  viewAllLink: {
+    ...typography.bodySmall,
+    color: tokens.colors.yellow.DEFAULT,
+    fontWeight: tokens.fontWeight.semibold,
+  },
+
+  // Stats Grid
+  statsGrid: {
     flexDirection: 'row',
-    padding: spacing.lg,
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
   },
-  aiIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface.glassLight,
+  statCardWrapper: {
+    width: '50%',
+    padding: 8,
+  },
+
+  // Quick Actions
+  quickActionsScroll: {
+    paddingRight: 16,
+    gap: 12,
+  },
+
+  // Player dashboard
+  playerHeroCard: {
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: colors.surface.border,
+    borderColor: tokens.colors.brand.primary + '35',
+    ...tokens.shadows.lg,
+  },
+  playerTagRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  playerTag: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: tokens.colors.arcane.anthracite + 'C0',
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '70',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  playerTagLabel: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+    marginBottom: 3,
+    textTransform: 'uppercase',
+  },
+  playerTagValue: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[100],
+    fontWeight: tokens.fontWeight.semibold,
+  },
+  playerSummaryCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '60',
+  },
+  playerSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  playerSummaryLabel: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[400],
+  },
+  playerSummaryValue: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[100],
+    fontWeight: tokens.fontWeight.semibold,
+  },
+  playerPerformanceGrid: {
+    gap: 10,
+  },
+  playerMetricCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '60',
+  },
+  playerMetricLabel: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  playerMetricValue: {
+    ...typography.heading4,
+    color: tokens.colors.yellow.DEFAULT,
+  },
+  playerSessionsCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '60',
+  },
+  playerSessionItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.arcane.slate + '35',
+  },
+  playerSessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  playerSessionType: {
+    ...typography.caption,
+    color: tokens.colors.gray[100],
+    fontWeight: tokens.fontWeight.bold,
+  },
+  playerSessionDate: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+  },
+  playerSessionStats: {
+    ...typography.bodySmall,
+    color: tokens.colors.gray[300],
+  },
+  playerEmptyText: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[400],
+    textAlign: 'center',
+    paddingVertical: 10,
+  },
+  braceletCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.feature.ai + '60',
+    padding: 16,
+    ...tokens.shadows.md,
+  },
+  braceletHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+    gap: 10,
+  },
+  braceletTitle: {
+    ...typography.heading5,
+    color: tokens.colors.gray[100],
+    marginBottom: 4,
+  },
+  braceletStatusText: {
+    ...typography.bodySmall,
+    color: tokens.colors.gray[300],
+  },
+  braceletPill: {
+    backgroundColor: tokens.colors.brand.primary + '20',
+    borderColor: tokens.colors.brand.primary + '50',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  braceletPillText: {
+    ...typography.caption,
+    color: tokens.colors.brand.primary,
+    fontWeight: tokens.fontWeight.semibold,
+  },
+  braceletMetricsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  braceletMetric: {
+    flex: 1,
+    backgroundColor: tokens.colors.arcane.anthracite + 'AA',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '70',
+  },
+  braceletMetricLabel: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+    marginBottom: 3,
+  },
+  braceletMetricValue: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[100],
+    fontWeight: tokens.fontWeight.bold,
+  },
+  braceletFooter: {
+    gap: 10,
+  },
+  braceletHint: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+  },
+  braceletActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  braceletActionBtn: {
+    flex: 1,
+    backgroundColor: tokens.colors.brand.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  braceletActionBtnSecondary: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '80',
+  },
+  braceletActionText: {
+    ...typography.bodySmall,
+    color: tokens.colors.arcane.black,
+    fontWeight: tokens.fontWeight.bold,
+  },
+  braceletActionTextSecondary: {
+    ...typography.bodySmall,
+    color: tokens.colors.gray[100],
+    fontWeight: tokens.fontWeight.semibold,
+  },
+  playerBottomActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  playerBottomActionPrimary: {
+    flex: 1,
+    backgroundColor: tokens.colors.yellow.DEFAULT,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    ...tokens.shadows.glowYellow,
+  },
+  playerBottomActionPrimaryText: {
+    ...typography.bodySmall,
+    color: tokens.colors.arcane.black,
+    fontWeight: tokens.fontWeight.bold,
+  },
+  playerBottomActionSecondary: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '80',
+    backgroundColor: tokens.colors.arcane.charcoal,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  playerBottomActionSecondaryText: {
+    ...typography.bodySmall,
+    color: tokens.colors.gray[100],
+    fontWeight: tokens.fontWeight.semibold,
+  },
+  // AI Card
+  aiCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.feature.ai + '40',
+    overflow: 'hidden',
+    position: 'relative',
+    ...tokens.shadows.lg,
+  },
+  aiGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: tokens.colors.feature.ai,
+    opacity: 0.1,
+  },
   aiContent: {
+    padding: 20,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  aiIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: tokens.colors.feature.ai + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiHeaderText: {
     flex: 1,
   },
-  aiCardTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
+  aiTitle: {
+    ...typography.heading4,
+    color: tokens.colors.gray[100],
+    marginBottom: 4,
   },
-  aiCardDesc: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
-    lineHeight: 20,
-    marginBottom: spacing.md,
+  aiSubtitle: {
+    ...typography.bodySmall,
+    color: tokens.colors.feature.ai,
   },
-  aiFeatures: {
+  aiChart: {
     flexDirection: 'row',
-    gap: spacing.md,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 80,
+    marginBottom: 16,
+    gap: 8,
   },
-  aiFeature: {
+  aiChartBar: {
+    flex: 1,
+    height: 50,
+    backgroundColor: tokens.colors.feature.ai + '40',
+    borderRadius: 6,
+  },
+  aiDescription: {
+    ...typography.bodyBase,
+    color: tokens.colors.gray[300],
+    lineHeight: tokens.fontSize.base * 1.5,
+    marginBottom: 16,
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: tokens.colors.yellow.DEFAULT,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    ...tokens.shadows.glowYellow,
+  },
+  aiButtonText: {
+    ...typography.buttonText,
+    color: tokens.colors.arcane.black,
+  },
+
+  // Challenge Card
+  challengeCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.feature.gamification + '40',
+    ...tokens.shadows.md,
+  },
+  challengeHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  challengeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: tokens.colors.feature.gamification + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  challengeTextContainer: {
+    flex: 1,
+  },
+  challengeTitle: {
+    ...typography.heading5,
+    color: tokens.colors.gray[100],
+    marginBottom: 4,
+  },
+  challengeDescription: {
+    ...typography.bodySmall,
+    color: tokens.colors.gray[400],
+    lineHeight: tokens.fontSize.sm * 1.4,
+  },
+  challengeProgress: {
+    marginBottom: 16,
+  },
+  challengeProgressBar: {
+    height: 8,
+    backgroundColor: tokens.colors.arcane.anthracite,
+    borderRadius: 9999,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  challengeProgressFill: {
+    height: '100%',
+    backgroundColor: tokens.colors.feature.gamification,
+    borderRadius: 9999,
+  },
+  challengeProgressText: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+    textAlign: 'right',
+  },
+  challengeButton: {
+    backgroundColor: tokens.colors.feature.gamification + '20',
+    borderWidth: 1,
+    borderColor: tokens.colors.feature.gamification,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  challengeButtonText: {
+    ...typography.buttonText,
+    color: tokens.colors.feature.gamification,
+  },
+  xpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: tokens.colors.feature.gamification + '20',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 9999,
+  },
+  xpBadgeText: {
+    ...typography.caption,
+    color: tokens.colors.feature.gamification,
+    fontWeight: tokens.fontWeight.semibold,
+  },
+
+  // Activity Card
+  activityCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '60',
+    ...tokens.shadows.md,
+  },
+
+  // Matches Card
+  matchesCard: {
+    backgroundColor: tokens.colors.arcane.charcoal,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate + '60',
+    ...tokens.shadows.md,
+  },
+  matchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  matchItemWithBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.arcane.slate + '40',
+  },
+  matchTeams: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  matchTeamLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: tokens.colors.arcane.anthracite,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.arcane.slate,
+  },
+  matchTeamInitial: {
+    ...typography.caption,
+    fontWeight: tokens.fontWeight.bold,
+    color: tokens.colors.gray[300],
+  },
+  matchVs: {
+    ...typography.caption,
+    color: tokens.colors.gray[500],
+    fontSize: tokens.fontSize.xs,
+  },
+  matchDetails: {
+    flex: 1,
+  },
+  matchTeamsText: {
+    ...typography.bodyBase,
+    fontWeight: tokens.fontWeight.semibold,
+    color: tokens.colors.gray[200],
+    marginBottom: 4,
+  },
+  matchDateTime: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  aiFeatureText: {
-    fontSize: typography.sizes.xs,
-    color: colors.text.secondary,
+  matchDate: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+    marginRight: 8,
   },
-  tasksContainer: {
-    padding: spacing.sm,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surface.border,
-  },
-  taskIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 2,
-  },
-  taskCount: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
-  },
-  emptyTasks: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyTasksText: {
-    fontSize: typography.sizes.lg,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: spacing.md,
-  },
-  emptyTasksSubtext: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
-    marginTop: spacing.xs,
-  },
-  timelineContainer: {
-    padding: spacing.md,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    marginBottom: spacing.lg,
-  },
-  timelineLeft: {
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  timelineDot: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  timelineLine: {
-    width: 2,
-    flex: 1,
-    backgroundColor: colors.surface.border,
-  },
-  timelineRight: {
-    flex: 1,
-  },
-  timelineTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  timelineDesc: {
-    fontSize: typography.sizes.sm,
-    color: colors.text.secondary,
-    lineHeight: 18,
-    marginBottom: spacing.xs,
-  },
-  timelineTime: {
-    fontSize: typography.sizes.xs,
-    color: colors.text.secondary,
+  matchTime: {
+    ...typography.caption,
+    color: tokens.colors.gray[400],
   },
 });
+
+export default DashboardScreen;

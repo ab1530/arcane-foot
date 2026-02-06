@@ -9,116 +9,37 @@ import { AnimatedBackground } from "@/components/ui/animated-background";
 import Link from "next/link";
 import { ArrowLeft, Target, Users, TrendingUp, Award, Zap, Sparkles, Shield, Globe, Briefcase, Heart, ArrowRight, CheckCircle } from "lucide-react";
 import { staggerContainer, staggerItem } from "@/lib/design-system/animations";
+import { useLanguage } from "@/contexts/language-context";
 
-const services = [
-  {
-    icon: Target,
-    title: "Player Management",
-    description: "Comprehensive career development and representation",
-    features: [
-      "24/7 personal agent support",
-      "Contract negotiation & advisory",
-      "Career planning & strategy",
-      "Performance tracking",
-      "Legal assistance",
-    ],
-    color: "from-arcane-accent/20 to-purple-500/20",
-  },
-  {
-    icon: Users,
-    title: "Scouting Network",
-    description: "Global talent identification and recruitment",
-    features: [
-      "Worldwide scouting network",
-      "Data-driven player analysis",
-      "Youth talent identification",
-      "Video analysis & reports",
-      "Direct club connections",
-    ],
-    color: "from-blue-500/20 to-arcane-accent/20",
-  },
-  {
-    icon: TrendingUp,
-    title: "Performance Analytics",
-    description: "Advanced metrics and AI-powered insights",
-    features: [
-      "Real-time performance tracking",
-      "AI-powered analysis",
-      "Comparative benchmarking",
-      "Injury prevention insights",
-      "Custom reports & dashboards",
-    ],
-    color: "from-green-500/20 to-arcane-accent/20",
-  },
-  {
-    icon: Award,
-    title: "Club Relations",
-    description: "Strategic partnerships with top clubs worldwide",
-    features: [
-      "Direct access to 500+ clubs",
-      "Transfer market intelligence",
-      "Negotiation support",
-      "Multi-club strategy",
-      "International network",
-    ],
-    color: "from-arcane-accent/20 to-orange-500/20",
-  },
-  {
-    icon: Zap,
-    title: "Transfer Strategy",
-    description: "Optimized transfer planning and execution",
-    features: [
-      "Market value assessment",
-      "Timing optimization",
-      "Multi-offer management",
-      "Contract structuring",
-      "Tax optimization",
-    ],
-    color: "from-purple-500/20 to-pink-500/20",
-  },
-  {
-    icon: Sparkles,
-    title: "Brand Building",
-    description: "Personal branding and commercial opportunities",
-    features: [
-      "Social media strategy",
-      "Content creation",
-      "Endorsement deals",
-      "Public relations",
-      "Image rights management",
-    ],
-    color: "from-pink-500/20 to-arcane-accent/20",
-  },
-];
+const serviceIconMap = {
+  target: Target,
+  users: Users,
+  trendingUp: TrendingUp,
+  award: Award,
+  zap: Zap,
+  sparkles: Sparkles,
+} as const;
 
-const processes = [
-  {
-    step: "01",
-    title: "Initial Consultation",
-    description: "Free 30-minute consultation to understand your goals and needs",
-    icon: Heart,
-  },
-  {
-    step: "02",
-    title: "Assessment & Strategy",
-    description: "Comprehensive analysis and personalized career strategy development",
-    icon: Target,
-  },
-  {
-    step: "03",
-    title: "Representation Agreement",
-    description: "Clear, transparent agreement outlining our partnership terms",
-    icon: Shield,
-  },
-  {
-    step: "04",
-    title: "Active Management",
-    description: "24/7 support, ongoing opportunities, and career advancement",
-    icon: Zap,
-  },
-];
+const processIconMap = {
+  heart: Heart,
+  target: Target,
+  shield: Shield,
+  zap: Zap,
+} as const;
 
 export default function ServicesPage() {
+  const { dictionary } = useLanguage();
+  const navigationCopy = dictionary.common.navigation;
+  const servicesCopy = dictionary.servicesPage;
+  const offerings = servicesCopy.offerings.map((service) => ({
+    ...service,
+    Icon: serviceIconMap[service.icon as keyof typeof serviceIconMap] ?? Target,
+  }));
+  const processSteps = servicesCopy.process.steps.map((step) => ({
+    ...step,
+    Icon: processIconMap[step.icon as keyof typeof processIconMap] ?? Target,
+  }));
+
   return (
     <main className="min-h-screen overflow-hidden relative">
       <AnimatedBackground />
@@ -129,7 +50,9 @@ export default function ServicesPage() {
           <div className="flex h-20 items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
               <ArrowLeft className="h-5 w-5 text-arcane-accent group-hover:-translate-x-1 transition-transform" />
-              <span className="text-arcane-grey group-hover:text-white transition-colors">Back to Home</span>
+              <span className="text-arcane-grey group-hover:text-white transition-colors">
+                {navigationCopy.backHome}
+              </span>
             </Link>
 
             <div className="flex items-center gap-3">
@@ -140,7 +63,7 @@ export default function ServicesPage() {
             </div>
 
             <Link href="/contact">
-              <Button>Get in Touch</Button>
+              <Button data-test="services-nav-cta">{servicesCopy.navCta}</Button>
             </Link>
           </div>
         </div>
@@ -155,16 +78,22 @@ export default function ServicesPage() {
             className="text-center mb-20"
           >
             <motion.div className="inline-block mb-6">
-              <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                What We Do
+              <span
+                className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5"
+                data-test="services-hero-badge"
+              >
+                {servicesCopy.hero.eyebrow}
               </span>
             </motion.div>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black mb-6">
-              <GradientText>OUR SERVICES</GradientText>
+            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black mb-6" data-test="services-hero-title">
+              <GradientText>{servicesCopy.hero.title}</GradientText>
             </h1>
-            <p className="text-2xl md:text-3xl text-arcane-grey max-w-4xl mx-auto leading-relaxed">
-              Comprehensive solutions for <span className="text-white font-bold">modern football representation</span>
-            </p>
+              <p
+                className="text-2xl md:text-3xl text-arcane-grey max-w-4xl mx-auto leading-relaxed"
+                data-test="services-hero-description"
+              >
+                {servicesCopy.hero.description}
+              </p>
           </motion.div>
 
           {/* Services Grid */}
@@ -174,7 +103,7 @@ export default function ServicesPage() {
             animate="animate"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-32"
           >
-            {services.map((service, index) => (
+            {offerings.map((service, index) => (
               <motion.div key={index} variants={staggerItem}>
                 <Card3D>
                   <GlassCard variant="elevated" glowOnHover className="h-full p-8 group cursor-pointer">
@@ -184,7 +113,7 @@ export default function ServicesPage() {
                     <div className="relative z-10">
                       {/* Icon */}
                       <div className="w-16 h-16 rounded-xl bg-arcane-accent/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                        <service.icon className="h-8 w-8 text-arcane-accent" />
+                        <service.Icon className="h-8 w-8 text-arcane-accent" />
                       </div>
 
                       {/* Title */}
@@ -224,15 +153,19 @@ export default function ServicesPage() {
           >
             <div className="text-center mb-16">
               <h2 className="text-5xl md:text-6xl lg:text-7xl font-black mb-4">
-                HOW IT <NeonText>WORKS</NeonText>
+                {servicesCopy.process.title.toUpperCase()}{" "}
+                <NeonText>{servicesCopy.process.highlight.toUpperCase()}</NeonText>
               </h2>
-              <p className="text-xl text-arcane-grey max-w-2xl mx-auto">
-                Our streamlined process to get you started
+              <p
+                className="text-xl text-arcane-grey max-w-2xl mx-auto"
+                data-test="services-process-subtitle"
+              >
+                {servicesCopy.process.subtitle}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {processes.map((process, index) => (
+              {processSteps.map((process, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
@@ -249,7 +182,7 @@ export default function ServicesPage() {
 
                       {/* Icon */}
                       <div className="w-12 h-12 rounded-full bg-arcane-accent/10 flex items-center justify-center mx-auto mb-4">
-                        <process.icon className="h-6 w-6 text-arcane-accent" />
+                        <process.Icon className="h-6 w-6 text-arcane-accent" />
                       </div>
 
                       {/* Title */}
@@ -278,17 +211,12 @@ export default function ServicesPage() {
             <GlassCard variant="elevated" className="p-12 md:p-16">
               <div className="text-center mb-12">
                 <h2 className="text-4xl md:text-5xl font-black mb-4">
-                  <GradientText>BY THE NUMBERS</GradientText>
+                  <GradientText>{servicesCopy.stats.title.toUpperCase()}</GradientText>
                 </h2>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                {[
-                  { value: "500+", label: "Players Represented" },
-                  { value: "50+", label: "Partner Clubs" },
-                  { value: "€2B+", label: "Total Transfer Value" },
-                  { value: "98%", label: "Client Satisfaction" },
-                ].map((stat, index) => (
+                {servicesCopy.stats.items.map((stat, index) => (
                   <div key={index} className="text-center">
                     <div className="text-4xl md:text-5xl font-black mb-2">
                       <NeonText>{stat.value}</NeonText>
@@ -314,27 +242,49 @@ export default function ServicesPage() {
               <div className="relative z-10">
                 <Globe className="h-16 w-16 text-arcane-accent mx-auto mb-6" />
                 <h2 className="text-4xl md:text-5xl font-black mb-6 uppercase">
-                  Ready to <NeonText>Elevate</NeonText> Your Career?
+                  {servicesCopy.cta.title} <NeonText>{servicesCopy.cta.highlight}</NeonText>{" "}
+                  {servicesCopy.cta.suffix}
                 </h2>
                 <p className="text-xl text-arcane-grey mb-8 max-w-2xl mx-auto">
-                  Join hundreds of elite players who trust Arcane Football for their representation
+                  {servicesCopy.cta.description}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link href="/membership">
                     <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                      <Button size="lg" className="shadow-[0_0_30px_rgba(228,255,59,0.4)]">
+                      <Button
+                        size="lg"
+                        className="shadow-[0_0_30px_rgba(228,255,59,0.4)]"
+                        data-test="services-cta-membership"
+                      >
                         <Sparkles className="mr-2 h-5 w-5" />
-                        View Membership Plans
+                        {servicesCopy.cta.buttons.membership}
                         <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </motion.div>
+                  </Link>
+                  <Link href="/reports/templates">
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="border-arcane-accent/40 text-arcane-accent hover:bg-arcane-accent/10"
+                        data-test="services-cta-templates"
+                      >
+                        <CheckCircle className="mr-2 h-5 w-5" />
+                        {servicesCopy.cta.buttons.templates}
                       </Button>
                     </motion.div>
                   </Link>
                   <Link href="/contact">
                     <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                      <Button size="lg" variant="secondary">
+                      <Button
+                        size="lg"
+                        variant="secondary"
+                        data-test="services-cta-consultation"
+                      >
                         <Briefcase className="mr-2 h-5 w-5" />
-                        Schedule Consultation
+                        {servicesCopy.cta.buttons.consultation}
                       </Button>
                     </motion.div>
                   </Link>

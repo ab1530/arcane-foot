@@ -7,7 +7,7 @@ import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import {
   ArrowLeft,
@@ -285,9 +285,9 @@ export default function ReportDetailPage() {
     try {
       setDownloadingPdf(true);
 
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("arcane_auth_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/scouting-reports/${reportId}/pdf`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/scouting-reports/${reportId}/pdf`,
         {
           method: "GET",
           headers: {
@@ -419,7 +419,7 @@ export default function ReportDetailPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -438,13 +438,13 @@ export default function ReportDetailPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
   if (!report) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -466,7 +466,7 @@ export default function ReportDetailPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
@@ -475,7 +475,7 @@ export default function ReportDetailPage() {
   const recommendationConfig = getRecommendationConfig(report.recommendation);
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -1391,6 +1391,6 @@ export default function ReportDetailPage() {
           </div>
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

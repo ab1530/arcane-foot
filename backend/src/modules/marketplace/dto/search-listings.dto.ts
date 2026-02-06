@@ -3,7 +3,11 @@ import { IsOptional, IsArray, IsString, IsNumber, Min, Max } from 'class-validat
 import { Type } from 'class-transformer';
 
 export class SearchListingsDto {
-  @ApiProperty({ description: 'Filter by leagues', required: false, example: ['LaLiga', 'Bundesliga'] })
+  @ApiProperty({
+    description: 'Filter by leagues',
+    required: false,
+    example: ['LaLiga', 'Bundesliga'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

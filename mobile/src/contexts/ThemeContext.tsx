@@ -1,7 +1,17 @@
+/**
+ * ARCANE DESIGN SYSTEM 2.0 - THEME CONTEXT
+ * React Context provider for theme management
+ *
+ * @version 2.0.0
+ * @date 2025-11-11
+ * @status Production Ready
+ */
+
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { theme as arcaneTheme, tokens } from '../design/theme';
 
 // Theme types
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -97,47 +107,47 @@ export const lightTheme: ThemeColors = {
   statusBar: 'dark',
 };
 
-// Dark theme colors (current theme)
+// Dark theme colors (Arcane 2.0 - Primary theme)
 export const darkTheme: ThemeColors = {
-  // Backgrounds
-  darkBg: '#080C1D',
-  dark: '#0F1629',
-  surface: '#1A2138',
-  elevated: '#232B45',
+  // Backgrounds - Using Arcane 2.0 foundation
+  darkBg: tokens.colors.arcane.black,              // #0B1022
+  dark: tokens.colors.arcane.anthracite,           // #10162F
+  surface: tokens.colors.arcane.charcoal,          // #141B34
+  elevated: tokens.colors.arcane.charcoal,         // #141B34
 
-  // Glass effects
-  glass: 'rgba(255, 255, 255, 0.05)',
-  glassBorder: 'rgba(255, 255, 255, 0.1)',
-  glassLight: 'rgba(255, 255, 255, 0.08)',
+  // Glass effects - Arcane 2.0
+  glass: 'rgba(255, 255, 255, 0.08)',
+  glassBorder: 'rgba(255, 255, 255, 0.12)',
+  glassLight: 'rgba(255, 255, 255, 0.05)',
 
-  // Text
+  // Text - Arcane 2.0 hierarchy
   textPrimary: '#FFFFFF',
-  textSecondary: '#94A3B8',
-  textTertiary: '#64748B',
-  textInverse: '#0F1629',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  textTertiary: 'rgba(255, 255, 255, 0.4)',
+  textInverse: tokens.colors.arcane.black,
 
-  // Brand colors
-  accent: '#E4FF3B',
-  accentLight: 'rgba(228, 255, 59, 0.3)',
-  secondary: '#00FFB3',
-  secondaryLight: 'rgba(0, 255, 179, 0.3)',
+  // Brand colors - Arcane 2.0
+  accent: tokens.colors.yellow.DEFAULT,            // #E4FF3B
+  accentLight: 'rgba(228, 255, 59, 0.2)',
+  secondary: '#58E6FF',
+  secondaryLight: 'rgba(88, 230, 255, 0.2)',
 
-  // Semantic colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#FF5757',
-  info: '#3B82F6',
+  // Semantic colors - Arcane 2.0
+  success: tokens.colors.semantic.success,         // #10B981
+  warning: tokens.colors.semantic.warning,         // #F59E0B
+  error: tokens.colors.semantic.error,             // #EF4444
+  info: tokens.colors.semantic.info,               // #3B82F6
 
-  // UI Elements
-  border: 'rgba(255, 255, 255, 0.1)',
-  shadow: 'rgba(0, 0, 0, 0.5)',
-  overlay: 'rgba(8, 12, 29, 0.9)',
-  highlight: 'rgba(228, 255, 59, 0.1)',
+  // UI Elements - Arcane 2.0
+  border: 'rgba(255, 255, 255, 0.12)',
+  shadow: 'rgba(0, 0, 0, 0.6)',
+  overlay: 'rgba(11, 16, 34, 0.85)',
+  highlight: 'rgba(228, 255, 59, 0.15)',
 
-  // Charts and data
-  chartPrimary: '#E4FF3B',
-  chartSecondary: '#00FFB3',
-  chartTertiary: '#FF5757',
+  // Charts and data - Arcane 2.0
+  chartPrimary: tokens.colors.yellow.DEFAULT,      // #E4FF3B
+  chartSecondary: '#58E6FF',
+  chartTertiary: tokens.colors.semantic.info,      // #3B82F6
 
   // Status bar
   statusBar: 'light',
@@ -149,6 +159,9 @@ interface ThemeContextType {
   isDark: boolean;
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
+  // Arcane Design System 2.0 access
+  arcane: typeof arcaneTheme;
+  tokens: typeof tokens;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -217,6 +230,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isDark,
         setThemeMode: updateThemeMode,
         toggleTheme,
+        // Provide full Arcane Design System 2.0 access
+        arcane: arcaneTheme,
+        tokens,
       }}
     >
       {children}

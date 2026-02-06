@@ -69,9 +69,7 @@ describe('SmartScoutService', () => {
     it('should throw NotFoundException if report does not exist', async () => {
       mockPrismaService.scouting_reports.findUnique.mockResolvedValue(null);
 
-      await expect(service.indexReport('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.indexReport('non-existent-id')).rejects.toThrow(NotFoundException);
     });
 
     it('should skip indexing if report already has embeddings', async () => {
@@ -146,10 +144,7 @@ describe('SmartScoutService', () => {
     it('should handle empty similar reports gracefully', async () => {
       mockPrismaService.scouting_reports.findMany.mockResolvedValue([]);
 
-      const result = await service.getSuggestions(
-        { playerPosition: 'Goalkeeper' },
-        {},
-      );
+      const result = await service.getSuggestions({ playerPosition: 'Goalkeeper' }, {});
 
       expect(result.similarReports).toHaveLength(0);
       expect(result.suggestions).toHaveLength(0);
@@ -158,9 +153,9 @@ describe('SmartScoutService', () => {
 
   describe('autocomplete', () => {
     it('should throw BadRequestException for invalid field name', async () => {
-      await expect(
-        service.autocomplete('invalidField', 'test', {}),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.autocomplete('invalidField', 'test', {})).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should provide autocomplete for position field', async () => {
@@ -207,9 +202,7 @@ describe('SmartScoutService', () => {
     it('should throw NotFoundException if no reports exist', async () => {
       mockPrismaService.scouting_reports.findMany.mockResolvedValue([]);
 
-      await expect(service.generateInsights('player-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.generateInsights('player-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should generate fallback insights when OpenAI is unavailable', async () => {
@@ -300,11 +293,7 @@ describe('SmartScoutService', () => {
 
   describe('reindexAll', () => {
     it('should reindex all approved reports', async () => {
-      const mockReports = [
-        { id: 'report-1' },
-        { id: 'report-2' },
-        { id: 'report-3' },
-      ];
+      const mockReports = [{ id: 'report-1' }, { id: 'report-2' }, { id: 'report-3' }];
 
       mockPrismaService.scouting_reports.findMany.mockResolvedValue(mockReports);
 
@@ -594,13 +583,10 @@ describe('SmartScoutService', () => {
         technicalRating: 80,
       };
 
-      const suggestions = (service as any).generateSuggestions(
-        similarReports,
-        partialReport,
-      );
+      const suggestions = (service as any).generateSuggestions(similarReports, partialReport);
 
       expect(suggestions.length).toBeGreaterThan(0);
-      expect(suggestions.some(s => s.field === 'strengths')).toBe(true);
+      expect(suggestions.some((s) => s.field === 'strengths')).toBe(true);
     });
 
     it('should not generate suggestions if fields are already filled', () => {
@@ -620,13 +606,11 @@ describe('SmartScoutService', () => {
       const partialReport = {
         playerPosition: 'Forward',
         strengths: 'Already has a very detailed strength description that is over fifty characters',
-        weaknesses: 'Already has a very detailed weakness description that is over fifty characters',
+        weaknesses:
+          'Already has a very detailed weakness description that is over fifty characters',
       };
 
-      const suggestions = (service as any).generateSuggestions(
-        similarReports,
-        partialReport,
-      );
+      const suggestions = (service as any).generateSuggestions(similarReports, partialReport);
 
       expect(suggestions.length).toBe(0);
     });
@@ -652,10 +636,7 @@ describe('SmartScoutService', () => {
 
       const partialReport = { playerPosition: 'Forward' };
 
-      const suggestions = (service as any).generateSuggestions(
-        similarReports,
-        partialReport,
-      );
+      const suggestions = (service as any).generateSuggestions(similarReports, partialReport);
 
       expect(suggestions.length).toBe(0);
     });
@@ -899,9 +880,7 @@ describe('SmartScoutService', () => {
       ];
 
       mockPrismaService.scouting_reports.findMany.mockResolvedValue(mockReports);
-      openAIInstance.chat.completions.create.mockRejectedValue(
-        new Error('GPT-4 API Error'),
-      );
+      openAIInstance.chat.completions.create.mockRejectedValue(new Error('GPT-4 API Error'));
 
       const result = await testService.generateInsights('player-1');
 
@@ -962,11 +941,7 @@ describe('SmartScoutService', () => {
 
   describe('reindexAll - Additional Tests', () => {
     it('should handle partial failures during reindexing', async () => {
-      const mockReports = [
-        { id: 'report-1' },
-        { id: 'report-2' },
-        { id: 'report-3' },
-      ];
+      const mockReports = [{ id: 'report-1' }, { id: 'report-2' }, { id: 'report-3' }];
 
       mockPrismaService.scouting_reports.findMany.mockResolvedValue(mockReports);
 

@@ -103,7 +103,18 @@ describe('PlayersService', () => {
         }),
       });
       expect(cacheManager.invalidateByTag).toHaveBeenCalledWith('players:list');
-      expect(result).toEqual(mockPlayer);
+      expect(result).toEqual(expect.objectContaining(mockPlayer));
+      expect(result).toEqual(
+        expect.objectContaining({
+          user: expect.objectContaining({
+            firstName: mockPlayer.users.firstName,
+            lastName: mockPlayer.users.lastName,
+          }),
+          club: expect.objectContaining({
+            id: mockPlayer.clubs.id,
+          }),
+        }),
+      );
     });
 
     it('should convert dateOfBirth string to Date', async () => {
@@ -192,7 +203,13 @@ describe('PlayersService', () => {
         weight: 80,
         marketValue: 1000000,
         overallRating: 85,
-        users: { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@test.com', avatar: null },
+        users: {
+          id: 'user-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@test.com',
+          avatar: null,
+        },
         clubs: { id: 'club-1', name: 'PSG', shortName: 'PSG', logo: 'psg.png', country: 'FR' },
         _count: { scouting_reports: 5, media: 10 },
       },
@@ -204,7 +221,13 @@ describe('PlayersService', () => {
         weight: 72,
         marketValue: 500000,
         overallRating: 78,
-        users: { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@test.com', avatar: null },
+        users: {
+          id: 'user-2',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          email: 'jane@test.com',
+          avatar: null,
+        },
         clubs: { id: 'club-2', name: 'OM', shortName: 'OM', logo: 'om.png', country: 'FR' },
         _count: { scouting_reports: 3, media: 7 },
       },
@@ -223,16 +246,10 @@ describe('PlayersService', () => {
           orderBy: { createdAt: 'desc' },
         }),
       );
-      expect(prisma.players.count).toHaveBeenCalled();
-      expect(result).toEqual({
-        data: mockPlayers,
-        meta: expect.objectContaining({
-          total: 2,
-          page: 1,
-          limit: 20,
-          totalPages: 1,
-        }),
-      });
+      expect(result).toEqual(
+        expect.arrayContaining(mockPlayers.map((player) => expect.objectContaining(player))),
+      );
+      expect(result).toHaveLength(2);
     });
 
     it('should filter by GOALKEEPER position category', async () => {
@@ -274,7 +291,9 @@ describe('PlayersService', () => {
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            position: { in: ['Central Midfielder', 'Defensive Midfielder', 'Attacking Midfielder'] },
+            position: {
+              in: ['Central Midfielder', 'Defensive Midfielder', 'Attacking Midfielder'],
+            },
           }),
         }),
       );
@@ -419,7 +438,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue([mockPlayers[0]] as any);
       prisma.players.count.mockResolvedValue(1);
 
-      await service.findAll({ minMarketValue: 500000, maxMarketValue: 2000000, page: 1, limit: 20 });
+      await service.findAll({
+        minMarketValue: 500000,
+        maxMarketValue: 2000000,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -451,12 +475,20 @@ describe('PlayersService', () => {
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            users: {
-              OR: [
-                { firstName: { contains: 'John', mode: 'insensitive' } },
-                { lastName: { contains: 'John', mode: 'insensitive' } },
-              ],
-            },
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                users: {
+                  is: {
+                    OR: [
+                      { firstName: { contains: 'John', mode: 'insensitive' } },
+                      { lastName: { contains: 'John', mode: 'insensitive' } },
+                    ],
+                  },
+                },
+              }),
+              { firstName: { contains: 'John', mode: 'insensitive' } },
+              { lastName: { contains: 'John', mode: 'insensitive' } },
+            ]),
           }),
         }),
       );
@@ -466,7 +498,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue(mockPlayers as any);
       prisma.players.count.mockResolvedValue(2);
 
-      await service.findAll({ sortBy: PlayerSortField.NAME, sortOrder: SortOrder.ASC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.NAME,
+        sortOrder: SortOrder.ASC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -479,7 +516,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue(mockPlayers as any);
       prisma.players.count.mockResolvedValue(2);
 
-      await service.findAll({ sortBy: PlayerSortField.AGE, sortOrder: SortOrder.ASC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.AGE,
+        sortOrder: SortOrder.ASC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -492,7 +534,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue(mockPlayers as any);
       prisma.players.count.mockResolvedValue(2);
 
-      await service.findAll({ sortBy: PlayerSortField.HEIGHT, sortOrder: SortOrder.DESC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.HEIGHT,
+        sortOrder: SortOrder.DESC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -505,7 +552,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue(mockPlayers as any);
       prisma.players.count.mockResolvedValue(2);
 
-      await service.findAll({ sortBy: PlayerSortField.MARKET_VALUE, sortOrder: SortOrder.DESC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.MARKET_VALUE,
+        sortOrder: SortOrder.DESC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -518,7 +570,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue(mockPlayers as any);
       prisma.players.count.mockResolvedValue(2);
 
-      await service.findAll({ sortBy: PlayerSortField.RATING, sortOrder: SortOrder.DESC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.RATING,
+        sortOrder: SortOrder.DESC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -539,8 +596,10 @@ describe('PlayersService', () => {
           take: 20,
         }),
       );
-      expect(result.meta.totalPages).toBe(3);
-      expect(result.meta.total).toBe(45);
+      expect(result).toEqual(
+        expect.arrayContaining(mockPlayers.map((player) => expect.objectContaining(player))),
+      );
+      expect(result).toHaveLength(2);
     });
 
     it('should handle multiple filters simultaneously', async () => {
@@ -565,7 +624,7 @@ describe('PlayersService', () => {
             nationality: 'FR',
             height: { gte: 180, lte: 190 },
             availableForTransfer: true,
-            users: expect.any(Object),
+            OR: expect.any(Array),
           }),
         }),
       );
@@ -597,7 +656,15 @@ describe('PlayersService', () => {
         expect.any(Function),
         300,
       );
-      expect(result).toEqual(mockPlayer);
+      expect(result).toEqual(expect.objectContaining(mockPlayer));
+      expect(result).toEqual(
+        expect.objectContaining({
+          user: expect.objectContaining({
+            firstName: mockPlayer.users.firstName,
+            lastName: mockPlayer.users.lastName,
+          }),
+        }),
+      );
     });
 
     it('should throw NotFoundException if player not found', async () => {
@@ -636,7 +703,13 @@ describe('PlayersService', () => {
     const mockUpdatedPlayer = {
       ...mockPlayer,
       ...updatePlayerDto,
-      users: { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@test.com', avatar: null },
+      users: {
+        id: 'user-1',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@test.com',
+        avatar: null,
+      },
       clubs: { id: 'club-1', name: 'PSG', logo: 'psg.png' },
     };
 
@@ -658,7 +731,15 @@ describe('PlayersService', () => {
         'players:detail:player-123',
         'players:list',
       ]);
-      expect(result).toEqual(mockUpdatedPlayer);
+      expect(result).toEqual(expect.objectContaining(mockUpdatedPlayer));
+      expect(result).toEqual(
+        expect.objectContaining({
+          user: expect.objectContaining({
+            firstName: mockUpdatedPlayer.users.firstName,
+            lastName: mockUpdatedPlayer.users.lastName,
+          }),
+        }),
+      );
     });
 
     it('should update player with date fields', async () => {
@@ -976,7 +1057,12 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue([] as any);
       prisma.players.count.mockResolvedValue(0);
 
-      await service.findAll({ sortBy: PlayerSortField.CREATED_AT, sortOrder: SortOrder.DESC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.CREATED_AT,
+        sortOrder: SortOrder.DESC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1002,11 +1088,101 @@ describe('PlayersService', () => {
       prisma.players.findMany.mockResolvedValue([] as any);
       prisma.players.count.mockResolvedValue(0);
 
-      await service.findAll({ sortBy: PlayerSortField.AGE, sortOrder: SortOrder.DESC, page: 1, limit: 20 });
+      await service.findAll({
+        sortBy: PlayerSortField.AGE,
+        sortOrder: SortOrder.DESC,
+        page: 1,
+        limit: 20,
+      });
 
       expect(prisma.players.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { dateOfBirth: 'asc' },
+        }),
+      );
+    });
+  });
+
+  describe('quickImportFromScoutText', () => {
+    it('should parse lines in dry-run mode without writing to database', async () => {
+      prisma.players.findMany.mockResolvedValue([] as any);
+
+      const result = await service.quickImportFromScoutText(
+        {
+          rawText: 'Walid Regragui Torcy - 2010 - Attaquant',
+          dryRun: true,
+        },
+        'scout-1',
+      );
+
+      expect(result.created).toBe(1);
+      expect(result.updated).toBe(0);
+      expect(result.failed).toBe(0);
+      expect(result.rows[0]).toEqual(
+        expect.objectContaining({
+          action: 'CREATED',
+          line: 1,
+        }),
+      );
+      expect(prisma.players.create).not.toHaveBeenCalled();
+      expect(prisma.players.update).not.toHaveBeenCalled();
+    });
+
+    it('should create players without user account during import', async () => {
+      prisma.players.findMany.mockResolvedValue([] as any);
+      prisma.players.create.mockResolvedValue({ id: 'player-new' } as any);
+      prisma.audit_logs.create.mockResolvedValue({ id: 'audit-1' } as any);
+
+      const result = await service.quickImportFromScoutText(
+        {
+          rawText: 'Walid Regragui Torcy - 2010 - Attaquant',
+          dryRun: false,
+        },
+        'scout-1',
+      );
+
+      expect(result.created).toBe(1);
+      expect(prisma.players.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: null,
+            dateOfBirth: null,
+            birthYear: 2010,
+            importSource: 'SCOUT_CHAT',
+          }),
+        }),
+      );
+      expect(prisma.audit_logs.create).toHaveBeenCalled();
+      expect(cacheManager.invalidateByTag).toHaveBeenCalledWith('players:list');
+    });
+
+    it('should update existing player when identity key already exists', async () => {
+      prisma.players.findMany.mockResolvedValue([
+        {
+          id: 'player-1',
+          firstName: 'Walid',
+          lastName: 'Regragui',
+          birthYear: 2010,
+          observedClubName: 'Torcy',
+          nationality: 'FR',
+          users: null,
+        },
+      ] as any);
+      prisma.players.update.mockResolvedValue({ id: 'player-1' } as any);
+      prisma.audit_logs.create.mockResolvedValue({ id: 'audit-1' } as any);
+
+      const result = await service.quickImportFromScoutText(
+        {
+          rawText: 'Walid Regragui Torcy - 2010 - Attaquant',
+        },
+        'scout-1',
+      );
+
+      expect(result.created).toBe(0);
+      expect(result.updated).toBe(1);
+      expect(prisma.players.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'player-1' },
         }),
       );
     });

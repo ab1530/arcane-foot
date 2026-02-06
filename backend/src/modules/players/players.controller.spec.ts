@@ -160,68 +160,47 @@ describe('PlayersController', () => {
       },
     ];
 
-    const mockResponse = {
-      data: mockPlayers,
-      meta: {
-        total: 2,
-        page: 1,
-        limit: 20,
-        totalPages: 1,
-        filters: {},
-      },
-    };
-
     it('should return all players with default filters', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { page: 1, limit: 20 };
       const result = await controller.findAll(filters);
 
       expect(service.findAll).toHaveBeenCalledWith(filters);
-      expect(result).toEqual(mockResponse);
-      expect(result.data).toHaveLength(2);
+      expect(result).toEqual(mockPlayers);
+      expect(result).toHaveLength(2);
     });
 
     it('should filter by position', async () => {
-      const filteredResponse = {
-        ...mockResponse,
-        data: [mockPlayers[0]],
-        meta: { ...mockResponse.meta, total: 1, filters: { position: 'FORWARD' } },
-      };
-
-      service.findAll.mockResolvedValue(filteredResponse as any);
+      service.findAll.mockResolvedValue([mockPlayers[0]] as any);
 
       const filters: FilterPlayersDto = { position: 'FORWARD', page: 1, limit: 20 };
       const result = await controller.findAll(filters);
 
       expect(service.findAll).toHaveBeenCalledWith(filters);
-      expect(result.data).toHaveLength(1);
+      expect(result).toHaveLength(1);
     });
 
     it('should filter by nationality', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { nationality: 'FR', page: 1, limit: 20 };
       await controller.findAll(filters);
 
-      expect(service.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ nationality: 'FR' }),
-      );
+      expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ nationality: 'FR' }));
     });
 
     it('should filter by club', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { clubId: 'club-123', page: 1, limit: 20 };
       await controller.findAll(filters);
 
-      expect(service.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ clubId: 'club-123' }),
-      );
+      expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ clubId: 'club-123' }));
     });
 
     it('should filter by age range', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { minAge: 20, maxAge: 30, page: 1, limit: 20 };
       await controller.findAll(filters);
@@ -232,7 +211,7 @@ describe('PlayersController', () => {
     });
 
     it('should filter by height range', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { minHeight: 175, maxHeight: 190, page: 1, limit: 20 };
       await controller.findAll(filters);
@@ -243,7 +222,7 @@ describe('PlayersController', () => {
     });
 
     it('should filter by weight range', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { minWeight: 70, maxWeight: 85, page: 1, limit: 20 };
       await controller.findAll(filters);
@@ -254,7 +233,7 @@ describe('PlayersController', () => {
     });
 
     it('should filter by market value range', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = {
         minMarketValue: 500000,
@@ -270,7 +249,7 @@ describe('PlayersController', () => {
     });
 
     it('should filter by preferredFoot', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { preferredFoot: 'RIGHT', page: 1, limit: 20 };
       await controller.findAll(filters);
@@ -281,7 +260,7 @@ describe('PlayersController', () => {
     });
 
     it('should filter by availableForTransfer', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { availableForTransfer: true, page: 1, limit: 20 };
       await controller.findAll(filters);
@@ -292,18 +271,16 @@ describe('PlayersController', () => {
     });
 
     it('should search by player name', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { search: 'John', page: 1, limit: 20 };
       await controller.findAll(filters);
 
-      expect(service.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ search: 'John' }),
-      );
+      expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ search: 'John' }));
     });
 
     it('should sort by NAME field', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = {
         sortBy: PlayerSortField.NAME,
@@ -319,7 +296,7 @@ describe('PlayersController', () => {
     });
 
     it('should sort by MARKET_VALUE field', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = {
         sortBy: PlayerSortField.MARKET_VALUE,
@@ -338,23 +315,17 @@ describe('PlayersController', () => {
     });
 
     it('should handle pagination', async () => {
-      const paginatedResponse = {
-        ...mockResponse,
-        meta: { ...mockResponse.meta, page: 2, limit: 10, totalPages: 3 },
-      };
-
-      service.findAll.mockResolvedValue(paginatedResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = { page: 2, limit: 10 };
       const result = await controller.findAll(filters);
 
       expect(service.findAll).toHaveBeenCalledWith(filters);
-      expect(result.meta.page).toBe(2);
-      expect(result.meta.limit).toBe(10);
+      expect(Array.isArray(result)).toBe(true);
     });
 
     it('should handle multiple filters simultaneously', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const filters: FilterPlayersDto = {
         position: 'FORWARD',
@@ -376,27 +347,16 @@ describe('PlayersController', () => {
     });
 
     it('should return empty array when no players found', async () => {
-      const emptyResponse = {
-        data: [],
-        meta: {
-          total: 0,
-          page: 1,
-          limit: 20,
-          totalPages: 0,
-          filters: {},
-        },
-      };
-
-      service.findAll.mockResolvedValue(emptyResponse as any);
+      service.findAll.mockResolvedValue([] as any);
 
       const result = await controller.findAll({ page: 1, limit: 20 });
 
-      expect(result.data).toHaveLength(0);
-      expect(result.meta.total).toBe(0);
+      expect(result).toHaveLength(0);
+      expect(Array.isArray(result)).toBe(true);
     });
 
     it('should not require authentication for public access', async () => {
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue(mockPlayers as any);
 
       const result = await controller.findAll({ page: 1, limit: 20 });
 
@@ -790,9 +750,7 @@ describe('PlayersController', () => {
     it('should handle service errors in findAll', async () => {
       service.findAll.mockRejectedValue(new Error('Database error'));
 
-      await expect(controller.findAll({ page: 1, limit: 20 })).rejects.toThrow(
-        'Database error',
-      );
+      await expect(controller.findAll({ page: 1, limit: 20 })).rejects.toThrow('Database error');
     });
 
     it('should handle service errors in findOne', async () => {
@@ -830,23 +788,12 @@ describe('PlayersController', () => {
 
   describe('Edge Cases', () => {
     it('should handle very large page numbers', async () => {
-      const emptyResponse = {
-        data: [],
-        meta: {
-          total: 10,
-          page: 1000,
-          limit: 20,
-          totalPages: 1,
-          filters: {},
-        },
-      };
-
-      service.findAll.mockResolvedValue(emptyResponse as any);
+      service.findAll.mockResolvedValue([] as any);
 
       const result = await controller.findAll({ page: 1000, limit: 20 });
 
-      expect(result.meta.page).toBe(1000);
-      expect(result.data).toHaveLength(0);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(0);
     });
 
     it('should handle concurrent requests', async () => {
@@ -870,45 +817,19 @@ describe('PlayersController', () => {
     });
 
     it('should handle special characters in search', async () => {
-      const mockResponse = {
-        data: [],
-        meta: {
-          total: 0,
-          page: 1,
-          limit: 20,
-          totalPages: 0,
-          filters: { search: "O'Connor" },
-        },
-      };
-
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue([] as any);
 
       const result = await controller.findAll({ search: "O'Connor", page: 1, limit: 20 });
 
-      expect(service.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ search: "O'Connor" }),
-      );
+      expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ search: "O'Connor" }));
     });
 
     it('should handle maximum limit value', async () => {
-      const mockResponse = {
-        data: [],
-        meta: {
-          total: 0,
-          page: 1,
-          limit: 100,
-          totalPages: 0,
-          filters: {},
-        },
-      };
-
-      service.findAll.mockResolvedValue(mockResponse as any);
+      service.findAll.mockResolvedValue([] as any);
 
       await controller.findAll({ page: 1, limit: 100 });
 
-      expect(service.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 100 }),
-      );
+      expect(service.findAll).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
     });
   });
 

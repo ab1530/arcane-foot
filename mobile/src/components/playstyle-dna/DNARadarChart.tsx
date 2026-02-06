@@ -1,13 +1,16 @@
 /**
  * DNA Radar Chart Component
  * Displays 8-dimensional player DNA profile using Victory Native
+ * TODO: Migrate to victory-native v41+ API (PolarChart instead of VictoryChart)
  */
 
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import { VictoryPolar, VictoryChart, VictoryArea, VictoryPolarAxis, VictoryLabel } from 'victory-native';
+import { View, StyleSheet, Text, Dimensions } from 'react-native';
+// TODO: victory-native v41+ has a new API. Need to migrate from Victory* to new API
+// import { VictoryPolar, VictoryChart, VictoryArea, VictoryPolarAxis, VictoryLabel } from 'victory-native';
 import type { DNAProfile } from '../../types/playstyle-dna';
 import { getStyleColor } from '../../utils/playStyleColors';
+import { colors, typography, radius, spacing } from '../../design/theme';
 
 interface DNARadarChartProps {
   dnaProfile: DNAProfile;
@@ -38,58 +41,11 @@ export const DNARadarChart: React.FC<DNARadarChartProps> = ({
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      <VictoryChart
-        polar
-        width={size}
-        height={size}
-        domain={{ y: [0, 10] }}
-        padding={{ top: 40, bottom: 40, left: 40, right: 40 }}
-      >
-        {/* Background grid */}
-        <VictoryPolarAxis
-          dependentAxis
-          style={{
-            axis: { stroke: 'rgba(255, 255, 255, 0.1)' },
-            grid: { stroke: 'rgba(255, 255, 255, 0.1)', strokeWidth: 1 },
-            tickLabels: { fill: 'transparent' },
-          }}
-          tickValues={[2, 4, 6, 8, 10]}
-        />
-
-        {/* Category axes */}
-        <VictoryPolarAxis
-          style={{
-            axis: { stroke: 'rgba(255, 255, 255, 0.2)' },
-            tickLabels: {
-              fill: showLabels ? '#FFFFFF' : 'transparent',
-              fontSize: 10,
-              fontWeight: '600',
-            },
-          }}
-          labelPlacement="perpendicular"
-        />
-
-        {/* DNA area chart */}
-        <VictoryArea
-          data={data}
-          style={{
-            data: {
-              fill: `${styleColor}33`, // 20% opacity
-              stroke: styleColor,
-              strokeWidth: 2,
-            },
-          }}
-          animate={
-            animated
-              ? {
-                  duration: 2000,
-                  onLoad: { duration: 2000 },
-                }
-              : undefined
-          }
-          interpolation="linear"
-        />
-      </VictoryChart>
+      {/* TODO: Replace with victory-native v41+ PolarChart implementation */}
+      <View style={[styles.placeholder, { backgroundColor: `${styleColor}10`, borderColor: styleColor }]}>
+        <Text style={[styles.placeholderText, { color: styleColor }]}>DNA Radar Chart</Text>
+        <Text style={styles.placeholderSubtext}>8-dimensional profile</Text>
+      </View>
     </View>
   );
 };
@@ -98,6 +54,24 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  placeholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  placeholderSubtext: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.tertiary,
   },
 });
 

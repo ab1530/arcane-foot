@@ -6,16 +6,19 @@ import MainTabNavigator from './MainTabNavigator';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { AnalyticsScreen } from '../screens/analytics/AnalyticsScreen';
 import { MarketScreen } from '../screens/market/MarketScreen';
-import { CampsScreen } from '../screens/camps/CampsScreen';
+import { CampsListScreen } from '../screens/camps/CampsListScreen';
+import { CampDetailScreen } from '../screens/camps/CampDetailScreen';
+import { MyCampsScreen } from '../screens/camps/MyCampsScreen';
 import { AIScreen } from '../screens/ai/AIScreen';
 import { ArcaneGPTScreen } from '../screens/ai/ArcaneGPTScreen';
 import { ArcaneIndexScreen } from '../screens/ai/ArcaneIndexScreen';
 import { ArkaneMatchScreen } from '../screens/ai/ArkaneMatchScreen';
 import { SmartScoutScreen } from '../screens/ai/SmartScoutScreen';
+import { AutoScoutScreen } from '../screens/ai/AutoScoutScreen';
+import { AutoScoutHistoryScreen } from '../screens/ai/AutoScoutHistoryScreen';
 import { MarketValueScreen } from '../screens/ai/MarketValueScreen';
 import { MarketValueDetailScreen } from '../screens/ai/MarketValueDetailScreen';
 import { PlayerDetailScreen } from '../screens/players/PlayerDetailScreen';
-import MatchesScreen from '../screens/matches/MatchesScreen';
 import KanbanScreen from '../screens/kanban/KanbanScreen';
 import ClubDetailScreen from '../screens/clubs/ClubDetailScreen';
 import ClubsListScreen from '../screens/clubs/ClubsListScreen';
@@ -23,6 +26,7 @@ import ReportDetailScreen from '../screens/reports/ReportDetailScreen';
 import CreateReportScreen from '../screens/reports/CreateReportScreen';
 import { ReportsScreen } from '../screens/reports/ReportsScreen';
 import { CalendarScreenNew } from '../screens/calendar/CalendarScreenNew';
+import { MatchDetailScreen } from '../screens/calendar/MatchDetailScreen';
 import MembershipScreen from '../screens/membership/MembershipScreen';
 import AboutScreen from '../screens/info/AboutScreen';
 import ContactScreen from '../screens/info/ContactScreen';
@@ -35,6 +39,17 @@ import { ScoutingReportsScreen } from '../screens/scouting/ScoutingReportsScreen
 import { CreateScoutingReportScreen } from '../screens/scouting/CreateScoutingReportScreen';
 import MarketplaceScreen from '../screens/marketplace/MarketplaceScreen';
 import ScoutDetailScreen from '../screens/marketplace/ScoutDetailScreen';
+import { PlayersScreen } from '../screens/players/PlayersScreen';
+import ScoutQuickImportScreen from '../screens/players/ScoutQuickImportScreen';
+import VoiceToReportScreen from '../screens/reports/VoiceToReportScreen';
+import GlobalSearchScreen from '../screens/search/GlobalSearchScreen';
+import LoggingTestScreen from '../screens/debug/LoggingTestScreen';
+import LogConsoleScreen from '../screens/debug/LogConsoleScreen';
+import { PlayerHardwareSessionsScreen } from '../screens/hardware/PlayerHardwareSessionsScreen';
+import { PlayerHardwareSessionDetailScreen } from '../screens/hardware/PlayerHardwareSessionDetailScreen';
+import { ConnectGpsTrackerScreen } from '../screens/hardware/ConnectGpsTrackerScreen';
+import { ImportGpsSessionScreen } from '../screens/hardware/ImportGpsSessionScreen';
+import { QCBandScreen } from '../screens/hardware/QCBandScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -61,6 +76,11 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="GlobalSearch"
+        component={GlobalSearchScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="Analytics"
         component={AnalyticsScreen}
         options={{ headerShown: false }}
@@ -72,7 +92,17 @@ export default function AppNavigator() {
       />
       <Stack.Screen
         name="Camps"
-        component={CampsScreen}
+        component={CampsListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CampDetail"
+        component={CampDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MyCamps"
+        component={MyCampsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -101,6 +131,16 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="AutoScout"
+        component={AutoScoutScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AutoScoutHistory"
+        component={AutoScoutHistoryScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="MarketValue"
         component={MarketValueScreen}
         options={{ headerShown: false }}
@@ -116,6 +156,16 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="Players"
+        component={PlayersScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ScoutQuickImport"
+        component={ScoutQuickImportScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="PlayerPassport"
         component={PlayerPassport}
         options={{ headerShown: false }}
@@ -126,9 +176,29 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="Matches"
-        component={MatchesScreen}
-        options={{ title: 'Matches' }}
+        name="HardwareSessions"
+        component={PlayerHardwareSessionsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="HardwareSessionDetail"
+        component={PlayerHardwareSessionDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ConnectGpsTracker"
+        component={ConnectGpsTrackerScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ImportGpsSession"
+        component={ImportGpsSessionScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="QCBand"
+        component={QCBandScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Kanban"
@@ -161,8 +231,18 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="VoiceToReport"
+        component={VoiceToReportScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="Calendar"
         component={CalendarScreenNew}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MatchDetail"
+        component={MatchDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -213,6 +293,16 @@ export default function AppNavigator() {
       <Stack.Screen
         name="ScoutDetail"
         component={ScoutDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="LoggingTest"
+        component={LoggingTestScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="LogConsole"
+        component={LogConsoleScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

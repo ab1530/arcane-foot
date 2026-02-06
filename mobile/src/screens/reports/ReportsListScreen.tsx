@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,13 @@ import { useNavigation } from '@react-navigation/native';
 import { scoutingReportsApi, ScoutingReport, ReportStatus } from '../../services/api/scouting-reports';
 
 type FilterType = 'all' | 'my-reports' | 'draft' | 'submitted' | 'approved';
+type RecommendationFilter =
+  | 'ALL'
+  | 'BUY_NOW'
+  | 'MONITOR'
+  | 'FOLLOW_UP'
+  | 'NOT_INTERESTED'
+  | 'NEEDS_MORE_DATA';
 
 const ReportsListScreen = () => {
   const navigation = useNavigation<any>();
@@ -21,9 +29,13 @@ const ReportsListScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchReports = useCallback(async () => {
     try {
+      setError(null);
       let data: ScoutingReport[];
 
       switch (filter) {
@@ -43,6 +55,8 @@ const ReportsListScreen = () => {
       setReports(data);
     } catch (error) {
       console.error('Erreur lors du chargement des rapports:', error);
+      setError('Impossible de charger les rapports. Tirez pour rafraîchir.');
+      setReports([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -57,6 +71,28 @@ const ReportsListScreen = () => {
     setRefreshing(true);
     fetchReports();
   };
+
+  const filteredReports = reports.filter((report) => {
+    const matchesRecommendation =
+      recommendationFilter === 'ALL' || report.recommendation === recommendationFilter;
+
+    const matchesSearch = (() => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      const playerName = `${report.player?.user?.firstName || ''} ${report.player?.user?.lastName || ''}`.toLowerCase();
+      const scoutName = `${report.scout?.firstName || ''} ${report.scout?.lastName || ''}`.toLowerCase();
+      const matchInfo = `${report.match?.homeClub?.name || ''} ${report.match?.awayClub?.name || ''}`.toLowerCase();
+      const tags = (report.tags || []).join(' ').toLowerCase();
+      return (
+        playerName.includes(query) ||
+        scoutName.includes(query) ||
+        matchInfo.includes(query) ||
+        tags.includes(query)
+      );
+    })();
+
+    return matchesRecommendation && matchesSearch;
+  });
 
   const getStatusColor = (status: ReportStatus) => {
     switch (status) {
@@ -180,6 +216,15 @@ const ReportsListScreen = () => {
     );
   };
 
+  const recommendationFilters: Array<{ value: RecommendationFilter; label: string }> = [
+    { value: 'ALL', label: 'Toutes' },
+    { value: 'BUY_NOW', label: 'Recruter' },
+    { value: 'MONITOR', label: 'Surveiller' },
+    { value: 'FOLLOW_UP', label: 'Suivre' },
+    { value: 'NOT_INTERESTED', label: 'Refuser' },
+    { value: 'NEEDS_MORE_DATA', label: 'Données +' },
+  ];
+
   const renderFilterTab = (filterType: FilterType, label: string) => (
     <TouchableOpacity
       key={filterType}
@@ -199,6 +244,12 @@ const ReportsListScreen = () => {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Rapports de Scouting</Text>
         </View>
+        {error && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={18} color="#b91c1c" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
         <View style={styles.loadingContainer}>
           <ActivityIndicator testID="reports-loading-indicator" size="large" color="#2c3e50" />
         </View>
@@ -210,6 +261,23 @@ const ReportsListScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Rapports de Scouting</Text>
+        <Text style={styles.headerSubtitle}>Suivez vos rapports et décisions</Text>
+      </View>
+
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={18} color="#9ca3af" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Rechercher un rapport, un joueur, un club..."
+          placeholderTextColor="#9ca3af"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color="#9ca3af" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.filterContainer}>
@@ -219,8 +287,37 @@ const ReportsListScreen = () => {
         {renderFilterTab('approved', 'Approuvés')}
       </View>
 
+      <View style={styles.recommendationRow}>
+        {recommendationFilters.map((rec) => (
+          <TouchableOpacity
+            key={rec.value}
+            style={[
+              styles.chip,
+              recommendationFilter === rec.value && styles.chipActive,
+            ]}
+            onPress={() => setRecommendationFilter(rec.value)}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                recommendationFilter === rec.value && styles.chipTextActive,
+              ]}
+            >
+              {rec.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {error && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle" size={18} color="#b91c1c" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
       <FlatList
-        data={reports}
+        data={filteredReports}
         renderItem={renderReportCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -236,6 +333,10 @@ const ReportsListScreen = () => {
                 ? 'Créez votre premier rapport de scouting'
                 : 'Aucun rapport dans cette catégorie'}
             </Text>
+            <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateReport' as never)}>
+              <Ionicons name="add-circle" size={20} color="#fff" />
+              <Text style={styles.createButtonText}>Nouveau rapport</Text>
+            </TouchableOpacity>
           </View>
         }
       />
@@ -267,6 +368,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2c3e50',
   },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginTop: 4,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  searchInput: {
+    flex: 1,
+    color: '#1f2937',
+    fontSize: 14,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -279,6 +404,53 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  recommendationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  chipActive: {
+    backgroundColor: '#2c3e50',
+    borderColor: '#2c3e50',
+  },
+  chipText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#fff',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    marginHorizontal: 12,
+    marginTop: 10,
+    backgroundColor: '#fee2e2',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+  },
+  errorText: {
+    color: '#b91c1c',
+    fontSize: 13,
+    flex: 1,
   },
   filterTab: {
     paddingHorizontal: 16,
@@ -453,6 +625,20 @@ const styles = StyleSheet.create({
     color: '#95a5a6',
     marginTop: 8,
     textAlign: 'center',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#2c3e50',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontWeight: '700',
   },
   fab: {
     position: 'absolute',

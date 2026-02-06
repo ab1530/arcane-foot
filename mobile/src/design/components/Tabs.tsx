@@ -19,6 +19,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { theme } from '../theme';
 
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface Tab {
@@ -224,16 +225,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     position: 'relative',
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   container_default: {
     backgroundColor: theme.colors.surface.glass,
-    padding: theme.spacing.xs,
+    padding: 4,
   },
   container_pills: {
     backgroundColor: theme.colors.surface.glass,
-    padding: theme.spacing.xs,
+    padding: 4,
   },
   container_underline: {
     borderBottomWidth: 1,
@@ -243,33 +244,33 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface.glass,
     borderWidth: 1,
     borderColor: theme.colors.surface.border,
-    padding: theme.spacing.xxs,
+    padding: 2,
   },
 
   scrollContent: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
   },
 
   // Indicator
   indicator: {
     position: 'absolute',
     backgroundColor: theme.colors.brand.primary,
-    borderRadius: theme.radius.md,
+    borderRadius: 8,
   },
   indicator_default: {
-    top: theme.spacing.xs,
-    bottom: theme.spacing.xs,
-    left: theme.spacing.xs,
+    top: 4,
+    bottom: 4,
+    left: 4,
   },
   indicator_pills: {
-    top: theme.spacing.xs,
-    bottom: theme.spacing.xs,
-    left: theme.spacing.xs,
+    top: 4,
+    bottom: 4,
+    left: 4,
   },
   indicator_segmented: {
-    top: theme.spacing.xxs,
-    bottom: theme.spacing.xxs,
-    left: theme.spacing.xxs,
+    top: 2,
+    bottom: 2,
+    left: 2,
     backgroundColor: theme.colors.background.elevated,
   },
   indicator_underline: {
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
 
   // Tab
   tab: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
@@ -314,15 +315,15 @@ const styles = StyleSheet.create({
   },
   tab_sm: {
     minHeight: 32,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: 16,
   },
   tab_md: {
     minHeight: 40,
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
   },
   tab_lg: {
     minHeight: 48,
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: 32,
   },
 
   tabContent: {
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
   },
 
   tabIcon: {
-    marginRight: theme.spacing.xs,
+    marginRight: 4,
   },
 
   tabLabel: {
@@ -354,10 +355,10 @@ const styles = StyleSheet.create({
   },
 
   badge: {
-    marginLeft: theme.spacing.xs,
+    marginLeft: 4,
     backgroundColor: theme.colors.semantic.error,
-    borderRadius: theme.radius.full,
-    paddingHorizontal: theme.spacing.xs,
+    borderRadius: 9999,
+    paddingHorizontal: 4,
     minWidth: 16,
     height: 16,
     justifyContent: 'center',

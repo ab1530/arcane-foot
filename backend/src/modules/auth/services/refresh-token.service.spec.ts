@@ -122,18 +122,14 @@ describe('RefreshTokenService', () => {
       const refreshToken = 'blacklisted-token';
       mockRedisService.exists.mockResolvedValueOnce(true);
 
-      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException if refresh token not found in Redis', async () => {
       const refreshToken = 'valid-token';
       mockRedisService.get.mockResolvedValueOnce(null);
 
-      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException if token type is not refresh', async () => {
@@ -143,9 +139,7 @@ describe('RefreshTokenService', () => {
         type: 'access', // Wrong type
       });
 
-      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -181,9 +175,7 @@ describe('RefreshTokenService', () => {
       const result = await service.isTokenBlacklisted('blacklisted-token');
 
       expect(result).toBe(true);
-      expect(redisService.exists).toHaveBeenCalledWith(
-        expect.stringContaining('token_blacklist:'),
-      );
+      expect(redisService.exists).toHaveBeenCalledWith(expect.stringContaining('token_blacklist:'));
     });
 
     it('should return false if token is not blacklisted', async () => {

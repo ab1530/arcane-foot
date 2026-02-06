@@ -10,7 +10,7 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from '../cache/redis.service';
 
@@ -38,7 +38,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     private readonly redisService: RedisService,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway initialized');
 
     // Subscribe to Redis pub/sub channels
@@ -237,7 +237,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Get online users
    */
   @SubscribeMessage('get:online-users')
-  async handleGetOnlineUsers(@ConnectedSocket() client: AuthenticatedSocket) {
+  async handleGetOnlineUsers(@ConnectedSocket() _client: AuthenticatedSocket) {
     const onlineUsers = await this.redisService.smembers('online_users');
 
     return {
@@ -351,7 +351,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   getConnectionStats() {
     return {
       totalConnections: this.connectedClients.size,
-      connectedUsers: Array.from(this.connectedClients.values()).map(c => c.userId),
+      connectedUsers: Array.from(this.connectedClients.values()).map((c) => c.userId),
       rooms: this.server.sockets.adapter.rooms,
     };
   }

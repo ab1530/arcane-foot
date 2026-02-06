@@ -27,14 +27,17 @@ describe('RBAC Validation (E2E)', () => {
   let jwtService: JwtService;
 
   // Test user credentials and tokens
-  const testUsers: Record<string, {
-    id: string;
-    email: string;
-    password: string;
-    role: UserRole;
-    tier: SubscriptionTier;
-    token?: string;
-  }> = {
+  const testUsers: Record<
+    string,
+    {
+      id: string;
+      email: string;
+      password: string;
+      role: UserRole;
+      tier: SubscriptionTier;
+      token?: string;
+    }
+  > = {
     freeUser: {
       id: randomUUID(),
       email: 'free@test.com',
@@ -102,9 +105,17 @@ describe('RBAC Validation (E2E)', () => {
     { method: 'get', path: '/ai/talent-prediction/test-player-id' },
     { method: 'get', path: '/ai/match-recommendation/test-player-id' },
     { method: 'get', path: '/ai/suspicious-detection/test-player-id' },
-    { method: 'post', path: '/arkane-match/chat', body: { message: 'Find scouts', conversationId: null } },
+    {
+      method: 'post',
+      path: '/arkane-match/chat',
+      body: { message: 'Find scouts', conversationId: null },
+    },
     { method: 'post', path: '/smart-scout/suggestions', body: { partialReport: {}, context: {} } },
-    { method: 'post', path: '/smart-scout/autocomplete', body: { fieldName: 'position', partialValue: 'For' } },
+    {
+      method: 'post',
+      path: '/smart-scout/autocomplete',
+      body: { fieldName: 'position', partialValue: 'For' },
+    },
     { method: 'get', path: '/smart-scout/insights/test-player-id' },
   ];
 
@@ -180,7 +191,7 @@ describe('RBAC Validation (E2E)', () => {
       const payload = {
         sub: userData.id,
         email: userData.email,
-        role: userData.role
+        role: userData.role,
       };
       testUsers[key].token = jwtService.sign(payload);
     }
@@ -283,7 +294,7 @@ describe('RBAC Validation (E2E)', () => {
             status: response.status,
             blocked: response.status === 403,
           };
-        })
+        }),
       );
 
       // All should be blocked (403)
@@ -345,7 +356,7 @@ describe('RBAC Validation (E2E)', () => {
       await prisma.players.deleteMany({
         where: {
           userId: {
-            in: Object.values(testUsers).map(u => u.id),
+            in: Object.values(testUsers).map((u) => u.id),
           },
         },
       });
@@ -369,7 +380,7 @@ describe('RBAC Validation (E2E)', () => {
       await prisma.players.deleteMany({
         where: {
           userId: {
-            in: Object.values(testUsers).map(u => u.id),
+            in: Object.values(testUsers).map((u) => u.id),
           },
         },
       });
@@ -494,9 +505,7 @@ describe('RBAC Validation (E2E)', () => {
     });
 
     it('should allow PUBLIC to read players (public endpoint)', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/players')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/players').expect(200);
 
       expect(response.body).toBeDefined();
     });
@@ -508,10 +517,7 @@ describe('RBAC Validation (E2E)', () => {
 
   describe('Authentication Required', () => {
     it('should reject requests without JWT token', async () => {
-      await request(app.getHttpServer())
-        .post('/ai/summary')
-        .send({ prompt: 'Test' })
-        .expect(401);
+      await request(app.getHttpServer()).post('/ai/summary').send({ prompt: 'Test' }).expect(401);
     });
 
     it('should reject requests with invalid JWT token', async () => {
@@ -571,9 +577,7 @@ describe('RBAC Validation (E2E)', () => {
     });
 
     it('should provide clear error for missing authentication', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/auth/me')
-        .expect(401);
+      const response = await request(app.getHttpServer()).get('/auth/me').expect(401);
 
       expect(response.body).toHaveProperty('statusCode', 401);
       expect(response.body.message).toMatch(/unauthorized|token|authentication/i);
@@ -617,7 +621,15 @@ describe('RBAC Validation (E2E)', () => {
 
     it('should handle user with no subscription record', async () => {
       // Cleanup existing nosub user if any
-      await prisma.subscriptions.deleteMany({ where: { userId: { in: await prisma.users.findMany({ where: { email: 'nosub@test.com' } }).then(users => users.map(u => u.id)) } } });
+      await prisma.subscriptions.deleteMany({
+        where: {
+          userId: {
+            in: await prisma.users
+              .findMany({ where: { email: 'nosub@test.com' } })
+              .then((users) => users.map((u) => u.id)),
+          },
+        },
+      });
       await prisma.users.deleteMany({ where: { email: 'nosub@test.com' } });
 
       // Create user without subscription

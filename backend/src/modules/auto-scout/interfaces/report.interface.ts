@@ -85,8 +85,13 @@ export interface QualityScore {
 }
 
 export interface ReportTemplate {
+  id: string;
   name: string;
   description: string;
+  icon: string;
+  useCase: string;
+  estimatedCost: string;
+  reportType: ReportType;
   sections: TemplateSection[];
   promptTemplate: string;
 }

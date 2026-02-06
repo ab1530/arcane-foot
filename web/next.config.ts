@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
 
   // Code splitting optimization
   experimental: {
+    externalDir: true,
     optimizePackageImports: [
       '@/components/ui',
       'lucide-react',
@@ -48,6 +49,13 @@ const nextConfig: NextConfig = {
         })
       );
     }
+
+    // Ignore Prisma/OpenTelemetry warnings
+    config.ignoreWarnings = [
+      { module: /@opentelemetry\/instrumentation/ },
+      { module: /@prisma\/instrumentation/ },
+      /Critical dependency/,
+    ];
 
     // Optimize code splitting for better performance
     if (!isServer) {

@@ -10,13 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
 import { MinTier } from '../../common/decorators/min-tier.decorator';
@@ -52,7 +46,8 @@ export class ArkaneMatchController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Chat with ArkaneMatch AI to find scouts (GOLD+)',
-    description: 'Send natural language queries to find matching scouts. Supports multi-turn conversations. Requires GOLD subscription or higher.',
+    description:
+      'Send natural language queries to find matching scouts. Supports multi-turn conversations. Requires GOLD subscription or higher.',
   })
   @ApiResponse({
     status: 200,

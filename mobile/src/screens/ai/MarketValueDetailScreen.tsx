@@ -30,7 +30,7 @@ import type { PlayerValuation, ValuationTrend } from '../../types/market-value';
 type Props = NativeStackScreenProps<AppStackParamList, 'MarketValueDetail'>;
 
 export const MarketValueDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { playerId } = route.params;
+  const { playerId } = route.params || {};
   const [loading, setLoading] = useState(true);
   const [valuation, setValuation] = useState<PlayerValuation | null>(null);
   const [trend, setTrend] = useState<ValuationTrend | null>(null);
@@ -38,6 +38,11 @@ export const MarketValueDetailScreen: React.FC<Props> = ({ navigation, route }) 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!playerId || playerId.length < 10) {
+      setError('Invalid player ID');
+      setLoading(false);
+      return;
+    }
     fetchData();
   }, [playerId]);
 

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsBoolean, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
 
 export enum AchievementCategory {
   PLAYER_MILESTONE = 'PLAYER_MILESTONE',
@@ -59,7 +59,7 @@ export class CreateAchievementDto {
 
   @ApiProperty({
     example: { type: 'goals', value: 1, operator: '>=' },
-    description: 'JSON condition for unlocking'
+    description: 'JSON condition for unlocking',
   })
   condition: any;
 
@@ -86,7 +86,7 @@ export class UserActionDto {
 
   @ApiProperty({
     example: { matchId: 'match123' },
-    required: false
+    required: false,
   })
   @IsOptional()
   metadata?: any;

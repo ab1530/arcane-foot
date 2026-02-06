@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Toaster } from 'sonner';
-import { QueryProvider } from '@/providers/QueryProvider';
+import { ProtectedPage } from '@/components/guards/ProtectedPage';
 
 export default function PlayerValidationLayout({
   children,
@@ -10,7 +10,7 @@ export default function PlayerValidationLayout({
   children: React.ReactNode;
 }) {
   return (
-    <QueryProvider>
+    <ProtectedPage>
       {children}
       <Toaster
         position="top-right"
@@ -22,6 +22,6 @@ export default function PlayerValidationLayout({
           },
         }}
       />
-    </QueryProvider>
+    </ProtectedPage>
   );
 }

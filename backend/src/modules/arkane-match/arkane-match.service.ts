@@ -24,37 +24,37 @@ export class ArkaneMatchService {
 
   // NLU patterns for rule-based extraction
   private readonly leaguePatterns = {
-    'LaLiga': ['laliga', 'la liga', 'spanish', 'spain league', 'primera'],
+    LaLiga: ['laliga', 'la liga', 'spanish', 'spain league', 'primera'],
     'Premier League': ['premier', 'epl', 'english', 'england league', 'premier league'],
-    'Bundesliga': ['bundesliga', 'german', 'germany league'],
+    Bundesliga: ['bundesliga', 'german', 'germany league'],
     'Serie A': ['serie a', 'italian', 'italy league', 'seria a'],
     'Ligue 1': ['ligue 1', 'french', 'france league', 'ligue1'],
   };
 
   private readonly positionPatterns = {
-    'GK': ['goalkeeper', 'keeper', 'gk', 'goalie'],
-    'CB': ['center back', 'central defender', 'cb', 'centre back', 'center-back'],
-    'LB': ['left back', 'lb', 'left-back'],
-    'RB': ['right back', 'rb', 'right-back'],
-    'LWB': ['left wing back', 'lwb'],
-    'RWB': ['right wing back', 'rwb'],
-    'CDM': ['defensive midfielder', 'cdm', 'holding midfielder'],
-    'CM': ['central midfielder', 'cm', 'midfielder'],
-    'CAM': ['attacking midfielder', 'cam', 'playmaker'],
-    'LW': ['left wing', 'lw', 'left winger'],
-    'RW': ['right wing', 'rw', 'right winger'],
-    'ST': ['striker', 'st', 'forward', 'center forward', 'cf'],
+    GK: ['goalkeeper', 'keeper', 'gk', 'goalie'],
+    CB: ['center back', 'central defender', 'cb', 'centre back', 'center-back'],
+    LB: ['left back', 'lb', 'left-back'],
+    RB: ['right back', 'rb', 'right-back'],
+    LWB: ['left wing back', 'lwb'],
+    RWB: ['right wing back', 'rwb'],
+    CDM: ['defensive midfielder', 'cdm', 'holding midfielder'],
+    CM: ['central midfielder', 'cm', 'midfielder'],
+    CAM: ['attacking midfielder', 'cam', 'playmaker'],
+    LW: ['left wing', 'lw', 'left winger'],
+    RW: ['right wing', 'rw', 'right winger'],
+    ST: ['striker', 'st', 'forward', 'center forward', 'cf'],
   };
 
   private readonly generalPositions = {
-    'defender': ['CB', 'LB', 'RB', 'LWB', 'RWB'],
-    'defenders': ['CB', 'LB', 'RB', 'LWB', 'RWB'],
-    'midfielder': ['CDM', 'CM', 'CAM'],
-    'midfielders': ['CDM', 'CM', 'CAM'],
-    'attacker': ['LW', 'RW', 'ST'],
-    'attackers': ['LW', 'RW', 'ST'],
-    'forward': ['ST', 'LW', 'RW'],
-    'forwards': ['ST', 'LW', 'RW'],
+    defender: ['CB', 'LB', 'RB', 'LWB', 'RWB'],
+    defenders: ['CB', 'LB', 'RB', 'LWB', 'RWB'],
+    midfielder: ['CDM', 'CM', 'CAM'],
+    midfielders: ['CDM', 'CM', 'CAM'],
+    attacker: ['LW', 'RW', 'ST'],
+    attackers: ['LW', 'RW', 'ST'],
+    forward: ['ST', 'LW', 'RW'],
+    forwards: ['ST', 'LW', 'RW'],
   };
 
   constructor(
@@ -69,9 +69,7 @@ export class ArkaneMatchService {
   async chat(userId: string, dto: ChatDto) {
     try {
       // Get or create conversation
-      let conversation = dto.conversationId
-        ? await this.getConversation(dto.conversationId)
-        : null;
+      let conversation = dto.conversationId ? await this.getConversation(dto.conversationId) : null;
 
       if (conversation && conversation.userId !== userId) {
         throw new BadRequestException('Conversation does not belong to this user');
@@ -106,10 +104,10 @@ export class ArkaneMatchService {
         scouts = await this.searchScouts(conversation.currentCriteria);
 
         // Filter out scouts already shown
-        scouts = scouts.filter(s => !conversation.scoutingHistory.includes(s.id));
+        scouts = scouts.filter((s) => !conversation.scoutingHistory.includes(s.id));
 
         // Track shown scouts
-        scouts.forEach(s => conversation.scoutingHistory.push(s.id));
+        scouts.forEach((s) => conversation.scoutingHistory.push(s.id));
       }
 
       // Generate AI response
@@ -122,7 +120,11 @@ export class ArkaneMatchService {
       );
 
       // Generate follow-up suggestions
-      const suggestions = this.generateSuggestions(intent, conversation.currentCriteria, scouts.length);
+      const suggestions = this.generateSuggestions(
+        intent,
+        conversation.currentCriteria,
+        scouts.length,
+      );
 
       // Add assistant message to conversation
       const assistantMessage: ConversationMessage = {
@@ -157,7 +159,9 @@ export class ArkaneMatchService {
    */
   async getConversation(conversationId: string): Promise<Conversation | null> {
     // Try Redis first
-    const cached = await this.redisService.get<Conversation>(`arkane-match:conversation:${conversationId}`);
+    const cached = await this.redisService.get<Conversation>(
+      `arkane-match:conversation:${conversationId}`,
+    );
     if (cached) return cached;
 
     // Fallback to in-memory
@@ -196,7 +200,11 @@ export class ArkaneMatchService {
         'Context-aware recommendations',
         'Smart search refinement',
       ],
-      aiProvider: hasOpenAI ? 'OpenAI GPT-4' : hasAnthropic ? 'Anthropic Claude' : 'Rule-based fallback',
+      aiProvider: hasOpenAI
+        ? 'OpenAI GPT-4'
+        : hasAnthropic
+          ? 'Anthropic Claude'
+          : 'Rule-based fallback',
       supportedLanguages: ['English'],
       maxConversationAge: '1 hour',
       rateLimit: {
@@ -214,35 +222,63 @@ export class ArkaneMatchService {
 
     // Check for refinement keywords
     if (conversation.messages.length > 1) {
-      const refinementKeywords = ['also', 'but', 'prefer', 'actually', 'instead', 'change', 'adjust', 'narrow down'];
-      if (refinementKeywords.some(kw => lower.includes(kw))) {
+      const refinementKeywords = [
+        'also',
+        'but',
+        'prefer',
+        'actually',
+        'instead',
+        'change',
+        'adjust',
+        'narrow down',
+      ];
+      if (refinementKeywords.some((kw) => lower.includes(kw))) {
         return IntentType.REFINE_SEARCH;
       }
     }
 
     // Check for detail request
-    const detailKeywords = ['tell me more', 'details', 'about', 'profile', 'information on', 'who is'];
-    if (detailKeywords.some(kw => lower.includes(kw))) {
+    const detailKeywords = [
+      'tell me more',
+      'details',
+      'about',
+      'profile',
+      'information on',
+      'who is',
+    ];
+    if (detailKeywords.some((kw) => lower.includes(kw))) {
       return IntentType.GET_DETAILS;
     }
 
     // Check for comparison
     const compareKeywords = ['compare', 'difference', 'versus', 'vs', 'better'];
-    if (compareKeywords.some(kw => lower.includes(kw))) {
+    if (compareKeywords.some((kw) => lower.includes(kw))) {
       return IntentType.COMPARE_SCOUTS;
     }
 
     // Check for general question
     const questionKeywords = ['how', 'what', 'why', 'when', 'where', 'explain', 'help'];
-    const hasSearchIntent = lower.includes('find') || lower.includes('need') || lower.includes('looking for') || lower.includes('search');
+    const hasSearchIntent =
+      lower.includes('find') ||
+      lower.includes('need') ||
+      lower.includes('looking for') ||
+      lower.includes('search');
 
-    if (questionKeywords.some(kw => lower.startsWith(kw)) && !hasSearchIntent) {
+    if (questionKeywords.some((kw) => lower.startsWith(kw)) && !hasSearchIntent) {
       return IntentType.GENERAL_QUESTION;
     }
 
     // Check for search intent
-    const searchKeywords = ['find', 'need', 'looking for', 'search', 'want', 'scout', 'help me find'];
-    if (searchKeywords.some(kw => lower.includes(kw))) {
+    const searchKeywords = [
+      'find',
+      'need',
+      'looking for',
+      'search',
+      'want',
+      'scout',
+      'help me find',
+    ];
+    if (searchKeywords.some((kw) => lower.includes(kw))) {
       return IntentType.SEARCH_SCOUT;
     }
 
@@ -253,14 +289,17 @@ export class ArkaneMatchService {
   /**
    * Extract search criteria from natural language using rule-based NLU
    */
-  private async extractCriteria(message: string, conversation: Conversation): Promise<SearchCriteriaDto> {
+  private async extractCriteria(
+    message: string,
+    _conversation: Conversation,
+  ): Promise<SearchCriteriaDto> {
     const lower = message.toLowerCase();
     const criteria: SearchCriteriaDto = {};
 
     // Extract leagues
     const leagues = [];
     for (const [league, patterns] of Object.entries(this.leaguePatterns)) {
-      if (patterns.some(pattern => lower.includes(pattern))) {
+      if (patterns.some((pattern) => lower.includes(pattern))) {
         leagues.push(league);
       }
     }
@@ -269,7 +308,7 @@ export class ArkaneMatchService {
     // Extract positions (specific first)
     const positions = [];
     for (const [position, patterns] of Object.entries(this.positionPatterns)) {
-      if (patterns.some(pattern => lower.includes(pattern))) {
+      if (patterns.some((pattern) => lower.includes(pattern))) {
         positions.push(position);
       }
     }
@@ -287,7 +326,9 @@ export class ArkaneMatchService {
     if (positions.length > 0) criteria.positions = [...new Set(positions)]; // Remove duplicates
 
     // Extract budget (look for numbers with currency symbols or keywords)
-    const budgetMatch = lower.match(/(?:under|below|max|maximum|up to|less than|<)\s*[€$£]?\s*(\d+)/);
+    const budgetMatch = lower.match(
+      /(?:under|below|max|maximum|up to|less than|<)\s*[€$£]?\s*(\d+)/,
+    );
     if (budgetMatch) {
       criteria.maxBudget = parseInt(budgetMatch[1]);
       criteria.currency = lower.includes('$') ? 'USD' : lower.includes('£') ? 'GBP' : 'EUR';
@@ -306,17 +347,17 @@ export class ArkaneMatchService {
 
     // Extract languages
     const languageKeywords = {
-      'English': ['english', 'anglais'],
-      'Spanish': ['spanish', 'espanol', 'español'],
-      'French': ['french', 'français', 'francais'],
-      'German': ['german', 'deutsch'],
-      'Italian': ['italian', 'italiano'],
-      'Portuguese': ['portuguese', 'português', 'portugues'],
+      English: ['english', 'anglais'],
+      Spanish: ['spanish', 'espanol', 'español'],
+      French: ['french', 'français', 'francais'],
+      German: ['german', 'deutsch'],
+      Italian: ['italian', 'italiano'],
+      Portuguese: ['portuguese', 'português', 'portugues'],
     };
 
     const languages = [];
     for (const [language, keywords] of Object.entries(languageKeywords)) {
-      if (keywords.some(kw => lower.includes(kw))) {
+      if (keywords.some((kw) => lower.includes(kw))) {
         languages.push(language);
       }
     }
@@ -324,16 +365,16 @@ export class ArkaneMatchService {
 
     // Extract countries
     const countryKeywords = {
-      'Spain': ['spain', 'spanish', 'españa'],
-      'England': ['england', 'english', 'uk'],
-      'Germany': ['germany', 'german', 'deutschland'],
-      'France': ['france', 'french'],
-      'Italy': ['italy', 'italian', 'italia'],
+      Spain: ['spain', 'spanish', 'españa'],
+      England: ['england', 'english', 'uk'],
+      Germany: ['germany', 'german', 'deutschland'],
+      France: ['france', 'french'],
+      Italy: ['italy', 'italian', 'italia'],
     };
 
     const countries = [];
     for (const [country, keywords] of Object.entries(countryKeywords)) {
-      if (keywords.some(kw => lower.includes(kw))) {
+      if (keywords.some((kw) => lower.includes(kw))) {
         countries.push(country);
       }
     }
@@ -374,7 +415,7 @@ export class ArkaneMatchService {
     userMessage: string,
     scouts: any[],
     criteria: SearchCriteriaDto,
-    conversation: Conversation,
+    _conversation: Conversation,
   ): Promise<string> {
     switch (intent) {
       case IntentType.SEARCH_SCOUT:
@@ -398,16 +439,25 @@ export class ArkaneMatchService {
   /**
    * Generate search response with scout results
    */
-  private generateSearchResponse(scouts: any[], criteria: SearchCriteriaDto, isRefinement: boolean): string {
+  private generateSearchResponse(
+    scouts: any[],
+    criteria: SearchCriteriaDto,
+    isRefinement: boolean,
+  ): string {
     if (scouts.length === 0) {
       return this.generateNoResultsResponse(criteria);
     }
 
     // Build criteria summary
     const criteriaParts = [];
-    if (criteria.leagues?.length) criteriaParts.push(`${criteria.leagues.join(', ')} specialist${criteria.leagues.length > 1 ? 's' : ''}`);
-    if (criteria.positions?.length) criteriaParts.push(`focusing on ${criteria.positions.join(', ')}`);
-    if (criteria.maxBudget) criteriaParts.push(`under ${criteria.currency || 'EUR'}${criteria.maxBudget}/hr`);
+    if (criteria.leagues?.length)
+      criteriaParts.push(
+        `${criteria.leagues.join(', ')} specialist${criteria.leagues.length > 1 ? 's' : ''}`,
+      );
+    if (criteria.positions?.length)
+      criteriaParts.push(`focusing on ${criteria.positions.join(', ')}`);
+    if (criteria.maxBudget)
+      criteriaParts.push(`under ${criteria.currency || 'EUR'}${criteria.maxBudget}/hr`);
     if (criteria.minRating) criteriaParts.push(`${criteria.minRating}+ stars`);
     if (criteria.verifiedOnly) criteriaParts.push('verified');
 
@@ -421,7 +471,6 @@ export class ArkaneMatchService {
     scouts.slice(0, 3).forEach((scout, index) => {
       const name = `${scout.users.firstName} ${scout.users.lastName}`;
       const expertise = (scout.expertise as any) || {};
-      const availability = (scout.availability as any) || {};
       const stats = scout.stats || {};
 
       response += `${index + 1}. ${name}`;
@@ -488,7 +537,7 @@ export class ArkaneMatchService {
 
     if (suggestions.length > 0) {
       response += 'Here are some suggestions:\n';
-      suggestions.forEach(s => response += `• ${s}\n`);
+      suggestions.forEach((s) => (response += `• ${s}\n`));
       response += '\nWould you like me to search with adjusted criteria?';
     } else {
       response += 'Try:\n';
@@ -524,7 +573,11 @@ export class ArkaneMatchService {
   /**
    * Generate follow-up suggestions
    */
-  private generateSuggestions(intent: IntentType, criteria: SearchCriteriaDto, scoutCount: number): string[] {
+  private generateSuggestions(
+    intent: IntentType,
+    criteria: SearchCriteriaDto,
+    scoutCount: number,
+  ): string[] {
     const suggestions = [];
 
     if (intent === IntentType.SEARCH_SCOUT || intent === IntentType.REFINE_SEARCH) {
@@ -533,24 +586,24 @@ export class ArkaneMatchService {
       }
 
       if (!criteria.minRating) {
-        suggestions.push("Any minimum rating preference?");
+        suggestions.push('Any minimum rating preference?');
       }
 
       if (!criteria.languages?.length) {
-        suggestions.push("Which languages should the scout speak?");
+        suggestions.push('Which languages should the scout speak?');
       }
 
       if (scoutCount > 5) {
-        suggestions.push("Would you like to narrow down the results?");
+        suggestions.push('Would you like to narrow down the results?');
       }
 
       if (scoutCount > 0 && scoutCount <= 3) {
-        suggestions.push("Would you like to see similar scouts?");
+        suggestions.push('Would you like to see similar scouts?');
       }
     }
 
     if (suggestions.length === 0) {
-      suggestions.push("Can I help you with anything else?");
+      suggestions.push('Can I help you with anything else?');
     }
 
     return suggestions;

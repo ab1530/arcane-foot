@@ -1,10 +1,22 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Request, Headers } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Request,
+  Headers,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthThrottlerGuard } from '../../common/guards/auth-throttler.guard';
@@ -45,7 +57,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get CSRF token',
-    description: 'Generate and return CSRF token for form submissions (production only)'
+    description: 'Generate and return CSRF token for form submissions (production only)',
   })
   @ApiResponse({ status: 200, description: 'CSRF token generated' })
   async getCsrfToken(@Request() req) {
@@ -71,18 +83,35 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get current user', description: 'Returns the current authenticated user' })
+  @ApiOperation({
+    summary: 'Get current user',
+    description: 'Returns the current authenticated user',
+  })
   @ApiResponse({ status: 200, description: 'Current user data returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
   async getCurrentUser(@Request() req) {
     return req.user;
   }
 
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update current user profile',
+    description: 'Update the authenticated user profile information',
+  })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
+  async updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.id, updateProfileDto);
+  }
+
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refresh access token',
-    description: 'Generate a new access token using a valid refresh token'
+    description: 'Generate a new access token using a valid refresh token',
   })
   @ApiResponse({ status: 200, description: 'New access token generated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or expired refresh token' })
@@ -96,11 +125,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Logout user',
-    description: 'Revoke refresh token and blacklist current access token'
+    description: 'Revoke refresh token and blacklist current access token',
   })
   @ApiResponse({ status: 200, description: 'Logout successful' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
-  async logout(@Body() refreshTokenDto: RefreshTokenDto, @Headers('authorization') authHeader: string) {
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Headers('authorization') authHeader: string,
+  ) {
     // Extract access token from header
     const accessToken = authHeader?.replace('Bearer ', '');
 
@@ -121,7 +153,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Logout from all devices',
-    description: 'Revoke all refresh tokens for the current user'
+    description: 'Revoke all refresh tokens for the current user',
   })
   @ApiResponse({ status: 200, description: 'Logged out from all devices' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })

@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AlertTriangle, Home, RefreshCcw } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -27,13 +27,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to Sentry
-    Sentry.captureException(error, {
-      contexts: {
-        react: {
-          componentStack: errorInfo.componentStack,
-        },
-      },
+    logger.error("React error boundary", error, {
+      scope: "UI",
+      componentStack: errorInfo.componentStack,
     });
 
     this.setState({
@@ -63,8 +59,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               </h1>
 
               <p className="text-arcane-grey mb-8 max-w-md mx-auto">
-                Une erreur inattendue s'est produite. Notre équipe a été automatiquement notifiée
-                et travaille déjà à résoudre le problème.
+                Une erreur inattendue s'est produite. Les détails ont été enregistrés pour
+                diagnostic.
               </p>
 
               {process.env.NODE_ENV === 'development' && this.state.error && (
@@ -109,12 +105,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 // Hook version for function components
 export function useErrorHandler() {
   return React.useCallback((error: Error, errorInfo?: { componentStack?: string }) => {
-    Sentry.captureException(error, {
-      contexts: errorInfo ? {
-        react: {
-          componentStack: errorInfo.componentStack,
-        },
-      } : undefined,
+    logger.error("React error handler", error, {
+      scope: "UI",
+      componentStack: errorInfo?.componentStack,
     });
   }, []);
 }

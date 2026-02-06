@@ -10,7 +10,9 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { performancePredictorApi } from '../../../services/api/performance-predictor';
+import api from '../../../services/api';
 import { FormationView, PredictionCard } from '../../../components/performance-predictor';
 import { calculateTeamRating, getRatingColor } from '../../../utils/performance-predictor';
 import type { TeamPrediction } from '../../../types/performance-predictor';
@@ -21,6 +23,7 @@ export const TeamLineupTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<'rating' | 'position'>('rating');
   const [selectedPlayer, setSelectedPlayer] = useState<TeamPrediction | null>(null);
+  const [matchPicking, setMatchPicking] = useState(false);
 
   const handlePredict = async () => {
     if (!selectedMatch) {
@@ -31,14 +34,40 @@ export const TeamLineupTab: React.FC = () => {
     setLoading(true);
     try {
       const results = await performancePredictorApi.batchPredict(selectedMatch.id);
+      const playerMap = new Map<string, any>();
+      try {
+        const rosterResponse = await api.getPlayers({ limit: 200 });
+        const roster =
+          rosterResponse?.data ??
+          rosterResponse?.items ??
+          (rosterResponse as any)?.players ??
+          [];
+        roster.forEach((player: any) => {
+          const id = player.id ?? player.playerId ?? player.player?.id;
+          if (id) {
+            playerMap.set(id, player);
+          }
+        });
+      } catch (error) {
+        console.warn('Unable to fetch player metadata for predictions', error);
+      }
 
-      // Enrich with player data (in real app, fetch from players API)
-      const enrichedResults: TeamPrediction[] = results.map((pred) => ({
-        ...pred,
-        playerName: `Player ${pred.playerId.substring(0, 6)}`,
-        playerPosition: 'CM', // Default position
-        playerPhoto: undefined,
-      }));
+      const enrichedResults: TeamPrediction[] = results.map((pred) => {
+        const info = playerMap.get(pred.playerId);
+        const name =
+          info
+            ? `${info.user?.firstName ?? info.users?.firstName ?? ''} ${
+                info.user?.lastName ?? info.users?.lastName ?? ''
+              }`.trim()
+            : pred.playerName || `Player ${pred.playerId?.substring(0, 6) || ''}`;
+
+        return {
+          ...pred,
+          playerName: name || 'Unknown Player',
+          playerPosition: info?.position || info?.player?.position || pred.playerPosition || 'N/A',
+          playerPhoto: info?.user?.avatar ?? info?.users?.avatar ?? pred.playerPhoto,
+        };
+      });
 
       setPredictions(enrichedResults);
     } catch (error) {
@@ -49,6 +78,42 @@ export const TeamLineupTab: React.FC = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectMatch = async () => {
+    try {
+      setMatchPicking(true);
+      const response = await api.getMatches({ limit: 1 });
+      const candidate =
+        response?.data?.[0] ??
+        response?.items?.[0] ??
+        (response as any)?.matches?.[0];
+
+      if (!candidate) {
+        throw new Error('No matches available');
+      }
+
+      const id = candidate.id || candidate.matchId;
+      if (!id) {
+        throw new Error('Missing match identifier');
+      }
+
+      const home = candidate.homeClub?.name ?? candidate.clubs?.home?.name ?? 'Home';
+      const away = candidate.awayClub?.name ?? candidate.clubs?.away?.name ?? 'Away';
+      const matchName = `${home} vs ${away}`;
+
+      setSelectedMatch({
+        id,
+        name: matchName,
+        date: candidate.scheduledAt || candidate.date,
+      });
+      Toast.show({ type: 'success', text1: 'Match Selected', text2: matchName });
+    } catch (error) {
+      console.error('Failed to pick match', error);
+      Alert.alert('Match Picker', 'Unable to load matches right now.');
+    } finally {
+      setMatchPicking(false);
     }
   };
 
@@ -71,12 +136,14 @@ export const TeamLineupTab: React.FC = () => {
           <Text style={styles.sectionTitle}>Select Match</Text>
           <TouchableOpacity
             style={styles.pickerButton}
-            onPress={() => {
-              // TODO: Navigate to match picker
-              Alert.alert('Coming Soon', 'Match picker will be implemented');
-            }}
+            onPress={handleSelectMatch}
+            disabled={matchPicking}
           >
-            <Ionicons name="football" size={20} color="#9CA3AF" />
+            {matchPicking ? (
+              <ActivityIndicator size="small" color="#9CA3AF" />
+            ) : (
+              <Ionicons name="football" size={20} color="#9CA3AF" />
+            )}
             <Text style={styles.pickerText}>
               {selectedMatch ? selectedMatch.name : 'Choose a match...'}
             </Text>

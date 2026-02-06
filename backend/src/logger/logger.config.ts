@@ -1,4 +1,3 @@
-import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import * as path from 'path';
 import * as fs from 'fs';

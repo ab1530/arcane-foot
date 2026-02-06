@@ -159,10 +159,10 @@ describe('SubscriptionTierGuard', () => {
 
       await guard.canActivate(mockContext);
 
-      expect(mockReflector.getAllAndOverride).toHaveBeenCalledWith(
-        'minTier',
-        [mockHandler, mockClass],
-      );
+      expect(mockReflector.getAllAndOverride).toHaveBeenCalledWith('minTier', [
+        mockHandler,
+        mockClass,
+      ]);
     });
 
     it('should throw ForbiddenException if user is not authenticated', async () => {
@@ -229,10 +229,7 @@ describe('SubscriptionTierGuard', () => {
         const result = await guard.canActivate(mockContext);
 
         expect(result).toBe(true);
-        expect(mockSubscriptionsService.hasMinimumTier).toHaveBeenCalledWith(
-          'user-123',
-          tier,
-        );
+        expect(mockSubscriptionsService.hasMinimumTier).toHaveBeenCalledWith('user-123', tier);
 
         jest.clearAllMocks();
       }
@@ -247,9 +244,7 @@ describe('SubscriptionTierGuard', () => {
         new Error('Database connection failed'),
       );
 
-      await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        'Database connection failed',
-      );
+      await expect(guard.canActivate(mockContext)).rejects.toThrow('Database connection failed');
     });
 
     it('should call hasMinimumTier with correct parameters', async () => {

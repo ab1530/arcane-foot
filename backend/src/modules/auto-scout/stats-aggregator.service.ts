@@ -35,6 +35,13 @@ export class StatsAggregatorService {
       });
 
       if (!player) {
+        this.logger.warn(`Player ${playerId} not found in database`);
+        return null;
+      }
+
+      // Check if user relation exists
+      if (!player.users) {
+        this.logger.error(`Player ${playerId} has no associated user`);
         return null;
       }
 
@@ -54,7 +61,9 @@ export class StatsAggregatorService {
 
       return {
         basic: {
-          name: `${player.users.firstName} ${player.users.lastName}`,
+          name:
+            `${player.users.firstName || ''} ${player.users.lastName || ''}`.trim() ||
+            'Unknown Player',
           age: this.calculateAge(player.dateOfBirth),
           position: player.position || 'Unknown',
           nationality: player.nationality || 'Unknown',
@@ -90,17 +99,8 @@ export class StatsAggregatorService {
     });
 
     // Aggregate stats
-    let totalMatches = 0;
-    let totalGoals = 0;
-    let totalAssists = 0;
-
-    // Count unique matches from scouting reports
-    const uniqueMatches = new Set(
-      scoutingReports
-        .filter(r => r.matchId)
-        .map(r => r.matchId)
-    );
-    totalMatches = uniqueMatches.size;
+    const uniqueMatches = new Set(scoutingReports.filter((r) => r.matchId).map((r) => r.matchId));
+    const totalMatches = uniqueMatches.size;
 
     // Note: goalsScored and assists fields don't exist in scouting_reports schema
     // These would need to be tracked elsewhere or estimated from ratings
@@ -116,14 +116,10 @@ export class StatsAggregatorService {
   /**
    * Get recent match performances
    */
-  private async getRecentMatches(
-    playerId: string,
-    count: number,
-  ): Promise<MatchSummary[]> {
+  private async getRecentMatches(playerId: string, count: number): Promise<MatchSummary[]> {
     const recentReports = await this.prisma.scouting_reports.findMany({
       where: {
         playerId,
-        matchId: { not: null },
       },
       include: {
         matches: true,
@@ -131,19 +127,23 @@ export class StatsAggregatorService {
       orderBy: {
         createdAt: 'desc',
       },
-      take: count,
+      take: count * 2, // Fetch more to account for filtering null matchIds
     });
 
-    return recentReports.map(report => ({
-      matchId: report.matchId || '',
-      date: report.matches?.scheduledAt || report.createdAt,
-      opponent: 'Unknown', // Would need opponent data in schema
-      result: 'N/A',
-      minutesPlayed: 90, // Default value, actual data not in schema
-      goals: 0, // Not tracked in scouting_reports
-      assists: 0, // Not tracked in scouting_reports
-      rating: report.overallRating,
-    }));
+    // Filter reports that have matchId and return only the requested count
+    return recentReports
+      .filter((report) => report.matchId !== null)
+      .slice(0, count)
+      .map((report) => ({
+        matchId: report.matchId || '',
+        date: report.matches?.scheduledAt || report.createdAt,
+        opponent: 'Unknown', // Would need opponent data in schema
+        result: 'N/A',
+        minutesPlayed: 90, // Default value, actual data not in schema
+        goals: 0, // Not tracked in scouting_reports
+        assists: 0, // Not tracked in scouting_reports
+        rating: report.overallRating,
+      }));
   }
 
   /**
@@ -188,7 +188,7 @@ export class StatsAggregatorService {
   /**
    * Calculate performance trends
    */
-  private calculateTrends(matches: MatchSummary[], ratings: any) {
+  private calculateTrends(matches: MatchSummary[], _ratings: any) {
     if (matches.length < 3) {
       return {
         improving: false,
@@ -199,8 +199,8 @@ export class StatsAggregatorService {
 
     // Get ratings from recent matches
     const recentRatings = matches
-      .filter(m => m.rating !== undefined)
-      .map(m => m.rating as number);
+      .filter((m) => m.rating !== undefined)
+      .map((m) => m.rating as number);
 
     if (recentRatings.length < 3) {
       return {
@@ -222,7 +222,9 @@ export class StatsAggregatorService {
 
     // Calculate consistency (standard deviation)
     const mean = recentRatings.reduce((a, b) => a + b, 0) / recentRatings.length;
-    const variance = recentRatings.reduce((sum, rating) => sum + Math.pow(rating - mean, 2), 0) / recentRatings.length;
+    const variance =
+      recentRatings.reduce((sum, rating) => sum + Math.pow(rating - mean, 2), 0) /
+      recentRatings.length;
     const stdDev = Math.sqrt(variance);
     const isConsistent = stdDev < 1.0;
 
@@ -242,8 +244,8 @@ export class StatsAggregatorService {
     }
 
     const recentRatings = matches
-      .filter(m => m.rating !== undefined)
-      .map(m => m.rating as number);
+      .filter((m) => m.rating !== undefined)
+      .map((m) => m.rating as number);
 
     if (recentRatings.length === 0) {
       return 'Insufficient rating data';

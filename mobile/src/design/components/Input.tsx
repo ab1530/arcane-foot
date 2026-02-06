@@ -18,6 +18,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { theme } from '../theme';
 
+
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
@@ -177,24 +178,25 @@ export const Input: React.FC<InputProps> = ({
   );
 };
 
+
 const styles = StyleSheet.create({
   wrapper: {
-    marginVertical: theme.spacing.sm,
+    marginVertical: 8,
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   label: {
     position: 'absolute',
-    left: theme.spacing.lg,
-    top: theme.spacing.lg,
+    left: 24,
+    top: 24,
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     backgroundColor: theme.colors.background.primary,
-    paddingHorizontal: theme.spacing.xs,
+    paddingHorizontal: 4,
     zIndex: 1,
   },
   input: {
@@ -227,29 +229,29 @@ const styles = StyleSheet.create({
 
   // Sizes
   container_sm: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: 16,
     minHeight: 40,
   },
   container_md: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
     minHeight: 48,
   },
   container_lg: {
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: 32,
     minHeight: 56,
   },
 
   input_sm: {
     fontSize: theme.typography.sizes.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
   },
   input_md: {
     fontSize: theme.typography.sizes.base,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 16,
   },
   input_lg: {
     fontSize: theme.typography.sizes.lg,
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: 24,
   },
 
   // Input variant styles
@@ -259,10 +261,10 @@ const styles = StyleSheet.create({
   input_outline: {},
 
   iconLeft: {
-    marginRight: theme.spacing.sm,
+    marginRight: 8,
   },
   iconRight: {
-    marginLeft: theme.spacing.sm,
+    marginLeft: 8,
   },
 
   rounded: {
@@ -280,8 +282,8 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-    marginLeft: theme.spacing.lg,
+    marginTop: 4,
+    marginLeft: 24,
   },
 
   errorText: {

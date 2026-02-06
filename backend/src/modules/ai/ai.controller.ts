@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AiThrottlerGuard } from '../../common/guards/ai-throttler.guard';
 import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
 import { MinTier } from '../../common/decorators/min-tier.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { SubscriptionTier } from '@prisma/client';
 
 @ApiTags('AI Intelligence')
@@ -17,14 +18,39 @@ import { SubscriptionTier } from '@prisma/client';
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
+  @Get('usage-stats')
+  @Public()
+  @ApiOperation({
+    summary: 'Get AI usage statistics',
+    description: 'Get usage statistics for AI features (public endpoint)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usage stats retrieved',
+    schema: {
+      type: 'object',
+      properties: {
+        totalQueries: { type: 'number', example: 0 },
+        reportsAnalyzed: { type: 'number', example: 0 },
+      },
+    },
+  })
+  getUsageStats() {
+    return { totalQueries: 0, reportsAnalyzed: 0 };
+  }
+
   @Post('summary')
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Generate AI summary (GOLD+)',
-    description: 'Generate an AI-powered summary based on the provided prompt. Requires GOLD subscription or higher.',
+    description:
+      'Generate an AI-powered summary based on the provided prompt. Requires GOLD subscription or higher.',
   })
   @ApiResponse({ status: 201, description: 'Summary generated successfully' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
+  })
   @ApiResponse({ status: 429, description: 'Too many requests - Rate limit exceeded (10/min)' })
   generateSummary(@Body() body: GenerateSummaryDto) {
     return this.aiService.generateSummary(body);
@@ -34,11 +60,15 @@ export class AiController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Get player AI index (GOLD+)',
-    description: 'Calculate AI-powered performance index for a player. Requires GOLD subscription or higher.',
+    description:
+      'Calculate AI-powered performance index for a player. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({ status: 200, description: 'Player index calculated' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
+  })
   getPlayerIndex(@Param('playerId') playerId: string) {
     return this.aiService.getPlayerIndex(playerId);
   }
@@ -47,10 +77,14 @@ export class AiController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'AI matchmaking (GOLD+)',
-    description: 'AI-powered matchmaking between players and clubs. Requires GOLD subscription or higher.',
+    description:
+      'AI-powered matchmaking between players and clubs. Requires GOLD subscription or higher.',
   })
   @ApiResponse({ status: 201, description: 'Matches generated successfully' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Requires GOLD subscription tier or higher' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Requires GOLD subscription tier or higher',
+  })
   matchmaking(@Body() body: MatchmakingRequestDto) {
     return this.aiService.matchmaking(body);
   }
@@ -59,7 +93,8 @@ export class AiController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Analyze player performance (GOLD+)',
-    description: 'Get comprehensive AI analysis of player performance. Requires GOLD subscription or higher.',
+    description:
+      'Get comprehensive AI analysis of player performance. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({
@@ -93,7 +128,8 @@ export class AiController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Predict talent potential (GOLD+)',
-    description: 'AI prediction of player potential and development curve. Requires GOLD subscription or higher.',
+    description:
+      'AI prediction of player potential and development curve. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({
@@ -126,7 +162,8 @@ export class AiController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Get club recommendations (GOLD+)',
-    description: 'AI-powered club matching recommendations for a player. Requires GOLD subscription or higher.',
+    description:
+      'AI-powered club matching recommendations for a player. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({
@@ -162,7 +199,8 @@ export class AiController {
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Detect suspicious profiles (GOLD+)',
-    description: 'AI-powered detection of potentially fraudulent player profiles. Requires GOLD subscription or higher.',
+    description:
+      'AI-powered detection of potentially fraudulent player profiles. Requires GOLD subscription or higher.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({
@@ -177,7 +215,7 @@ export class AiController {
         factors: { type: 'array', items: { type: 'string' } },
         recommendation: {
           type: 'string',
-          enum: ['APPEARS_LEGITIMATE', 'FLAG_FOR_REVIEW', 'REVIEW_IMMEDIATELY']
+          enum: ['APPEARS_LEGITIMATE', 'FLAG_FOR_REVIEW', 'REVIEW_IMMEDIATELY'],
         },
       },
     },

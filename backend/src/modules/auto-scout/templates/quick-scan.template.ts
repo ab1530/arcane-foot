@@ -1,8 +1,13 @@
 import { ReportTemplate, ReportType } from '../interfaces/report.interface';
 
 export const quickScanTemplate: ReportTemplate = {
-  name: 'Quick Scan Report',
-  description: 'Brief overview analysis for initial player screening',
+  id: 'quick-scan',
+  name: 'Quick Scan',
+  description: 'Fast overview of key stats and highlights',
+  icon: 'flash',
+  useCase: 'Quick assessment',
+  estimatedCost: '$0.016',
+  reportType: ReportType.QUICK_SCAN,
   sections: [
     {
       name: 'Quick Profile',

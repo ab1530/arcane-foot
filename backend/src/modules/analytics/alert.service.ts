@@ -16,6 +16,7 @@ import * as Sentry from '@sentry/nestjs';
 @Injectable()
 export class AlertService {
   private readonly logger = new Logger(AlertService.name);
+  private isHourlyCheckRunning = false;
 
   // Alert thresholds
   private readonly THRESHOLDS = {
@@ -35,44 +36,58 @@ export class AlertService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async checkHourlyMetrics() {
+    if (this.isHourlyCheckRunning) {
+      this.logger.warn('[RBAC-CRON] Previous hourly metrics check still running, skipping this tick');
+      return;
+    }
+
+    this.isHourlyCheckRunning = true;
     this.logger.log('Running hourly RBAC metrics check...');
 
     try {
-      const metrics = await this.analyticsService.getRbacMetrics(1); // Last 24 hours
+      const metrics = (await this.analyticsService.getRbacMetrics(1)) as any; // Last 24 hours
+      if (!metrics || typeof metrics !== 'object') {
+        this.logger.warn('[RBAC-CRON] Empty metrics payload, skipping alert evaluation');
+        return;
+      }
+
+      const total403Errors = Number(metrics.total_403_errors ?? 0);
+      const rate403 = Number(metrics['403_rate'] ?? 0);
+      const conversions = metrics.conversions ?? {};
+      const conversionRate = Number(conversions.conversion_rate ?? 0);
+      const conversionTotal = Number(conversions.total ?? 0);
+      const upgradeModal = metrics.upgrade_modal ?? {};
+      const modalCtr = Number(upgradeModal.ctr ?? 0);
+      const modalShown = Number(upgradeModal.shown ?? 0);
+      const modalClicked = Number(upgradeModal.cta_clicked ?? 0);
 
       // Check 403 rate
-      if (metrics['403_rate'] > this.THRESHOLDS.HIGH_403_RATE) {
-        await this.sendHighRateAlert(metrics['403_rate'], metrics.total_403_errors);
+      if (rate403 > this.THRESHOLDS.HIGH_403_RATE) {
+        await this.sendHighRateAlert(rate403, total403Errors);
       }
 
       // Check conversion rate
       if (
-        metrics.conversions.conversion_rate < this.THRESHOLDS.LOW_CONVERSION_RATE &&
-        metrics.total_403_errors > 10 // Only alert if we have meaningful data
+        conversionRate < this.THRESHOLDS.LOW_CONVERSION_RATE &&
+        total403Errors > 10 // Only alert if we have meaningful data
       ) {
-        await this.sendLowConversionAlert(
-          metrics.conversions.conversion_rate,
-          metrics.conversions.total,
-          metrics.total_403_errors,
-        );
+        await this.sendLowConversionAlert(conversionRate, conversionTotal, total403Errors);
       }
 
       // Check modal CTR
       if (
-        metrics.upgrade_modal.ctr < this.THRESHOLDS.LOW_MODAL_CTR &&
-        metrics.upgrade_modal.shown > 10 // Only alert if we have meaningful data
+        modalCtr < this.THRESHOLDS.LOW_MODAL_CTR &&
+        modalShown > 10 // Only alert if we have meaningful data
       ) {
-        await this.sendLowModalCtrAlert(
-          metrics.upgrade_modal.ctr,
-          metrics.upgrade_modal.cta_clicked,
-          metrics.upgrade_modal.shown,
-        );
+        await this.sendLowModalCtrAlert(modalCtr, modalClicked, modalShown);
       }
 
       this.logger.log('Hourly metrics check completed');
     } catch (error) {
       this.logger.error('Failed to check hourly metrics', error);
       Sentry.captureException(error);
+    } finally {
+      this.isHourlyCheckRunning = false;
     }
   }
 
@@ -84,7 +99,7 @@ export class AlertService {
     this.logger.log('Generating daily RBAC metrics summary...');
 
     try {
-      const metrics = await this.analyticsService.getRbacMetrics(7); // Last 7 days
+      const metrics = (await this.analyticsService.getRbacMetrics(7)) as any; // Last 7 days
 
       const summary = this.formatDailySummary(metrics);
 
@@ -215,8 +230,7 @@ export class AlertService {
       return true;
     }
 
-    const minutesSinceLastAlert =
-      (Date.now() - lastAlert.getTime()) / (1000 * 60);
+    const minutesSinceLastAlert = (Date.now() - lastAlert.getTime()) / (1000 * 60);
 
     return minutesSinceLastAlert >= this.ALERT_COOLDOWN_MINUTES;
   }
@@ -234,9 +248,7 @@ export class AlertService {
       `Rate: ${metrics['403_rate']}%`,
       '',
       '--- TOP BLOCKED FEATURES ---',
-      ...metrics.most_blocked_features
-        .slice(0, 5)
-        .map((f) => `  ${f.feature}: ${f.count}`),
+      ...metrics.most_blocked_features.slice(0, 5).map((f) => `  ${f.feature}: ${f.count}`),
       '',
       '--- CONVERSIONS ---',
       `Total: ${metrics.conversions.total}`,
@@ -277,8 +289,7 @@ export class AlertService {
         lastTriggered: time,
         cooldownRemaining: Math.max(
           0,
-          this.ALERT_COOLDOWN_MINUTES -
-            (Date.now() - time.getTime()) / (1000 * 60),
+          this.ALERT_COOLDOWN_MINUTES - (Date.now() - time.getTime()) / (1000 * 60),
         ),
       })),
     };

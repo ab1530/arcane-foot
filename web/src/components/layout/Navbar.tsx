@@ -27,6 +27,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 import GlobalSearch from "@/components/search/GlobalSearch";
 import { useFavorites } from "@/contexts/favorites-context";
+import { useAuth } from "@/contexts/auth-context";
 
 interface NavItem {
   name: string;
@@ -78,6 +79,12 @@ const navigationItems: NavItem[] = [
     requireAuth: true,
   },
   {
+    name: "Calendrier",
+    href: "/calendar",
+    icon: Calendar,
+    requireAuth: true,
+  },
+  {
     name: "Arkane AI",
     href: "/ai",
     icon: Brain,
@@ -98,17 +105,7 @@ export default function Navbar() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const { subscription, getTierName } = useSubscription();
   const { favoritePlayerIds } = useFavorites();
-
-  // Mock authentication - en production, utiliser un vrai context/hook
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    // Check if token exists
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("arcane_auth_token");
-      setIsAuthenticated(!!token);
-    }
-  }, []);
+  const { logout, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -119,9 +116,7 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("arcane_auth_token");
-    setIsAuthenticated(false);
-    router.push("/");
+    logout(); // Use the auth context logout function
   };
 
   const filteredNav = navigationItems.filter(

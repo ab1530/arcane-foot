@@ -3,10 +3,9 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Card3D } from "@/components/ui/card-3d";
 import { NeonText } from "@/components/ui/gradient-text";
 import { AnimatedBackground } from "@/components/ui/animated-background";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
 import {
@@ -28,6 +27,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { CreateMatchModal } from "@/components/calendar/create-match-modal";
@@ -73,6 +73,7 @@ interface ApiMatch {
 }
 
 export default function CalendarPage() {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [matches, setMatches] = useState<ApiMatch[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -118,19 +119,21 @@ export default function CalendarPage() {
     fetchMatches();
   }, [statusFilter, competitionFilter, scoutFilter, dateFilter]);
 
-  // Fetch scouts for filter dropdown
+  // Extract scouts from matches (since /api/users endpoint doesn't exist yet)
   useEffect(() => {
-    const fetchScouts = async () => {
-      try {
-        const response = await apiClient.getUsers({ role: "SCOUT" });
-        setScouts(response.data || []);
-      } catch (error) {
-        console.error("Error fetching scouts:", error);
-      }
-    };
-
-    fetchScouts();
-  }, []);
+    if (matches.length > 0) {
+      const uniqueScouts = matches
+        .filter((match) => match.scout)
+        .reduce((acc, match) => {
+          const scout = match.scout!;
+          if (!acc.find((s) => s.id === scout.id)) {
+            acc.push(scout);
+          }
+          return acc;
+        }, [] as Scout[]);
+      setScouts(uniqueScouts);
+    }
+  }, [matches]);
 
   // Filter matches by search query (client-side)
   const filteredMatches = matches.filter((match) => {
@@ -203,7 +206,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -421,13 +424,12 @@ export default function CalendarPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                      <Card3D>
-                        <GlassCard
-                          variant="elevated"
-                          glowOnHover
-                          className="p-6"
-                        >
-                          <div className="flex flex-col lg:flex-row gap-6 items-start">
+                      <GlassCard
+                        variant="elevated"
+                        className="p-6 cursor-pointer transition-all hover:border-arcane-accent/50"
+                        onClick={() => router.push(`/calendar/${match.id}`)}
+                      >
+                        <div className="flex flex-col lg:flex-row gap-6 items-start">
                             {/* Left - Match Info */}
                             <div className="flex-1 space-y-3">
                               {/* Status Badge */}
@@ -550,31 +552,27 @@ export default function CalendarPage() {
                               )}
 
                               {/* Actions */}
-                              <div className="flex flex-col gap-2">
-                                <Button variant="secondary" size="sm">
-                                  <Settings className="h-4 w-4 mr-2" />
-                                  Détails
-                                </Button>
-                                {match.venueOld && (
+                              {match.venueOld && (
+                                <div className="flex flex-col gap-2">
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       window.open(
                                         `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.venueOld || '')}`,
                                         "_blank"
-                                      )
-                                    }
+                                      );
+                                    }}
                                   >
                                     <MapPin className="h-4 w-4 mr-2" />
                                     Itinéraire
                                   </Button>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </GlassCard>
-                      </Card3D>
                     </motion.div>
                   ))}
 
@@ -674,6 +672,6 @@ export default function CalendarPage() {
           />
         )}
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

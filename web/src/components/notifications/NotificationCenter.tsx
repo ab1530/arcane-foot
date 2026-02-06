@@ -41,12 +41,25 @@ export default function NotificationCenter() {
   }, [notifications]);
 
   const fetchNotifications = useCallback(async () => {
+    // Check if user is authenticated
+    const token = typeof window !== 'undefined' ? localStorage.getItem('arcane_auth_token') : null;
+    if (!token) {
+      setNotifications(generateMockNotifications());
+      return;
+    }
+
     try {
       const response = await apiClient.getNotifications();
-      // Handle both { notifications: [] } and direct array responses
-      const notifs = response?.notifications || response || [];
+      const responseData = response as { notifications?: Notification[] } | Notification[];
+      const notifs = Array.isArray(responseData)
+        ? responseData
+        : responseData?.notifications || [];
       setNotifications(Array.isArray(notifs) ? notifs : generateMockNotifications());
-    } catch {
+    } catch (error: any) {
+      // Only log non-auth errors, fallback to mock data
+      if (!error?.message?.includes('Unauthorized') && !error?.message?.includes('401')) {
+        console.error('Failed to fetch notifications:', error);
+      }
       // Fallback to mock data if API fails
       setNotifications(generateMockNotifications());
     }

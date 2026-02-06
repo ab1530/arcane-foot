@@ -69,29 +69,12 @@ npm run android
 mobile/
 ├── App.tsx                      # Root component
 ├── src/
-│   ├── constants/
-│   │   └── config.ts           # Colors, spacing, API config
-│   ├── navigation/
-│   │   ├── RootNavigator.tsx   # Auth flow routing
-│   │   └── MainTabNavigator.tsx # Bottom tabs
-│   ├── screens/
-│   │   ├── auth/
-│   │   │   ├── LoginScreen.tsx
-│   │   │   └── SignupScreen.tsx
-│   │   ├── home/
-│   │   │   └── HomeScreen.tsx
-│   │   ├── matches/
-│   │   │   └── MatchesScreen.tsx
-│   │   ├── players/
-│   │   │   └── PlayersScreen.tsx
-│   │   └── profile/
-│   │       └── ProfileScreen.tsx
-│   ├── services/
-│   │   └── api.ts              # API client with interceptors
-│   ├── store/
-│   │   └── authStore.ts        # Zustand auth store
-│   └── types/
-│       └── index.ts            # TypeScript interfaces
+│   ├── design/                 # Arcane tokens & components
+│   ├── contexts/              # Auth & Theme providers
+│   ├── navigation/            # Root + tab navigators
+│   ├── screens/               # Feature modules (AI, coaching, etc.)
+│   ├── services/              # API client with interceptors
+│   └── types/                 # Shared TypeScript interfaces
 └── package.json
 ```
 
@@ -145,6 +128,17 @@ If running on Android Emulator and connecting to local backend:
 
 ## Key Screens
 
+- **Home**: Dashboard, live KPIs, raccourcis vers les modules clés.
+- **AI Hub**: Accès direct à ArkaneGPT, ArkaneMatch, SmartScout, Market Value.
+- **Marketplace**: Découverte des scouts/freelances, filtres avancés, favoris.
+- **Coaching**: Hub des coachs avec filtres, disponibilités et réservations.
+- **Passport**: Passeport joueur numérique avec QR code partageable.
+- **Profile**: Préférences utilisateur, thèmes, support et logout.
+- **Command Center**: bouton flottant + menu dans l’en-tête pour rejoindre Joueurs, Analytique, Matches, Rapports, Voice-to-Report et Marketplace depuis n’importe quel onglet.
+
+> Les onglets et raccourcis sont contrôlés par `src/constants/features.ts`.  
+> Des presets (`demo`, `staging`, `production`) permettent d’activer/désactiver facilement les modules, et tu peux choisir le preset via `EXPO_PUBLIC_FEATURE_PRESET` avant `npm start` (ex. `EXPO_PUBLIC_FEATURE_PRESET=production npm start`).
+
 ### HomeScreen
 - Displays user greeting with role
 - Shows live matches with badges
@@ -170,20 +164,22 @@ If running on Android Emulator and connecting to local backend:
 
 ## State Management
 
-### Auth Store (Zustand)
+### Auth Context
 
 ```typescript
-import { useAuthStore } from '@/store/authStore';
+import { useAuth } from '@/contexts/AuthContext';
 
-// In your component
-const { user, isAuthenticated, login, logout } = useAuthStore();
+const { user, isAuthenticated, login, logout } = useAuth();
 
-// Login
-await login('email@example.com', 'password');
+// After a successful API call
+await login(apiResponse.user, apiResponse.accessToken);
 
-// Logout
 await logout();
 ```
+
+### Feature Stores (Zustand)
+
+Feature-specific stores live inside each module (e.g. coaching, marketplace) so we can keep data co-located without bloating the global context.
 
 ## API Client
 
@@ -210,16 +206,16 @@ const players = await api.getPlayers();
 The app uses a centralized color and spacing system:
 
 ```typescript
-import { COLORS, SPACING, FONT_SIZES } from '@/constants/config';
+import { colors, spacing, typography } from '@/design/theme';
 
 const styles = StyleSheet.create({
   container: {
-    padding: SPACING.md,
-    backgroundColor: COLORS.gray[50],
+    padding: spacing.md,
+    backgroundColor: colors.background.secondary,
   },
   title: {
-    fontSize: FONT_SIZES.xl,
-    color: COLORS.dark,
+    fontSize: typography.sizes.h4,
+    color: colors.text.primary,
   },
 });
 ```

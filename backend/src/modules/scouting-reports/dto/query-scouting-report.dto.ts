@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsNumber, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ReportStatus, RecommendationType } from '@prisma/client';
 
 export class QueryScoutingReportDto {
@@ -27,4 +28,19 @@ export class QueryScoutingReportDto {
   @IsEnum(RecommendationType)
   @IsOptional()
   recommendation?: RecommendationType;
+
+  @ApiPropertyOptional({ description: 'Numéro de page', example: 1, default: 1 })
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ description: "Nombre d'éléments par page", example: 20, default: 1000 })
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Max(1000)
+  limit?: number;
 }

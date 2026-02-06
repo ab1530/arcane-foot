@@ -7,21 +7,26 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest --ci",
+    "test": "playwright test",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test --reporter=line",
     "test:e2e:ui": "playwright test --ui",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
     "@sentry/nextjs": "^10.22.0",
     "@sentry/react": "^10.22.0",
     "@tanstack/react-query": "^5.90.6",
+    "@types/canvas-confetti": "^1.9.0",
+    "canvas-confetti": "^1.9.4",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "firebase": "^12.5.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.468.0",
     "next": "^15.1.7",
@@ -31,7 +36,8 @@
     "react-dom": "^19.0.0",
     "recharts": "^3.3.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.8",

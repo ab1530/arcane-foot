@@ -374,8 +374,12 @@ describe('SearchService', () => {
           OR: [
             { competitionOld: { contains: 'ligue', mode: 'insensitive' } },
             { venueOld: { contains: 'ligue', mode: 'insensitive' } },
-            { clubs_matches_homeClubIdToclubs: { name: { contains: 'ligue', mode: 'insensitive' } } },
-            { clubs_matches_awayClubIdToclubs: { name: { contains: 'ligue', mode: 'insensitive' } } },
+            {
+              clubs_matches_homeClubIdToclubs: { name: { contains: 'ligue', mode: 'insensitive' } },
+            },
+            {
+              clubs_matches_awayClubIdToclubs: { name: { contains: 'ligue', mode: 'insensitive' } },
+            },
           ],
         },
         take: 10,
@@ -520,9 +524,7 @@ describe('SearchService', () => {
       { id: 'club-2', name: 'OM' },
     ];
 
-    const mockMatches = [
-      { id: 'match-1', homeClub: { name: 'PSG' } },
-    ];
+    const mockMatches = [{ id: 'match-1', homeClub: { name: 'PSG' } }];
 
     beforeEach(() => {
       mockPrismaService.players.findMany.mockResolvedValue(mockPlayers);

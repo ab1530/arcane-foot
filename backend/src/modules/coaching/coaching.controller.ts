@@ -12,13 +12,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CoachingService } from './coaching.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateCoachDto } from './dto/create-coach.dto';
@@ -74,7 +68,7 @@ export class CoachingController {
   @Get('coaches/:id')
   @ApiOperation({
     summary: 'Récupérer un coach par ID',
-    description: 'Récupère les détails complets d\'un coach',
+    description: "Récupère les détails complets d'un coach",
   })
   @ApiResponse({ status: 200, description: 'Coach récupéré avec succès' })
   @ApiResponse({ status: 404, description: 'Coach non trouvé' })
@@ -87,7 +81,7 @@ export class CoachingController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Mettre à jour un coach',
-    description: 'Mettre à jour les informations d\'un coach (admins uniquement)',
+    description: "Mettre à jour les informations d'un coach (admins uniquement)",
   })
   @ApiResponse({ status: 200, description: 'Coach mis à jour avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -115,8 +109,8 @@ export class CoachingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Récupérer les réservations d\'un coach',
-    description: 'Récupère toutes les réservations d\'un coach (coaches/admins uniquement)',
+    summary: "Récupérer les réservations d'un coach",
+    description: "Récupère toutes les réservations d'un coach (coaches/admins uniquement)",
   })
   @ApiResponse({ status: 200, description: 'Réservations récupérées avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -137,7 +131,7 @@ export class CoachingController {
   @ApiResponse({ status: 201, description: 'Réservation créée avec succès' })
   @ApiResponse({ status: 400, description: 'Données invalides ou coach non disponible' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
-  @ApiResponse({ status: 403, description: 'Tier d\'abonnement insuffisant' })
+  @ApiResponse({ status: 403, description: "Tier d'abonnement insuffisant" })
   @ApiResponse({ status: 404, description: 'Coach non trouvé' })
   createBooking(@Req() req, @Body() dto: CreateBookingDto) {
     return this.coachingService.createBooking(req.user.id, dto);
@@ -148,7 +142,7 @@ export class CoachingController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Récupérer mes réservations',
-    description: 'Récupère toutes les réservations de l\'utilisateur connecté',
+    description: "Récupère toutes les réservations de l'utilisateur connecté",
   })
   @ApiResponse({ status: 200, description: 'Réservations récupérées avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -161,7 +155,7 @@ export class CoachingController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Récupérer une réservation par ID',
-    description: 'Récupère les détails d\'une réservation',
+    description: "Récupère les détails d'une réservation",
   })
   @ApiResponse({ status: 200, description: 'Réservation récupérée avec succès' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
@@ -180,7 +174,7 @@ export class CoachingController {
     description: 'Annuler une réservation de coaching',
   })
   @ApiResponse({ status: 200, description: 'Réservation annulée avec succès' })
-  @ApiResponse({ status: 400, description: 'Impossible d\'annuler cette réservation' })
+  @ApiResponse({ status: 400, description: "Impossible d'annuler cette réservation" })
   @ApiResponse({ status: 401, description: 'Non autorisé' })
   @ApiResponse({ status: 403, description: 'Non autorisé à annuler cette réservation' })
   @ApiResponse({ status: 404, description: 'Réservation non trouvée' })
@@ -209,7 +203,8 @@ export class CoachingController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Marquer une séance comme terminée',
-    description: 'Marquer une séance comme terminée avec feedback optionnel (coaches/admins uniquement)',
+    description:
+      'Marquer une séance comme terminée avec feedback optionnel (coaches/admins uniquement)',
   })
   @ApiResponse({ status: 200, description: 'Séance marquée comme terminée' })
   @ApiResponse({ status: 401, description: 'Non autorisé' })

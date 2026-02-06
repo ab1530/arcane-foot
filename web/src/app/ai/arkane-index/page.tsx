@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Brain,
@@ -15,13 +15,17 @@ import {
   Trophy,
   Star,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import MainLayout from "@/components/layout/MainLayout";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
+import { RequireTier } from "@/components/auth/RequireTier";
 import { apiClient } from "@/lib/api-client";
 import { logError } from "@/lib/logger";
+import { useLanguage } from "@/contexts/language-context";
 
 interface IndexCategory {
   name: string;
@@ -44,65 +48,87 @@ interface PlayerIndex {
   dataSource?: string;
 }
 
+const AI_CATEGORY_ICON_MAP = {
+  Technique: Zap,
+  Physique: Activity,
+  Mental: Brain,
+  Tactique: Target,
+  Performance: TrendingUp,
+  Potentiel: Star,
+} as const;
+
+const HOW_IT_WORKS_ICONS = [Activity, Brain, TrendingUp] as const;
+
 export default function ArkaneIndexPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { dictionary, language } = useLanguage();
+  const indexCopy = dictionary.aiTools.index;
+  const locale = language === "fr" ? "fr-FR" : "en-US";
+  const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
+  const [playerLoading, setPlayerLoading] = useState(true);
+  const categoryTestIds: Record<string, string> = {
+    [indexCopy.categories.physical]: "arkane-index-score-physical",
+    [indexCopy.categories.technique]: "arkane-index-score-technical",
+    [indexCopy.categories.mental]: "arkane-index-score-mental",
+    [indexCopy.categories.tactical]: "arkane-index-score-tactical",
+  };
 
-  // Mock data - en production, cela viendrait de l'API
   const mockPlayerIndex: PlayerIndex = {
     playerId: "1",
-    playerName: "Kylian Mbappé",
-    position: "Attaquant",
+    playerName: indexCopy.hero.defaultPlayerName,
+    position: indexCopy.hero.defaultPosition,
     overallScore: 94.5,
     trend: "up",
     lastUpdated: new Date().toISOString(),
     categories: [
       {
-        name: "Technique",
+        name: indexCopy.categories.technique,
         score: 96,
         max: 100,
-        icon: Zap,
+        icon: AI_CATEGORY_ICON_MAP.Technique,
         color: "#E4FF3B",
-        description: "Contrôle de balle, dribble, finition",
+        description: indexCopy.categories.descriptions.technique,
       },
       {
-        name: "Physique",
+        name: indexCopy.categories.physical,
         score: 92,
         max: 100,
-        icon: Activity,
+        icon: AI_CATEGORY_ICON_MAP.Physique,
         color: "#3B82F6",
-        description: "Vitesse, endurance, force",
+        description: indexCopy.categories.descriptions.physical,
       },
       {
-        name: "Mental",
+        name: indexCopy.categories.mental,
         score: 88,
         max: 100,
-        icon: Brain,
+        icon: AI_CATEGORY_ICON_MAP.Mental,
         color: "#8B5CF6",
-        description: "Vision du jeu, intelligence tactique",
+        description: indexCopy.categories.descriptions.mental,
       },
       {
-        name: "Tactique",
+        name: indexCopy.categories.tactical,
         score: 90,
         max: 100,
-        icon: Target,
+        icon: AI_CATEGORY_ICON_MAP.Tactique,
         color: "#10B981",
-        description: "Positionnement, pressing, défense",
+        description: indexCopy.categories.descriptions.tactical,
       },
       {
-        name: "Performance",
+        name: indexCopy.categories.performance,
         score: 95,
         max: 100,
-        icon: TrendingUp,
+        icon: AI_CATEGORY_ICON_MAP.Performance,
         color: "#F59E0B",
-        description: "Statistiques récentes, forme",
+        description: indexCopy.categories.descriptions.performance,
       },
       {
-        name: "Potentiel",
+        name: indexCopy.categories.potential,
         score: 98,
         max: 100,
-        icon: Star,
+        icon: AI_CATEGORY_ICON_MAP.Potentiel,
         color: "#EF4444",
-        description: "Marge de progression estimée",
+        description: indexCopy.categories.descriptions.potential,
       },
     ],
   };
@@ -110,44 +136,99 @@ export default function ArkaneIndexPage() {
   const [playerData, setPlayerData] = useState<PlayerIndex>(mockPlayerIndex);
 
   useEffect(() => {
+    const param = searchParams.get("playerId");
+    if (param) {
+      setActivePlayerId(param);
+      setPlayerLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const resolvePlayer = async () => {
+      try {
+        const players = await apiClient.getPlayers({ limit: 1 }).catch(() => null);
+        if (cancelled) return;
+
+        const first = players?.data?.[0];
+        const resolvedId =
+          first?.id ||
+          first?.playerId ||
+          first?.player?.id ||
+          first?.userId ||
+          "demo-player";
+
+        setActivePlayerId(resolvedId);
+      } catch {
+        if (!cancelled) {
+          setActivePlayerId("demo-player");
+        }
+      } finally {
+        if (!cancelled) {
+          setPlayerLoading(false);
+        }
+      }
+    };
+
+    resolvePlayer();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!activePlayerId) return;
+    let cancelled = false;
+
     const loadIndex = async () => {
       try {
-        const result = await apiClient.getAiPlayerIndex("demo-player");
+        setPlayerLoading(true);
+        const result: any = await apiClient.getAiPlayerIndex(activePlayerId);
 
-        // Map API breakdown to UI categories with proper merging
-        const updatedCategories = playerData.categories.map((category) => {
-          const apiCategory = result.breakdown?.find(
-            (item: any) => item.name.toLowerCase() === category.name.toLowerCase()
-          );
+        if (cancelled) return;
 
-          return apiCategory
-            ? {
-                ...category,
-                score: Math.round(apiCategory.score),
-                weight: apiCategory.weight
-              }
-            : category;
-        });
+        setPlayerData((prev) => {
+          const updatedCategories = prev.categories.map((category) => {
+            const apiCategory = result.breakdown?.find(
+              (item: any) => item.name?.toLowerCase() === category.name.toLowerCase()
+            );
 
-        setPlayerData({
-          ...playerData,
-          playerId: result.playerId ?? playerData.playerId,
-          overallScore: Math.round(result.overallScore ?? playerData.overallScore),
-          categories: updatedCategories,
-          lastUpdated: result.updatedAt ?? new Date().toISOString(),
-          dataSource: result.source ?? "ai-fallback",
+            return apiCategory
+              ? {
+                  ...category,
+                  score: Math.round(apiCategory.score),
+                  weight: apiCategory.weight,
+                }
+              : category;
+          });
+
+          return {
+            ...prev,
+            playerId: result.playerId ?? prev.playerId,
+            playerName: result.playerName ?? prev.playerName,
+            position: result.position ?? prev.position,
+            overallScore: Math.round(result.overallScore ?? prev.overallScore),
+            categories: updatedCategories,
+            lastUpdated: result.updatedAt ?? new Date().toISOString(),
+            dataSource: result.source ?? "ai-service",
+          };
         });
       } catch (error) {
-        // Keep mock data on error, but log it properly
         logError("Failed to load AI player index", error as Error, {
-          playerId: "demo-player",
-          fallbackToMock: true
+          playerId: activePlayerId,
+          fallbackToMock: true,
         });
+      } finally {
+        if (!cancelled) {
+          setPlayerLoading(false);
+        }
       }
     };
 
     loadIndex();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [activePlayerId]);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-400";
@@ -165,7 +246,9 @@ export default function ArkaneIndexPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen overflow-hidden relative">
+      <ProtectedPage>
+        <RequireTier minTier="BASIC">
+          <div className="min-h-screen overflow-hidden relative">
         <AnimatedBackground />
 
       <div className="relative z-10 container mx-auto px-4 py-12">
@@ -180,29 +263,30 @@ export default function ArkaneIndexPage() {
               <Brain className="h-8 w-8 text-arcane-dark" />
             </div>
             <div>
-              <h1 className="text-5xl font-black text-white uppercase tracking-tight">
-                ArkaneIndex
+              <h1
+                className="text-5xl font-black text-white uppercase tracking-tight"
+                data-test="arkane-index-hero-title"
+              >
+                {indexCopy.hero.title}
               </h1>
-              <p className="text-arcane-grey text-lg">
-                Système de notation IA ultra-précis
+              <p className="text-arcane-grey text-lg" data-test="arkane-index-hero-subtitle">
+                {indexCopy.hero.subtitle}
               </p>
             </div>
           </div>
 
           <GlassCard className="p-6 bg-gradient-to-r from-arcane-accent/10 to-transparent border-arcane-accent/30">
-            <div className="flex items-start gap-3">
-              <Sparkles className="h-5 w-5 text-arcane-accent flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-white font-bold mb-1">
-                  L'algorithme le plus avancé du football
-                </h3>
-                <p className="text-arcane-grey text-sm">
-                  ArkaneIndex analyse plus de 200 paramètres en temps réel pour évaluer
-                  chaque joueur avec une précision scientifique. Notre IA prend en compte les
-                  performances, le potentiel, les statistiques avancées et bien plus encore.
-                </p>
+              <div className="flex items-start gap-3" data-test="arkane-index-hero-badge">
+                <Sparkles className="h-5 w-5 text-arcane-accent flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-white font-bold mb-1" data-test="arkane-index-hero-badge-title">
+                    {indexCopy.hero.badgeTitle}
+                  </h3>
+                  <p className="text-arcane-grey text-sm" data-test="arkane-index-hero-badge-description">
+                    {indexCopy.hero.badgeDescription}
+                  </p>
+                </div>
               </div>
-            </div>
           </GlassCard>
         </motion.div>
 
@@ -219,34 +303,45 @@ export default function ArkaneIndexPage() {
                 <div className="inline-block p-4 rounded-full bg-arcane-accent/20 mb-4">
                   <Trophy className="h-12 w-12 text-arcane-accent" />
                 </div>
-                <h3 className="text-lg text-arcane-grey mb-2">Score Global</h3>
+                <h3
+                  className="text-lg text-arcane-grey mb-2"
+                  data-test="arkane-index-score-title"
+                >
+                  {indexCopy.scoreCard.globalScore}
+                </h3>
                 <div className="flex items-center justify-center gap-2">
-                  <span
-                    className={`text-6xl font-black ${getScoreColor(
-                      playerData.overallScore
-                    )}`}
-                  >
-                    {playerData.overallScore}
-                  </span>
-                  <span className="text-3xl text-arcane-grey">/100</span>
+                  {playerLoading ? (
+                    <Loader2 className="h-10 w-10 text-arcane-accent animate-spin" />
+                  ) : (
+                    <>
+                      <span
+                        className={`text-6xl font-black ${getScoreColor(
+                          playerData.overallScore
+                        )}`}
+                      >
+                        {playerData.overallScore}
+                      </span>
+                      <span className="text-3xl text-arcane-grey">/100</span>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center justify-center gap-2 mt-3">
                   {playerData.trend === "up" && (
                     <>
                       <TrendingUp className="h-5 w-5 text-green-400" />
-                      <span className="text-green-400 font-bold">En hausse</span>
+                      <span className="text-green-400 font-bold">{indexCopy.scoreCard.trend.up}</span>
                     </>
                   )}
                   {playerData.trend === "down" && (
                     <>
                       <TrendingUp className="h-5 w-5 text-red-400 rotate-180" />
-                      <span className="text-red-400 font-bold">En baisse</span>
+                      <span className="text-red-400 font-bold">{indexCopy.scoreCard.trend.down}</span>
                     </>
                   )}
                   {playerData.trend === "stable" && (
                     <>
                       <Activity className="h-5 w-5 text-blue-400" />
-                      <span className="text-blue-400 font-bold">Stable</span>
+                      <span className="text-blue-400 font-bold">{indexCopy.scoreCard.trend.stable}</span>
                     </>
                   )}
                 </div>
@@ -261,8 +356,8 @@ export default function ArkaneIndexPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-arcane-grey">
-                    Dernière mise à jour :{" "}
-                    {new Date(playerData.lastUpdated).toLocaleString("fr-FR")}
+                    {indexCopy.scoreCard.lastUpdated}{" "}
+                    {new Date(playerData.lastUpdated).toLocaleString(locale)}
                   </p>
                   {playerData.dataSource && (
                     <div className="flex items-center gap-2">
@@ -272,16 +367,21 @@ export default function ArkaneIndexPage() {
                           : "bg-yellow-400"
                       }`} />
                       <p className="text-xs text-arcane-grey">
-                        Source : {playerData.dataSource === "ai-service" ? "IA en temps réel" : "Données de référence"}
+                        {playerData.dataSource === "ai-service"
+                          ? indexCopy.scoreCard.source.realtime
+                          : indexCopy.scoreCard.source.fallback}
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              <Button className="w-full mt-6 bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80">
+              <Button
+                className="w-full mt-6 bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80"
+                data-test="arkane-index-cta-secondary"
+              >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Voir l'historique complet
+                {indexCopy.scoreCard.historyCta}
               </Button>
             </GlassCard>
           </motion.div>
@@ -324,7 +424,12 @@ export default function ArkaneIndexPage() {
                             />
                           </div>
                           <div>
-                            <h3 className="text-white font-bold">{category.name}</h3>
+                            <h3
+                              className="text-white font-bold"
+                              data-test={categoryTestIds[category.name]}
+                            >
+                              {category.name}
+                            </h3>
                             <p className="text-xs text-arcane-grey">
                               {category.description}
                             </p>
@@ -362,43 +467,26 @@ export default function ArkaneIndexPage() {
           transition={{ delay: 0.4 }}
           className="mt-12"
         >
-          <h2 className="text-3xl font-black text-white mb-6 uppercase tracking-tight">
-            Comment ça fonctionne ?
+          <h2
+            className="text-3xl font-black text-white mb-6 uppercase tracking-tight"
+            data-test="arkane-index-features-title"
+          >
+            {indexCopy.howItWorks.title}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <GlassCard className="p-6">
-              <div className="h-12 w-12 rounded-lg bg-arcane-accent/20 flex items-center justify-center mb-4">
-                <Activity className="h-6 w-6 text-arcane-accent" />
-              </div>
-              <h3 className="text-white font-bold mb-2">Collecte de données</h3>
-              <p className="text-arcane-grey text-sm">
-                Agrégation automatique de statistiques depuis plus de 50 compétitions
-                mondiales en temps réel.
-              </p>
-            </GlassCard>
-
-            <GlassCard className="p-6">
-              <div className="h-12 w-12 rounded-lg bg-arcane-accent/20 flex items-center justify-center mb-4">
-                <Brain className="h-6 w-6 text-arcane-accent" />
-              </div>
-              <h3 className="text-white font-bold mb-2">Analyse IA</h3>
-              <p className="text-arcane-grey text-sm">
-                Notre algorithme propriétaire analyse 200+ paramètres avec machine learning
-                pour une notation objective.
-              </p>
-            </GlassCard>
-
-            <GlassCard className="p-6">
-              <div className="h-12 w-12 rounded-lg bg-arcane-accent/20 flex items-center justify-center mb-4">
-                <TrendingUp className="h-6 w-6 text-arcane-accent" />
-              </div>
-              <h3 className="text-white font-bold mb-2">Prédiction</h3>
-              <p className="text-arcane-grey text-sm">
-                Estimation du potentiel futur basée sur l'évolution historique et les
-                tendances du marché.
-              </p>
-            </GlassCard>
+            {indexCopy.howItWorks.steps.map((step, idx) => {
+              const Icon = HOW_IT_WORKS_ICONS[idx] ?? Sparkles;
+              return (
+                <GlassCard key={idx} className="p-6">
+                  <div className="h-12 w-12 rounded-lg bg-arcane-accent/20 flex items-center justify-center mb-4">
+                    <Icon className="h-6 w-6 text-arcane-accent" />
+                  </div>
+                  <h3 className="text-white font-bold mb-2">{step.title}</h3>
+                  <p className="text-arcane-grey text-sm">{step.description}</p>
+                </GlassCard>
+              );
+            })}
           </div>
         </motion.div>
 
@@ -414,20 +502,20 @@ export default function ArkaneIndexPage() {
               <div className="flex items-start gap-4">
                 <AlertCircle className="h-6 w-6 text-arcane-accent flex-shrink-0 mt-1" />
                 <div>
-                  <h3 className="text-white font-bold text-xl mb-2">
-                    Accédez à l'index complet
+                  <h3 className="text-white font-bold text-xl mb-2" data-test="arkane-index-cta-title">
+                    {indexCopy.cta.title}
                   </h3>
-                  <p className="text-arcane-grey">
-                    Débloquez l'accès à l'ArkaneIndex pour tous les joueurs de votre base de
-                    données avec un abonnement GOLD ou supérieur.
+                  <p className="text-arcane-grey" data-test="arkane-index-cta-description">
+                    {indexCopy.cta.description}
                   </p>
                 </div>
               </div>
               <Button
                 onClick={() => router.push("/pricing")}
                 className="bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80 whitespace-nowrap"
+                data-test="arkane-index-cta-primary"
               >
-                Voir les offres
+                {indexCopy.cta.button}
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
@@ -435,6 +523,8 @@ export default function ArkaneIndexPage() {
         </motion.div>
         </div>
       </div>
+        </RequireTier>
+      </ProtectedPage>
     </MainLayout>
   );
 }

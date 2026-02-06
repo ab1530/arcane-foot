@@ -4,25 +4,23 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  roles?: UserRole[];
+  playerId?: string;
   phone?: string;
   avatar?: string;
   createdAt: string;
 }
 
-export enum UserRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  ADMIN = 'ADMIN',
-  AGENT = 'AGENT',
-  SCOUT = 'SCOUT',
-  ANALYST = 'ANALYST',
-  PLAYER = 'PLAYER',
-  CLUB_CONTACT = 'CLUB_CONTACT',
-  PUBLIC = 'PUBLIC',
-}
+import type { UserRole } from '@shared/config/roles.config';
+export type { UserRole } from '@shared/config/roles.config';
+export { USER_ROLES } from '@shared/config/roles.config';
 
 export interface AuthResponse {
   user: User;
   accessToken: string;
+  refreshToken?: string;
+  accessTokenExpiresIn?: number;
+  refreshTokenExpiresIn?: number;
   tokenType: string;
 }
 
@@ -39,18 +37,25 @@ export interface Club {
 
 export interface Player {
   id: string;
-  userId: string;
-  user: {
+  userId?: string | null;
+  user?: {
+    id?: string | null;
+    email?: string | null;
     firstName: string;
     lastName: string;
-    avatar?: string;
+    avatar?: string | null;
   };
+  firstName?: string | null;
+  lastName?: string | null;
+  birthYear?: number | null;
+  observedClubName?: string | null;
+  importSource?: string | null;
   position: string;
   height?: number;
   weight?: number;
   preferredFoot?: string;
   nationality: string;
-  dateOfBirth: string;
+  dateOfBirth?: string | null;
   clubId?: string;
   club?: Club;
   jerseyNumber?: number;
@@ -119,3 +124,15 @@ export * from './voice-to-report';
 
 // PlayStyle DNA types
 export * from './playstyle-dna';
+
+// Passport types
+export * from './passport';
+
+// Notification types
+export * from './notifications';
+
+// Gamification types
+export * from './gamification';
+
+// Hardware / GPS types
+export * from './hardware';

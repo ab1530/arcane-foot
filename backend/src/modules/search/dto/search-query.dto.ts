@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum SearchEntity {
@@ -28,7 +37,11 @@ export class SearchQueryDto {
   @IsOptional()
   entities?: SearchEntity[];
 
-  @ApiPropertyOptional({ description: 'Nombre maximum de résultats par entité', example: 10, default: 10 })
+  @ApiPropertyOptional({
+    description: 'Nombre maximum de résultats par entité',
+    example: 10,
+    default: 10,
+  })
   @Type(() => Number)
   @IsNumber()
   @IsOptional()

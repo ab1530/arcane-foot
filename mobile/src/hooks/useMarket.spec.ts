@@ -1,15 +1,27 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useMarket, useMarketStats } from './useMarket';
 import api from '../services/api';
-import { logger, logError } from '../utils/logger';
+import { logger } from '../utils/logger';
 
 // Mock dependencies
 jest.mock('../services/api');
-jest.mock('../utils/logger');
+jest.mock('../utils/logger', () => {
+  const actual = jest.requireActual('../utils/logger');
+  return {
+    ...actual,
+    logger: {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      getBuffer: jest.fn(() => []),
+      clear: jest.fn(),
+    },
+  };
+});
 
 const mockApi = api as jest.Mocked<typeof api>;
 const mockLogger = logger as jest.Mocked<typeof logger>;
-const mockLogError = logError as jest.MockedFunction<typeof logError>;
 
 describe('useMarket', () => {
   beforeEach(() => {
@@ -67,7 +79,7 @@ describe('useMarket', () => {
   };
 
   describe('Initial State', () => {
-    it('should initialize with default values', () => {
+    it('should initialize with default values', async () => {
       mockApi.getPlayers.mockResolvedValueOnce(mockResponse);
 
       const { result } = renderHook(() => useMarket());
@@ -79,15 +91,23 @@ describe('useMarket', () => {
       expect(result.current.page).toBe(1);
       expect(result.current.totalPages).toBe(1);
       expect(result.current.totalCount).toBe(0);
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
     });
 
-    it('should initialize with custom filters', () => {
+    it('should initialize with custom filters', async () => {
       mockApi.getPlayers.mockResolvedValueOnce(mockResponse);
 
       const initialFilters = { position: 'FORWARD', minAge: 20 };
       const { result } = renderHook(() => useMarket(initialFilters));
 
       expect(result.current.filters).toEqual(initialFilters);
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
     });
   });
 
@@ -123,7 +143,9 @@ describe('useMarket', () => {
 
       expect(result.current.error).toBe('Failed to load players');
       expect(result.current.players).toEqual([]);
-      expect(mockLogError).toHaveBeenCalledWith('Failed to fetch market players', error);
+      expect(mockLogger.error).toHaveBeenCalledWith('market', 'Failed to fetch market players', {
+        error: error.message,
+      });
     });
 
     it('should handle empty response', async () => {
@@ -167,7 +189,9 @@ describe('useMarket', () => {
       });
 
       // Update filters
-      result.current.updateFilters({ position: 'FORWARD' });
+      await act(async () => {
+        result.current.updateFilters({ position: 'FORWARD' });
+      });
 
       await waitFor(() => {
         expect(result.current.filters).toEqual({ position: 'FORWARD' });
@@ -191,7 +215,9 @@ describe('useMarket', () => {
       });
 
       // Reset filters
-      result.current.resetFilters();
+      await act(async () => {
+        result.current.resetFilters();
+      });
 
       await waitFor(() => {
         expect(result.current.filters).toEqual({});
@@ -210,7 +236,9 @@ describe('useMarket', () => {
       });
 
       // Update with empty filters
-      result.current.updateFilters({ position: '', search: 'all' });
+      await act(async () => {
+        result.current.updateFilters({ position: '', search: 'all' });
+      });
 
       await waitFor(() => {
         expect(mockApi.getPlayers).toHaveBeenLastCalledWith({
@@ -240,7 +268,9 @@ describe('useMarket', () => {
       expect(result.current.hasPreviousPage).toBe(false);
 
       // Go to next page
-      result.current.nextPage();
+      await act(async () => {
+        result.current.nextPage();
+      });
 
       await waitFor(() => {
         expect(result.current.page).toBe(2);
@@ -266,14 +296,18 @@ describe('useMarket', () => {
       });
 
       // Manually set page to 2
-      result.current.nextPage();
+      await act(async () => {
+        result.current.nextPage();
+      });
 
       await waitFor(() => {
         expect(result.current.page).toBe(2);
       });
 
       // Go to previous page
-      result.current.previousPage();
+      await act(async () => {
+        result.current.previousPage();
+      });
 
       await waitFor(() => {
         expect(result.current.page).toBe(1);
@@ -292,7 +326,9 @@ describe('useMarket', () => {
       const initialCallCount = mockApi.getPlayers.mock.calls.length;
 
       // Try to go to next page (already on last page)
-      result.current.nextPage();
+      await act(async () => {
+        result.current.nextPage();
+      });
 
       await waitFor(() => {
         expect(result.current.page).toBe(1);
@@ -314,7 +350,9 @@ describe('useMarket', () => {
       const initialCallCount = mockApi.getPlayers.mock.calls.length;
 
       // Try to go to previous page (already on first page)
-      result.current.previousPage();
+      await act(async () => {
+        result.current.previousPage();
+      });
 
       await waitFor(() => {
         expect(result.current.page).toBe(1);
@@ -338,7 +376,9 @@ describe('useMarket', () => {
       const initialCallCount = mockApi.getPlayers.mock.calls.length;
 
       // Refresh
-      result.current.refresh();
+      await act(async () => {
+        result.current.refresh();
+      });
 
       await waitFor(() => {
         expect(mockApi.getPlayers.mock.calls.length).toBeGreaterThan(initialCallCount);
@@ -388,7 +428,7 @@ describe('useMarketStats', () => {
   };
 
   describe('Initial State', () => {
-    it('should initialize with default values', () => {
+    it('should initialize with default values', async () => {
       mockApi.getPlayers.mockResolvedValueOnce(mockResponse);
 
       const { result } = renderHook(() => useMarketStats());
@@ -396,6 +436,10 @@ describe('useMarketStats', () => {
       expect(result.current.stats).toBeNull();
       expect(result.current.loading).toBe(true);
       expect(result.current.error).toBeNull();
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
     });
   });
 
@@ -432,7 +476,9 @@ describe('useMarketStats', () => {
       });
 
       expect(result.current.error).toBe('Failed to load market statistics');
-      expect(mockLogError).toHaveBeenCalledWith('Failed to fetch market stats', error);
+      expect(mockLogger.error).toHaveBeenCalledWith('market', 'Failed to fetch market stats', {
+        error: error.message,
+      });
     });
 
     it('should handle empty response', async () => {
@@ -493,7 +539,9 @@ describe('useMarketStats', () => {
       const initialCallCount = mockApi.getPlayers.mock.calls.length;
 
       // Refresh
-      result.current.refresh();
+      await act(async () => {
+        result.current.refresh();
+      });
 
       await waitFor(() => {
         expect(mockApi.getPlayers.mock.calls.length).toBeGreaterThan(initialCallCount);

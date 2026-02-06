@@ -13,6 +13,7 @@ import { ReportSection } from './ReportSection';
 import { Icon } from '../ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import type { GeneratedReport } from '../../types/auto-scout';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 interface ReportPreviewProps {
   report: GeneratedReport;
@@ -29,17 +30,20 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
   onDiscard,
   isEditMode = true,
 }) => {
+  const { dictionary, language } = useLocalization();
+  const previewCopy = dictionary.autoScout.wizard.preview;
+  const locale = language === 'en' ? 'en-US' : 'fr-FR';
   const [editedSummary, setEditedSummary] = useState(report.summary);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
 
   const handleSave = () => {
     if (report.qualityScore.grade === 'C' || report.qualityScore.grade === 'D') {
       Alert.alert(
-        'Low Quality Report',
-        'This report has a low quality score. Are you sure you want to save it?',
+        previewCopy.alerts.lowQuality.title,
+        previewCopy.alerts.lowQuality.message,
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Save Anyway', onPress: onSave },
+          { text: previewCopy.alerts.lowQuality.cancel, style: 'cancel' },
+          { text: previewCopy.alerts.lowQuality.confirm, onPress: onSave },
         ]
       );
     } else {
@@ -49,22 +53,22 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
 
   const handleDiscard = () => {
     Alert.alert(
-      'Discard Report?',
-      'This action cannot be undone. Are you sure?',
+      previewCopy.alerts.discard.title,
+      previewCopy.alerts.discard.message,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: onDiscard },
+        { text: previewCopy.alerts.discard.cancel, style: 'cancel' },
+        { text: previewCopy.alerts.discard.confirm, style: 'destructive', onPress: onDiscard },
       ]
     );
   };
 
   const handleRegenerate = () => {
     Alert.alert(
-      'Regenerate Report?',
-      'This will create a new report with different AI insights. The current report will be lost.',
+      previewCopy.alerts.regenerate.title,
+      previewCopy.alerts.regenerate.message,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Regenerate', onPress: onRegenerate },
+        { text: previewCopy.alerts.regenerate.cancel, style: 'cancel' },
+        { text: previewCopy.alerts.regenerate.confirm, onPress: onRegenerate },
       ]
     );
   };
@@ -94,14 +98,14 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
         {/* Summary Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Summary</Text>
+            <Text style={styles.sectionTitle}>{previewCopy.summary}</Text>
             {isEditMode && (
               <TouchableOpacity
                 onPress={() => setIsEditingSummary(!isEditingSummary)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Icon
-                  name={isEditingSummary ? 'checkmark' : 'pencil'}
+                  name={isEditingSummary ? 'checkmark' : 'edit'}
                   size={20}
                   color={colors.brand.primary}
                 />
@@ -125,26 +129,26 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
 
         {/* Category Sections */}
         <ReportSection
-          title="Technical Skills"
+          title={previewCopy.sections.technical}
           section={report.technicalSkills}
           icon="football"
           defaultExpanded
         />
 
         <ReportSection
-          title="Tactical Awareness"
+          title={previewCopy.sections.tactical}
           section={report.tacticalAwareness}
           icon="compass"
         />
 
         <ReportSection
-          title="Physical Attributes"
+          title={previewCopy.sections.physical}
           section={report.physicalAttributes}
           icon="fitness"
         />
 
         <ReportSection
-          title="Mental Attributes"
+          title={previewCopy.sections.mental}
           section={report.mentalAttributes}
           icon="brain"
         />
@@ -152,11 +156,11 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
         {/* Overall Rating & Potential */}
         <View style={styles.ratingsSection}>
           <View style={styles.ratingCard}>
-            <Text style={styles.ratingLabel}>Overall Rating</Text>
+            <Text style={styles.ratingLabel}>{previewCopy.ratings.overall}</Text>
             <Text style={styles.ratingValue}>{report.overallRating}/10</Text>
           </View>
           <View style={styles.ratingCard}>
-            <Text style={styles.ratingLabel}>Potential</Text>
+            <Text style={styles.ratingLabel}>{previewCopy.ratings.potential}</Text>
             <Text style={styles.potentialValue}>{report.potential}</Text>
           </View>
         </View>
@@ -164,7 +168,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
         {/* Recommendations */}
         {report.recommendations.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recommendations</Text>
+            <Text style={styles.sectionTitle}>{previewCopy.recommendations}</Text>
             <View style={styles.recommendationsList}>
               {report.recommendations.map((rec, index) => (
                 <View key={index} style={styles.recommendationItem}>
@@ -181,7 +185,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
         {/* Comparable Players */}
         {report.comparablePlayers.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Comparable Players</Text>
+            <Text style={styles.sectionTitle}>{previewCopy.comparable}</Text>
             <View style={styles.comparableList}>
               {report.comparablePlayers.map((player, index) => (
                 <View key={index} style={styles.comparableItem}>
@@ -198,12 +202,17 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
           <View style={styles.metadataItem}>
             <Icon name="calendar" size={16} color={colors.text.tertiary} />
             <Text style={styles.metadataText}>
-              Generated: {new Date(report.generatedAt).toLocaleDateString()}
+              {previewCopy.metadata.generated.replace(
+                '{{date}}',
+                new Date(report.generatedAt).toLocaleDateString(locale)
+              )}
             </Text>
           </View>
           <View style={styles.metadataItem}>
             <Icon name="ai" size={16} color={colors.text.tertiary} />
-            <Text style={styles.metadataText}>Model: {report.model}</Text>
+            <Text style={styles.metadataText}>
+              {previewCopy.metadata.model.replace('{{model}}', report.model)}
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -215,8 +224,8 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             style={[styles.actionButton, styles.discardButton]}
             onPress={handleDiscard}
           >
-            <Icon name="trash" size={20} color={colors.status.error} />
-            <Text style={styles.discardButtonText}>Discard</Text>
+            <Icon name="delete" size={20} color={colors.status.error} />
+            <Text style={styles.discardButtonText}>{previewCopy.actions.discard}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -224,7 +233,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             onPress={handleRegenerate}
           >
             <Icon name="refresh" size={20} color={colors.brand.primary} />
-            <Text style={styles.regenerateButtonText}>Regenerate</Text>
+            <Text style={styles.regenerateButtonText}>{previewCopy.actions.regenerate}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -232,7 +241,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             onPress={handleSave}
           >
             <Icon name="checkmark" size={20} color={colors.background.primary} />
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={styles.saveButtonText}>{previewCopy.actions.save}</Text>
           </TouchableOpacity>
         </View>
       )}

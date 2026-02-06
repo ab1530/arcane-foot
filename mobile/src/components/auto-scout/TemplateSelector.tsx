@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { TemplateCard } from './TemplateCard';
 import { colors, spacing, typography } from '../../design/theme';
 import type { ReportTemplate, ReportType } from '../../types/auto-scout';
 import autoScoutApi from '../../services/api/auto-scout';
+import { useLocalization } from '../../contexts/LocalizationContext';
+import api from '../../services/api';
 
 interface TemplateSelectorProps {
   selectedTemplate: string | null;
@@ -63,14 +65,18 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
   selectedTemplate,
   onSelectTemplate,
 }) => {
+  const { dictionary } = useLocalization();
+  const copy = dictionary.autoScout.wizard.template;
+  const upgradePrompt =
+    copy?.upgradePrompt ||
+    dictionary.autoScout?.access?.upgradePrompt ||
+    'AutoScout templates require a GOLD subscription tier. Upgrade your plan to unlock this feature.';
   const [templates, setTemplates] = useState<ReportTemplate[]>(MOCK_TEMPLATES);
   const [loading, setLoading] = useState(false);
+  const [accessState, setAccessState] = useState<'checking' | 'granted' | 'locked'>('checking');
+  const [accessMessage, setAccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       setLoading(true);
       const response = await autoScoutApi.getTemplates();
@@ -78,28 +84,65 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         setTemplates(response.data);
       }
     } catch (error) {
-      console.error('Failed to load templates, using mock data:', error);
-      // Keep mock templates
+      console.warn('Failed to load templates, using mock data:', error);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const subscription = await api.getMySubscription();
+        const tier = (subscription?.tier || 'FREE').toUpperCase();
+        const hasGoldAccess = tier === 'GOLD' || tier === 'ENTERPRISE';
+        if (hasGoldAccess) {
+          setAccessState('granted');
+          await loadTemplates();
+        } else {
+          setAccessState('locked');
+          setAccessMessage(upgradePrompt);
+        }
+      } catch (error) {
+        console.warn('Unable to verify subscription tier for AutoScout templates', error);
+        setAccessState('locked');
+        setAccessMessage(upgradePrompt);
+      }
+    };
+
+    checkAccess();
+  }, [loadTemplates, upgradePrompt]);
+
+  const handleLockedSelect = () => {
+    Alert.alert(copy?.upgradeTitle || 'Upgrade Required', upgradePrompt);
   };
 
-  if (loading) {
+  if (accessState === 'checking' || loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.brand.primary} />
-        <Text style={styles.loadingText}>Loading templates...</Text>
+        <Text style={styles.loadingText}>{copy.loading}</Text>
       </View>
     );
   }
 
+  const disableTemplates = accessState !== 'granted';
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Select Report Template</Text>
+      <Text style={styles.title}>{copy.title}</Text>
       <Text style={styles.subtitle}>
-        Choose the type of analysis that best fits your needs
+        {copy.subtitle}
       </Text>
+
+      {accessState === 'locked' && (
+        <View style={styles.lockedBanner}>
+          <Text style={styles.lockedTitle}>
+            {dictionary.autoScout?.access?.title || 'AutoScout AI – Gold Feature'}
+          </Text>
+          <Text style={styles.lockedText}>{accessMessage}</Text>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -111,7 +154,11 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
             key={template.id}
             template={template}
             isSelected={selectedTemplate === template.id}
-            onSelect={() => onSelectTemplate(template.id, template.reportType)}
+            onSelect={
+              disableTemplates
+                ? handleLockedSelect
+                : () => onSelectTemplate(template.id, template.reportType)
+            }
           />
         ))}
       </ScrollView>
@@ -148,6 +195,24 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: typography.sizes.base,
+    color: colors.text.secondary,
+  },
+  lockedBanner: {
+    borderWidth: 1,
+    borderColor: colors.status.warning,
+    backgroundColor: colors.status.warning + '20',
+    borderRadius: spacing.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  lockedTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: '700',
+    color: colors.status.warning,
+    marginBottom: spacing.xs,
+  },
+  lockedText: {
+    fontSize: typography.sizes.sm,
     color: colors.text.secondary,
   },
 });

@@ -15,20 +15,31 @@ let publicPlayerToken = '';
 let testPlayerIds: string[] = [];
 let testResults: { test: string; status: 'PASS' | 'FAIL'; details?: string }[] = [];
 
+function getDemoPassword(): string {
+  const demoPassword = process.env.ARCANE_DEMO_PASSWORD;
+  if (!demoPassword) {
+    throw new Error(
+      'ARCANE_DEMO_PASSWORD is required to run this script (do not commit demo passwords).',
+    );
+  }
+  return demoPassword;
+}
+
 // Utility functions
 const log = {
   success: (msg: string) => console.log(chalk.green('✅ ' + msg)),
   error: (msg: string) => console.log(chalk.red('❌ ' + msg)),
   info: (msg: string) => console.log(chalk.blue('ℹ️  ' + msg)),
   warning: (msg: string) => console.log(chalk.yellow('⚠️  ' + msg)),
-  section: (msg: string) => console.log(chalk.cyan('\n' + '='.repeat(60) + '\n' + msg + '\n' + '='.repeat(60))),
+  section: (msg: string) =>
+    console.log(chalk.cyan('\n' + '='.repeat(60) + '\n' + msg + '\n' + '='.repeat(60))),
 };
 
 async function apiRequest(
   method: string,
   endpoint: string,
   token?: string,
-  body?: any
+  body?: any,
 ): Promise<{ status: number; data: any }> {
   try {
     const headers: any = {
@@ -83,7 +94,7 @@ async function testValidationSystem() {
   await runTest('Admin authentication', async () => {
     const { status, data } = await apiRequest('POST', '/api/auth/login', null, {
       email: 'admin@arcane.com',
-      password: 'Password123!',
+      password: getDemoPassword(),
     });
     if (status === 200 && data.accessToken) {
       adminToken = data.accessToken;
@@ -95,7 +106,7 @@ async function testValidationSystem() {
   await runTest('Scout authentication', async () => {
     const { status, data } = await apiRequest('POST', '/api/auth/login', null, {
       email: 'scout1@arcane.com',
-      password: 'Password123!',
+      password: getDemoPassword(),
     });
     if (status === 200 && data.accessToken) {
       scoutToken = data.accessToken;
@@ -187,23 +198,39 @@ async function testValidationSystem() {
   log.section('3. Player Validation Endpoints');
 
   await runTest('GET pending validation players (Admin)', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/pending-validation', adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/pending-validation',
+      adminToken,
+    );
     return status === 200 && data?.data?.length > 0;
   });
 
   await runTest('GET pending validation players (Scout)', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/pending-validation', scoutToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/pending-validation',
+      scoutToken,
+    );
     return status === 200 && data?.data?.length > 0;
   });
 
   await runTest('GET pending validation players (Unauthorized)', async () => {
-    const { status } = await apiRequest('GET', '/admin/players/pending-validation', publicPlayerToken);
+    const { status } = await apiRequest(
+      'GET',
+      '/admin/players/pending-validation',
+      publicPlayerToken,
+    );
     return status === 403 || status === 401;
   });
 
   await runTest('Validate player (Admin)', async () => {
     if (testPlayerIds.length === 0) return false;
-    const { status, data } = await apiRequest('POST', `/admin/players/${testPlayerIds[0]}/validate`, adminToken);
+    const { status, data } = await apiRequest(
+      'POST',
+      `/admin/players/${testPlayerIds[0]}/validate`,
+      adminToken,
+    );
     return status === 200 && data?.verificationStatus === 'VERIFIED';
   });
 
@@ -220,9 +247,14 @@ async function testValidationSystem() {
 
   await runTest('Reject player with reason (Scout)', async () => {
     if (testPlayerIds.length < 2) return false;
-    const { status, data } = await apiRequest('POST', `/admin/players/${testPlayerIds[1]}/reject`, scoutToken, {
-      rejectionReason: 'Incomplete profile information',
-    });
+    const { status, data } = await apiRequest(
+      'POST',
+      `/admin/players/${testPlayerIds[1]}/reject`,
+      scoutToken,
+      {
+        rejectionReason: 'Incomplete profile information',
+      },
+    );
     return status === 200 && data?.verificationStatus === 'REJECTED';
   });
 
@@ -231,15 +263,22 @@ async function testValidationSystem() {
     const player = await prisma.players.findUnique({
       where: { id: testPlayerIds[1] },
     });
-    return player?.verificationStatus === VerificationStatus.REJECTED &&
-           player?.rejectionReason === 'Incomplete profile information';
+    return (
+      player?.verificationStatus === VerificationStatus.REJECTED &&
+      player?.rejectionReason === 'Incomplete profile information'
+    );
   });
 
   await runTest('Mark player as suspicious', async () => {
     if (testPlayerIds.length < 3) return false;
-    const { status, data } = await apiRequest('POST', `/admin/players/${testPlayerIds[2]}/mark-suspicious`, adminToken, {
-      rejectionReason: 'Suspected fake profile',
-    });
+    const { status, data } = await apiRequest(
+      'POST',
+      `/admin/players/${testPlayerIds[2]}/mark-suspicious`,
+      adminToken,
+      {
+        rejectionReason: 'Suspected fake profile',
+      },
+    );
     return status === 200 && data?.verificationStatus === 'SUSPICIOUS';
   });
 
@@ -248,9 +287,14 @@ async function testValidationSystem() {
 
   await runTest('Convert PUBLIC to AGENCY (Admin only)', async () => {
     if (testPlayerIds.length === 0) return false;
-    const { status, data } = await apiRequest('POST', `/admin/players/${testPlayerIds[0]}/convert-to-agency`, adminToken, {
-      conversionNotes: 'Excellent talent, ready for professional development',
-    });
+    const { status, data } = await apiRequest(
+      'POST',
+      `/admin/players/${testPlayerIds[0]}/convert-to-agency`,
+      adminToken,
+      {
+        conversionNotes: 'Excellent talent, ready for professional development',
+      },
+    );
     return status === 200 && data?.playerType === 'AGENCY';
   });
 
@@ -294,7 +338,11 @@ async function testValidationSystem() {
       });
     });
 
-    const { status } = await apiRequest('POST', `/admin/players/${newPlayer.id}/convert-to-agency`, scoutToken);
+    const { status } = await apiRequest(
+      'POST',
+      `/admin/players/${newPlayer.id}/convert-to-agency`,
+      scoutToken,
+    );
     return status === 403;
   });
 
@@ -302,20 +350,34 @@ async function testValidationSystem() {
   log.section('6. Verification Statistics');
 
   await runTest('Get verification statistics', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/verification-stats', adminToken);
-    return status === 200 &&
-           data?.total !== undefined &&
-           data?.pending !== undefined &&
-           data?.verified !== undefined;
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/verification-stats',
+      adminToken,
+    );
+    return (
+      status === 200 &&
+      data?.total !== undefined &&
+      data?.pending !== undefined &&
+      data?.verified !== undefined
+    );
   });
 
   await runTest('Get players by status (VERIFIED)', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/by-status/VERIFIED', adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/by-status/VERIFIED',
+      adminToken,
+    );
     return status === 200 && Array.isArray(data?.data);
   });
 
   await runTest('Get players by status (REJECTED)', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/by-status/REJECTED', adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/by-status/REJECTED',
+      adminToken,
+    );
     return status === 200 && Array.isArray(data?.data);
   });
 
@@ -345,12 +407,21 @@ async function testValidationSystem() {
       autoVerify: true,
     };
 
-    const { status, data } = await apiRequest('POST', '/admin/players/bulk-import', adminToken, bulkData);
+    const { status, data } = await apiRequest(
+      'POST',
+      '/admin/players/bulk-import',
+      adminToken,
+      bulkData,
+    );
     return status === 200 && data?.imported > 0;
   });
 
   await runTest('Export players to CSV', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/export-csv?status=VERIFIED', adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/export-csv?status=VERIFIED',
+      adminToken,
+    );
     return status === 200 && typeof data === 'string' && data.includes('firstName,lastName');
   });
 
@@ -359,7 +430,11 @@ async function testValidationSystem() {
 
   await runTest('Get player validation history', async () => {
     if (testPlayerIds.length === 0) return false;
-    const { status, data } = await apiRequest('GET', `/admin/players/${testPlayerIds[0]}/validation-history`, adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      `/admin/players/${testPlayerIds[0]}/validation-history`,
+      adminToken,
+    );
     return status === 200 && Array.isArray(data);
   });
 
@@ -367,7 +442,11 @@ async function testValidationSystem() {
   log.section('9. Edge Cases & Error Handling');
 
   await runTest('Validate non-existent player', async () => {
-    const { status } = await apiRequest('POST', '/admin/players/non-existent-id/validate', adminToken);
+    const { status } = await apiRequest(
+      'POST',
+      '/admin/players/non-existent-id/validate',
+      adminToken,
+    );
     return status === 404;
   });
 
@@ -399,7 +478,12 @@ async function testValidationSystem() {
       },
     });
 
-    const { status } = await apiRequest('POST', `/admin/players/${newPlayer.id}/reject`, adminToken, {});
+    const { status } = await apiRequest(
+      'POST',
+      `/admin/players/${newPlayer.id}/reject`,
+      adminToken,
+      {},
+    );
     return status === 400;
   });
 
@@ -410,7 +494,11 @@ async function testValidationSystem() {
     });
     if (!agencyPlayer) return false;
 
-    const { status } = await apiRequest('POST', `/admin/players/${agencyPlayer.id}/convert-to-agency`, adminToken);
+    const { status } = await apiRequest(
+      'POST',
+      `/admin/players/${agencyPlayer.id}/convert-to-agency`,
+      adminToken,
+    );
     return status === 400;
   });
 
@@ -431,20 +519,28 @@ async function testValidationSystem() {
   log.section('10. Performance Tests');
 
   await runTest('Get pending players with pagination', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/pending-validation?page=1&limit=10', adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/pending-validation?page=1&limit=10',
+      adminToken,
+    );
     return status === 200 && data?.meta?.limit === 10;
   });
 
   await runTest('Search pending players', async () => {
-    const { status, data } = await apiRequest('GET', '/admin/players/pending-validation?search=Test', adminToken);
+    const { status, data } = await apiRequest(
+      'GET',
+      '/admin/players/pending-validation?search=Test',
+      adminToken,
+    );
     return status === 200 && Array.isArray(data?.data);
   });
 
   // Test Summary
   log.section('📊 TEST RESULTS SUMMARY');
 
-  const passed = testResults.filter(r => r.status === 'PASS').length;
-  const failed = testResults.filter(r => r.status === 'FAIL').length;
+  const passed = testResults.filter((r) => r.status === 'PASS').length;
+  const failed = testResults.filter((r) => r.status === 'FAIL').length;
   const total = testResults.length;
   const passRate = ((passed / total) * 100).toFixed(1);
 
@@ -456,8 +552,8 @@ async function testValidationSystem() {
   if (failed > 0) {
     console.log(chalk.red('\n❌ Failed Tests:'));
     testResults
-      .filter(r => r.status === 'FAIL')
-      .forEach(r => {
+      .filter((r) => r.status === 'FAIL')
+      .forEach((r) => {
         console.log(`  - ${r.test}${r.details ? `: ${r.details}` : ''}`);
       });
   }

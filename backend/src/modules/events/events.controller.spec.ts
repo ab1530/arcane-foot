@@ -137,10 +137,7 @@ describe('EventsController', () => {
 
       await controller.create(createDto, mockRequest as any);
 
-      expect(service.create).toHaveBeenCalledWith(
-        createDto,
-        mockRequest.user.sub,
-      );
+      expect(service.create).toHaveBeenCalledWith(createDto, mockRequest.user.sub);
     });
 
     it('should create event with minimal data', async () => {
@@ -360,10 +357,7 @@ describe('EventsController', () => {
 
       await controller.findMyEvents(mockRequest as any, {});
 
-      expect(service.findUserEvents).toHaveBeenCalledWith(
-        mockRequest.user.sub,
-        {},
-      );
+      expect(service.findUserEvents).toHaveBeenCalledWith(mockRequest.user.sub, {});
     });
 
     it('should pass query filters', async () => {
@@ -583,10 +577,7 @@ describe('EventsController', () => {
 
   describe('Authentication & Authorization', () => {
     it('should be protected by JwtAuthGuard', () => {
-      const guards = Reflect.getMetadata(
-        '__guards__',
-        EventsController,
-      );
+      const guards = Reflect.getMetadata('__guards__', EventsController);
       expect(guards).toBeDefined();
     });
 
@@ -611,10 +602,7 @@ describe('EventsController', () => {
         customRequest as any,
       );
 
-      expect(service.create).toHaveBeenCalledWith(
-        expect.any(Object),
-        'custom-user-id',
-      );
+      expect(service.create).toHaveBeenCalledWith(expect.any(Object), 'custom-user-id');
     });
 
     it('should extract user from request in findMyEvents', async () => {
@@ -630,10 +618,7 @@ describe('EventsController', () => {
 
       await controller.findMyEvents(customRequest as any, {});
 
-      expect(service.findUserEvents).toHaveBeenCalledWith(
-        'custom-user-id',
-        {},
-      );
+      expect(service.findUserEvents).toHaveBeenCalledWith('custom-user-id', {});
     });
   });
 
@@ -753,18 +738,16 @@ describe('EventsController', () => {
       const error = new Error('Update failed');
       service.update.mockRejectedValue(error);
 
-      await expect(
-        controller.update(mockEventId, { title: 'New Title' }),
-      ).rejects.toThrow('Update failed');
+      await expect(controller.update(mockEventId, { title: 'New Title' })).rejects.toThrow(
+        'Update failed',
+      );
     });
 
     it('should propagate service errors in remove', async () => {
       const error = new Error('Delete failed');
       service.remove.mockRejectedValue(error);
 
-      await expect(controller.remove(mockEventId)).rejects.toThrow(
-        'Delete failed',
-      );
+      await expect(controller.remove(mockEventId)).rejects.toThrow('Delete failed');
     });
   });
 
@@ -775,10 +758,7 @@ describe('EventsController', () => {
     });
 
     it('should have ApiBearerAuth decorator', () => {
-      const bearerAuth = Reflect.getMetadata(
-        'swagger/apiSecurity',
-        EventsController,
-      );
+      const bearerAuth = Reflect.getMetadata('swagger/apiSecurity', EventsController);
       expect(bearerAuth).toBeDefined();
     });
   });

@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray, IsDateString, IsInt, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  IsDateString,
+  IsInt,
+  Min,
+} from 'class-validator';
 import { TaskPriority } from '@prisma/client';
 
 export class CreateCardDto {
@@ -18,12 +27,20 @@ export class CreateCardDto {
   @IsOptional()
   notes?: string;
 
-  @ApiPropertyOptional({ enum: TaskPriority, description: 'Priorité de la carte', default: TaskPriority.MEDIUM })
+  @ApiPropertyOptional({
+    enum: TaskPriority,
+    description: 'Priorité de la carte',
+    default: TaskPriority.MEDIUM,
+  })
   @IsEnum(TaskPriority)
   @IsOptional()
   priority?: TaskPriority;
 
-  @ApiPropertyOptional({ description: 'Tags personnalisés', type: [String], example: ['urgent', 'contacté'] })
+  @ApiPropertyOptional({
+    description: 'Tags personnalisés',
+    type: [String],
+    example: ['urgent', 'contacté'],
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
@@ -34,7 +51,10 @@ export class CreateCardDto {
   @IsOptional()
   dueDate?: string;
 
-  @ApiPropertyOptional({ description: 'Date de rappel (ISO 8601)', example: '2025-02-10T09:00:00Z' })
+  @ApiPropertyOptional({
+    description: 'Date de rappel (ISO 8601)',
+    example: '2025-02-10T09:00:00Z',
+  })
   @IsDateString()
   @IsOptional()
   reminderDate?: string;

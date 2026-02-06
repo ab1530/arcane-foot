@@ -15,7 +15,7 @@ export class CreateClubRequestDto {
   @ApiProperty({
     description: 'Type de demande',
     example: 'TRIAL',
-    examples: ['TRIAL', 'LOAN', 'TRANSFER', 'FRIENDLY', 'SCOUTING']
+    examples: ['TRIAL', 'LOAN', 'TRANSFER', 'FRIENDLY', 'SCOUTING'],
   })
   @IsString()
   @IsNotEmpty()
@@ -26,7 +26,7 @@ export class CreateClubRequestDto {
   @IsOptional()
   message?: string;
 
-  @ApiPropertyOptional({ description: 'Montant de l\'offre (en euros)' })
+  @ApiPropertyOptional({ description: "Montant de l'offre (en euros)" })
   @IsNumber()
   @IsOptional()
   @Min(0)

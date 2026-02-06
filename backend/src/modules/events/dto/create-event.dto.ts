@@ -13,19 +13,19 @@ import {
 import { EventType, EventStatus } from '@prisma/client';
 
 export class CreateEventDto {
-  @ApiProperty({ description: 'Titre de l\'événement' })
+  @ApiProperty({ description: "Titre de l'événement" })
   @IsString()
   @IsNotEmpty()
   title: string;
 
-  @ApiPropertyOptional({ description: 'Description de l\'événement' })
+  @ApiPropertyOptional({ description: "Description de l'événement" })
   @IsString()
   @IsOptional()
   description?: string;
 
   @ApiProperty({
     enum: EventType,
-    description: 'Type d\'événement',
+    description: "Type d'événement",
     default: EventType.OTHER,
   })
   @IsEnum(EventType)
@@ -34,7 +34,7 @@ export class CreateEventDto {
 
   @ApiProperty({
     enum: EventStatus,
-    description: 'Statut de l\'événement',
+    description: "Statut de l'événement",
     default: EventStatus.PLANNED,
   })
   @IsEnum(EventStatus)
@@ -51,7 +51,7 @@ export class CreateEventDto {
   @IsNotEmpty()
   endDate: string;
 
-  @ApiProperty({ description: 'Lieu de l\'événement' })
+  @ApiProperty({ description: "Lieu de l'événement" })
   @IsString()
   @IsNotEmpty()
   location: string;

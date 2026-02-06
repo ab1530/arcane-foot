@@ -9,67 +9,29 @@ import { AnimatedBackground } from "@/components/ui/animated-background";
 import Link from "next/link";
 import { ArrowLeft, Check, Zap, Users, Trophy, Crown, Sparkles, ArrowRight } from "lucide-react";
 import { staggerContainer, staggerItem } from "@/lib/design-system/animations";
-
-const plans = [
-  {
-    name: "Player",
-    icon: Users,
-    price: "€2,500",
-    period: "/month",
-    description: "For individual players looking to advance their career",
-    features: [
-      "Personal agent 24/7",
-      "Contract negotiation",
-      "Career strategy planning",
-      "Performance analytics",
-      "Brand building support",
-      "Social media management",
-      "Legal assistance",
-      "Financial advisory",
-    ],
-    highlighted: false,
-  },
-  {
-    name: "Elite",
-    icon: Crown,
-    price: "€5,000",
-    period: "/month",
-    description: "For top-tier professionals seeking premium representation",
-    features: [
-      "Everything in Player",
-      "Priority support",
-      "Dedicated team of experts",
-      "Global network access",
-      "Transfer strategy",
-      "Media training",
-      "Personal branding campaigns",
-      "Endorsement deals",
-      "Tax optimization",
-      "Family support services",
-    ],
-    highlighted: true,
-  },
-  {
-    name: "Club",
-    icon: Trophy,
-    price: "Custom",
-    period: "",
-    description: "For football clubs and organizations",
-    features: [
-      "Dedicated account manager",
-      "Player scouting network",
-      "Transfer market intelligence",
-      "Contract management",
-      "Data analytics platform",
-      "Youth academy support",
-      "International partnerships",
-      "Custom solutions",
-    ],
-    highlighted: false,
-  },
-];
+import { useLanguage } from "@/contexts/language-context";
+import type { Language } from "@/i18n";
 
 export default function MembershipPage() {
+  const { t, dictionary, language, setLanguage } = useLanguage();
+  const membershipCopy = dictionary.membership;
+
+  const planMeta = [
+    { icon: Users, highlighted: false },
+    { icon: Crown, highlighted: true },
+    { icon: Trophy, highlighted: false },
+  ];
+
+  const plans = planMeta.map((meta, index) => ({
+    ...membershipCopy.plans[index],
+    ...meta,
+  }));
+
+  const handleLanguageChange = (value: Language) => {
+    if (value === language) return;
+    setLanguage(value);
+  };
+
   return (
     <main className="min-h-screen overflow-hidden relative">
       <AnimatedBackground />
@@ -80,7 +42,9 @@ export default function MembershipPage() {
           <div className="flex h-20 items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
               <ArrowLeft className="h-5 w-5 text-arcane-accent group-hover:-translate-x-1 transition-transform" />
-              <span className="text-arcane-grey group-hover:text-white transition-colors">Back to Home</span>
+              <span className="text-arcane-grey group-hover:text-white transition-colors">
+                {membershipCopy.nav.back}
+              </span>
             </Link>
 
             <div className="flex items-center gap-3">
@@ -91,8 +55,24 @@ export default function MembershipPage() {
             </div>
 
             <Link href="/dashboard">
-              <Button>Dashboard</Button>
+              <Button>{membershipCopy.nav.dashboard}</Button>
             </Link>
+
+            <div className="hidden md:flex items-center gap-2">
+              {(["fr", "en"] as Language[]).map((code) => (
+                <button
+                  key={code}
+                  onClick={() => handleLanguageChange(code)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full border transition ${
+                    language === code
+                      ? "border-arcane-accent text-white"
+                      : "border-arcane-darkBorder text-arcane-grey hover:text-white"
+                  }`}
+                >
+                  {t(`common.language.options.${code}`)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </nav>
@@ -107,15 +87,30 @@ export default function MembershipPage() {
           >
             <motion.div className="inline-block mb-6">
               <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                Membership Plans
+                {membershipCopy.hero.eyebrow}
               </span>
             </motion.div>
-            <h1 className="text-6xl md:text-8xl font-black mb-6">
-              CHOOSE YOUR <NeonText>LEVEL</NeonText>
+            <h1 className="text-6xl md:text-8xl font-black mb-6 uppercase">
+              {membershipCopy.hero.title} <NeonText>{membershipCopy.hero.highlight}</NeonText>
             </h1>
             <p className="text-2xl text-arcane-grey max-w-3xl mx-auto">
-              Unlock <span className="text-white font-bold">premium representation</span> and elevate your career
+              {membershipCopy.hero.subtitle}
             </p>
+            <div className="md:hidden flex justify-center gap-2 mt-6">
+              {(["fr", "en"] as Language[]).map((code) => (
+                <button
+                  key={`mobile-${code}`}
+                  onClick={() => handleLanguageChange(code)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full border transition ${
+                    language === code
+                      ? "border-arcane-accent text-white"
+                      : "border-arcane-darkBorder text-arcane-grey hover:text-white"
+                  }`}
+                >
+                  {t(`common.language.options.${code}`)}
+                </button>
+              ))}
+            </div>
           </motion.div>
 
           {/* Pricing Cards */}
@@ -145,7 +140,7 @@ export default function MembershipPage() {
                           transition={{ duration: 2, repeat: Infinity }}
                         >
                           <Sparkles className="h-4 w-4" />
-                          Most Popular
+                          {plan.badge}
                         </motion.div>
                       </div>
                     )}
@@ -199,7 +194,7 @@ export default function MembershipPage() {
                           className={`w-full ${plan.highlighted ? "shadow-[0_0_30px_rgba(228,255,59,0.4)]" : ""}`}
                           variant={plan.highlighted ? "default" : "secondary"}
                         >
-                          {plan.name === "Club" ? "Contact Sales" : "Get Started"}
+                          {plan.button}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </motion.div>
@@ -220,14 +215,14 @@ export default function MembershipPage() {
             <GlassCard variant="elevated" className="max-w-4xl mx-auto p-12">
               <Zap className="h-12 w-12 text-arcane-accent mx-auto mb-6" />
               <h3 className="text-3xl font-black text-white mb-4 uppercase">
-                Need a Custom Solution?
+                {membershipCopy.cta.customTitle}
               </h3>
               <p className="text-xl text-arcane-grey mb-8 max-w-2xl mx-auto">
-                We offer tailored packages for agencies, academies, and special requirements.
+                {membershipCopy.cta.customBody}
               </p>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <Button size="lg" className="shadow-[0_0_30px_rgba(228,255,59,0.4)]">
-                  Schedule Consultation
+                  {membershipCopy.cta.customButton}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </motion.div>

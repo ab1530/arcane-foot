@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ScoutListingStatus, OfferStatus, OfferType } from '@prisma/client';
+import { ScoutListingStatus, OfferStatus } from '@prisma/client';
 import { CreateScoutListingDto } from './dto/create-scout-listing.dto';
 import { UpdateScoutListingDto } from './dto/update-scout-listing.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
@@ -18,10 +24,27 @@ import {
   ScoutStats,
 } from './matching.algorithm';
 import { randomUUID } from 'crypto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(MarketplaceService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
+
+  private toStringArray(value?: unknown): string[] {
+    if (!value) {
+      return [];
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item)).filter((item) => item.length > 0);
+    }
+    const stringValue = String(value);
+    return stringValue ? [stringValue] : [];
+  }
 
   // ==========================================
   // SCOUT LISTINGS
@@ -323,7 +346,8 @@ export class MarketplaceService {
     // Calculate stats and add to listings
     const enriched = filtered.map((listing) => {
       const reviews = listing.marketplace_reviews;
-      const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+      const avgRating =
+        reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
 
       return {
         ...listing,
@@ -387,7 +411,8 @@ export class MarketplaceService {
 
     // Calculate stats
     const reviews = listing.marketplace_reviews;
-    const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+    const avgRating =
+      reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
 
     return {
       ...listing,
@@ -450,7 +475,8 @@ export class MarketplaceService {
       const reviews = listing.marketplace_reviews;
 
       const scoutStats: ScoutStats = {
-        avgRating: reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0,
+        avgRating:
+          reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0,
         totalReviews: reviews.length,
       };
 
@@ -499,6 +525,13 @@ export class MarketplaceService {
     // Verify scout listing exists and is active
     const listing = await this.prisma.scout_listings.findUnique({
       where: { id: dto.scoutListingId },
+      include: {
+        marketplace_reviews: {
+          select: {
+            rating: true,
+          },
+        },
+      },
     });
 
     if (!listing || listing.status !== ScoutListingStatus.ACTIVE) {
@@ -508,8 +541,61 @@ export class MarketplaceService {
     // Calculate matching score if requirements provided
     let matchingScore: number | null = null;
     if (dto.requirements) {
-      // TODO: Calculate based on requirements
-      matchingScore = null;
+      const club = await this.prisma.clubs.findUnique({
+        where: { id: clubId },
+        select: {
+          name: true,
+          country: true,
+          city: true,
+        },
+      });
+
+      const criteria = (dto.requirements.criteria ?? {}) as Record<string, unknown>;
+      const clubNeeds: ClubNeeds = {
+        leagues: this.toStringArray(criteria.leagues ?? criteria.league),
+        positions: this.toStringArray(criteria.positions ?? criteria.position),
+        ageGroup: String(criteria.ageGroup ?? criteria.age ?? 'any'),
+        budget: dto.budget,
+        location: dto.location ?? club?.country ?? club?.city ?? 'Unknown',
+        minRating: typeof criteria.minRating === 'number' ? criteria.minRating : undefined,
+      };
+
+      const expertiseRaw = (listing.expertise ?? {}) as Partial<ScoutExpertise>;
+      const availabilityRaw = (listing.availability ?? {}) as Partial<ScoutAvailability>;
+
+      const expertise: ScoutExpertise = {
+        leagues: this.toStringArray(expertiseRaw.leagues),
+        positions: this.toStringArray(expertiseRaw.positions),
+        ageGroups: this.toStringArray(expertiseRaw.ageGroups),
+      };
+
+      const availability: ScoutAvailability = {
+        countries: this.toStringArray(availabilityRaw.countries),
+        travelRadius:
+          typeof availabilityRaw.travelRadius === 'number'
+            ? availabilityRaw.travelRadius
+            : undefined,
+      };
+
+      const reviews = listing.marketplace_reviews ?? [];
+      const avgRating =
+        reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+
+      const scoutStats: ScoutStats = {
+        avgRating,
+        totalReviews: reviews.length,
+      };
+
+      const score = calculateMatchingScore(
+        clubNeeds,
+        expertise,
+        availability,
+        listing.hourlyRate ?? null,
+        scoutStats,
+        Boolean(listing.isVerified),
+      );
+
+      matchingScore = score.total;
     }
 
     const offer = await this.prisma.marketplace_offers.create({
@@ -552,7 +638,23 @@ export class MarketplaceService {
       },
     });
 
-    // TODO: Send notification to scout
+    try {
+      await this.notificationsService.sendToUser({
+        userId: listing.userId,
+        title: `New offer from ${offer.clubs.name}`,
+        body: offer.title,
+        type: 'MARKETPLACE_OFFER',
+        data: {
+          offerId: offer.id,
+          clubId,
+          scoutListingId: dto.scoutListingId,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify scout about offer ${offer.id}: ${error?.message ?? error}`,
+      );
+    }
 
     return offer;
   }
@@ -664,7 +766,33 @@ export class MarketplaceService {
       },
     });
 
-    // TODO: Send notification to club
+    try {
+      const club = await this.prisma.clubs.findUnique({
+        where: { id: updated.clubs.id },
+        select: {
+          contactUserId: true,
+          name: true,
+        },
+      });
+
+      if (club?.contactUserId) {
+        await this.notificationsService.sendToUser({
+          userId: club.contactUserId,
+          title: `Offer accepted by scout`,
+          body: `Your offer "${updated.title}" was accepted.`,
+          type: 'MARKETPLACE_OFFER_ACCEPTED',
+          data: {
+            offerId: updated.id,
+            scoutUserId: userId,
+            clubId: updated.clubs.id,
+          },
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify club about accepted offer ${updated.id}: ${error?.message ?? error}`,
+      );
+    }
 
     return updated;
   }
@@ -852,7 +980,8 @@ export class MarketplaceService {
 
     // Calculate stats
     const totalReviews = reviews.length;
-    const avgRating = totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+    const avgRating =
+      totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
     const ratingDistribution = {
       5: reviews.filter((r) => r.rating === 5).length,
       4: reviews.filter((r) => r.rating === 4).length,
@@ -886,7 +1015,8 @@ export class MarketplaceService {
     });
 
     const totalReviews = reviews.length;
-    const avgRating = totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+    const avgRating =
+      totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
     const completedOffers = offers.filter((o) => o.status === OfferStatus.COMPLETED).length;
     const totalOffers = offers.length;
     const completionRate = totalOffers > 0 ? completedOffers / totalOffers : 0;
@@ -986,7 +1116,8 @@ export class MarketplaceService {
     // Add stats
     const enriched = favorites.map((fav) => {
       const reviews = fav.scout_listings.marketplace_reviews;
-      const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+      const avgRating =
+        reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
 
       return {
         ...fav,

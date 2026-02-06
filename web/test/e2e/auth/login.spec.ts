@@ -76,7 +76,7 @@ test.describe('Login Flow', () => {
 
       // Enter invalid email
       await page.getByPlaceholder(/email/i).fill('invalid-email');
-      await page.getByPlaceholder(/password/i).fill('Password123!');
+      await page.getByPlaceholder(/password/i).fill('TestPass123!');
       await page.getByRole('button', { name: /sign in/i }).click();
 
       // Should show HTML5 validation or stay on page
@@ -98,7 +98,7 @@ test.describe('Login Flow', () => {
       await navigateAndWait(page, '/login');
 
       // Enter only password
-      await page.getByPlaceholder(/password/i).fill('Password123!');
+      await page.getByPlaceholder(/password/i).fill('TestPass123!');
       await page.getByRole('button', { name: /sign in/i }).click();
 
       // Should stay on login page
@@ -119,7 +119,7 @@ test.describe('Login Flow', () => {
       await expect(passwordInput).toHaveAttribute('type', 'password');
 
       // Fill password
-      await passwordInput.fill('TestPassword123');
+      await passwordInput.fill('TestPass123');
 
       // Click toggle to show password
       await toggleButton.click();
@@ -242,7 +242,7 @@ test.describe('Login Flow', () => {
       // Fill form using keyboard
       await page.keyboard.type('test@example.com');
       await page.keyboard.press('Tab'); // Move to password
-      await page.keyboard.type('Password123!');
+      await page.keyboard.type('TestPass123!');
     });
 
     test('should have proper ARIA labels', async ({ page }) => {
@@ -353,7 +353,7 @@ test.describe('Login Flow', () => {
       await navigateAndWait(page, '/login');
 
       const passwordInput = page.getByPlaceholder(/password/i);
-      await passwordInput.fill('SecretPassword123!');
+      await passwordInput.fill('SecretPass123!');
 
       // Password field should have type="password"
       await expect(passwordInput).toHaveAttribute('type', 'password');

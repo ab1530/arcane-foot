@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,14 @@ import { Icon } from '../ui';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import api from '../../services/api';
 import type { Player, Match } from '../../types';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 interface PlayerConfigProps {
   selectedPlayerId: string | null;
   selectedMatchId: string | null;
   customContext: string;
   autoSave: boolean;
+  selectedTemplate?: string;
   onPlayerSelect: (playerId: string, playerName: string) => void;
   onMatchSelect: (matchId: string | null) => void;
   onCustomContextChange: (text: string) => void;
@@ -30,11 +32,15 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
   selectedMatchId,
   customContext,
   autoSave,
+  selectedTemplate,
   onPlayerSelect,
   onMatchSelect,
   onCustomContextChange,
   onAutoSaveChange,
 }) => {
+  const { dictionary, language } = useLocalization();
+  const copy = dictionary.autoScout.wizard.config;
+  const locale = language === 'en' ? 'en-US' : 'fr-FR';
   const [searchQuery, setSearchQuery] = useState('');
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -42,6 +48,8 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [showPlayerPicker, setShowPlayerPicker] = useState(false);
   const [showMatchPicker, setShowMatchPicker] = useState(false);
+  const [costEstimate, setCostEstimate] = useState<any>(null);
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
   const selectedPlayerName = selectedPlayer
@@ -49,10 +57,35 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
     : '';
   const selectedMatch = matches.find((m) => m.id === selectedMatchId);
 
+  // Load cost estimate when template changes
   useEffect(() => {
-    if (searchQuery.length >= 2) {
-      searchPlayers();
+    if (selectedTemplate) {
+      loadCostEstimate();
     }
+  }, [selectedTemplate]);
+
+  // Debounced player search (300ms like web)
+  useEffect(() => {
+    // Clear previous timer
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+
+    // Set new timer
+    if (searchQuery.length >= 2) {
+      searchTimerRef.current = setTimeout(() => {
+        searchPlayers();
+      }, 300);
+    } else {
+      setPlayers([]);
+    }
+
+    // Cleanup
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
   }, [searchQuery]);
 
   useEffect(() => {
@@ -87,6 +120,22 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
     }
   };
 
+  const loadCostEstimate = async () => {
+    if (!selectedTemplate) return;
+
+    try {
+      // Cost estimate feature not yet implemented in API
+      // Commenting out for now to avoid errors
+      // const response = await api.get(`/auto-scout/cost-estimate/${selectedTemplate}`);
+      // if (response.data) {
+      //   setCostEstimate(response.data);
+      // }
+      setCostEstimate(null);
+    } catch (error) {
+      console.error('Failed to load cost estimate:', error);
+    }
+  };
+
   const handlePlayerSelect = (player: Player) => {
     const playerName = `${player.user.firstName} ${player.user.lastName}`;
     onPlayerSelect(player.id, playerName);
@@ -101,14 +150,35 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>Configure Report</Text>
+      <Text style={styles.title}>{copy.title}</Text>
       <Text style={styles.subtitle}>
-        Select the player and optionally a specific match to analyze
+        {copy.subtitle}
       </Text>
+
+      {/* Cost Estimate Warning */}
+      {costEstimate && (
+        <View style={styles.warningBox}>
+          <View style={styles.warningHeader}>
+            <Icon name="cash" size={20} color={colors.status.warning} />
+            <Text style={styles.warningTitle}>Cost Estimate</Text>
+          </View>
+          <Text style={styles.warningText}>
+            This report will use approximately{' '}
+            <Text style={styles.warningBold}>{costEstimate.estimatedTokens} tokens</Text>{' '}
+            and cost around{' '}
+            <Text style={[styles.warningBold, { color: colors.status.warning }]}>
+              {costEstimate.estimatedCost}
+            </Text>.
+          </Text>
+          {costEstimate.note && (
+            <Text style={styles.warningNote}>{costEstimate.note}</Text>
+          )}
+        </View>
+      )}
 
       {/* Player Selection */}
       <View style={styles.section}>
-        <Text style={styles.label}>Player *</Text>
+        <Text style={styles.label}>{copy.playerLabel}</Text>
         {selectedPlayer ? (
           <TouchableOpacity
             style={styles.selectedItem}
@@ -134,7 +204,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
             style={styles.picker}
             onPress={() => setShowPlayerPicker(true)}
           >
-            <Text style={styles.pickerText}>Select a player</Text>
+            <Text style={styles.pickerText}>{copy.playerPlaceholder}</Text>
             <Icon name="chevronDown" size={20} color={colors.text.secondary} />
           </TouchableOpacity>
         )}
@@ -145,7 +215,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
               <Icon name="search" size={20} color={colors.text.secondary} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search players..."
+                placeholder={copy.searchPlaceholder}
                 placeholderTextColor={colors.text.tertiary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -188,7 +258,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
               style={styles.closeButton}
               onPress={() => setShowPlayerPicker(false)}
             >
-              <Text style={styles.closeButtonText}>Cancel</Text>
+              <Text style={styles.closeButtonText}>{copy.cancel}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -197,9 +267,9 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
       {/* Match Selection (Optional) */}
       {selectedPlayerId && (
         <View style={styles.section}>
-          <Text style={styles.label}>Match (Optional)</Text>
+          <Text style={styles.label}>{copy.matchLabel}</Text>
           <Text style={styles.hint}>
-            Select a specific match for detailed match analysis
+            {copy.matchHint}
           </Text>
 
           {selectedMatch ? (
@@ -212,7 +282,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
                   {selectedMatch.homeClub.name} vs {selectedMatch.awayClub.name}
                 </Text>
                 <Text style={styles.selectedItemDetails}>
-                  {new Date(selectedMatch.scheduledAt).toLocaleDateString()}
+                  {new Date(selectedMatch.scheduledAt).toLocaleDateString(locale)}
                 </Text>
               </View>
               <TouchableOpacity
@@ -227,7 +297,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
               style={styles.picker}
               onPress={() => setShowMatchPicker(true)}
             >
-              <Text style={styles.pickerText}>Select a match (optional)</Text>
+              <Text style={styles.pickerText}>{copy.matchPlaceholder}</Text>
               <Icon name="chevronDown" size={20} color={colors.text.secondary} />
             </TouchableOpacity>
           )}
@@ -251,7 +321,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
                           {match.homeClub.name} vs {match.awayClub.name}
                         </Text>
                         <Text style={styles.pickerItemDetails}>
-                          {new Date(match.scheduledAt).toLocaleDateString()}
+                          {new Date(match.scheduledAt).toLocaleDateString(locale)}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -263,7 +333,7 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
                 style={styles.closeButton}
                 onPress={() => setShowMatchPicker(false)}
               >
-                <Text style={styles.closeButtonText}>Cancel</Text>
+                <Text style={styles.closeButtonText}>{copy.cancel}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -272,13 +342,13 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
 
       {/* Custom Context */}
       <View style={styles.section}>
-        <Text style={styles.label}>Custom Context (Optional)</Text>
+        <Text style={styles.label}>{copy.contextLabel}</Text>
         <Text style={styles.hint}>
-          Add specific focus areas or requirements for the AI analysis
+          {copy.contextHint}
         </Text>
         <TextInput
           style={styles.textArea}
-          placeholder="E.g., Focus on defensive capabilities and potential as central midfielder..."
+          placeholder={copy.contextPlaceholder}
           placeholderTextColor={colors.text.tertiary}
           value={customContext}
           onChangeText={onCustomContextChange}
@@ -292,9 +362,9 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
       <View style={styles.section}>
         <View style={styles.switchRow}>
           <View style={styles.switchLabel}>
-            <Text style={styles.label}>Auto-save Report</Text>
+            <Text style={styles.label}>{copy.autoSaveLabel}</Text>
             <Text style={styles.hint}>
-              Automatically save the report to database after generation
+              {copy.autoSaveHint}
             </Text>
           </View>
           <Switch
@@ -307,6 +377,20 @@ export const PlayerConfig: React.FC<PlayerConfigProps> = ({
             thumbColor={colors.background.primary}
           />
         </View>
+      </View>
+
+      {/* AI Warning */}
+      <View style={styles.aiWarningBox}>
+        <View style={styles.warningHeader}>
+          <Icon name="alert" size={20} color={colors.brand.secondary} />
+          <Text style={[styles.warningTitle, { color: colors.brand.secondary }]}>
+            AI-Generated Content
+          </Text>
+        </View>
+        <Text style={styles.warningText}>
+          This report will be generated using GPT-4. While AI provides excellent insights,
+          always review and verify the content before using it officially.
+        </Text>
       </View>
     </ScrollView>
   );
@@ -475,5 +559,47 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     fontWeight: '600',
     color: colors.brand.primary,
+  },
+  warningBox: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)', // Amber with opacity
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  aiWarningBox: {
+    backgroundColor: 'rgba(168, 85, 247, 0.1)', // Purple with opacity
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  warningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  warningTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: '600',
+    color: colors.status.warning,
+  },
+  warningText: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  warningBold: {
+    fontWeight: 'bold',
+    color: colors.text.primary,
+  },
+  warningNote: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
+    fontStyle: 'italic',
   },
 });

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import OpenAI from 'openai';
@@ -33,9 +28,7 @@ export class SmartScoutService {
       });
       this.logger.log('OpenAI client initialized successfully');
     } else {
-      this.logger.warn(
-        'OpenAI API key not found. SmartScout will use rule-based fallback.',
-      );
+      this.logger.warn('OpenAI API key not found. SmartScout will use rule-based fallback.');
     }
   }
 
@@ -254,9 +247,7 @@ export class SmartScoutService {
     });
 
     // Sort by similarity and return top N
-    return similarities
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
+    return similarities.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
   }
 
   /**
@@ -393,19 +384,11 @@ export class SmartScoutService {
 
     if (embedding && this.openai) {
       // Use AI-powered similarity search
-      similarReports = await this.findSimilarReportsWithEmbeddings(
-        embedding,
-        context,
-        5,
-      );
+      similarReports = await this.findSimilarReportsWithEmbeddings(embedding, context, 5);
       usingAI = true;
     } else {
       // Fallback to rule-based search
-      similarReports = await this.findSimilarReportsRuleBased(
-        partialReport,
-        context,
-        5,
-      );
+      similarReports = await this.findSimilarReportsRuleBased(partialReport, context, 5);
     }
 
     const suggestions = this.generateSuggestions(similarReports, partialReport);
@@ -549,7 +532,7 @@ export class SmartScoutService {
           {
             role: 'system',
             content:
-              'You are an expert football scout analyzer. Analyze the following scouting reports and provide insights about the player\'s development, consistency, and trends.',
+              "You are an expert football scout analyzer. Analyze the following scouting reports and provide insights about the player's development, consistency, and trends.",
           },
           {
             role: 'user',
@@ -575,8 +558,7 @@ export class SmartScoutService {
       reports.reduce((sum, r) => sum + (r.technicalRating || 0), 0) / reports.length;
     const avgPhysical =
       reports.reduce((sum, r) => sum + (r.physicalRating || 0), 0) / reports.length;
-    const avgMental =
-      reports.reduce((sum, r) => sum + (r.mentalRating || 0), 0) / reports.length;
+    const avgMental = reports.reduce((sum, r) => sum + (r.mentalRating || 0), 0) / reports.length;
     const avgTactical =
       reports.reduce((sum, r) => sum + (r.tacticalRating || 0), 0) / reports.length;
 

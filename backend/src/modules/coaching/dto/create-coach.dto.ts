@@ -34,7 +34,7 @@ export class CreateCoachDto {
   @IsOptional()
   avatar?: string;
 
-  @ApiPropertyOptional({ example: 'Expert en préparation mentale avec 15 ans d\'expérience' })
+  @ApiPropertyOptional({ example: "Expert en préparation mentale avec 15 ans d'expérience" })
   @IsString()
   @IsOptional()
   bio?: string;

@@ -424,9 +424,7 @@ describe('GamificationController', () => {
     });
 
     it('should throw error when challenge not completed', async () => {
-      service.claimDailyChallengeReward.mockRejectedValue(
-        new Error('Challenge not completed yet'),
-      );
+      service.claimDailyChallengeReward.mockRejectedValue(new Error('Challenge not completed yet'));
 
       await expect(controller.claimDailyChallengeReward(mockRequest)).rejects.toThrow(
         'Challenge not completed yet',
@@ -675,7 +673,12 @@ describe('GamificationController', () => {
 
   describe('Authentication & Authorization', () => {
     it('should extract user from JWT token', async () => {
-      const mockProfile = { user: mockUser, stats: {}, achievementsCount: 0, profileCompleteness: 0 };
+      const mockProfile = {
+        user: mockUser,
+        stats: {},
+        achievementsCount: 0,
+        profileCompleteness: 0,
+      };
       service.getUserProfile.mockResolvedValue(mockProfile as any);
 
       await controller.getProfile(mockRequest);
@@ -805,9 +808,7 @@ describe('GamificationController', () => {
     });
 
     it('should handle daily challenge claim errors', async () => {
-      service.claimDailyChallengeReward.mockRejectedValue(
-        new Error('Challenge not completed'),
-      );
+      service.claimDailyChallengeReward.mockRejectedValue(new Error('Challenge not completed'));
 
       await expect(controller.claimDailyChallengeReward(mockRequest)).rejects.toThrow(
         'Challenge not completed',

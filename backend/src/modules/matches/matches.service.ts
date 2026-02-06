@@ -77,7 +77,17 @@ export class MatchesService {
     page?: number;
     limit?: number;
   }) {
-    const { status, clubId, scoutId, competition, season, from, to, page = 1, limit = 20 } = params;
+    const {
+      status,
+      clubId,
+      scoutId,
+      competition,
+      season,
+      from,
+      to,
+      page = 1,
+      limit = 1000,
+    } = params;
 
     const where: any = {};
     if (status) where.status = status;
@@ -137,8 +147,19 @@ export class MatchesService {
       this.prisma.matches.count({ where }),
     ]);
 
+    // Transform matches to have cleaner field names
+    const transformedMatches = matches.map((match: any) => ({
+      ...match,
+      homeClub: match.clubs_matches_homeClubIdToclubs,
+      awayClub: match.clubs_matches_awayClubIdToclubs,
+      scout: match.users_matches_scoutIdTousers,
+      _count: {
+        scoutingReports: match._count?.scouting_reports || 0,
+      },
+    }));
+
     return {
-      data: matches,
+      data: transformedMatches,
       meta: {
         total,
         page,
@@ -189,6 +210,11 @@ export class MatchesService {
           },
         },
         media: true,
+        _count: {
+          select: {
+            scouting_reports: true,
+          },
+        },
       },
     });
 
@@ -196,7 +222,16 @@ export class MatchesService {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
 
-    return match;
+    // Transform to have cleaner field names
+    return {
+      ...match,
+      homeClub: match.clubs_matches_homeClubIdToclubs,
+      awayClub: match.clubs_matches_awayClubIdToclubs,
+      scout: match.users_matches_scoutIdTousers,
+      _count: {
+        scoutingReports: match._count?.scouting_reports || 0,
+      },
+    };
   }
 
   /**
@@ -311,7 +346,7 @@ export class MatchesService {
    * Get upcoming matches
    */
   async getUpcoming(limit: number = 10) {
-    return this.prisma.matches.findMany({
+    const matches = await this.prisma.matches.findMany({
       where: {
         scheduledAt: { gte: new Date() },
         status: MatchStatus.SCHEDULED,
@@ -342,13 +377,21 @@ export class MatchesService {
       },
       orderBy: { scheduledAt: 'asc' },
     });
+
+    // Transform matches to have cleaner field names
+    return matches.map((match: any) => ({
+      ...match,
+      homeClub: match.clubs_matches_homeClubIdToclubs,
+      awayClub: match.clubs_matches_awayClubIdToclubs,
+      scout: match.users_matches_scoutIdTousers,
+    }));
   }
 
   /**
    * Get live matches
    */
   async getLive() {
-    return this.prisma.matches.findMany({
+    const matches = await this.prisma.matches.findMany({
       where: { status: MatchStatus.LIVE },
       include: {
         clubs_matches_homeClubIdToclubs: {
@@ -367,5 +410,12 @@ export class MatchesService {
         },
       },
     });
+
+    // Transform matches to have cleaner field names
+    return matches.map((match: any) => ({
+      ...match,
+      homeClub: match.clubs_matches_homeClubIdToclubs,
+      awayClub: match.clubs_matches_awayClubIdToclubs,
+    }));
   }
 }

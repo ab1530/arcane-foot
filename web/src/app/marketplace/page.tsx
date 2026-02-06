@@ -20,7 +20,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import MainLayout from "@/components/layout/MainLayout";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ScoutProfileCard, ScoutListing } from "@/components/marketplace/scout/ScoutProfileCard";
 import { ScoutCardSkeletonGrid } from "@/components/marketplace/shared/ScoutCardSkeleton";
@@ -238,7 +238,7 @@ export default function ScoutMarketplace() {
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -625,6 +625,6 @@ export default function ScoutMarketplace() {
           </div>
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

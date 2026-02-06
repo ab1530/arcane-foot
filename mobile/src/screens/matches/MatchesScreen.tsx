@@ -9,21 +9,26 @@ import {
   RefreshControl,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../../services/api';
 import { Match, MatchStatus } from '../../types';
 import { COLORS, SPACING, FONT_SIZES } from '../../constants/config';
 import { Icon } from '../../components/ui';
 import type { IconName } from '../../constants/icons';
+import { ScreenHeader } from '../../components/navigation';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
-type FilterTab = 'ALL' | MatchStatus;
+type MatchFilter = 'ALL' | MatchStatus;
 
 export default function MatchesScreen() {
+  const { dictionary } = useLocalization();
+  const t = dictionary.matches;
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const [activeTab, setActiveTab] = useState<MatchFilter>('ALL');
 
   const fetchMatches = async () => {
     try {
@@ -94,31 +99,32 @@ export default function MatchesScreen() {
 
   const getStatusLabel = (status: MatchStatus) => {
     const labels: Record<MatchStatus, string> = {
-      SCHEDULED: 'Programmé',
-      LIVE: 'EN DIRECT',
-      HALF_TIME: 'Mi-temps',
-      COMPLETED: 'Terminé',
-      POSTPONED: 'Reporté',
-      CANCELLED: 'Annulé',
+      SCHEDULED: t.status.scheduled,
+      LIVE: t.status.live,
+      HALF_TIME: t.status.halfTime,
+      COMPLETED: t.status.completed,
+      POSTPONED: t.status.postponed,
+      CANCELLED: t.status.cancelled,
     };
     return labels[status];
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader title={t.header.title} />
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Rechercher un match, un club..."
+          placeholder={t.search.placeholder}
           placeholderTextColor={COLORS.gray[400]}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -132,23 +138,23 @@ export default function MatchesScreen() {
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
       >
-        <FilterTab
-          label="Tous"
+        <FilterTabButton
+          label={t.filters.all}
           isActive={activeTab === 'ALL'}
           onPress={() => setActiveTab('ALL')}
         />
-        <FilterTab
-          label="Programmés"
+        <FilterTabButton
+          label={t.filters.scheduled}
           isActive={activeTab === MatchStatus.SCHEDULED}
           onPress={() => setActiveTab(MatchStatus.SCHEDULED)}
         />
-        <FilterTab
-          label="En direct"
+        <FilterTabButton
+          label={t.filters.live}
           isActive={activeTab === MatchStatus.LIVE}
           onPress={() => setActiveTab(MatchStatus.LIVE)}
         />
-        <FilterTab
-          label="Terminés"
+        <FilterTabButton
+          label={t.filters.completed}
           isActive={activeTab === MatchStatus.COMPLETED}
           onPress={() => setActiveTab(MatchStatus.COMPLETED)}
         />
@@ -174,17 +180,17 @@ export default function MatchesScreen() {
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               {searchQuery
-                ? 'Aucun match trouvé pour cette recherche'
-                : 'Aucun match disponible'}
+                ? t.empty.search
+                : t.empty.default}
             </Text>
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
-const FilterTab = ({
+const FilterTabButton = ({
   label,
   isActive,
   onPress,
@@ -211,7 +217,12 @@ const MatchCard = ({
   match: Match;
   getStatusBadgeColor: (status: MatchStatus) => string;
   getStatusLabel: (status: MatchStatus) => string;
-}) => (
+}) => {
+  const { dictionary } = useLocalization();
+  const t = dictionary.matches;
+  const common = dictionary.common;
+
+  return (
   <TouchableOpacity style={styles.matchCard}>
     {/* Status Badge */}
     <View
@@ -225,7 +236,7 @@ const MatchCard = ({
 
     {/* Match Info */}
     <View style={styles.matchHeader}>
-      <Text style={styles.competition}>{match.competition || 'Match amical'}</Text>
+      <Text style={styles.competition}>{match.competition || t.competition.friendly}</Text>
       <Text style={styles.matchDate}>
         {new Date(match.scheduledAt).toLocaleDateString('fr-FR', {
           day: 'numeric',
@@ -251,7 +262,7 @@ const MatchCard = ({
         {match.status === 'COMPLETED' || match.status === 'LIVE' ? (
           <Text style={styles.scoreSeparator}>-</Text>
         ) : (
-          <Text style={styles.vs}>vs</Text>
+          <Text style={styles.vs}>{common.versus}</Text>
         )}
         <Text style={styles.matchTime}>
           {new Date(match.scheduledAt).toLocaleTimeString('fr-FR', {
@@ -280,7 +291,8 @@ const MatchCard = ({
       </View>
     )}
   </TouchableOpacity>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

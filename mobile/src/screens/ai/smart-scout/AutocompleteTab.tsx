@@ -29,7 +29,7 @@ export const AutocompleteTab: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isAI, setIsAI] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSuggestions = useCallback(async (text: string) => {
     if (text.trim().length < 3) {

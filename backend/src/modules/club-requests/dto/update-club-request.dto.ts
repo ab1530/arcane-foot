@@ -5,7 +5,7 @@ import { ClubRequestStatus } from '@prisma/client';
 export class UpdateClubRequestDto {
   @ApiPropertyOptional({
     enum: ClubRequestStatus,
-    description: 'Statut de la demande'
+    description: 'Statut de la demande',
   })
   @IsEnum(ClubRequestStatus)
   @IsOptional()
@@ -16,7 +16,7 @@ export class UpdateClubRequestDto {
   @IsOptional()
   message?: string;
 
-  @ApiPropertyOptional({ description: 'Montant de l\'offre (en euros)' })
+  @ApiPropertyOptional({ description: "Montant de l'offre (en euros)" })
   @IsNumber()
   @IsOptional()
   @Min(0)

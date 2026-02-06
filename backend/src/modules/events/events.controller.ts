@@ -10,12 +10,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -61,7 +56,7 @@ export class EventsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtenir un événement par ID' })
-  @ApiResponse({ status: 200, description: 'Détails de l\'événement' })
+  @ApiResponse({ status: 200, description: "Détails de l'événement" })
   @ApiResponse({ status: 404, description: 'Événement introuvable' })
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);

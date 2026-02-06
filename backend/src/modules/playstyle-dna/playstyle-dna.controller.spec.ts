@@ -38,7 +38,16 @@ describe('PlaystyleDnaController', () => {
       [PlayingStyle.GOALKEEPER_SWEEPER]: 30,
     },
     radarData: {
-      labels: ['Technical', 'Physical', 'Mental', 'Tactical', 'Speed', 'Finishing', 'Passing', 'Defending'],
+      labels: [
+        'Technical',
+        'Physical',
+        'Mental',
+        'Tactical',
+        'Speed',
+        'Finishing',
+        'Passing',
+        'Defending',
+      ],
       values: [75, 70, 80, 85, 65, 60, 90, 50],
     },
     attributes: {
@@ -293,7 +302,9 @@ describe('PlaystyleDnaController', () => {
     it('should throw NotFoundException when player does not exist', async () => {
       service.findSimilarPlayers.mockRejectedValue(new NotFoundException('Player not found'));
 
-      await expect(controller.findSimilarPlayers('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(controller.findSimilarPlayers('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return array of similar players', async () => {
@@ -310,7 +321,7 @@ describe('PlaystyleDnaController', () => {
 
       const result = await controller.findSimilarPlayers('player-1');
 
-      result.forEach(player => {
+      result.forEach((player) => {
         expect(player.id).toBeDefined();
         expect(player.name).toBeDefined();
         expect(player.position).toBeDefined();
@@ -362,7 +373,7 @@ describe('PlaystyleDnaController', () => {
 
       const result = await controller.findSimilarPlayers('player-1');
 
-      result.forEach(player => {
+      result.forEach((player) => {
         expect(player.similarityScore).toBeGreaterThanOrEqual(0);
         expect(player.similarityScore).toBeLessThanOrEqual(100);
       });
@@ -385,7 +396,9 @@ describe('PlaystyleDnaController', () => {
     });
 
     it('should throw NotFoundException when first player does not exist', async () => {
-      service.comparePlayers.mockRejectedValue(new NotFoundException('One or both players not found'));
+      service.comparePlayers.mockRejectedValue(
+        new NotFoundException('One or both players not found'),
+      );
 
       await expect(controller.comparePlayers(dto)).rejects.toThrow(NotFoundException);
     });
@@ -396,7 +409,9 @@ describe('PlaystyleDnaController', () => {
         player2Id: 'non-existent',
       };
 
-      service.comparePlayers.mockRejectedValue(new NotFoundException('One or both players not found'));
+      service.comparePlayers.mockRejectedValue(
+        new NotFoundException('One or both players not found'),
+      );
 
       await expect(controller.comparePlayers(dto2)).rejects.toThrow(NotFoundException);
     });
@@ -468,7 +483,7 @@ describe('PlaystyleDnaController', () => {
 
       const result = await controller.comparePlayers(dto);
 
-      Object.values(result.attributeDifferences).forEach(diff => {
+      Object.values(result.attributeDifferences).forEach((diff) => {
         expect(diff).toHaveProperty('player1');
         expect(diff).toHaveProperty('player2');
         expect(diff).toHaveProperty('diff');
@@ -495,7 +510,16 @@ describe('PlaystyleDnaController', () => {
 
   describe('getRadarData', () => {
     const radarData: RadarChartData = {
-      labels: ['Technical', 'Physical', 'Mental', 'Tactical', 'Speed', 'Finishing', 'Passing', 'Defending'],
+      labels: [
+        'Technical',
+        'Physical',
+        'Mental',
+        'Tactical',
+        'Speed',
+        'Finishing',
+        'Passing',
+        'Defending',
+      ],
       values: [75, 70, 80, 85, 65, 60, 90, 50],
     };
 
@@ -558,7 +582,7 @@ describe('PlaystyleDnaController', () => {
 
       const result = await controller.getRadarData('player-1');
 
-      result.values.forEach(value => {
+      result.values.forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0);
         expect(value).toBeLessThanOrEqual(100);
       });
@@ -608,13 +632,17 @@ describe('PlaystyleDnaController', () => {
       const error = new Error('Service error');
       service.classifyPlayer.mockRejectedValue(error);
 
-      await expect(controller.classifyPlayer({ playerId: 'player-1' })).rejects.toThrow('Service error');
+      await expect(controller.classifyPlayer({ playerId: 'player-1' })).rejects.toThrow(
+        'Service error',
+      );
     });
 
     it('should handle NotFoundExceptions properly', async () => {
       service.classifyPlayer.mockRejectedValue(new NotFoundException('Player not found'));
 
-      await expect(controller.classifyPlayer({ playerId: 'player-1' })).rejects.toThrow(NotFoundException);
+      await expect(controller.classifyPlayer({ playerId: 'player-1' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should handle comparison errors', async () => {
@@ -703,7 +731,7 @@ describe('PlaystyleDnaController', () => {
       const result = await controller.findSimilarPlayers('player-1');
 
       expect(Array.isArray(result)).toBe(true);
-      result.forEach(player => {
+      result.forEach((player) => {
         expect(player).toHaveProperty('id');
         expect(player).toHaveProperty('name');
         expect(player).toHaveProperty('position');
@@ -721,7 +749,7 @@ describe('PlaystyleDnaController', () => {
       const result = await controller.classifyPlayer({ playerId: 'player-1' });
 
       const allStyles = Object.values(PlayingStyle);
-      allStyles.forEach(style => {
+      allStyles.forEach((style) => {
         expect(result.styleScores).toHaveProperty(style);
       });
     });

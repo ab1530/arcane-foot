@@ -29,6 +29,8 @@ import {
   Match,
   AccuracyTrendData,
 } from '@/types/performance-predictor';
+import { ProtectedPage } from '@/components/guards/ProtectedPage';
+import { RequireTier } from '@/components/auth/RequireTier';
 
 type TabType = 'prediction' | 'lineup' | 'accuracy';
 
@@ -205,8 +207,10 @@ export default function PerformancePredictorPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-purple-900/20 to-black p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <ProtectedPage>
+      <RequireTier minTier="PRO">
+        <div className="min-h-screen bg-gradient-to-br from-black via-purple-900/20 to-black p-8">
+          <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -330,8 +334,8 @@ export default function PerformancePredictorPage() {
                         </div>
                       </button>
                     ))}
-                  </div>
-                </div>
+          </div>
+        </div>
 
                 {/* Match Selection */}
                 <div className="glass-card p-6 rounded-xl space-y-4">
@@ -533,6 +537,8 @@ export default function PerformancePredictorPage() {
           background: rgba(228, 255, 59, 0.5);
         }
       `}</style>
-    </div>
+        </div>
+      </RequireTier>
+    </ProtectedPage>
   );
 }

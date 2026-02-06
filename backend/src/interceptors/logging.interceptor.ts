@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { LoggerService } from '../logger/logger.service';
@@ -15,29 +10,38 @@ export class LoggingInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const { method, url, body, user } = request;
+    const requestId = request?.requestId;
     const startTime = Date.now();
 
-    this.logger.debug(`Incoming Request: ${method} ${url}`, 'HTTP');
+    this.logger.debug(
+      `Incoming Request: ${method} ${url} ${requestId ? `(req_id=${requestId})` : ''}`,
+      'HTTP',
+    );
 
     if (body && Object.keys(body).length > 0) {
       // Log body but sanitize sensitive data
       const sanitizedBody = this.sanitizeData(body);
-      this.logger.debug(`Request Body: ${JSON.stringify(sanitizedBody)}`, 'HTTP');
+      this.logger.debug(
+        `Request Body: ${JSON.stringify(sanitizedBody)} ${requestId ? `(req_id=${requestId})` : ''}`,
+        'HTTP',
+      );
     }
 
     return next.handle().pipe(
       tap({
-        next: (data) => {
+        next: (_data) => {
           const response = context.switchToHttp().getResponse();
           const duration = Date.now() - startTime;
 
-          this.logger.logHttpRequest(
+          this.logger.logHttpRequest({
             method,
             url,
-            response.statusCode,
+            statusCode: response.statusCode,
             duration,
-            user?.id,
-          );
+            userId: user?.id,
+            role: user?.role,
+            requestId,
+          });
 
           if (duration > 1000) {
             this.logger.warn(
@@ -49,7 +53,9 @@ export class LoggingInterceptor implements NestInterceptor {
         error: (error) => {
           const duration = Date.now() - startTime;
           this.logger.error(
-            `Request failed: ${method} ${url} after ${duration}ms - ${error.message}`,
+            `Request failed: ${method} ${url} after ${duration}ms - ${error.message} ${
+              requestId ? `(req_id=${requestId})` : ''
+            }`,
             error.stack,
             'HTTP',
           );

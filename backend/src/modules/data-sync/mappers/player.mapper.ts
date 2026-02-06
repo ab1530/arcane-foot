@@ -7,7 +7,9 @@ export class PlayerMapper {
 
   fromExternal(external: any, source: string): any {
     // Split full name into firstName and lastName
-    const nameParts = this.normalizer.normalizeName(external.firstName || external.name || '').split(' ');
+    const nameParts = this.normalizer
+      .normalizeName(external.firstName || external.name || '')
+      .split(' ');
     const firstName = nameParts[0] || 'Unknown';
     const lastName = nameParts.slice(1).join(' ') || 'Player';
 

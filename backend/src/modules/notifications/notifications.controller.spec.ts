@@ -116,10 +116,7 @@ describe('NotificationsController', () => {
 
       await controller.registerDevice(registerDeviceDto);
 
-      expect(service.registerDevice).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-      );
+      expect(service.registerDevice).toHaveBeenCalledWith(expect.any(String), expect.any(String));
     });
   });
 
@@ -742,9 +739,7 @@ describe('NotificationsController', () => {
       const error = new Error('Report not found');
       service.sendReportNotification.mockRejectedValue(error);
 
-      await expect(controller.sendReportNotification(reportId)).rejects.toThrow(
-        'Report not found',
-      );
+      await expect(controller.sendReportNotification(reportId)).rejects.toThrow('Report not found');
     });
 
     it('should notify relevant users about new report', async () => {
@@ -920,10 +915,7 @@ describe('NotificationsController', () => {
           failureCount: 0,
         });
 
-      const results = await Promise.all([
-        controller.sendToUser(dto1),
-        controller.sendToUser(dto2),
-      ]);
+      const results = await Promise.all([controller.sendToUser(dto1), controller.sendToUser(dto2)]);
 
       expect(results).toHaveLength(2);
       expect(results[0].notification.id).toBe('notif-1');

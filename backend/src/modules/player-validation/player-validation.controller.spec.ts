@@ -219,9 +219,9 @@ describe('PlayerValidationController', () => {
     });
 
     it('should throw BadRequestException for invalid status', async () => {
-      await expect(
-        controller.getPlayersByStatus('INVALID_STATUS'),
-      ).rejects.toThrow(new BadRequestException('Invalid status: INVALID_STATUS'));
+      await expect(controller.getPlayersByStatus('INVALID_STATUS')).rejects.toThrow(
+        new BadRequestException('Invalid status: INVALID_STATUS'),
+      );
 
       expect(validationService.getPlayersByStatus).not.toHaveBeenCalled();
     });
@@ -268,11 +268,7 @@ describe('PlayerValidationController', () => {
 
       await controller.validatePlayer(playerId, dto, mockRequest);
 
-      expect(validationService.validatePlayer).toHaveBeenCalledWith(
-        playerId,
-        'admin-123',
-        dto,
-      );
+      expect(validationService.validatePlayer).toHaveBeenCalledWith(playerId, 'admin-123', dto);
     });
 
     it('should handle validation with empty notes', async () => {
@@ -318,11 +314,7 @@ describe('PlayerValidationController', () => {
 
       await controller.rejectPlayer(playerId, dto, mockRequest);
 
-      expect(validationService.rejectPlayer).toHaveBeenCalledWith(
-        playerId,
-        'admin-123',
-        dto,
-      );
+      expect(validationService.rejectPlayer).toHaveBeenCalledWith(playerId, 'admin-123', dto);
     });
   });
 
@@ -350,17 +342,17 @@ describe('PlayerValidationController', () => {
     });
 
     it('should throw BadRequestException if reason is missing', async () => {
-      await expect(
-        controller.markAsSuspicious(playerId, '', mockRequest),
-      ).rejects.toThrow(new BadRequestException('Reason is required'));
+      await expect(controller.markAsSuspicious(playerId, '', mockRequest)).rejects.toThrow(
+        new BadRequestException('Reason is required'),
+      );
 
       expect(validationService.markAsSuspicious).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if reason is null', async () => {
-      await expect(
-        controller.markAsSuspicious(playerId, null as any, mockRequest),
-      ).rejects.toThrow(new BadRequestException('Reason is required'));
+      await expect(controller.markAsSuspicious(playerId, null as any, mockRequest)).rejects.toThrow(
+        new BadRequestException('Reason is required'),
+      );
 
       expect(validationService.markAsSuspicious).not.toHaveBeenCalled();
     });
@@ -402,11 +394,7 @@ describe('PlayerValidationController', () => {
 
       await controller.convertToAgency(playerId, dto, mockRequest);
 
-      expect(validationService.convertToAgency).toHaveBeenCalledWith(
-        playerId,
-        'admin-123',
-        dto,
-      );
+      expect(validationService.convertToAgency).toHaveBeenCalledWith(playerId, 'admin-123', dto);
     });
 
     it('should handle conversion without notes', async () => {
@@ -525,10 +513,7 @@ describe('PlayerValidationController', () => {
 
       const result = await controller.bulkImport(dto, mockRequest);
 
-      expect(bulkImportService.importPlayers).toHaveBeenCalledWith(
-        dto,
-        mockRequest.user.id,
-      );
+      expect(bulkImportService.importPlayers).toHaveBeenCalledWith(dto, mockRequest.user.id);
       expect(result).toEqual(mockImportResult);
     });
 
@@ -579,7 +564,8 @@ describe('PlayerValidationController', () => {
   });
 
   describe('bulkImportCsv', () => {
-    const csvContent = 'firstName,lastName,email,position,dateOfBirth,nationality\nJohn,Doe,john@example.com,Forward,1998-01-15,FR';
+    const csvContent =
+      'firstName,lastName,email,position,dateOfBirth,nationality\nJohn,Doe,john@example.com,Forward,1998-01-15,FR';
     const autoVerify = false;
 
     const mockParsedPlayers = [
@@ -616,17 +602,17 @@ describe('PlayerValidationController', () => {
     });
 
     it('should throw BadRequestException if CSV content is missing', async () => {
-      await expect(
-        controller.bulkImportCsv('', autoVerify, mockRequest),
-      ).rejects.toThrow(new BadRequestException('CSV content is required'));
+      await expect(controller.bulkImportCsv('', autoVerify, mockRequest)).rejects.toThrow(
+        new BadRequestException('CSV content is required'),
+      );
 
       expect(bulkImportService.parseCsvFile).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if CSV content is null', async () => {
-      await expect(
-        controller.bulkImportCsv(null as any, autoVerify, mockRequest),
-      ).rejects.toThrow(new BadRequestException('CSV content is required'));
+      await expect(controller.bulkImportCsv(null as any, autoVerify, mockRequest)).rejects.toThrow(
+        new BadRequestException('CSV content is required'),
+      );
     });
 
     it('should throw BadRequestException if CSV content is undefined', async () => {
@@ -688,9 +674,7 @@ describe('PlayerValidationController', () => {
 
       await controller.exportCsv('PENDING');
 
-      expect(bulkImportService.exportPlayersToCSV).toHaveBeenCalledWith(
-        VerificationStatus.PENDING,
-      );
+      expect(bulkImportService.exportPlayersToCSV).toHaveBeenCalledWith(VerificationStatus.PENDING);
     });
 
     it('should export players filtered by REJECTED status', async () => {

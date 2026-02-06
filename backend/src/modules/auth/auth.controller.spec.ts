@@ -60,6 +60,7 @@ describe('AuthController', () => {
         phone: signupDto.phone,
         avatar: null,
         createdAt: new Date(),
+        playerId: 'player-123',
       },
       accessToken: 'mock-access-token',
       refreshToken: 'mock-refresh-token',
@@ -100,6 +101,7 @@ describe('AuthController', () => {
         role: 'SCOUT' as any,
         phone: '+33612345678',
         avatar: null,
+        playerId: 'player-123',
       },
       accessToken: 'mock-access-token',
       refreshToken: 'mock-refresh-token',
@@ -245,9 +247,7 @@ describe('AuthController', () => {
       const error = new Error('Logout failed');
       refreshTokenService.revokeRefreshToken.mockRejectedValue(error);
 
-      await expect(
-        controller.logout(refreshTokenDto, 'Bearer token'),
-      ).rejects.toThrow(error);
+      await expect(controller.logout(refreshTokenDto, 'Bearer token')).rejects.toThrow(error);
     });
   });
 

@@ -66,8 +66,8 @@ describe('PerformancePredictorController', () => {
       ratingDistribution: {
         poor_0_5: 0.05,
         average_5_7: 0.25,
-        good_7_8: 0.50,
-        excellent_8_plus: 0.20,
+        good_7_8: 0.5,
+        excellent_8_plus: 0.2,
       },
       keyFactors: [
         {
@@ -85,10 +85,7 @@ describe('PerformancePredictorController', () => {
           description: 'Playing at home',
         },
       ],
-      recommendations: [
-        'High performance expected',
-        'Consider giving player key role in match',
-      ],
+      recommendations: ['High performance expected', 'Consider giving player key role in match'],
     };
 
     it('should predict performance for a single player', async () => {
@@ -103,44 +100,44 @@ describe('PerformancePredictorController', () => {
 
     it('should handle player not found error', async () => {
       mockPerformancePredictorService.predictPerformance.mockRejectedValue(
-        new HttpException('Player not found', HttpStatus.NOT_FOUND)
+        new HttpException('Player not found', HttpStatus.NOT_FOUND),
       );
 
-      await expect(
-        controller.predictPerformance('invalid-player', 'match-456')
-      ).rejects.toThrow(HttpException);
+      await expect(controller.predictPerformance('invalid-player', 'match-456')).rejects.toThrow(
+        HttpException,
+      );
 
-      await expect(
-        controller.predictPerformance('invalid-player', 'match-456')
-      ).rejects.toThrow('Player not found');
+      await expect(controller.predictPerformance('invalid-player', 'match-456')).rejects.toThrow(
+        'Player not found',
+      );
     });
 
     it('should handle match not found error', async () => {
       mockPerformancePredictorService.predictPerformance.mockRejectedValue(
-        new HttpException('Match not found', HttpStatus.NOT_FOUND)
+        new HttpException('Match not found', HttpStatus.NOT_FOUND),
       );
 
-      await expect(
-        controller.predictPerformance('player-123', 'invalid-match')
-      ).rejects.toThrow(HttpException);
+      await expect(controller.predictPerformance('player-123', 'invalid-match')).rejects.toThrow(
+        HttpException,
+      );
 
-      await expect(
-        controller.predictPerformance('player-123', 'invalid-match')
-      ).rejects.toThrow('Match not found');
+      await expect(controller.predictPerformance('player-123', 'invalid-match')).rejects.toThrow(
+        'Match not found',
+      );
     });
 
     it('should handle prediction service unavailable error', async () => {
       mockPerformancePredictorService.predictPerformance.mockRejectedValue(
-        new HttpException('Prediction service unavailable', HttpStatus.SERVICE_UNAVAILABLE)
+        new HttpException('Prediction service unavailable', HttpStatus.SERVICE_UNAVAILABLE),
       );
 
-      await expect(
-        controller.predictPerformance('player-123', 'match-456')
-      ).rejects.toThrow(HttpException);
+      await expect(controller.predictPerformance('player-123', 'match-456')).rejects.toThrow(
+        HttpException,
+      );
 
-      await expect(
-        controller.predictPerformance('player-123', 'match-456')
-      ).rejects.toThrow('Prediction service unavailable');
+      await expect(controller.predictPerformance('player-123', 'match-456')).rejects.toThrow(
+        'Prediction service unavailable',
+      );
     });
   });
 
@@ -193,9 +190,7 @@ describe('PerformancePredictorController', () => {
     ];
 
     it('should batch predict for all players in a match', async () => {
-      mockPerformancePredictorService.batchPredictForMatch.mockResolvedValue(
-        mockBatchPredictions
-      );
+      mockPerformancePredictorService.batchPredictForMatch.mockResolvedValue(mockBatchPredictions);
 
       const result = await controller.batchPredictForMatch('match-456');
 
@@ -207,16 +202,14 @@ describe('PerformancePredictorController', () => {
 
     it('should handle match not found error for batch prediction', async () => {
       mockPerformancePredictorService.batchPredictForMatch.mockRejectedValue(
-        new HttpException('Match not found', HttpStatus.NOT_FOUND)
+        new HttpException('Match not found', HttpStatus.NOT_FOUND),
       );
 
-      await expect(
-        controller.batchPredictForMatch('invalid-match')
-      ).rejects.toThrow(HttpException);
+      await expect(controller.batchPredictForMatch('invalid-match')).rejects.toThrow(HttpException);
 
-      await expect(
-        controller.batchPredictForMatch('invalid-match')
-      ).rejects.toThrow('Match not found');
+      await expect(controller.batchPredictForMatch('invalid-match')).rejects.toThrow(
+        'Match not found',
+      );
     });
 
     it('should return empty array when match has no players', async () => {
@@ -243,9 +236,9 @@ describe('PerformancePredictorController', () => {
       {
         totalPredictions: 95,
         avgError: 0.78,
-        rmse: 1.00,
+        rmse: 1.0,
         withinCI: 0.77,
-        r2Score: 0.70,
+        r2Score: 0.7,
         dateRange: '2024-02',
         modelVersion: 'v1',
       },
@@ -321,15 +314,13 @@ describe('PerformancePredictorController', () => {
     const mockFeatureImportance: FeatureImportanceDto[] = [
       { feature: 'form_l5', importance: 0.15 },
       { feature: 'opponent_strength', importance: 0.12 },
-      { feature: 'venue', importance: 0.10 },
+      { feature: 'venue', importance: 0.1 },
       { feature: 'days_rest', importance: 0.09 },
       { feature: 'season_progress', importance: 0.08 },
     ];
 
     it('should retrieve feature importance rankings', async () => {
-      mockPerformancePredictorService.getFeatureImportance.mockResolvedValue(
-        mockFeatureImportance
-      );
+      mockPerformancePredictorService.getFeatureImportance.mockResolvedValue(mockFeatureImportance);
 
       const result = await controller.getFeatureImportance();
 
@@ -342,12 +333,12 @@ describe('PerformancePredictorController', () => {
 
     it('should handle feature importance service unavailable', async () => {
       mockPerformancePredictorService.getFeatureImportance.mockRejectedValue(
-        new HttpException('Feature importance unavailable', HttpStatus.SERVICE_UNAVAILABLE)
+        new HttpException('Feature importance unavailable', HttpStatus.SERVICE_UNAVAILABLE),
       );
 
       await expect(controller.getFeatureImportance()).rejects.toThrow(HttpException);
       await expect(controller.getFeatureImportance()).rejects.toThrow(
-        'Feature importance unavailable'
+        'Feature importance unavailable',
       );
     });
 
@@ -387,7 +378,7 @@ describe('PerformancePredictorController', () => {
 
     it('should handle model retraining failure', async () => {
       mockPerformancePredictorService.retrainModel.mockRejectedValue(
-        new HttpException('Model retraining failed', HttpStatus.INTERNAL_SERVER_ERROR)
+        new HttpException('Model retraining failed', HttpStatus.INTERNAL_SERVER_ERROR),
       );
 
       await expect(controller.retrainModel()).rejects.toThrow(HttpException);
@@ -396,7 +387,7 @@ describe('PerformancePredictorController', () => {
 
     it('should handle insufficient training data error', async () => {
       mockPerformancePredictorService.retrainModel.mockRejectedValue(
-        new HttpException('Insufficient training data', HttpStatus.BAD_REQUEST)
+        new HttpException('Insufficient training data', HttpStatus.BAD_REQUEST),
       );
 
       await expect(controller.retrainModel()).rejects.toThrow(HttpException);
@@ -431,10 +422,7 @@ describe('PerformancePredictorController', () => {
 
     it('should require bearer token for all endpoints', () => {
       // Check that ApiBearerAuth decorator is applied
-      const metadata = Reflect.getMetadata(
-        'swagger/apiSecurity',
-        PerformancePredictorController
-      );
+      const metadata = Reflect.getMetadata('swagger/apiSecurity', PerformancePredictorController);
 
       expect(metadata).toBeDefined();
     });
@@ -445,19 +433,19 @@ describe('PerformancePredictorController', () => {
       const customError = new HttpException('Custom error', HttpStatus.BAD_REQUEST);
       mockPerformancePredictorService.predictPerformance.mockRejectedValue(customError);
 
-      await expect(
-        controller.predictPerformance('player-123', 'match-456')
-      ).rejects.toThrow(customError);
+      await expect(controller.predictPerformance('player-123', 'match-456')).rejects.toThrow(
+        customError,
+      );
     });
 
     it('should handle unexpected errors', async () => {
       mockPerformancePredictorService.predictPerformance.mockRejectedValue(
-        new Error('Unexpected error')
+        new Error('Unexpected error'),
       );
 
-      await expect(
-        controller.predictPerformance('player-123', 'match-456')
-      ).rejects.toThrow('Unexpected error');
+      await expect(controller.predictPerformance('player-123', 'match-456')).rejects.toThrow(
+        'Unexpected error',
+      );
     });
   });
 
@@ -471,8 +459,8 @@ describe('PerformancePredictorController', () => {
         ratingDistribution: {
           poor_0_5: 0.05,
           average_5_7: 0.15,
-          good_7_8: 0.50,
-          excellent_8_plus: 0.30,
+          good_7_8: 0.5,
+          excellent_8_plus: 0.3,
         },
         keyFactors: [],
         recommendations: [],
@@ -496,8 +484,8 @@ describe('PerformancePredictorController', () => {
         ratingDistribution: {
           poor_0_5: 0.05,
           average_5_7: 0.25,
-          good_7_8: 0.50,
-          excellent_8_plus: 0.20,
+          good_7_8: 0.5,
+          excellent_8_plus: 0.2,
         },
         keyFactors: [],
         recommendations: [],

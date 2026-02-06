@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { logger } from "@/lib/logger";
 
 type AccountType = "player" | "agent" | "club";
 
@@ -16,9 +17,13 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isSessionStale: boolean;
+  authError: string | null;
+  lastValidatedAt: Date | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
+  refreshSession: (maxRetries?: number) => Promise<void>;
   updateUser: (data: Partial<User>) => void;
 }
 
@@ -36,32 +41,111 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSessionStale, setIsSessionStale] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [lastValidatedAt, setLastValidatedAt] = useState<Date | null>(null);
 
   // Check for stored auth token on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem("arcane_auth_token");
-        const storedUser = localStorage.getItem("arcane_user");
+  const validateSession = useCallback(
+    async (maxRetries = 1) => {
+      const token = localStorage.getItem("arcane_auth_token");
+      const storedUser = localStorage.getItem("arcane_user");
+      const cachedUser = safeParseUser(storedUser);
 
-        if (token && storedUser) {
-          // TODO: Validate token with backend
-          setUser(JSON.parse(storedUser));
+      // Hydrate quickly from cache while backend validates
+      if (token && cachedUser) {
+        setUser(cachedUser);
+      }
+
+      if (!token) {
+        setUser(null);
+        setIsSessionStale(false);
+        setAuthError(null);
+        setLastValidatedAt(null);
+        return;
+      }
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(`${API_URL}/api/auth/me`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            const validatedUser = transformBackendUser(userData);
+            setUser(validatedUser);
+            localStorage.setItem("arcane_user", JSON.stringify(validatedUser));
+            setIsSessionStale(false);
+            setAuthError(null);
+            setLastValidatedAt(new Date());
+            return;
+          }
+
+          if (response.status === 401 || response.status === 403) {
+            console.log("Token validation failed, logging out");
+            clearAuthStorage();
+            setUser(null);
+            setIsSessionStale(false);
+            setAuthError("Session expirée, veuillez vous reconnecter.");
+            setLastValidatedAt(null);
+            return;
+          }
+
+          lastError = new Error(`Validation failed with status ${response.status}`);
+        } catch (error) {
+          lastError = error as Error;
         }
-      } catch (error) {
-        console.error("Auth check error:", error);
-        localStorage.removeItem("arcane_auth_token");
-        localStorage.removeItem("arcane_user");
+
+        // Retry on next iteration if available
+        if (attempt < maxRetries) {
+          await delay((attempt + 1) * 500);
+        }
+      }
+
+      // If we reach here, validation could not confirm the session
+      if (lastError) {
+        console.warn("Auth validation failed, keeping cached session", lastError);
+        setAuthError(lastError.message);
+      }
+      setIsSessionStale(!!cachedUser);
+      setUser(cachedUser);
+    },
+    []
+  );
+
+  useEffect(() => {
+    const run = async () => {
+      setIsLoading(true);
+      try {
+        await validateSession(2);
       } finally {
         setIsLoading(false);
       }
     };
+    run();
+  }, [validateSession]);
 
-    checkAuth();
-  }, []);
+  useEffect(() => {
+    if (user) {
+      logger.setContext({
+        userId: user.id,
+        email: user.email,
+        accountType: user.accountType,
+      });
+    } else {
+      logger.clearContext(["userId", "email", "accountType"]);
+    }
+  }, [user]);
 
   const login = async (email: string, password: string) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
     const response = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
@@ -83,10 +167,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     persistSession(token, user);
     setUser(user);
+    setIsSessionStale(false);
+    setAuthError(null);
+    setLastValidatedAt(new Date());
   };
 
   const signup = async (data: SignupData) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
     const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: "POST",
@@ -108,12 +195,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     persistSession(token, user);
     setUser(user);
+    setIsSessionStale(false);
+    setAuthError(null);
+    setLastValidatedAt(new Date());
   };
 
   const logout = () => {
-    localStorage.removeItem("arcane_auth_token");
-    localStorage.removeItem("arcane_user");
+    // Clear only auth-related storage to avoid nuking unrelated preferences
+    clearAuthStorage();
     setUser(null);
+    setIsSessionStale(false);
+    setAuthError(null);
+    setLastValidatedAt(null);
+
+    // Force complete page reload with cache clear
     window.location.href = "/";
   };
 
@@ -129,9 +224,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     isLoading,
     isAuthenticated: !!user,
+    isSessionStale,
+    authError,
+    lastValidatedAt,
     login,
     signup,
     logout,
+    refreshSession: validateSession,
     updateUser,
   };
 
@@ -204,6 +303,25 @@ function transformSignupPayload(data: SignupData) {
 }
 
 function persistSession(token: string, user: User) {
-  localStorage.setItem("arcane_auth_token", token);
+  localStorage.setItem("arcane_auth_token", token.trim());
   localStorage.setItem("arcane_user", JSON.stringify(user));
+}
+
+function clearAuthStorage() {
+  localStorage.removeItem("arcane_auth_token");
+  localStorage.removeItem("arcane_user");
+}
+
+function safeParseUser(userStr: string | null): User | null {
+  if (!userStr) return null;
+  try {
+    return JSON.parse(userStr);
+  } catch (error) {
+    console.warn("Failed to parse cached user", error);
+    return null;
+  }
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

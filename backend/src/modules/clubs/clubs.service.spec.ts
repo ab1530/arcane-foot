@@ -111,7 +111,7 @@ describe('ClubsService', () => {
         _count: {
           players: 25,
           matches_matches_homeClubIdToclubs: 10,
-          matches_matches_awayClubIdToclubs: 12
+          matches_matches_awayClubIdToclubs: 12,
         },
       },
       {
@@ -121,7 +121,7 @@ describe('ClubsService', () => {
         _count: {
           players: 23,
           matches_matches_homeClubIdToclubs: 11,
-          matches_matches_awayClubIdToclubs: 9
+          matches_matches_awayClubIdToclubs: 9,
         },
       },
     ];
@@ -134,15 +134,8 @@ describe('ClubsService', () => {
 
       expect(prismaService.clubs.findMany).toHaveBeenCalled();
       expect(prismaService.clubs.count).toHaveBeenCalled();
-      expect(result).toEqual({
-        data: mockClubs,
-        meta: {
-          total: 2,
-          page: 1,
-          limit: 20,
-          totalPages: 1,
-        },
-      });
+      expect(result).toEqual(mockClubs);
+      expect(result).toHaveLength(2);
     });
 
     it('should filter by country', async () => {
@@ -202,7 +195,7 @@ describe('ClubsService', () => {
           take: 20,
         }),
       );
-      expect(result.meta.totalPages).toBe(3);
+      expect(result).toEqual(mockClubs);
     });
   });
 

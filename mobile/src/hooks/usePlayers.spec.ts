@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { usePlayers } from './usePlayers';
 import api from '../services/api';
 
@@ -287,7 +287,9 @@ describe('usePlayers', () => {
       });
 
       // Start refresh
-      result.current.refresh();
+      act(() => {
+        result.current.refresh();
+      });
 
       // Loading should remain false during refresh
       expect(result.current.loading).toBe(false);
@@ -321,7 +323,9 @@ describe('usePlayers', () => {
       };
       mockApi.getPlayers.mockResolvedValueOnce(mockResponse);
 
-      result.current.refresh();
+      act(() => {
+        result.current.refresh();
+      });
 
       await waitFor(() => {
         expect(result.current.refreshing).toBe(false);

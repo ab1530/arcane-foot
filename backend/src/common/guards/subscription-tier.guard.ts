@@ -2,6 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { SubscriptionTier } from '@prisma/client';
 import { SubscriptionsService } from '../../modules/subscriptions/subscriptions.service';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 export const MIN_TIER_KEY = 'minTier';
 
@@ -13,6 +14,16 @@ export class SubscriptionTierGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Check if the route is public
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true; // Public endpoints bypass tier check
+    }
+
     const requiredTier = this.reflector.getAllAndOverride<SubscriptionTier>(MIN_TIER_KEY, [
       context.getHandler(),
       context.getClass(),

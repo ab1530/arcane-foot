@@ -115,7 +115,11 @@ export class FilterPlayersDto {
   @IsOptional()
   availableForTransfer?: boolean;
 
-  @ApiPropertyOptional({ description: 'Champ de tri', enum: PlayerSortField, default: PlayerSortField.CREATED_AT })
+  @ApiPropertyOptional({
+    description: 'Champ de tri',
+    enum: PlayerSortField,
+    default: PlayerSortField.CREATED_AT,
+  })
   @IsEnum(PlayerSortField)
   @IsOptional()
   sortBy?: PlayerSortField;
@@ -132,11 +136,11 @@ export class FilterPlayersDto {
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ description: 'Nombre d\'éléments par page', example: 20, default: 20 })
+  @ApiPropertyOptional({ description: "Nombre d'éléments par page", example: 20, default: 1000 })
   @Type(() => Number)
   @IsNumber()
   @IsOptional()
   @Min(1)
-  @Max(100)
+  @Max(1000)
   limit?: number;
 }

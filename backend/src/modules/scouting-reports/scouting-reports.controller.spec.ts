@@ -372,7 +372,10 @@ describe('ScoutingReportsController', () => {
 
     it('should update tags', async () => {
       const tagsUpdate = { tags: ['updated', 'tags'] };
-      mockScoutingReportsService.update.mockResolvedValue({ ...mockReport, tags: ['updated', 'tags'] });
+      mockScoutingReportsService.update.mockResolvedValue({
+        ...mockReport,
+        tags: ['updated', 'tags'],
+      });
 
       await controller.update('report-123', tagsUpdate);
 
@@ -536,7 +539,9 @@ describe('ScoutingReportsController', () => {
     it('should handle req.user.id for reviewerId extraction', async () => {
       mockScoutingReportsService.review.mockResolvedValue(mockReport);
 
-      await controller.review('report-123', true, { user: { id: 'reviewer-999', sub: 'reviewer-000' } });
+      await controller.review('report-123', true, {
+        user: { id: 'reviewer-999', sub: 'reviewer-000' },
+      });
 
       expect(service.review).toHaveBeenCalledWith('report-123', 'reviewer-999', true);
     });
@@ -544,7 +549,9 @@ describe('ScoutingReportsController', () => {
     it('should fallback to req.user.sub for reviewerId if id is undefined', async () => {
       mockScoutingReportsService.review.mockResolvedValue(mockReport);
 
-      await controller.review('report-123', false, { user: { id: undefined, sub: 'reviewer-888' } });
+      await controller.review('report-123', false, {
+        user: { id: undefined, sub: 'reviewer-888' },
+      });
 
       expect(service.review).toHaveBeenCalledWith('report-123', 'reviewer-888', false);
     });
@@ -686,10 +693,7 @@ describe('ScoutingReportsController', () => {
       } as any;
       mockScoutingReportsService.create.mockResolvedValue(mockReport);
 
-      await controller.create(
-        { matchId: 'match-123', playerId: 'player-123' },
-        requestWithEmail,
-      );
+      await controller.create({ matchId: 'match-123', playerId: 'player-123' }, requestWithEmail);
 
       expect(service.create).toHaveBeenCalledWith(
         { matchId: 'match-123', playerId: 'player-123' },

@@ -49,7 +49,7 @@ const testTranscriptions = [
 
 async function main() {
   console.log('🎤 Voice-to-Report Test Script\n');
-  console.log('=' .repeat(80));
+  console.log('='.repeat(80));
 
   // Bootstrap NestJS app
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -59,7 +59,7 @@ async function main() {
   console.log('\n📋 Test 1: Supported Languages');
   console.log('-'.repeat(80));
   const languages = voiceToReportService.getSupportedLanguages();
-  console.log('Supported languages:', languages.map(l => `${l.name} (${l.code})`).join(', '));
+  console.log('Supported languages:', languages.map((l) => `${l.name} (${l.code})`).join(', '));
 
   // Test 2: Get examples
   console.log('\n📋 Test 2: Example Templates');
@@ -88,9 +88,9 @@ async function main() {
         test.language,
       );
 
-      const { data: validatedData, warnings } = await (
-        voiceToReportService as any
-      ).validateData(extractedData);
+      const { data: validatedData, warnings } = await (voiceToReportService as any).validateData(
+        extractedData,
+      );
 
       const confidence = (voiceToReportService as any).calculateConfidence(
         validatedData,
@@ -131,14 +131,13 @@ async function main() {
 
       if (warnings.length > 0) {
         console.log(`\n   ⚠️  Warnings:`);
-        warnings.forEach(w => console.log(`      - ${w}`));
+        warnings.forEach((w) => console.log(`      - ${w}`));
       }
 
       if (suggestions.length > 0) {
         console.log(`\n   💡 Suggestions:`);
-        suggestions.forEach(s => console.log(`      - ${s}`));
+        suggestions.forEach((s) => console.log(`      - ${s}`));
       }
-
     } catch (error) {
       console.log(`   ❌ Error: ${error.message}`);
     }
@@ -170,20 +169,14 @@ async function main() {
   for (const test of edgeCases) {
     console.log(`\n🔍 Testing: ${test.name}`);
     try {
-      const extractedData = await (voiceToReportService as any).extractReportData(
-        test.text,
-        'en',
-      );
-      const { data, warnings } = await (voiceToReportService as any).validateData(
-        extractedData,
-      );
-      const confidence = (voiceToReportService as any).calculateConfidence(
-        data,
-        test.text,
-      );
+      const extractedData = await (voiceToReportService as any).extractReportData(test.text, 'en');
+      const { data, warnings } = await (voiceToReportService as any).validateData(extractedData);
+      const confidence = (voiceToReportService as any).calculateConfidence(data, test.text);
 
       console.log(`   ✅ Processed (Confidence: ${confidence}%)`);
-      console.log(`      - Fields extracted: ${Object.keys(data).filter(k => data[k] != null).length}`);
+      console.log(
+        `      - Fields extracted: ${Object.keys(data).filter((k) => data[k] != null).length}`,
+      );
       if (warnings.length > 0) {
         console.log(`      - Warnings: ${warnings.length}`);
       }

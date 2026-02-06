@@ -1188,7 +1188,7 @@ async function <span class="fstat-no" title="function not covered" >testValidati
 <span class="cstat-no" title="statement not covered" >  await runTest('Admin authentication', <span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
     const { status, data } = <span class="cstat-no" title="statement not covered" >await apiRequest('POST', '/api/auth/login', null, {</span>
       email: 'admin@arcane.com',
-      password: 'Password123!',
+      password: '<DEMO_PASSWORD>',
     });
 <span class="cstat-no" title="statement not covered" >    if (status === 200 &amp;&amp; data.accessToken) {</span>
 <span class="cstat-no" title="statement not covered" >      adminToken = data.accessToken;</span>
@@ -1200,7 +1200,7 @@ async function <span class="fstat-no" title="function not covered" >testValidati
 <span class="cstat-no" title="statement not covered" >  await runTest('Scout authentication', <span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
     const { status, data } = <span class="cstat-no" title="statement not covered" >await apiRequest('POST', '/api/auth/login', null, {</span>
       email: 'scout1@arcane.com',
-      password: 'Password123!',
+      password: '<DEMO_PASSWORD>',
     });
 <span class="cstat-no" title="statement not covered" >    if (status === 200 &amp;&amp; data.accessToken) {</span>
 <span class="cstat-no" title="statement not covered" >      scoutToken = data.accessToken;</span>

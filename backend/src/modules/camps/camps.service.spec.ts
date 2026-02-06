@@ -311,9 +311,7 @@ describe('CampsService', () => {
       };
 
       mockPrismaService.camps.findUnique.mockResolvedValue(mockCamp);
-      mockPrismaService.camp_participations.findUnique.mockResolvedValue(
-        mockExistingParticipation,
-      );
+      mockPrismaService.camp_participations.findUnique.mockResolvedValue(mockExistingParticipation);
 
       await expect(
         service.registerForCamp('user-123', 'camp-123', { playerId: 'player-123' }),
@@ -421,9 +419,9 @@ describe('CampsService', () => {
 
       mockPrismaService.camp_participations.findUnique.mockResolvedValue(mockParticipation);
 
-      await expect(
-        service.cancelRegistration('user-123', 'participation-123'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.cancelRegistration('user-123', 'participation-123')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

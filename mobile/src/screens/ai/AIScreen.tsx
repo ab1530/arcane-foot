@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import type { AppStackParamList } from '../../types/navigation';
 import api from '../../services/api';
 import { Icon } from '../../components/ui';
 import type { IconName } from '../../constants/icons';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AI'>;
 
@@ -27,10 +28,34 @@ type FeatureCardProps = {
 };
 
 export const AIScreen: React.FC<Props> = ({ navigation }) => {
+  const { dictionary } = useLocalization();
+  const t = dictionary.ai;
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [lastResponse, setLastResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiStats, setAiStats] = useState({ totalQueries: 0, reportsAnalyzed: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // Load AI usage stats on mount
+  useEffect(() => {
+    const fetchAIStats = async () => {
+      try {
+        setStatsLoading(true);
+        const stats = await api.getAIUsageStats();
+        setAiStats({
+          totalQueries: stats.totalQueries || 0,
+          reportsAnalyzed: stats.reportsAnalyzed || 0,
+        });
+      } catch (err) {
+        console.error('Failed to load AI stats:', err);
+        // Keep default 0 values
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchAIStats();
+  }, []);
 
   const handleQuickChat = useCallback(async () => {
     const trimmed = message.trim();
@@ -44,13 +69,18 @@ export const AIScreen: React.FC<Props> = ({ navigation }) => {
       const response = await api.chatWithArkaneGPT(trimmed);
       const summary =
         response?.summary ??
-        "Je n'ai pas de réponse disponible pour le moment, réessaie avec plus de contexte.";
+        t.quickChat.fallbackResponse;
       setLastResponse(summary);
+
+      // Refresh stats after successful chat
+      const stats = await api.getAIUsageStats();
+      setAiStats({
+        totalQueries: stats.totalQueries || 0,
+        reportsAnalyzed: stats.reportsAnalyzed || 0,
+      });
     } catch (err) {
       console.error('AI quick chat failed:', err);
-      setError(
-        "Impossible de récupérer une réponse IA. Vérifie ta connexion ou réessaie plus tard."
-      );
+      setError(t.quickChat.errorMessage);
     } finally {
       setIsSending(false);
       setMessage('');
@@ -85,7 +115,7 @@ export const AIScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrowBack" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Assistant</Text>
+        <Text style={styles.headerTitle}>{t.header.title}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -93,20 +123,20 @@ export const AIScreen: React.FC<Props> = ({ navigation }) => {
         <GlassCard variant="elevated" style={styles.heroCard}>
           <View style={styles.heroContent}>
             <Icon name="ai" size={64} color={colors.brand.primary} />
-            <Text style={styles.heroTitle}>ARCANE AI</Text>
+            <Text style={styles.heroTitle}>{t.hero.title}</Text>
             <Text style={styles.heroSubtitle}>
-              Your intelligent football scouting assistant
+              {t.hero.subtitle}
             </Text>
           </View>
         </GlassCard>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Chat</Text>
+          <Text style={styles.sectionTitle}>{t.quickChat.title}</Text>
           <GlassCard variant="bordered">
             <View style={styles.chatContainer}>
               <TextInput
                 style={styles.chatInput}
-                placeholder="Ask me anything about scouting..."
+                placeholder={t.quickChat.placeholder}
                 placeholderTextColor={colors.text.secondary}
                 value={message}
                 onChangeText={setMessage}
@@ -129,7 +159,7 @@ export const AIScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             {(lastResponse || error) && (
               <View style={styles.chatResponse}>
-                <Text style={styles.chatResponseLabel}>ArkaneGPT</Text>
+                <Text style={styles.chatResponseLabel}>{t.quickChat.responseLabel}</Text>
                 <Text style={styles.chatResponseText}>{error ?? lastResponse}</Text>
               </View>
             )}
@@ -137,76 +167,84 @@ export const AIScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AI Features</Text>
+          <Text style={styles.sectionTitle}>{t.features.title}</Text>
           <AIFeatureCard
-            title="ArkaneMatch AI"
-            description="Find scouts using conversational AI"
+            title={t.features.cards.arkaneMatch.title}
+            description={t.features.cards.arkaneMatch.description}
             icon="search"
             onPress={() => navigation.navigate('ArkaneMatch')}
           />
           <AIFeatureCard
-            title="ARCANE GPT"
-            description="Chat with AI for insights and analysis"
+            title={t.features.cards.arkaneGPT.title}
+            description={t.features.cards.arkaneGPT.description}
             icon="chat"
             onPress={() => navigation.navigate('ArcaneGPT')}
           />
           <AIFeatureCard
-            title="ARCANE Index"
-            description="Advanced player search and recommendations"
+            title={t.features.cards.arkaneIndex.title}
+            description={t.features.cards.arkaneIndex.description}
             icon="search"
             onPress={() => navigation.navigate('ArcaneIndex')}
           />
           <AIFeatureCard
-            title="Market Value AI"
-            description="AI-powered player market valuation"
+            title={t.features.cards.marketValue.title}
+            description={t.features.cards.marketValue.description}
             icon="cash"
             onPress={() => navigation.navigate('MarketValue', {})}
           />
           <AIFeatureCard
-            title="SmartScout AI"
-            description="Smart suggestions and autocomplete for reports"
+            title={t.features.cards.smartScout.title}
+            description={t.features.cards.smartScout.description}
             icon="documentText"
             onPress={() => navigation.navigate('SmartScout')}
           />
           <AIFeatureCard
-            title="AutoScout AI"
-            description="Generate comprehensive AI-powered scouting reports"
+            title={t.features.cards.autoScout.title}
+            description={t.features.cards.autoScout.description}
             icon="document"
             onPress={() => navigation.navigate('AutoScout')}
           />
           <AIFeatureCard
-            title="Player Comparison"
-            description="Compare players using AI"
+            title={t.features.cards.comparison.title}
+            description={t.features.cards.comparison.description}
             icon="scale"
             onPress={() => {}}
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Conversations</Text>
+          <Text style={styles.sectionTitle}>{t.conversations.title}</Text>
           <GlassCard variant="elevated">
             <View style={styles.emptyState}>
               <Icon name="chatOutline" size={48} color={colors.text.secondary} />
-              <Text style={styles.emptyText}>No recent conversations</Text>
+              <Text style={styles.emptyText}>{t.conversations.empty.title}</Text>
               <Text style={styles.emptySubtext}>
-                Start chatting with ARCANE AI to see your history
+                {t.conversations.empty.subtitle}
               </Text>
             </View>
           </GlassCard>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AI Usage</Text>
+          <Text style={styles.sectionTitle}>{t.usage.title}</Text>
           <GlassCard variant="elevated">
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>47</Text>
-                <Text style={styles.statLabel}>Queries</Text>
+                {statsLoading ? (
+                  <ActivityIndicator color={colors.brand.primary} size="small" />
+                ) : (
+                  <Text style={styles.statValue}>{aiStats.totalQueries}</Text>
+                )}
+                <Text style={styles.statLabel}>{t.usage.stats.queries}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>12</Text>
-                <Text style={styles.statLabel}>Reports Analyzed</Text>
+                {statsLoading ? (
+                  <ActivityIndicator color={colors.brand.primary} size="small" />
+                ) : (
+                  <Text style={styles.statValue}>{aiStats.reportsAnalyzed}</Text>
+                )}
+                <Text style={styles.statLabel}>{t.usage.stats.reportsAnalyzed}</Text>
               </View>
             </View>
           </GlassCard>

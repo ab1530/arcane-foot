@@ -158,13 +158,9 @@ describe('SmartScoutController', () => {
         playerPosition: 'Forward',
       };
 
-      mockSmartScoutService.getSuggestions.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockSmartScoutService.getSuggestions.mockRejectedValue(new Error('Database error'));
 
-      await expect(
-        controller.getSuggestions(partialReport, {}),
-      ).rejects.toThrow('Database error');
+      await expect(controller.getSuggestions(partialReport, {})).rejects.toThrow('Database error');
     });
   });
 
@@ -186,11 +182,7 @@ describe('SmartScoutController', () => {
       const result = await controller.autocomplete(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(service.autocomplete).toHaveBeenCalledWith(
-        'position',
-        'For',
-        { position: 'Forward' },
-      );
+      expect(service.autocomplete).toHaveBeenCalledWith('position', 'For', { position: 'Forward' });
     });
 
     it('should return autocomplete suggestions for text fields', async () => {
@@ -244,9 +236,7 @@ describe('SmartScoutController', () => {
         new BadRequestException('Invalid field name: invalidField'),
       );
 
-      await expect(controller.autocomplete(dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(controller.autocomplete(dto)).rejects.toThrow(BadRequestException);
     });
 
     it('should handle empty suggestions', async () => {
@@ -317,21 +307,15 @@ describe('SmartScoutController', () => {
         new NotFoundException(`No reports found for player ${playerId}`),
       );
 
-      await expect(controller.getInsights(playerId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(controller.getInsights(playerId)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle service errors', async () => {
       const playerId = 'player-error';
 
-      mockSmartScoutService.generateInsights.mockRejectedValue(
-        new Error('OpenAI API error'),
-      );
+      mockSmartScoutService.generateInsights.mockRejectedValue(new Error('OpenAI API error'));
 
-      await expect(controller.getInsights(playerId)).rejects.toThrow(
-        'OpenAI API error',
-      );
+      await expect(controller.getInsights(playerId)).rejects.toThrow('OpenAI API error');
     });
   });
 
@@ -357,21 +341,15 @@ describe('SmartScoutController', () => {
         new NotFoundException(`Report with ID ${reportId} not found`),
       );
 
-      await expect(controller.indexReport(reportId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(controller.indexReport(reportId)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle indexing errors gracefully', async () => {
       const reportId = 'report-error';
 
-      mockSmartScoutService.indexReport.mockRejectedValue(
-        new Error('Embedding generation failed'),
-      );
+      mockSmartScoutService.indexReport.mockRejectedValue(new Error('Embedding generation failed'));
 
-      await expect(controller.indexReport(reportId)).rejects.toThrow(
-        'Embedding generation failed',
-      );
+      await expect(controller.indexReport(reportId)).rejects.toThrow('Embedding generation failed');
     });
   });
 
@@ -450,13 +428,9 @@ describe('SmartScoutController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockSmartScoutService.reindexAll.mockRejectedValue(
-        new Error('Database connection failed'),
-      );
+      mockSmartScoutService.reindexAll.mockRejectedValue(new Error('Database connection failed'));
 
-      await expect(controller.reindexAll()).rejects.toThrow(
-        'Database connection failed',
-      );
+      await expect(controller.reindexAll()).rejects.toThrow('Database connection failed');
     });
   });
 
@@ -468,10 +442,7 @@ describe('SmartScoutController', () => {
     });
 
     it('should require proper roles for getSuggestions', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        SmartScoutController.prototype.getSuggestions,
-      );
+      const roles = Reflect.getMetadata('roles', SmartScoutController.prototype.getSuggestions);
       expect(roles).toContain('SCOUT');
       expect(roles).toContain('ANALYST');
       expect(roles).toContain('ADMIN');
@@ -479,10 +450,7 @@ describe('SmartScoutController', () => {
     });
 
     it('should require proper roles for autocomplete', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        SmartScoutController.prototype.autocomplete,
-      );
+      const roles = Reflect.getMetadata('roles', SmartScoutController.prototype.autocomplete);
       expect(roles).toContain('SCOUT');
       expect(roles).toContain('ANALYST');
       expect(roles).toContain('ADMIN');
@@ -490,10 +458,7 @@ describe('SmartScoutController', () => {
     });
 
     it('should require proper roles for getInsights', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        SmartScoutController.prototype.getInsights,
-      );
+      const roles = Reflect.getMetadata('roles', SmartScoutController.prototype.getInsights);
       expect(roles).toContain('SCOUT');
       expect(roles).toContain('ANALYST');
       expect(roles).toContain('ADMIN');
@@ -503,20 +468,14 @@ describe('SmartScoutController', () => {
     });
 
     it('should require admin roles for indexReport', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        SmartScoutController.prototype.indexReport,
-      );
+      const roles = Reflect.getMetadata('roles', SmartScoutController.prototype.indexReport);
       expect(roles).toContain('ADMIN');
       expect(roles).toContain('SUPER_ADMIN');
       expect(roles.length).toBe(2); // Only admin roles
     });
 
     it('should require admin roles for reindexAll', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        SmartScoutController.prototype.reindexAll,
-      );
+      const roles = Reflect.getMetadata('roles', SmartScoutController.prototype.reindexAll);
       expect(roles).toContain('ADMIN');
       expect(roles).toContain('SUPER_ADMIN');
       expect(roles.length).toBe(2); // Only admin roles
@@ -586,11 +545,7 @@ describe('SmartScoutController', () => {
 
       const result = await controller.autocomplete(dto as any);
 
-      expect(service.autocomplete).toHaveBeenCalledWith(
-        'weaknesses',
-        'test',
-        {},
-      );
+      expect(service.autocomplete).toHaveBeenCalledWith('weaknesses', 'test', {});
     });
   });
 
@@ -598,13 +553,11 @@ describe('SmartScoutController', () => {
     it('should handle unexpected errors in getSuggestions', async () => {
       const partialReport = { playerPosition: 'Forward' };
 
-      mockSmartScoutService.getSuggestions.mockRejectedValue(
-        new Error('Unexpected error'),
-      );
+      mockSmartScoutService.getSuggestions.mockRejectedValue(new Error('Unexpected error'));
 
-      await expect(
-        controller.getSuggestions(partialReport, {}),
-      ).rejects.toThrow('Unexpected error');
+      await expect(controller.getSuggestions(partialReport, {})).rejects.toThrow(
+        'Unexpected error',
+      );
     });
 
     it('should handle timeout errors in autocomplete', async () => {
@@ -614,13 +567,9 @@ describe('SmartScoutController', () => {
         context: {},
       };
 
-      mockSmartScoutService.autocomplete.mockRejectedValue(
-        new Error('Request timeout'),
-      );
+      mockSmartScoutService.autocomplete.mockRejectedValue(new Error('Request timeout'));
 
-      await expect(controller.autocomplete(dto)).rejects.toThrow(
-        'Request timeout',
-      );
+      await expect(controller.autocomplete(dto)).rejects.toThrow('Request timeout');
     });
 
     it('should handle database errors in getInsights', async () => {
@@ -628,9 +577,7 @@ describe('SmartScoutController', () => {
         new Error('Database connection lost'),
       );
 
-      await expect(controller.getInsights('player-1')).rejects.toThrow(
-        'Database connection lost',
-      );
+      await expect(controller.getInsights('player-1')).rejects.toThrow('Database connection lost');
     });
   });
 
@@ -650,11 +597,7 @@ describe('SmartScoutController', () => {
 
       const result = await controller.autocomplete(dto);
 
-      expect(service.autocomplete).toHaveBeenCalledWith(
-        'strengths',
-        longValue,
-        {},
-      );
+      expect(service.autocomplete).toHaveBeenCalledWith('strengths', longValue, {});
     });
 
     it('should handle special characters in autocomplete', async () => {
@@ -671,11 +614,7 @@ describe('SmartScoutController', () => {
 
       await controller.autocomplete(dto);
 
-      expect(service.autocomplete).toHaveBeenCalledWith(
-        'strengths',
-        'test@#$%',
-        {},
-      );
+      expect(service.autocomplete).toHaveBeenCalledWith('strengths', 'test@#$%', {});
     });
 
     it('should handle unicode characters in partial report', async () => {

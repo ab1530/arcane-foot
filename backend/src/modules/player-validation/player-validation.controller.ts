@@ -23,11 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { PlayerValidationService } from './player-validation.service';
 import { BulkImportService, ImportResult } from './bulk-import.service';
-import {
-  ValidatePlayerDto,
-  RejectPlayerDto,
-  ConvertToAgencyDto,
-} from './dto/validate-player.dto';
+import { ValidatePlayerDto, RejectPlayerDto, ConvertToAgencyDto } from './dto/validate-player.dto';
 import { BulkImportDto } from './dto/bulk-import.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -76,10 +72,7 @@ export class PlayerValidationController {
     status: 403,
     description: 'Forbidden - Insufficient permissions',
   })
-  async getPendingPlayers(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  async getPendingPlayers(@Query('page') page?: string, @Query('limit') limit?: string) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
 
@@ -165,11 +158,7 @@ export class PlayerValidationController {
     status: 404,
     description: 'Player not found',
   })
-  async validatePlayer(
-    @Param('id') id: string,
-    @Body() dto: ValidatePlayerDto,
-    @Req() req: any,
-  ) {
+  async validatePlayer(@Param('id') id: string, @Body() dto: ValidatePlayerDto, @Req() req: any) {
     const userId = req.user.id;
     return this.validationService.validatePlayer(id, userId, dto);
   }
@@ -199,11 +188,7 @@ export class PlayerValidationController {
     status: 404,
     description: 'Player not found',
   })
-  async rejectPlayer(
-    @Param('id') id: string,
-    @Body() dto: RejectPlayerDto,
-    @Req() req: any,
-  ) {
+  async rejectPlayer(@Param('id') id: string, @Body() dto: RejectPlayerDto, @Req() req: any) {
     const userId = req.user.id;
     return this.validationService.rejectPlayer(id, userId, dto);
   }
@@ -241,11 +226,7 @@ export class PlayerValidationController {
     status: 404,
     description: 'Player not found',
   })
-  async markAsSuspicious(
-    @Param('id') id: string,
-    @Body('reason') reason: string,
-    @Req() req: any,
-  ) {
+  async markAsSuspicious(@Param('id') id: string, @Body('reason') reason: string, @Req() req: any) {
     if (!reason) {
       throw new BadRequestException('Reason is required');
     }
@@ -279,11 +260,7 @@ export class PlayerValidationController {
     status: 404,
     description: 'Player not found',
   })
-  async convertToAgency(
-    @Param('id') id: string,
-    @Body() dto: ConvertToAgencyDto,
-    @Req() req: any,
-  ) {
+  async convertToAgency(@Param('id') id: string, @Body() dto: ConvertToAgencyDto, @Req() req: any) {
     const userId = req.user.id;
     return this.validationService.convertToAgency(id, userId, dto);
   }
@@ -411,7 +388,8 @@ export class PlayerValidationController {
         csvContent: {
           type: 'string',
           description: 'CSV file content as string',
-          example: 'firstName,lastName,email,position,dateOfBirth,nationality\nJohn,Doe,john@example.com,Forward,1998-01-15,US',
+          example:
+            'firstName,lastName,email,position,dateOfBirth,nationality\nJohn,Doe,john@example.com,Forward,1998-01-15,US',
         },
         autoVerify: {
           type: 'boolean',
@@ -445,10 +423,7 @@ export class PlayerValidationController {
     const players = this.bulkImportService.parseCsvFile(csvContent);
 
     // Import players
-    return this.bulkImportService.importPlayers(
-      { players, autoVerify },
-      userId,
-    );
+    return this.bulkImportService.importPlayers({ players, autoVerify }, userId);
   }
 
   @Get('export-csv')

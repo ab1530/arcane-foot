@@ -50,9 +50,9 @@ export class PlayerValuationDto {
     example: {
       age_normalized: 2.5,
       rating_normalized: 5.2,
-      goals_per_90: 3.8
+      goals_per_90: 3.8,
     },
-    description: 'Breakdown of contributing factors'
+    description: 'Breakdown of contributing factors',
   })
   @IsObject()
   factors: Record<string, number>;

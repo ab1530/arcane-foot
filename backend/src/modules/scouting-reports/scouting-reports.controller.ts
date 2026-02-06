@@ -10,17 +10,11 @@ import {
   UseGuards,
   Request,
   Res,
-  StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ScoutingReportsService } from './scouting-reports.service';
-// import { PdfService } from './pdf.service'; // Temporarily disabled - needs fixing
+import { PdfService } from './pdf.service';
 import { CreateScoutingReportDto } from './dto/create-scouting-report.dto';
 import { UpdateScoutingReportDto } from './dto/update-scouting-report.dto';
 import { QueryScoutingReportDto } from './dto/query-scouting-report.dto';
@@ -28,15 +22,15 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('scouting-reports')
 @Controller('scouting-reports')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class ScoutingReportsController {
   constructor(
     private readonly reportsService: ScoutingReportsService,
-    // private readonly pdfService: PdfService, // Temporarily disabled
+    private readonly pdfService: PdfService,
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Créer un rapport de scouting' })
   @ApiResponse({ status: 201, description: 'Rapport créé avec succès' })
   @ApiResponse({ status: 400, description: 'Données invalides' })
@@ -54,24 +48,40 @@ export class ScoutingReportsController {
   }
 
   @Get('player/:playerId')
-  @ApiOperation({ summary: 'Obtenir les rapports d\'un joueur' })
+  @ApiOperation({ summary: "Obtenir les rapports d'un joueur" })
   @ApiResponse({ status: 200, description: 'Rapports du joueur' })
   getPlayerReports(@Param('playerId') playerId: string) {
     return this.reportsService.getPlayerReports(playerId);
   }
 
   @Get('scout/:scoutId')
-  @ApiOperation({ summary: 'Obtenir les rapports d\'un scout' })
+  @ApiOperation({ summary: "Obtenir les rapports d'un scout" })
   @ApiResponse({ status: 200, description: 'Rapports du scout' })
   getScoutReports(@Param('scoutId') scoutId: string) {
     return this.reportsService.getScoutReports(scoutId);
   }
 
   @Get('match/:matchId')
-  @ApiOperation({ summary: 'Obtenir les rapports d\'un match' })
+  @ApiOperation({ summary: "Obtenir les rapports d'un match" })
   @ApiResponse({ status: 200, description: 'Rapports du match' })
   getMatchReports(@Param('matchId') matchId: string) {
     return this.reportsService.getMatchReports(matchId);
+  }
+
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Télécharger le rapport en PDF' })
+  @ApiResponse({ status: 200, description: 'PDF généré' })
+  @ApiResponse({ status: 404, description: 'Rapport introuvable' })
+  async downloadPdf(@Param('id') id: string, @Res() res: Response) {
+    const pdfBuffer = await this.pdfService.generateReportPdf(id);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=rapport-${id}.pdf`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.end(pdfBuffer);
   }
 
   @Get(':id')
@@ -83,6 +93,8 @@ export class ScoutingReportsController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Mettre à jour un rapport' })
   @ApiResponse({ status: 200, description: 'Rapport mis à jour' })
   @ApiResponse({ status: 404, description: 'Rapport introuvable' })
@@ -91,6 +103,8 @@ export class ScoutingReportsController {
   }
 
   @Post(':id/submit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Soumettre un rapport pour revue' })
   @ApiResponse({ status: 200, description: 'Rapport soumis' })
   @ApiResponse({ status: 404, description: 'Rapport introuvable' })
@@ -99,42 +113,23 @@ export class ScoutingReportsController {
   }
 
   @Post(':id/review')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Reviewer un rapport (approuver/rejeter)' })
   @ApiResponse({ status: 200, description: 'Rapport reviewé' })
   @ApiResponse({ status: 404, description: 'Rapport introuvable' })
-  review(
-    @Param('id') id: string,
-    @Body('approved') approved: boolean,
-    @Request() req,
-  ) {
+  review(@Param('id') id: string, @Body('approved') approved: boolean, @Request() req) {
     const reviewerId = req.user.id || req.user.sub;
     return this.reportsService.review(id, reviewerId, approved);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Supprimer un rapport' })
   @ApiResponse({ status: 200, description: 'Rapport supprimé' })
   @ApiResponse({ status: 404, description: 'Rapport introuvable' })
   remove(@Param('id') id: string) {
     return this.reportsService.remove(id);
   }
-
-  // Temporarily disabled - PDF service needs fixing
-  /*
-  @Get(':id/pdf')
-  @ApiOperation({ summary: 'Télécharger le rapport en PDF' })
-  @ApiResponse({ status: 200, description: 'PDF généré' })
-  @ApiResponse({ status: 404, description: 'Rapport introuvable' })
-  async downloadPdf(@Param('id') id: string, @Res() res: Response) {
-    const pdfBuffer = await this.pdfService.generateReportPdf(id);
-
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=report-${id}.pdf`,
-      'Content-Length': pdfBuffer.length,
-    });
-
-    res.end(pdfBuffer);
-  }
-  */
 }

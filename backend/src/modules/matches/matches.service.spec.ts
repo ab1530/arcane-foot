@@ -94,9 +94,7 @@ describe('MatchesService', () => {
         .mockResolvedValueOnce(mockAwayClub);
 
       await expect(service.create(createMatchDto)).rejects.toThrow(
-        new NotFoundException(
-          `Home club with ID ${createMatchDto.homeClubId} not found`,
-        ),
+        new NotFoundException(`Home club with ID ${createMatchDto.homeClubId} not found`),
       );
       expect(prismaService.matches.create).not.toHaveBeenCalled();
     });
@@ -107,9 +105,7 @@ describe('MatchesService', () => {
         .mockResolvedValueOnce(null);
 
       await expect(service.create(createMatchDto)).rejects.toThrow(
-        new NotFoundException(
-          `Away club with ID ${createMatchDto.awayClubId} not found`,
-        ),
+        new NotFoundException(`Away club with ID ${createMatchDto.awayClubId} not found`),
       );
       expect(prismaService.matches.create).not.toHaveBeenCalled();
     });
@@ -293,9 +289,7 @@ describe('MatchesService', () => {
     it('should throw NotFoundException if match not found', async () => {
       mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.update('invalid-id', updateMatchDto),
-      ).rejects.toThrow(
+      await expect(service.update('invalid-id', updateMatchDto)).rejects.toThrow(
         new NotFoundException('Match with ID invalid-id not found'),
       );
       expect(prismaService.matches.update).not.toHaveBeenCalled();
@@ -373,9 +367,7 @@ describe('MatchesService', () => {
     it('should throw NotFoundException if match not found', async () => {
       mockPrismaService.matches.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.assignScout('invalid-id', 'scout-123'),
-      ).rejects.toThrow(
+      await expect(service.assignScout('invalid-id', 'scout-123')).rejects.toThrow(
         new NotFoundException('Match with ID invalid-id not found'),
       );
     });
@@ -384,9 +376,7 @@ describe('MatchesService', () => {
       mockPrismaService.matches.findUnique.mockResolvedValue(mockMatch);
       mockPrismaService.users.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.assignScout('match-123', 'invalid-scout'),
-      ).rejects.toThrow(
+      await expect(service.assignScout('match-123', 'invalid-scout')).rejects.toThrow(
         new NotFoundException('Scout with ID invalid-scout not found'),
       );
     });
@@ -398,9 +388,9 @@ describe('MatchesService', () => {
         role: 'PUBLIC',
       });
 
-      await expect(
-        service.assignScout('match-123', 'scout-123'),
-      ).rejects.toThrow(new BadRequestException('User is not a scout'));
+      await expect(service.assignScout('match-123', 'scout-123')).rejects.toThrow(
+        new BadRequestException('User is not a scout'),
+      );
     });
   });
 

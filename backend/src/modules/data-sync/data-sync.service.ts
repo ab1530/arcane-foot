@@ -105,7 +105,11 @@ export class DataSyncService {
         const mappedPlayer = this.playerMapper.fromExternal(extPlayer, source);
 
         // Remove temporary fields and add real data
-        const { _firstName, _lastName, ...playerData } = mappedPlayer;
+        const {
+          _firstName: _unusedFirstName,
+          _lastName: _unusedLastName,
+          ...playerData
+        } = mappedPlayer;
         playerData.userId = user.id;
         playerData.clubId = club.id;
 
@@ -125,7 +129,7 @@ export class DataSyncService {
   /**
    * Synchronise les matchs d'une competition
    */
-  async syncMatches(competitionExternalId: string, source: string): Promise<void> {
+  async syncMatches(competitionExternalId: string, _source: string): Promise<void> {
     this.logger.log(`Starting matches sync for competition ${competitionExternalId}`);
 
     try {
@@ -151,7 +155,9 @@ export class DataSyncService {
         });
 
         if (!homeClub || !awayClub) {
-          this.logger.warn(`Skipping match: clubs not found (home: ${extMatch.homeTeamId}, away: ${extMatch.awayTeamId})`);
+          this.logger.warn(
+            `Skipping match: clubs not found (home: ${extMatch.homeTeamId}, away: ${extMatch.awayTeamId})`,
+          );
           continue;
         }
 
@@ -192,8 +198,8 @@ export class DataSyncService {
             where: { externalId: comp.externalId },
             update: { ...comp, updatedAt: new Date() },
             create: comp,
-          })
-        )
+          }),
+        ),
       );
 
       this.logger.debug(`Upserted batch ${i / batchSize + 1} (${batch.length} competitions)`);
@@ -213,8 +219,8 @@ export class DataSyncService {
             where: { externalId: club.externalId },
             update: { ...club, updatedAt: new Date() },
             create: club,
-          })
-        )
+          }),
+        ),
       );
 
       this.logger.debug(`Upserted batch ${i / batchSize + 1} (${batch.length} clubs)`);
@@ -234,8 +240,8 @@ export class DataSyncService {
             where: { externalId: player.externalId },
             update: { ...player, updatedAt: new Date() },
             create: player,
-          })
-        )
+          }),
+        ),
       );
 
       this.logger.debug(`Upserted batch ${i / batchSize + 1} (${batch.length} players)`);
@@ -249,23 +255,27 @@ export class DataSyncService {
     for (let i = 0; i < matches.length; i += batchSize) {
       const batch = matches.slice(i, i + batchSize);
 
-      // Matches n'ont pas d'externalId unique, on utilise combinaison homeClubId + awayClubId + scheduledAt
-      await this.prisma.$transaction(
-        batch.map((match) =>
-          this.prisma.matches.upsert({
-            where: {
-              // Composite unique constraint
-              homeClubId_awayClubId_scheduledAt: {
-                homeClubId: match.homeClubId,
-                awayClubId: match.awayClubId,
-                scheduledAt: match.scheduledAt,
-              },
-            },
-            update: { ...match, updatedAt: new Date() },
-            create: match,
-          })
-        )
-      );
+      // Matches n'ont pas d'externalId unique, on doit d'abord chercher puis créer/mettre à jour
+      for (const match of batch) {
+        const existingMatch = await this.prisma.matches.findFirst({
+          where: {
+            homeClubId: match.homeClubId,
+            awayClubId: match.awayClubId,
+            scheduledAt: match.scheduledAt,
+          },
+        });
+
+        if (existingMatch) {
+          await this.prisma.matches.update({
+            where: { id: existingMatch.id },
+            data: { ...match, updatedAt: new Date() },
+          });
+        } else {
+          await this.prisma.matches.create({
+            data: { ...match, id: randomUUID() },
+          });
+        }
+      }
 
       this.logger.debug(`Upserted batch ${i / batchSize + 1} (${batch.length} matches)`);
     }
@@ -281,7 +291,8 @@ export class DataSyncService {
 
     if (!user) {
       const firstName = externalPlayer.firstName || externalPlayer.name?.split(' ')[0] || 'Unknown';
-      const lastName = externalPlayer.lastName || externalPlayer.name?.split(' ').slice(1).join(' ') || 'Player';
+      const lastName =
+        externalPlayer.lastName || externalPlayer.name?.split(' ').slice(1).join(' ') || 'Player';
 
       user = await this.prisma.users.create({
         data: {

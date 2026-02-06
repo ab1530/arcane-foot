@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { theme } from '../theme';
 
+
 interface TextProps extends RNTextProps {
   variant?: 'display1' | 'display2' | 'display3' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
     | 'body' | 'body-lg' | 'body-sm' | 'caption' | 'overline';

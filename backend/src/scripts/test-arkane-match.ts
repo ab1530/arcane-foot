@@ -40,7 +40,8 @@ const testScenarios = [
   },
   {
     name: 'Complex search - Bundesliga defenders',
-    message: 'Find me a Bundesliga specialist who scouts center backs, speaks German, and costs under 150€ per hour',
+    message:
+      'Find me a Bundesliga specialist who scouts center backs, speaks German, and costs under 150€ per hour',
   },
   {
     name: 'Vague search - General help',
@@ -89,7 +90,9 @@ async function testChat(message: string, conversationId?: string) {
     return response.data;
   } catch (error: any) {
     if (error.response) {
-      throw new Error(`API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      throw new Error(
+        `API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+      );
     }
     throw error;
   }
@@ -104,7 +107,9 @@ async function getConversation(conversationId: string) {
     return response.data;
   } catch (error: any) {
     if (error.response) {
-      throw new Error(`API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      throw new Error(
+        `API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+      );
     }
     throw error;
   }
@@ -119,7 +124,9 @@ async function getInfo() {
     return response.data;
   } catch (error: any) {
     if (error.response) {
-      throw new Error(`API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      throw new Error(
+        `API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+      );
     }
     throw error;
   }
@@ -156,7 +163,8 @@ function printResult(scenario: string, result: any, success: boolean = true) {
     result.scouts.slice(0, 2).forEach((scout: any, i: number) => {
       console.log(`\n  ${i + 1}. ${scout.users.firstName} ${scout.users.lastName}`);
       if (scout.headline) console.log(`     ${scout.headline}`);
-      if (scout.hourlyRate) console.log(`     Rate: ${scout.currency || 'EUR'}${scout.hourlyRate}/hr`);
+      if (scout.hourlyRate)
+        console.log(`     Rate: ${scout.currency || 'EUR'}${scout.hourlyRate}/hr`);
     });
   } else {
     console.log('\n👥 Found Scouts: 0');
@@ -210,7 +218,7 @@ async function runTests() {
     }
 
     // Wait a bit between requests
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   // Test 3: Multi-turn conversation
@@ -227,13 +235,15 @@ async function runTests() {
       const result = await testChat(message, conversationId);
       conversationId = result.conversationId;
 
-      console.log(`🤖 AI: ${result.response.substring(0, 200)}${result.response.length > 200 ? '...' : ''}`);
+      console.log(
+        `🤖 AI: ${result.response.substring(0, 200)}${result.response.length > 200 ? '...' : ''}`,
+      );
 
       if (result.scouts && result.scouts.length > 0) {
         console.log(`   Found ${result.scouts.length} scout(s)`);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     console.log('\n✅ Multi-turn conversation completed');
@@ -259,7 +269,9 @@ async function runTests() {
   console.log(`✅ Passed: ${passedTests}`);
   console.log(`❌ Failed: ${failedTests}`);
   console.log(`📈 Total: ${passedTests + failedTests}`);
-  console.log(`🎯 Success Rate: ${((passedTests / (passedTests + failedTests)) * 100).toFixed(1)}%`);
+  console.log(
+    `🎯 Success Rate: ${((passedTests / (passedTests + failedTests)) * 100).toFixed(1)}%`,
+  );
 
   if (failedTests === 0) {
     console.log('\n🎉 All tests passed!');

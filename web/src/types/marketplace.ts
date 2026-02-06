@@ -101,3 +101,22 @@ export interface ListingReviewsResponse {
   reviews: Review[];
   stats: ReviewStats;
 }
+
+export type OfferType = "MATCH_ASSIGNMENT" | "PLAYER_REPORT" | "CONSULTATION" | "RETAINER";
+
+export interface CreateOfferPayload {
+  scoutListingId: string;
+  offerType: OfferType;
+  title: string;
+  description: string;
+  budget: number;
+  currency?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+  requirements?: {
+    matchId?: string;
+    playerId?: string;
+    criteria?: any;
+  };
+}

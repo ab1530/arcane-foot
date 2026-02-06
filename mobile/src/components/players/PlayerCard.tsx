@@ -120,7 +120,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, onPress, testID 
 
 const styles = StyleSheet.create({
   card: {
-    padding: theme.spacing.lg,
+    padding: 24,
   },
   header: {
     flexDirection: 'row',
@@ -130,12 +130,12 @@ const styles = StyleSheet.create({
   left: {
     flexDirection: 'row',
     flex: 1,
-    gap: theme.spacing.md,
+    gap: 16,
   },
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -146,22 +146,22 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   name: {
-    marginBottom: theme.spacing.xxs,
+    marginBottom: 2,
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: 8,
   },
   club: {
-    marginTop: theme.spacing.xxs,
+    marginTop: 2,
   },
   right: {
     alignItems: 'flex-end',
-    gap: theme.spacing.sm,
+    gap: 8,
   },
   ratingContainer: {
     position: 'relative',
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    borderRadius: theme.radius.lg,
+    borderRadius: 12,
   },
   ratingText: {
     fontSize: 20,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   ratingLabel: {
     fontSize: 8,
     letterSpacing: 1,
-    marginTop: theme.spacing.xxs,
+    marginTop: 2,
   },
   priceText: {
     color: theme.colors.brand.accent,

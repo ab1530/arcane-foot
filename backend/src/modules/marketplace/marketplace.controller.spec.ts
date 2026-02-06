@@ -711,7 +711,9 @@ describe('MarketplaceController', () => {
 
       const result = await controller.updateFavorite(mockRequest, favoriteId, updateDto);
 
-      expect(service.updateFavorite).toHaveBeenCalledWith('club-123', favoriteId, 'Updated notes', ['new-tag']);
+      expect(service.updateFavorite).toHaveBeenCalledWith('club-123', favoriteId, 'Updated notes', [
+        'new-tag',
+      ]);
       expect(result).toEqual(mockUpdatedFavorite);
     });
 
@@ -724,7 +726,12 @@ describe('MarketplaceController', () => {
 
       const result = await controller.updateFavorite(mockRequest, favoriteId, partialDto);
 
-      expect(service.updateFavorite).toHaveBeenCalledWith('club-123', favoriteId, 'Updated notes', undefined);
+      expect(service.updateFavorite).toHaveBeenCalledWith(
+        'club-123',
+        favoriteId,
+        'Updated notes',
+        undefined,
+      );
       expect(result).toEqual(mockUpdatedFavorite);
     });
   });

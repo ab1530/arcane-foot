@@ -62,7 +62,7 @@ const mockSubmit = scoutingReportsApi.submit as jest.Mock;
 const mockDelete = scoutingReportsApi.delete as jest.Mock;
 
 describe('ReportDetailScreen', () => {
-  const alertSpy = jest.spyOn(Alert, 'alert');
+  const alertSpy = Alert.alert as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -73,10 +73,6 @@ describe('ReportDetailScreen', () => {
     alertSpy.mockReset();
   });
 
-  afterAll(() => {
-    alertSpy.mockRestore();
-  });
-
   it('affiche un indicateur de chargement au démarrage', () => {
     mockGetById.mockReturnValue(new Promise(() => {}));
     const { getByTestId } = render(<ReportDetailScreen />);
@@ -84,11 +80,11 @@ describe('ReportDetailScreen', () => {
   });
 
   it('charge et affiche les informations du rapport', async () => {
-    const { getByText } = render(<ReportDetailScreen />);
+    const { getAllByText, getByText } = render(<ReportDetailScreen />);
 
     await waitFor(() => {
-      expect(getByText('Kylian Mbappé')).toBeTruthy();
-      expect(getByText('PSG vs OM')).toBeTruthy();
+      expect(getAllByText('Kylian Mbappé').length).toBeGreaterThan(0);
+      expect(getAllByText('PSG vs OM').length).toBeGreaterThan(0);
       expect(getByText('Rapidité impressionnante')).toBeTruthy();
       expect(getByText('Recruter maintenant')).toBeTruthy();
     });

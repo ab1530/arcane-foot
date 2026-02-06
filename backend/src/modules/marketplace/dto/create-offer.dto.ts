@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, IsDateString, IsEnum, IsObject, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsDateString,
+  IsEnum,
+  IsObject,
+  Min,
+} from 'class-validator';
 import { OfferType } from '@prisma/client';
 
 export class CreateOfferDto {
@@ -11,7 +19,10 @@ export class CreateOfferDto {
   @IsEnum(OfferType)
   offerType: OfferType;
 
-  @ApiProperty({ description: 'Offer title', example: 'LaLiga Match Scout - Valencia vs Real Madrid' })
+  @ApiProperty({
+    description: 'Offer title',
+    example: 'LaLiga Match Scout - Valencia vs Real Madrid',
+  })
   @IsString()
   title: string;
 

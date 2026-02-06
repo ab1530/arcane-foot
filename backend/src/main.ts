@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
+import { randomUUID } from 'crypto';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -27,11 +28,25 @@ async function bootstrap() {
     );
   }
 
-  const defaultDevOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3003'];
+  const defaultDevOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3003',
+  ];
   const corsOrigins = envOrigins.length > 0 ? envOrigins : defaultDevOrigins;
 
   // Cookie parser for CSRF tokens
   app.use(cookieParser());
+
+  // Attach a request ID to every request for cross-service tracing
+  app.use((req: any, res: any, next: any) => {
+    const headerReqId = req.headers['x-request-id'];
+    const requestId =
+      (Array.isArray(headerReqId) ? headerReqId[0] : headerReqId) || randomUUID();
+    req.requestId = requestId;
+    res.setHeader('x-request-id', requestId);
+    next();
+  });
 
   // CSRF Protection (only in production or if explicitly enabled)
   const csrfEnabled = process.env.CSRF_ENABLED === 'true' || isProduction;
@@ -191,6 +206,7 @@ async function bootstrap() {
     .addTag('Media', 'Media upload and management')
     .addTag('Payments', 'Stripe payment endpoints')
     .addTag('Notifications', 'Push notification endpoints')
+    .addTag('Hardware', 'GPS hardware ingestion and player metrics sessions')
     .addTag('Health', 'Health check and monitoring endpoints')
     .build();
 
@@ -208,9 +224,7 @@ async function bootstrap() {
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.5/swagger-ui-bundle.min.js',
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.5/swagger-ui-standalone-preset.min.js',
     ],
-    customCssUrl: [
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.5/swagger-ui.min.css',
-    ],
+    customCssUrl: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.5/swagger-ui.min.css'],
   });
 
   const port = process.env.API_PORT || 3000;

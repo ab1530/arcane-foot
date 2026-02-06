@@ -9,14 +9,8 @@ import OpenAI from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SupabaseService } from '../supabase/supabase.service';
-import {
-  ProcessVoiceReportDto,
-  SupportedLanguage,
-} from './dto/process-voice-report.dto';
-import {
-  VoiceReportResponseDto,
-  ExtractedReportData,
-} from './dto/voice-report-response.dto';
+import { ProcessVoiceReportDto, SupportedLanguage } from './dto/process-voice-report.dto';
+import { VoiceReportResponseDto, ExtractedReportData } from './dto/voice-report-response.dto';
 import { RecommendationType } from '@prisma/client';
 
 @Injectable()
@@ -25,7 +19,13 @@ export class VoiceToReportService {
   private openai: OpenAI | null = null;
   private readonly hasOpenAI: boolean;
   private readonly maxFileSizeMB: number;
-  private readonly supportedFormats = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/webm', 'audio/ogg'];
+  private readonly supportedFormats = [
+    'audio/mpeg',
+    'audio/wav',
+    'audio/mp4',
+    'audio/webm',
+    'audio/ogg',
+  ];
 
   constructor(
     private configService: ConfigService,
@@ -58,6 +58,10 @@ export class VoiceToReportService {
     try {
       // Validate audio file
       this.validateAudioFile(audioFile);
+
+      if (!this.hasOpenAI || !this.openai) {
+        return this.createFallbackResponse(language);
+      }
 
       // Transcribe audio
       const transcription = await this.transcribeAudio(audioFile, language);
@@ -113,9 +117,7 @@ export class VoiceToReportService {
     // Check file size
     const fileSizeMB = file.size / (1024 * 1024);
     if (fileSizeMB > this.maxFileSizeMB) {
-      throw new BadRequestException(
-        `File size exceeds maximum of ${this.maxFileSizeMB}MB`,
-      );
+      throw new BadRequestException(`File size exceeds maximum of ${this.maxFileSizeMB}MB`);
     }
 
     // Check MIME type
@@ -129,17 +131,11 @@ export class VoiceToReportService {
   /**
    * Transcribe audio using OpenAI Whisper or return URL for client-side processing
    */
-  private async transcribeAudio(
-    audioFile: Express.Multer.File,
-    language: string,
-  ): Promise<string> {
+  private async transcribeAudio(audioFile: Express.Multer.File, language: string): Promise<string> {
     if (this.hasOpenAI && this.openai) {
       return this.transcribeWithWhisper(audioFile, language);
     } else {
-      // Fallback: would need client-side processing
-      throw new BadRequestException(
-        'Server-side transcription not available. Please configure OPENAI_API_KEY.',
-      );
+      return 'Transcription unavailable';
     }
   }
 
@@ -242,7 +238,8 @@ IMPORTANT:
         messages: [
           {
             role: 'system',
-            content: 'You are an expert football scouting assistant. Extract structured data from scouting reports accurately. Return only valid JSON.',
+            content:
+              'You are an expert football scouting assistant. Extract structured data from scouting reports accurately. Return only valid JSON.',
           },
           { role: 'user', content: prompt },
         ],
@@ -317,10 +314,14 @@ IMPORTANT:
     }
 
     // Extract team names
-    const teamMatch = transcription.match(/(?:playing for|team)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+    const teamMatch = transcription.match(
+      /(?:playing for|team)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+    );
     if (teamMatch) data.team = teamMatch[1];
 
-    const opponentMatch = transcription.match(/(?:against|versus|vs)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+    const opponentMatch = transcription.match(
+      /(?:against|versus|vs)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+    );
     if (opponentMatch) data.opponent = opponentMatch[1];
 
     // Extract ratings (handle both 1-10 and 0-100 scales)
@@ -370,7 +371,17 @@ IMPORTANT:
 
     // Extract simple tags
     const tags: string[] = [];
-    const tagKeywords = ['fast', 'slow', 'technical', 'physical', 'tactical', 'strong', 'weak', 'leader', 'creative'];
+    const tagKeywords = [
+      'fast',
+      'slow',
+      'technical',
+      'physical',
+      'tactical',
+      'strong',
+      'weak',
+      'leader',
+      'creative',
+    ];
     for (const keyword of tagKeywords) {
       if (lowerText.includes(keyword)) {
         tags.push(keyword);
@@ -390,8 +401,17 @@ IMPORTANT:
 
     // Copy string fields
     const stringFields = [
-      'playerName', 'position', 'team', 'opponent', 'competition',
-      'matchDate', 'venue', 'strengths', 'weaknesses', 'keyMoments', 'observations'
+      'playerName',
+      'position',
+      'team',
+      'opponent',
+      'competition',
+      'matchDate',
+      'venue',
+      'strengths',
+      'weaknesses',
+      'keyMoments',
+      'observations',
     ];
     for (const field of stringFields) {
       if (data[field] && typeof data[field] === 'string') {
@@ -401,8 +421,13 @@ IMPORTANT:
 
     // Normalize numeric fields
     const numericFields = [
-      'jerseyNumber', 'technicalRating', 'physicalRating',
-      'tacticalRating', 'mentalRating', 'overallRating', 'minutesPlayed'
+      'jerseyNumber',
+      'technicalRating',
+      'physicalRating',
+      'tacticalRating',
+      'mentalRating',
+      'overallRating',
+      'minutesPlayed',
     ];
     for (const field of numericFields) {
       if (data[field] != null) {
@@ -428,7 +453,7 @@ IMPORTANT:
 
     // Normalize tags
     if (Array.isArray(data.tags)) {
-      normalized.tags = data.tags.filter(t => typeof t === 'string');
+      normalized.tags = data.tags.filter((t) => typeof t === 'string');
     }
 
     return normalized;
@@ -459,21 +484,17 @@ IMPORTANT:
 
     // Validate ratings
     const ratingFields = ['technicalRating', 'physicalRating', 'tacticalRating', 'mentalRating'];
-    const hasAnyRating = ratingFields.some(field => data[field] != null);
+    const hasAnyRating = ratingFields.some((field) => data[field] != null);
     if (!hasAnyRating) {
       warnings.push('No performance ratings detected - consider adding them');
     }
 
     // Calculate overall rating if not provided but other ratings exist
     if (!data.overallRating && hasAnyRating) {
-      const ratings = ratingFields
-        .map(field => data[field])
-        .filter(r => r != null) as number[];
+      const ratings = ratingFields.map((field) => data[field]).filter((r) => r != null) as number[];
 
       if (ratings.length > 0) {
-        data.overallRating = Math.round(
-          ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-        );
+        data.overallRating = Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length);
       }
     }
 
@@ -488,10 +509,7 @@ IMPORTANT:
   /**
    * Calculate confidence score based on completeness
    */
-  private calculateConfidence(
-    data: ExtractedReportData,
-    transcription: string,
-  ): number {
+  private calculateConfidence(data: ExtractedReportData, transcription: string): number {
     let score = 0;
     const maxScore = 100;
 
@@ -506,7 +524,7 @@ IMPORTANT:
 
     // Performance ratings (30 points)
     const ratingFields = ['technicalRating', 'physicalRating', 'tacticalRating', 'mentalRating'];
-    const ratingCount = ratingFields.filter(field => data[field] != null).length;
+    const ratingCount = ratingFields.filter((field) => data[field] != null).length;
     score += (ratingCount / ratingFields.length) * 30;
 
     // Observations (20 points)
@@ -519,7 +537,8 @@ IMPORTANT:
 
     // Adjust based on transcription length (quality indicator)
     const wordCount = transcription.split(/\s+/).length;
-    if (wordCount < 50) score *= 0.8; // Too short
+    if (wordCount < 50)
+      score *= 0.8; // Too short
     else if (wordCount > 200) score *= 1.1; // Detailed
 
     return Math.min(maxScore, Math.round(score));
@@ -528,28 +547,27 @@ IMPORTANT:
   /**
    * Generate helpful suggestions for improving the report
    */
-  private generateSuggestions(
-    data: ExtractedReportData,
-    warnings: string[],
-  ): string[] {
+  private generateSuggestions(data: ExtractedReportData, _warnings: string[]): string[] {
     const suggestions: string[] = [];
 
     if (!data.playerName) {
-      suggestions.push('Include the player\'s full name at the beginning');
+      suggestions.push("Include the player's full name at the beginning");
     }
 
     if (!data.position) {
-      suggestions.push('Mention the player\'s position');
+      suggestions.push("Mention the player's position");
     }
 
     const ratingFields = ['technicalRating', 'physicalRating', 'tacticalRating', 'mentalRating'];
-    const missingRatings = ratingFields.filter(field => data[field] == null);
+    const missingRatings = ratingFields.filter((field) => data[field] == null);
     if (missingRatings.length > 0) {
-      suggestions.push(`Add ratings for: ${missingRatings.map(f => f.replace('Rating', '')).join(', ')}`);
+      suggestions.push(
+        `Add ratings for: ${missingRatings.map((f) => f.replace('Rating', '')).join(', ')}`,
+      );
     }
 
     if (!data.strengths) {
-      suggestions.push('Describe the player\'s key strengths');
+      suggestions.push("Describe the player's key strengths");
     }
 
     if (!data.weaknesses) {
@@ -583,10 +601,7 @@ IMPORTANT:
   /**
    * Save audio file permanently to Supabase Storage
    */
-  private async saveAudioPermanently(
-    file: Express.Multer.File,
-    userId: string,
-  ): Promise<string> {
+  private async saveAudioPermanently(file: Express.Multer.File, userId: string): Promise<string> {
     try {
       const filename = `${userId}/${Date.now()}-${file.originalname}`;
       const audioUrl = await this.supabaseService.uploadFile(
@@ -638,7 +653,8 @@ IMPORTANT:
     return [
       {
         language: 'en',
-        prompt: 'This is a scouting report for John Doe, center back, number 5, playing for Real Madrid against Barcelona in La Liga at Santiago Bernabéu on February 15th. Technical rating: 8 out of 10. Physical rating: 9 out of 10. Tactical rating: 7 out of 10. Mental rating: 8 out of 10. Overall rating: 8 out of 10. Strengths: Excellent positioning, strong in the air, good passing range. Weaknesses: Can be slow to turn, sometimes caught out of position on counter-attacks. Key moments: Made a crucial block in the 67th minute, won every aerial duel in the second half. Overall impression: Top-quality defender with Champions League potential. Recommendation: Sign.',
+        prompt:
+          'This is a scouting report for John Doe, center back, number 5, playing for Real Madrid against Barcelona in La Liga at Santiago Bernabéu on February 15th. Technical rating: 8 out of 10. Physical rating: 9 out of 10. Tactical rating: 7 out of 10. Mental rating: 8 out of 10. Overall rating: 8 out of 10. Strengths: Excellent positioning, strong in the air, good passing range. Weaknesses: Can be slow to turn, sometimes caught out of position on counter-attacks. Key moments: Made a crucial block in the 67th minute, won every aerial duel in the second half. Overall impression: Top-quality defender with Champions League potential. Recommendation: Sign.',
         tips: [
           'Start with player name and position',
           'Include match context (opponent, date, venue)',
@@ -650,7 +666,8 @@ IMPORTANT:
       },
       {
         language: 'es',
-        prompt: 'Informe de scouting para Juan Pérez, delantero centro, número 9, jugando para Barcelona contra Real Madrid en La Liga. Valoración técnica: 9 sobre 10. Valoración física: 8 sobre 10. Valoración táctica: 8 sobre 10. Valoración mental: 9 sobre 10. Fortalezas: excelente finalización, muy rápido, buen regate. Debilidades: a veces egoísta, puede mejorar el juego aéreo. Momentos clave: marcó dos goles en la segunda mitad. Impresión general: delantero de clase mundial. Recomendación: fichar.',
+        prompt:
+          'Informe de scouting para Juan Pérez, delantero centro, número 9, jugando para Barcelona contra Real Madrid en La Liga. Valoración técnica: 9 sobre 10. Valoración física: 8 sobre 10. Valoración táctica: 8 sobre 10. Valoración mental: 9 sobre 10. Fortalezas: excelente finalización, muy rápido, buen regate. Debilidades: a veces egoísta, puede mejorar el juego aéreo. Momentos clave: marcó dos goles en la segunda mitad. Impresión general: delantero de clase mundial. Recomendación: fichar.',
         tips: [
           'Comienza con el nombre y posición del jugador',
           'Incluye contexto del partido',
@@ -662,7 +679,8 @@ IMPORTANT:
       },
       {
         language: 'fr',
-        prompt: 'Rapport de scouting pour Pierre Martin, milieu de terrain, numéro 10, jouant pour PSG contre Lyon en Ligue 1. Note technique: 8 sur 10. Note physique: 7 sur 10. Note tactique: 9 sur 10. Note mentale: 8 sur 10. Forces: excellente vision du jeu, passes précises, leadership. Faiblesses: manque de vitesse, défense à améliorer. Moments clés: a délivré deux passes décisives. Recommandation: suivre.',
+        prompt:
+          'Rapport de scouting pour Pierre Martin, milieu de terrain, numéro 10, jouant pour PSG contre Lyon en Ligue 1. Note technique: 8 sur 10. Note physique: 7 sur 10. Note tactique: 9 sur 10. Note mentale: 8 sur 10. Forces: excellente vision du jeu, passes précises, leadership. Faiblesses: manque de vitesse, défense à améliorer. Moments clés: a délivré deux passes décisives. Recommandation: suivre.',
         tips: [
           'Commencez par le nom et la position du joueur',
           'Incluez le contexte du match',
@@ -673,5 +691,19 @@ IMPORTANT:
         ],
       },
     ];
+  }
+
+  private createFallbackResponse(language: string): VoiceReportResponseDto {
+    return {
+      transcription:
+        'Server-side transcription unavailable. Please transcribe locally and paste the text into the report form.',
+      extractedData: {} as ExtractedReportData,
+      confidence: 0,
+      suggestions: ['Use manual transcription or enable OPENAI_API_KEY for automated processing.'],
+      warnings: ['Voice-to-Report running in fallback mode (OPENAI_API_KEY missing).'],
+      language,
+      processingTimeMs: 0,
+      useClientSide: true,
+    };
   }
 }

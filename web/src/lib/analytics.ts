@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 
 // Analytics Event Types
 export type AnalyticsEvent =
@@ -44,13 +44,9 @@ class Analytics {
   }
 
   identify(userId: string, properties?: UserProperties) {
-    Sentry.setUser({
-      id: userId,
+    logger.setContext({
+      userId,
       email: properties?.email,
-      username: properties?.email,
-    });
-
-    Sentry.setContext('user_properties', {
       tier: properties?.tier,
       role: properties?.role,
       organizationId: properties?.organizationId,
@@ -65,12 +61,9 @@ class Analytics {
       return;
     }
 
-    // Send to Sentry as breadcrumb
-    Sentry.addBreadcrumb({
-      category: 'analytics',
-      message: event.type,
-      level: 'info',
-      data: event,
+    logger.debug('Analytics event', {
+      scope: 'Analytics',
+      event,
     });
 
     // Log in development
@@ -115,7 +108,12 @@ class Analytics {
   // Track errors
   error(errorType: string, message: string, page: string) {
     this.track({ type: 'error', errorType, message, page });
-    Sentry.captureMessage(`Analytics Error: ${errorType} - ${message}`, 'warning');
+    logger.warn('Analytics error', {
+      scope: 'Analytics',
+      errorType,
+      message,
+      page,
+    });
   }
 
   // Track performance metrics
@@ -165,7 +163,7 @@ class Analytics {
 
   // Clear user data (on logout)
   reset() {
-    Sentry.setUser(null);
+    logger.clearContext(['userId', 'email', 'tier', 'role', 'organizationId']);
     console.log('[Analytics] User data cleared');
   }
 }

@@ -47,10 +47,7 @@ describe('ArkaneMatchService', () => {
     status: 'ACTIVE',
     createdAt: new Date(),
     updatedAt: new Date(),
-    marketplace_reviews: [
-      { rating: 5 },
-      { rating: 4 },
-    ],
+    marketplace_reviews: [{ rating: 5 }, { rating: 4 }],
     stats: {
       avgRating: 4.5,
       totalReviews: 25,
@@ -151,11 +148,13 @@ describe('ArkaneMatchService', () => {
         const existingConversation: Conversation = {
           id: mockConversationId,
           userId: mockUserId,
-          messages: [{
-            role: 'user',
-            content: 'Hello',
-            timestamp: new Date(),
-          }],
+          messages: [
+            {
+              role: 'user',
+              content: 'Hello',
+              timestamp: new Date(),
+            },
+          ],
           currentCriteria: { leagues: ['LaLiga'] },
           createdAt: new Date(),
           lastMessageAt: new Date(),
@@ -171,7 +170,9 @@ describe('ArkaneMatchService', () => {
         });
 
         expect(result.conversationId).toBe(mockConversationId);
-        expect(redisService.get).toHaveBeenCalledWith(`arkane-match:conversation:${mockConversationId}`);
+        expect(redisService.get).toHaveBeenCalledWith(
+          `arkane-match:conversation:${mockConversationId}`,
+        );
       });
 
       it('should throw BadRequestException if conversation belongs to different user', async () => {
@@ -233,7 +234,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should detect GET_DETAILS intent', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'Tell me more about this scout',
@@ -243,7 +247,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should detect COMPARE_SCOUTS intent', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'Compare these two scouts',
@@ -253,7 +260,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should detect GENERAL_QUESTION intent', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'How does this platform work?',
@@ -506,7 +516,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should generate response for GET_DETAILS intent', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'Tell me more about this scout',
@@ -516,7 +529,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should generate response for COMPARE_SCOUTS intent', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'Compare scouts',
@@ -526,7 +542,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should generate response for general how-it-works question', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'How does this work?',
@@ -536,7 +555,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should generate response for capabilities question', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'What can you do?',
@@ -546,7 +568,10 @@ describe('ArkaneMatchService', () => {
       });
 
       it('should generate response for pricing question', async () => {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
 
         const result = await service.chat(mockUserId, {
           message: 'How much do scouts cost?',
@@ -575,7 +600,7 @@ describe('ArkaneMatchService', () => {
           message: 'Find scouts',
         });
 
-        expect(result.suggestions.some(s => s.includes('budget'))).toBe(true);
+        expect(result.suggestions.some((s) => s.includes('budget'))).toBe(true);
       });
 
       it('should suggest narrowing when many results', async () => {
@@ -598,7 +623,7 @@ describe('ArkaneMatchService', () => {
           message: 'Find scouts',
         });
 
-        expect(result.suggestions.some(s => s.includes('narrow'))).toBe(true);
+        expect(result.suggestions.some((s) => s.includes('narrow'))).toBe(true);
       });
     });
 
@@ -743,7 +768,9 @@ describe('ArkaneMatchService', () => {
       const result = await service.getConversation(mockConversationId);
 
       expect(result).toEqual(mockConversation);
-      expect(redisService.get).toHaveBeenCalledWith(`arkane-match:conversation:${mockConversationId}`);
+      expect(redisService.get).toHaveBeenCalledWith(
+        `arkane-match:conversation:${mockConversationId}`,
+      );
     });
 
     it('should fallback to in-memory when Redis returns null', async () => {
@@ -791,7 +818,9 @@ describe('ArkaneMatchService', () => {
 
       await service.clearConversation(mockConversationId, mockUserId);
 
-      expect(redisService.del).toHaveBeenCalledWith(`arkane-match:conversation:${mockConversationId}`);
+      expect(redisService.del).toHaveBeenCalledWith(
+        `arkane-match:conversation:${mockConversationId}`,
+      );
       expect(service['inMemoryConversations'].has(mockConversationId)).toBe(false);
     });
 
@@ -808,9 +837,9 @@ describe('ArkaneMatchService', () => {
 
       redisService.get.mockResolvedValue(mockConversation);
 
-      await expect(
-        service.clearConversation(mockConversationId, mockUserId),
-      ).rejects.toThrow('Conversation does not belong to this user');
+      await expect(service.clearConversation(mockConversationId, mockUserId)).rejects.toThrow(
+        'Conversation does not belong to this user',
+      );
     });
 
     it('should handle clearing non-existent conversation', async () => {
@@ -882,7 +911,10 @@ describe('ArkaneMatchService', () => {
     it('should limit in-memory conversations to 100', async () => {
       // Create 101 conversations
       for (let i = 0; i < 101; i++) {
-        marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+        marketplaceService.searchListings.mockResolvedValue({
+          data: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        });
         await service.chat(`user-${i}`, { message: 'Test' });
       }
 
@@ -892,7 +924,10 @@ describe('ArkaneMatchService', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty message gracefully', async () => {
-      marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+      marketplaceService.searchListings.mockResolvedValue({
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+      });
 
       const result = await service.chat(mockUserId, {
         message: '',
@@ -957,7 +992,10 @@ describe('ArkaneMatchService', () => {
     });
 
     it('should handle no-results with specific suggestions', async () => {
-      marketplaceService.searchListings.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+      marketplaceService.searchListings.mockResolvedValue({
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+      });
 
       const result = await service.chat(mockUserId, {
         message: 'Find verified scouts under €50 with rating above 4',

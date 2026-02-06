@@ -31,7 +31,9 @@ export class CreateBookingDto {
   @IsOptional()
   meetingLink?: string;
 
-  @ApiPropertyOptional({ example: 'Je souhaiterais travailler sur la gestion du stress avant les matchs' })
+  @ApiPropertyOptional({
+    example: 'Je souhaiterais travailler sur la gestion du stress avant les matchs',
+  })
   @IsString()
   @IsOptional()
   userNotes?: string;

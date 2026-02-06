@@ -23,7 +23,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 
 interface Registration {
   id: string;
@@ -153,7 +153,7 @@ export default function MyCampsPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -172,12 +172,12 @@ export default function MyCampsPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -479,6 +479,6 @@ export default function MyCampsPage() {
           </div>
         </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

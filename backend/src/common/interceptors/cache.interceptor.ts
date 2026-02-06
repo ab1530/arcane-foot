@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { RedisService } from '../../modules/cache/redis.service';
@@ -152,11 +146,7 @@ export class CacheManagerService {
   /**
    * Get or set cache (cache-aside pattern)
    */
-  async getOrSet<T>(
-    key: string,
-    dataProvider: () => Promise<T>,
-    ttl?: number,
-  ): Promise<T> {
+  async getOrSet<T>(key: string, dataProvider: () => Promise<T>, ttl?: number): Promise<T> {
     // Try to get from cache
     const cached = await this.redisService.get<T>(key);
 
@@ -193,11 +183,7 @@ export class CacheManagerService {
    * Batch set multiple cache keys
    */
   async batchSet(entries: Array<{ key: string; value: any; ttl?: number }>): Promise<void> {
-    await Promise.all(
-      entries.map(({ key, value, ttl }) =>
-        this.redisService.set(key, value, ttl),
-      ),
-    );
+    await Promise.all(entries.map(({ key, value, ttl }) => this.redisService.set(key, value, ttl)));
   }
 
   /**

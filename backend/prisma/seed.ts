@@ -28,8 +28,15 @@ async function main() {
     }
   }
 
+  const demoPassword = process.env.ARCANE_DEMO_PASSWORD;
+  if (!demoPassword) {
+    throw new Error(
+      'ARCANE_DEMO_PASSWORD is required to seed demo users. Set it in your environment (do not commit passwords).',
+    );
+  }
+
   // Hash a common password for all seed users
-  const password = await bcrypt.hash('Password123!', 10);
+  const password = await bcrypt.hash(demoPassword, 10);
 
   // NOTE: Using only fields that exist in the initial database migration
   console.log('ℹ️  Seeding with basic schema fields only');
@@ -2528,6 +2535,185 @@ async function main() {
 
   console.log(`✅ Created 2 scout favorites`);
 
+  // ===============================================
+  // 8. CREATE GPS HARDWARE SESSIONS (SIMULATED)
+  // ===============================================
+  console.log('📡 Creating sample hardware sessions for GPS pipeline...');
+
+  const hardwarePlayers = await prisma.players.findMany({
+    where: {
+      users: {
+        email: {
+          in: ['erling.haaland@arcane-demo.com', 'vinicius.junior@arcane-demo.com'],
+        },
+      },
+    },
+    include: {
+      users: true,
+    },
+  });
+
+  const baseHardwareSessions = [
+    {
+      type: 'training',
+      source: 'nashone_v1',
+      deviceId: 'gps-vest-001',
+      startedAt: new Date('2025-02-10T09:00:00Z'),
+      endedAt: new Date('2025-02-10T10:20:00Z'),
+      metrics: {
+        movementDistanceM: 9200,
+        sprintDistanceM: 840,
+        offenseDefenseRatio: 1.28,
+        avgSpeedKmh: 21.4,
+        maxSpeedKmh: 33.8,
+        sprintTimeS: 58.2,
+        sprintCount: 17,
+        caloriesBurned: 1150,
+        maxAccelerationG: 2.9,
+        maxDecelerationG: 3.1,
+        accelerationCount: 42,
+        reductionStepsCount: 18,
+        thermalTrajectoryMap: { zones: ['left_wing', 'half_spaces'], intensity: 'high' },
+        sprintVectorData: { bursts: [{ angle: 32, speed: 33.8 }, { angle: -12, speed: 31.1 }] },
+        motionTrajectoryData: { turns: [{ time: 480, angle: 45 }, { time: 620, angle: -38 }], coverage: 'balanced' },
+        qualitySixDimensional: {
+          stability: 0.92,
+          balance: 0.88,
+          reactivity: 0.9,
+          speedControl: 0.86,
+          intensity: 0.89,
+          coverage: 0.94,
+        },
+        rawMetrics: { gnssSignal: 0.97, firmware: '1.0.0', battery: 84 },
+        normalizedMetrics: { loadScore: 82, intensityScore: 78, highSpeedPercentage: 12.5 },
+      },
+    },
+    {
+      type: 'match',
+      source: 'nashone_v1',
+      deviceId: 'gps-vest-002',
+      startedAt: new Date('2025-02-14T19:00:00Z'),
+      endedAt: new Date('2025-02-14T20:45:00Z'),
+      metrics: {
+        movementDistanceM: 11340,
+        sprintDistanceM: 1180,
+        offenseDefenseRatio: 1.08,
+        avgSpeedKmh: 23.1,
+        maxSpeedKmh: 35.2,
+        sprintTimeS: 74.5,
+        sprintCount: 22,
+        caloriesBurned: 1320,
+        maxAccelerationG: 3.2,
+        maxDecelerationG: 3.4,
+        accelerationCount: 58,
+        reductionStepsCount: 25,
+        thermalTrajectoryMap: { zones: ['central', 'final_third'], intensity: 'very_high' },
+        sprintVectorData: { bursts: [{ angle: 5, speed: 35.2 }, { angle: -18, speed: 33.6 }] },
+        motionTrajectoryData: { turns: [{ time: 900, angle: 50 }, { time: 1300, angle: -42 }], coverage: 'attacking' },
+        qualitySixDimensional: {
+          stability: 0.9,
+          balance: 0.87,
+          reactivity: 0.93,
+          speedControl: 0.9,
+          intensity: 0.94,
+          coverage: 0.96,
+        },
+        rawMetrics: { gnssSignal: 0.95, firmware: '1.0.0', battery: 69 },
+        normalizedMetrics: { loadScore: 90, intensityScore: 86, highSpeedPercentage: 15.1 },
+      },
+    },
+    {
+      type: 'test',
+      source: 'simulator_v1',
+      deviceId: 'gps-vest-lab',
+      startedAt: new Date('2025-02-18T08:30:00Z'),
+      endedAt: new Date('2025-02-18T09:05:00Z'),
+      metrics: {
+        movementDistanceM: 5400,
+        sprintDistanceM: 620,
+        offenseDefenseRatio: 0.95,
+        avgSpeedKmh: 19.8,
+        maxSpeedKmh: 32.1,
+        sprintTimeS: 45.3,
+        sprintCount: 14,
+        caloriesBurned: 760,
+        maxAccelerationG: 2.5,
+        maxDecelerationG: 2.9,
+        accelerationCount: 33,
+        reductionStepsCount: 14,
+        thermalTrajectoryMap: { zones: ['left_half_space', 'right_half_space'], intensity: 'medium' },
+        sprintVectorData: { bursts: [{ angle: 18, speed: 31.4 }, { angle: -25, speed: 30.1 }] },
+        motionTrajectoryData: { turns: [{ time: 240, angle: 36 }, { time: 410, angle: -28 }], coverage: 'box_to_box' },
+        qualitySixDimensional: {
+          stability: 0.86,
+          balance: 0.84,
+          reactivity: 0.82,
+          speedControl: 0.8,
+          intensity: 0.83,
+          coverage: 0.85,
+        },
+        rawMetrics: { gnssSignal: 0.93, firmware: '1.0.0', battery: 92 },
+        normalizedMetrics: { loadScore: 68, intensityScore: 64, highSpeedPercentage: 10.8 },
+      },
+    },
+  ];
+
+  let hardwareSessionCount = 0;
+
+  const computeDurationMinutes = (start: Date, end: Date) =>
+    Math.round(((end.getTime() - start.getTime()) / 1000 / 60) * 100) / 100;
+
+  if (hardwarePlayers.length === 0) {
+    console.log('⚠️  No players found for hardware sessions seeding, skipping GPS sessions.');
+  } else {
+    for (const [index, player] of hardwarePlayers.entries()) {
+      const variation = index * 0.35;
+
+      for (const base of baseHardwareSessions) {
+        if (hardwareSessionCount >= 5) break;
+
+        const metrics = {
+          ...base.metrics,
+          movementDistanceM: base.metrics.movementDistanceM + variation * 120,
+          sprintDistanceM: base.metrics.sprintDistanceM + variation * 30,
+          maxSpeedKmh: parseFloat((base.metrics.maxSpeedKmh + variation * 0.6).toFixed(2)),
+          offenseDefenseRatio: base.metrics.offenseDefenseRatio
+            ? parseFloat((base.metrics.offenseDefenseRatio + variation * 0.05).toFixed(2))
+            : base.metrics.offenseDefenseRatio,
+        };
+
+        const totalTimeMin = computeDurationMinutes(base.startedAt, base.endedAt);
+
+        await prisma.hardwareSession.create({
+          data: {
+            id: randomUUID(),
+            playerId: player.id,
+            deviceId: base.deviceId,
+            source: base.source,
+            type: base.type,
+            startedAt: base.startedAt,
+            endedAt: base.endedAt,
+            totalTimeMin,
+            ...metrics,
+            updatedAt: new Date(),
+          },
+        });
+
+        hardwareSessionCount++;
+      }
+
+      if (hardwareSessionCount >= 5) {
+        break;
+      }
+    }
+
+    console.log(
+      `✅ Created ${hardwareSessionCount} hardware sessions for ${hardwarePlayers.length} players (${hardwarePlayers
+        .map((p) => `${p.users.firstName} ${p.users.lastName}`)
+        .join(', ')})`,
+    );
+  }
+
   console.log('\n🎉 Database seeding completed successfully!');
   console.log('\n📊 Summary:');
   console.log(`  - Clubs: 20 major European clubs`);
@@ -2537,6 +2723,7 @@ async function main() {
   console.log(`  - Marketplace Offers: 4 offers (1 completed, 1 accepted, 1 viewed, 1 pending)`);
   console.log(`  - Reviews: 1 verified 5-star review`);
   console.log(`  - Favorites: 2 scout favorites`);
+  console.log(`  - Hardware Sessions: ${hardwareSessionCount} simulated GPS sessions`);
   console.log('\n🏆 Clubs by league:');
   console.log('  Ligue 1: PSG, OM, OL, Monaco');
   console.log('  Premier League: Manchester City, Arsenal, Liverpool, Chelsea');
@@ -2544,7 +2731,7 @@ async function main() {
   console.log('  Bundesliga: Bayern Munich, Dortmund, RB Leipzig, Leverkusen');
   console.log('  Serie A: Inter Milan, AC Milan, Juventus, Napoli');
   console.log('\n🔐 Login credentials (all users):');
-  console.log('  Password: Password123!');
+  console.log('  Password: (set via ARCANE_DEMO_PASSWORD env var)');
   console.log('\n📧 Staff users:');
   console.log('  - admin@arcane.com (SUPER_ADMIN)');
   console.log('  - scout1@arcane.com (SCOUT) - Has active marketplace listing');

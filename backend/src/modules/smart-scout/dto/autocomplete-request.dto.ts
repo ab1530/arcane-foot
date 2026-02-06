@@ -7,15 +7,15 @@ export class AutocompleteRequestDto {
   @ApiProperty({
     description: 'Nom du champ à compléter',
     example: 'strengths',
-    enum: ['strengths', 'weaknesses', 'summary', 'notes', 'position', 'preferredFoot', 'tags']
+    enum: ['strengths', 'weaknesses', 'summary', 'notes', 'position', 'preferredFoot', 'tags'],
   })
   @IsString()
   @IsNotEmpty()
   fieldName: string;
 
   @ApiProperty({
-    description: 'Valeur partielle entrée par l\'utilisateur',
-    example: 'Bon contrôle du ballon'
+    description: "Valeur partielle entrée par l'utilisateur",
+    example: 'Bon contrôle du ballon',
   })
   @IsString()
   @IsNotEmpty()
@@ -23,7 +23,7 @@ export class AutocompleteRequestDto {
 
   @ApiProperty({
     description: 'Contexte du rapport pour des suggestions plus pertinentes',
-    type: ReportContextDto
+    type: ReportContextDto,
   })
   @ValidateNested()
   @Type(() => ReportContextDto)
@@ -35,6 +35,6 @@ export class AutocompleteResponseDto {
   @ApiProperty({ description: 'Liste de suggestions', type: [String] })
   suggestions: string[];
 
-  @ApiProperty({ description: 'Si l\'autocomplete utilise AI ou règles de base' })
+  @ApiProperty({ description: "Si l'autocomplete utilise AI ou règles de base" })
   usingAI: boolean;
 }

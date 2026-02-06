@@ -14,7 +14,8 @@ export class ValidatePlayerDto {
 export class RejectPlayerDto {
   @ApiProperty({
     description: 'Reason for rejecting the player profile',
-    example: 'Unable to verify player credentials. Club contact did not confirm player association.',
+    example:
+      'Unable to verify player credentials. Club contact did not confirm player association.',
   })
   @IsString()
   @IsNotEmpty()

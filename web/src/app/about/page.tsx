@@ -10,66 +10,27 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import Link from "next/link";
 import { ArrowLeft, Target, Users, Globe, Award, Linkedin, Twitter, Mail } from "lucide-react";
 import { staggerContainer, staggerItem } from "@/lib/design-system/animations";
+import { useLanguage } from "@/contexts/language-context";
 
-const team = [
-  {
-    name: "Michael Chen",
-    role: "CEO & Founder",
-    image: null,
-    bio: "Former football agent with 15+ years experience",
-    linkedin: "#",
-    twitter: "#",
-  },
-  {
-    name: "Sophie Dubois",
-    role: "Head of Player Relations",
-    image: null,
-    bio: "Ex-professional player turned agent",
-    linkedin: "#",
-    twitter: "#",
-  },
-  {
-    name: "David Martinez",
-    role: "Chief Scout",
-    image: null,
-    bio: "20 years in talent identification",
-    linkedin: "#",
-    twitter: "#",
-  },
-  {
-    name: "Emma Williams",
-    role: "Head of Analytics",
-    image: null,
-    bio: "Data scientist specializing in sports",
-    linkedin: "#",
-    twitter: "#",
-  },
-];
-
-const values = [
-  {
-    icon: Target,
-    title: "Excellence",
-    description: "We strive for excellence in everything we do, from player representation to client service.",
-  },
-  {
-    icon: Users,
-    title: "Integrity",
-    description: "Trust and transparency are at the core of our relationships with players and clubs.",
-  },
-  {
-    icon: Globe,
-    title: "Global Reach",
-    description: "Our worldwide network ensures opportunities across all major football markets.",
-  },
-  {
-    icon: Award,
-    title: "Innovation",
-    description: "We leverage cutting-edge technology and data to give our players a competitive edge.",
-  },
-];
+const valueIconMap = {
+  excellence: Target,
+  integrity: Users,
+  global: Globe,
+  innovation: Award,
+} as const;
 
 export default function AboutPage() {
+  const { dictionary } = useLanguage();
+  const aboutCopy = dictionary.about;
+  const navigationCopy = dictionary.common.navigation;
+
+  const stats = aboutCopy.stats;
+  const values = aboutCopy.values.map((value) => ({
+    ...value,
+    icon: valueIconMap[value.id as keyof typeof valueIconMap] ?? Target,
+  }));
+  const teamMembers = aboutCopy.team.members;
+
   return (
     <main className="min-h-screen overflow-hidden relative">
       <AnimatedBackground />
@@ -80,7 +41,9 @@ export default function AboutPage() {
           <div className="flex h-20 items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
               <ArrowLeft className="h-5 w-5 text-arcane-accent group-hover:-translate-x-1 transition-transform" />
-              <span className="text-arcane-grey group-hover:text-white transition-colors">Back to Home</span>
+              <span className="text-arcane-grey group-hover:text-white transition-colors">
+                {navigationCopy.backHome}
+              </span>
             </Link>
 
             <div className="flex items-center gap-3">
@@ -91,7 +54,7 @@ export default function AboutPage() {
             </div>
 
             <Link href="/contact">
-              <Button>Get in Touch</Button>
+              <Button>{navigationCopy.contact}</Button>
             </Link>
           </div>
         </div>
@@ -107,14 +70,16 @@ export default function AboutPage() {
           >
             <motion.div className="inline-block mb-6">
               <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                Who We Are
+                {aboutCopy.hero.eyebrow}
               </span>
             </motion.div>
             <h1 className="text-6xl md:text-8xl lg:text-9xl font-black mb-6">
-              <GradientText>ABOUT ARCANE</GradientText>
+              <GradientText>{aboutCopy.hero.title}</GradientText>
             </h1>
             <p className="text-2xl md:text-3xl text-arcane-grey max-w-4xl mx-auto leading-relaxed">
-              Redefining <span className="text-white font-bold">football representation</span> through innovation and excellence
+              {aboutCopy.hero.description.before}{" "}
+              <span className="text-white font-bold">{aboutCopy.hero.description.highlight}</span>{" "}
+              {aboutCopy.hero.description.after}
             </p>
           </motion.div>
 
@@ -125,12 +90,7 @@ export default function AboutPage() {
             animate="animate"
             className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-32"
           >
-            {[
-              { value: 15, suffix: "+", label: "Years Experience" },
-              { value: 500, suffix: "+", label: "Players Represented" },
-              { value: 50, suffix: "+", label: "Partner Clubs" },
-              { value: 30, suffix: "+", label: "Countries" },
-            ].map((stat, index) => (
+            {stats.map((stat, index) => (
               <motion.div key={index} variants={staggerItem}>
                 <Card3D>
                   <GlassCard variant="elevated" className="text-center p-6">
@@ -157,19 +117,20 @@ export default function AboutPage() {
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
-                <h2 className="text-5xl md:text-6xl font-black mb-6">
-                  OUR <NeonText>STORY</NeonText>
+                <h2 className="text-5xl md:text-6xl font-black mb-6 uppercase">
+                  {aboutCopy.story.title} <NeonText>{aboutCopy.story.highlight}</NeonText>
                 </h2>
                 <div className="space-y-4 text-lg text-arcane-grey">
-                  <p>
-                    Founded in 2010, Arcane Football emerged from a simple vision: to provide world-class representation that puts players first.
-                  </p>
-                  <p>
-                    Our founder, Michael Chen, spent over a decade as a football agent, witnessing firsthand the challenges players face in navigating their careers. He assembled a team of industry veterans, former players, and data scientists to create a new kind of agency.
-                  </p>
-                  <p className="text-white font-semibold">
-                    Today, Arcane represents over 500 professional players across 30 countries, with a track record that speaks for itself.
-                  </p>
+                  {aboutCopy.story.paragraphs.map((paragraph) => (
+                    <p
+                      key={paragraph.id}
+                      className={`text-lg ${
+                        paragraph.emphasize ? "text-white font-semibold" : "text-arcane-grey"
+                      }`}
+                    >
+                      {paragraph.text}
+                    </p>
+                  ))}
                 </div>
               </div>
 
@@ -191,38 +152,41 @@ export default function AboutPage() {
             className="mb-32"
           >
             <div className="text-center mb-16">
-              <h2 className="text-5xl md:text-6xl font-black mb-4">
-                OUR <NeonText>VALUES</NeonText>
+              <h2 className="text-5xl md:text-6xl font-black mb-4 uppercase">
+                {aboutCopy.valuesSection.title} <NeonText>{aboutCopy.valuesSection.highlight}</NeonText>
               </h2>
               <p className="text-xl text-arcane-grey max-w-2xl mx-auto">
-                The principles that guide everything we do
+                {aboutCopy.valuesSection.subtitle}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {values.map((value, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card3D>
-                    <GlassCard variant="bordered" glowOnHover className="h-full p-6 text-center group cursor-pointer">
-                      <div className="w-16 h-16 rounded-xl bg-arcane-accent/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <value.icon className="h-8 w-8 text-arcane-accent" />
-                      </div>
-                      <h3 className="text-xl font-black text-white mb-3 uppercase">
-                        {value.title}
-                      </h3>
-                      <p className="text-sm text-arcane-grey group-hover:text-white transition-colors">
-                        {value.description}
-                      </p>
-                    </GlassCard>
-                  </Card3D>
-                </motion.div>
-              ))}
+              {values.map((value, index) => {
+                const Icon = value.icon;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card3D>
+                      <GlassCard variant="bordered" glowOnHover className="h-full p-6 text-center group cursor-pointer">
+                        <div className="w-16 h-16 rounded-xl bg-arcane-accent/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                          <Icon className="h-8 w-8 text-arcane-accent" />
+                        </div>
+                        <h3 className="text-xl font-black text-white mb-3 uppercase">
+                          {value.title}
+                        </h3>
+                        <p className="text-sm text-arcane-grey group-hover:text-white transition-colors">
+                          {value.description}
+                        </p>
+                      </GlassCard>
+                    </Card3D>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
 
@@ -234,16 +198,16 @@ export default function AboutPage() {
             className="mb-32"
           >
             <div className="text-center mb-16">
-              <h2 className="text-5xl md:text-6xl font-black mb-4">
-                MEET THE <NeonText>TEAM</NeonText>
+              <h2 className="text-5xl md:text-6xl font-black mb-4 uppercase">
+                {aboutCopy.team.title} <NeonText>{aboutCopy.team.highlight}</NeonText>
               </h2>
               <p className="text-xl text-arcane-grey max-w-2xl mx-auto">
-                The experts behind Arcane Football
+                {aboutCopy.team.subtitle}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {team.map((member, index) => (
+              {teamMembers.map((member, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
@@ -299,17 +263,23 @@ export default function AboutPage() {
           >
             <GlassCard variant="elevated" className="p-12 md:p-16 text-center">
               <h2 className="text-4xl md:text-5xl font-black mb-6 uppercase">
-                Join the <NeonText>Arcane</NeonText> Family
+                {aboutCopy.cta.title} <NeonText>{aboutCopy.cta.highlight}</NeonText>
+                {aboutCopy.cta.suffix ? (
+                  <>
+                    {" "}
+                    {aboutCopy.cta.suffix}
+                  </>
+                ) : null}
               </h2>
               <p className="text-xl text-arcane-grey mb-8 max-w-2xl mx-auto">
-                Ready to take your career to the next level? Let's start the conversation.
+                {aboutCopy.cta.description}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/membership">
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                     <Button size="lg" className="shadow-[0_0_30px_rgba(228,255,59,0.4)]">
-                      View Membership Plans
+                      {aboutCopy.cta.buttons.membership}
                     </Button>
                   </motion.div>
                 </Link>
@@ -317,7 +287,7 @@ export default function AboutPage() {
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                     <Button size="lg" variant="secondary">
                       <Mail className="mr-2 h-5 w-5" />
-                      Contact Us
+                      {aboutCopy.cta.buttons.contact}
                     </Button>
                   </motion.div>
                 </Link>

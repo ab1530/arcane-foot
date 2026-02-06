@@ -10,6 +10,8 @@ import { ReportModal } from "@/components/smart-scout/ReportModal";
 import { GlassCard } from "@/components/ui/glass-card";
 import { apiClient } from "@/lib/api-client";
 import type { Player, ReportContext } from "@/types/smart-scout";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
+import { RequireTier } from "@/components/auth/RequireTier";
 
 export default function SmartScoutPage() {
   const [selectedReportId, setSelectedReportId] = useState<string>('');
@@ -66,7 +68,9 @@ export default function SmartScoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-arcane-dark">
+    <ProtectedPage>
+      <RequireTier minTier="PRO">
+        <div className="min-h-screen bg-arcane-dark">
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-arcane-dark via-arcane-darkAlt to-arcane-dark border-b border-arcane-darkBorder">
         {/* Animated Background */}
@@ -386,6 +390,8 @@ export default function SmartScoutPage() {
         }}
         reportId={selectedReportId}
       />
-    </div>
+        </div>
+      </RequireTier>
+    </ProtectedPage>
   );
 }

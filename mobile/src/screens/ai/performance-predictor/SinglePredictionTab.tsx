@@ -9,7 +9,9 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { performancePredictorApi } from '../../../services/api/performance-predictor';
+import api from '../../../services/api';
 import {
   PredictionCard,
   RatingDistribution,
@@ -24,6 +26,85 @@ export const SinglePredictionTab: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [prediction, setPrediction] = useState<PerformancePrediction | null>(null);
   const [loading, setLoading] = useState(false);
+  const [playerPicking, setPlayerPicking] = useState(false);
+  const [matchPicking, setMatchPicking] = useState(false);
+
+  const handleSelectPlayer = async () => {
+    try {
+      setPlayerPicking(true);
+      const response = await api.getPlayers({ limit: 1 });
+      const candidate =
+        response?.data?.[0] ??
+        response?.items?.[0] ??
+        (response as any)?.players?.[0];
+
+      if (!candidate) {
+        throw new Error('No players available');
+      }
+
+      const id =
+        candidate.id ??
+        candidate.playerId ??
+        candidate.player?.id;
+      if (!id) {
+        throw new Error('Missing player identifier');
+      }
+
+      const name =
+        `${candidate.user?.firstName ?? candidate.users?.firstName ?? ''} ${
+          candidate.user?.lastName ?? candidate.users?.lastName ?? ''
+        }`.trim() || candidate.playerName || 'Unknown Player';
+
+      setSelectedPlayer({
+        id,
+        name,
+        position: candidate.position || candidate.player?.position || 'N/A',
+        photo: candidate.user?.avatar ?? candidate.users?.avatar,
+      });
+      Toast.show({ type: 'success', text1: 'Player Selected', text2: name });
+    } catch (error) {
+      console.error('Failed to pick player', error);
+      Alert.alert('Player Picker', 'Unable to load players right now.');
+    } finally {
+      setPlayerPicking(false);
+    }
+  };
+
+  const handleSelectMatch = async () => {
+    try {
+      setMatchPicking(true);
+      const response = await api.getMatches({ limit: 1 });
+      const candidate =
+        response?.data?.[0] ??
+        response?.items?.[0] ??
+        (response as any)?.matches?.[0];
+
+      if (!candidate) {
+        throw new Error('No matches available');
+      }
+
+      const id = candidate.id || candidate.matchId;
+      if (!id) {
+        throw new Error('Missing match identifier');
+      }
+
+      const home = candidate.homeClub?.name ?? candidate.clubs?.home?.name ?? 'Home';
+      const away = candidate.awayClub?.name ?? candidate.clubs?.away?.name ?? 'Away';
+      const matchName = `${home} vs ${away}`;
+
+      setSelectedMatch({
+        id,
+        name: matchName,
+        date: candidate.scheduledAt || candidate.date,
+      });
+      Toast.show({ type: 'success', text1: 'Match Selected', text2: matchName });
+    } catch (error) {
+      console.error('Failed to pick match', error);
+      Alert.alert('Match Picker', 'Unable to load matches right now.');
+    } finally {
+      setMatchPicking(false);
+    }
+  };
 
   const handlePredict = async () => {
     if (!selectedPlayer || !selectedMatch) {
@@ -56,12 +137,14 @@ export const SinglePredictionTab: React.FC = () => {
         <Text style={styles.sectionTitle}>Select Player</Text>
         <TouchableOpacity
           style={styles.pickerButton}
-          onPress={() => {
-            // TODO: Navigate to player picker
-            Alert.alert('Coming Soon', 'Player picker will be implemented');
-          }}
+          onPress={handleSelectPlayer}
+          disabled={playerPicking}
         >
-          <Ionicons name="person" size={20} color="#9CA3AF" />
+          {playerPicking ? (
+            <ActivityIndicator size="small" color="#9CA3AF" />
+          ) : (
+            <Ionicons name="person" size={20} color="#9CA3AF" />
+          )}
           <Text style={styles.pickerText}>
             {selectedPlayer ? selectedPlayer.name : 'Choose a player...'}
           </Text>
@@ -74,12 +157,14 @@ export const SinglePredictionTab: React.FC = () => {
         <Text style={styles.sectionTitle}>Select Match</Text>
         <TouchableOpacity
           style={styles.pickerButton}
-          onPress={() => {
-            // TODO: Navigate to match picker
-            Alert.alert('Coming Soon', 'Match picker will be implemented');
-          }}
+          onPress={handleSelectMatch}
+          disabled={matchPicking}
         >
-          <Ionicons name="football" size={20} color="#9CA3AF" />
+          {matchPicking ? (
+            <ActivityIndicator size="small" color="#9CA3AF" />
+          ) : (
+            <Ionicons name="football" size={20} color="#9CA3AF" />
+          )}
           <Text style={styles.pickerText}>
             {selectedMatch ? selectedMatch.name : 'Choose a match...'}
           </Text>

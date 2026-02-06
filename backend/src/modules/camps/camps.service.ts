@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from '../stripe/stripe.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -51,9 +56,11 @@ export class CampsService {
         images: dto.images || [],
         isPublic: dto.isPublic ?? true,
         updatedAt: new Date(),
-        clubs: dto.clubId ? {
-          connect: { id: dto.clubId }
-        } : undefined,
+        clubs: dto.clubId
+          ? {
+              connect: { id: dto.clubId },
+            }
+          : undefined,
       },
       include: {
         clubs: true,
@@ -237,7 +244,7 @@ export class CampsService {
 
     // Vérifier que le camp est ouvert aux inscriptions
     if (camp.status !== CampStatus.PUBLISHED) {
-      throw new BadRequestException('Ce camp n\'est pas ouvert aux inscriptions');
+      throw new BadRequestException("Ce camp n'est pas ouvert aux inscriptions");
     }
 
     // Vérifier les places disponibles
@@ -411,7 +418,7 @@ export class CampsService {
 
     // Vérifier que c'est bien le joueur de l'utilisateur
     if (participation.players.userId !== userId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à annuler cette inscription');
+      throw new ForbiddenException("Vous n'êtes pas autorisé à annuler cette inscription");
     }
 
     // Annuler l'inscription

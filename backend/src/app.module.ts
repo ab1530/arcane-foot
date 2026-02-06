@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -9,6 +9,7 @@ import { PlayersModule } from './modules/players/players.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
 import { MatchesModule } from './modules/matches/matches.module';
 import { HealthModule } from './modules/health/health.module';
+import { ContactModule } from './modules/contact/contact.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 import { StripeModule } from './modules/stripe/stripe.module';
 import { FirebaseModule } from './modules/firebase/firebase.module';
@@ -39,6 +40,10 @@ import { VoiceToReportModule } from './modules/voice-to-report/voice-to-report.m
 import { SmartScoutModule } from './modules/smart-scout/smart-scout.module';
 import { AutoScoutModule } from './modules/auto-scout/auto-scout.module';
 import { MarketValueModule } from './modules/market-value/market-value.module';
+import { HardwareModule } from './modules/hardware/hardware.module';
+import { UsersController } from './modules/users/users.controller';
+import { LoggerModule } from './logger/logger.module';
+import { LoggingInterceptor } from './interceptors/logging.interceptor';
 
 @Module({
   imports: [
@@ -50,11 +55,14 @@ import { MarketValueModule } from './modules/market-value/market-value.module';
       {
         ttl: parseInt(process.env.RATE_LIMIT_TTL) || 60000,
         limit: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+        // Skip throttle in development mode
+        skipIf: () => process.env.NODE_ENV === 'development',
       },
     ]),
     SentryModule.forRoot(),
     PrismaModule,
     HealthModule,
+    ContactModule,
     AuthModule,
     PlayersModule,
     ClubsModule,
@@ -89,6 +97,8 @@ import { MarketValueModule } from './modules/market-value/market-value.module';
     SmartScoutModule,
     AutoScoutModule,
     MarketValueModule,
+    HardwareModule,
+    LoggerModule,
   ],
   providers: [
     {
@@ -99,6 +109,11 @@ import { MarketValueModule } from './modules/market-value/market-value.module';
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
   ],
+  controllers: [UsersController],
 })
 export class AppModule {}

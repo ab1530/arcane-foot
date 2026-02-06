@@ -129,7 +129,7 @@ describe('Marketplace Matching Algorithm', () => {
       );
 
       expect(result.leagueMatch).toBe(0);
-      expect(result.breakdown.some(b => b.includes('League match'))).toBe(false);
+      expect(result.breakdown.some((b) => b.includes('League match'))).toBe(false);
     });
 
     it('should calculate position match - full match', () => {
@@ -201,7 +201,7 @@ describe('Marketplace Matching Algorithm', () => {
       );
 
       expect(result.positionMatch).toBe(0);
-      expect(result.breakdown.some(b => b.includes('Position match'))).toBe(false);
+      expect(result.breakdown.some((b) => b.includes('Position match'))).toBe(false);
     });
 
     it('should calculate budget match - within budget optimal ratio', () => {
@@ -270,7 +270,7 @@ describe('Marketplace Matching Algorithm', () => {
       );
 
       expect(result.budgetMatch).toBe(0);
-      expect(result.breakdown.some(b => b.includes('Budget'))).toBe(false);
+      expect(result.breakdown.some((b) => b.includes('Budget'))).toBe(false);
     });
 
     it('should skip budget calculation when hourlyRate is 0', () => {
@@ -384,7 +384,7 @@ describe('Marketplace Matching Algorithm', () => {
       );
 
       expect(result.ratingBonus).toBe(0);
-      expect(result.breakdown.some(b => b.includes('Rating'))).toBe(false);
+      expect(result.breakdown.some((b) => b.includes('Rating'))).toBe(false);
     });
 
     it('should skip rating bonus when avgRating is 0', () => {
@@ -430,7 +430,7 @@ describe('Marketplace Matching Algorithm', () => {
       );
 
       expect(result.verifiedBonus).toBe(0);
-      expect(result.breakdown.some(b => b.includes('Verified: Yes'))).toBe(false);
+      expect(result.breakdown.some((b) => b.includes('Verified: Yes'))).toBe(false);
     });
 
     it('should round total score', () => {
@@ -645,9 +645,7 @@ describe('Marketplace Matching Algorithm', () => {
 
       const recommendations = getMatchingRecommendations(score);
 
-      expect(recommendations).toContainEqual(
-        expect.stringContaining('out of your budget range'),
-      );
+      expect(recommendations).toContainEqual(expect.stringContaining('out of your budget range'));
     });
 
     it('should not warn about budget when budgetMatch > 0', () => {
@@ -759,9 +757,7 @@ describe('Marketplace Matching Algorithm', () => {
 
       const recommendations = getMatchingRecommendations(score);
 
-      expect(recommendations).toContainEqual(
-        expect.stringContaining('Scout is not verified yet'),
-      );
+      expect(recommendations).toContainEqual(expect.stringContaining('Scout is not verified yet'));
     });
 
     it('should not warn about verification when verifiedBonus > 0', () => {
@@ -834,9 +830,7 @@ describe('Marketplace Matching Algorithm', () => {
 
       const recommendations = getMatchingRecommendations(score);
 
-      expect(recommendations).not.toContainEqual(
-        expect.stringContaining('Excellent match'),
-      );
+      expect(recommendations).not.toContainEqual(expect.stringContaining('Excellent match'));
     });
   });
 });

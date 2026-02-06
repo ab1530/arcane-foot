@@ -11,7 +11,11 @@ export class CreateFavoriteDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Tags for organization', required: false, example: ['laliga', 'goalkeeper'] })
+  @ApiProperty({
+    description: 'Tags for organization',
+    required: false,
+    example: ['laliga', 'goalkeeper'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

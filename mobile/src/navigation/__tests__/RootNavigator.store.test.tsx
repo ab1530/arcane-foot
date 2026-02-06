@@ -1,14 +1,18 @@
 import React from 'react';
-import { act, render, waitFor } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import RootNavigator from '../RootNavigator';
-import { useAuthStore } from '../../store/authStore';
-import type { User } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
-jest.mock('../MainTabNavigator', () => {
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+}));
+
+jest.mock('../AppNavigator', () => {
   const React = require('react');
   const { Text } = require('react-native');
 
@@ -17,54 +21,80 @@ jest.mock('../MainTabNavigator', () => {
   return { __esModule: true, default: MockMainTabs };
 });
 
-describe('RootNavigator with real auth store', () => {
-  const initialState = useAuthStore.getState();
+jest.mock('../../screens/home/HomeScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return { HomeScreen: () => <Text>Accueil</Text> };
+});
+
+jest.mock('../../screens/auth/LoginScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return function MockLoginScreen() {
+    return <Text>Connexion</Text>;
+  };
+});
+
+jest.mock('../../screens/auth/SignupScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return function MockSignupScreen() {
+    return <Text>Créer un compte</Text>;
+  };
+});
+
+jest.mock('../../hooks/useNotifications', () => ({
+  __esModule: true,
+  default: () => ({
+    isRegistered: false,
+    permissionStatus: 'granted',
+    registerForNotifications: jest.fn().mockResolvedValue(undefined),
+    unregister: jest.fn().mockResolvedValue(undefined),
+    subscribeToTopic: jest.fn().mockResolvedValue(undefined),
+    unsubscribeFromTopic: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+describe('RootNavigator with mocked auth hook', () => {
+  const mockUseAuth = useAuth as jest.Mock;
+  let authState = { isAuthenticated: false, isLoading: false };
 
   beforeEach(() => {
-    act(() => {
-      useAuthStore.setState(
-        {
-          ...initialState,
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: null,
-        },
-        true
-      );
-    });
+    authState = { isAuthenticated: false, isLoading: false };
+    mockUseAuth.mockImplementation(() => ({ ...authState }));
   });
 
   afterEach(() => {
-    act(() => {
-      useAuthStore.setState(initialState, true);
-    });
+    jest.clearAllMocks();
   });
 
-  it('affiche l’écran de connexion lorsque le store est non authentifié', async () => {
-    const { getByText } = render(<RootNavigator />);
+  it('affiche l’écran de connexion lorsque l’utilisateur n’est pas authentifié', async () => {
+    const { getByText } = render(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
 
     await waitFor(() => expect(getByText('Connexion')).toBeTruthy());
   });
 
-  it('bascule automatiquement vers les tabs lorsque le store devient authentifié', async () => {
-    const { getByText, queryByText } = render(<RootNavigator />);
+  it('bascule automatiquement vers les tabs lorsque isAuthenticated passe à true', async () => {
+    const { getByText, queryByText, rerender, getByTestId } = render(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
 
     await waitFor(() => expect(getByText('Connexion')).toBeTruthy());
 
-    act(() => {
-      useAuthStore.setState({
-        ...initialState,
-        user: { id: 'user-1', firstName: 'Test', lastName: 'User' } as unknown as User,
-        token: 'token',
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-    });
+    authState.isAuthenticated = true;
+    rerender(
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    );
 
     await waitFor(() => expect(queryByText('Connexion')).toBeNull());
-    await waitFor(() => expect(queryByText('Main tabs')).not.toBeNull());
+    await waitFor(() => expect(getByTestId('main-tabs-root')).toBeTruthy());
   });
 });

@@ -17,6 +17,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
 
+
 interface BadgeProps {
   children: React.ReactNode;
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info' | 'gradient';
@@ -26,6 +27,7 @@ interface BadgeProps {
   dot?: boolean;
   icon?: React.ReactNode;
   style?: ViewStyle;
+  testID?: string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -37,6 +39,7 @@ export const Badge: React.FC<BadgeProps> = ({
   dot = false,
   icon,
   style,
+  testID,
 }) => {
   const pulseAnimation = useSharedValue(1);
 
@@ -80,7 +83,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   if (variant === 'gradient') {
     return (
-      <Animated.View style={containerStyle}>
+      <Animated.View style={containerStyle} testID={testID}>
         <LinearGradient
           colors={[theme.colors.brand.primary, theme.colors.brand.accent]}
           start={{ x: 0, y: 0 }}
@@ -94,7 +97,7 @@ export const Badge: React.FC<BadgeProps> = ({
   }
 
   return (
-    <Animated.View style={containerStyle}>
+    <Animated.View style={containerStyle} testID={testID}>
       {content}
     </Animated.View>
   );
@@ -148,28 +151,28 @@ const styles = StyleSheet.create({
   },
 
   icon: {
-    marginRight: theme.spacing.xs,
+    marginRight: 4,
   },
 
   // Sizes
   size_xs: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     minHeight: 16,
   },
   size_sm: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
     minHeight: 20,
   },
   size_md: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: 24,
+    paddingVertical: 8,
     minHeight: 24,
   },
   size_lg: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     minHeight: 32,
   },
 
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
   },
 
   rounded: {
-    borderRadius: theme.radius.full,
+    borderRadius: 9999,
   },
 
   dot: {
@@ -250,7 +253,7 @@ const styles = StyleSheet.create({
     height: 8,
     padding: 0,
     minHeight: 8,
-    borderRadius: theme.radius.full,
+    borderRadius: 9999,
   },
 
   // Group
@@ -266,13 +269,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   groupSpacing_xs: {
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   groupSpacing_sm: {
-    gap: theme.spacing.sm,
+    gap: 8,
   },
   groupSpacing_md: {
-    gap: theme.spacing.md,
+    gap: 16,
   },
 });
 

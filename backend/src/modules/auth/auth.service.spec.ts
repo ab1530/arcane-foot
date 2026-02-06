@@ -242,10 +242,7 @@ describe('AuthService', () => {
       expect(prisma.users.findUnique).toHaveBeenCalledWith({
         where: { email: loginDto.email },
       });
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        loginDto.password,
-        mockUser.passwordHash,
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith(loginDto.password, mockUser.passwordHash);
       expect(prisma.users.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
         data: { lastLoginAt: expect.any(Date) },

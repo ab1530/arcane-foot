@@ -10,8 +10,9 @@ import { NeonText } from "@/components/ui/gradient-text";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { PlayerTabs } from "@/components/players/PlayerTabs";
 import Link from "next/link";
 import {
   Users,
@@ -71,7 +72,25 @@ export default function PlayerDetailPage() {
     try {
       setLoading(true);
       const response = await apiClient.getPlayer(playerId);
-      setPlayer(response?.player ?? null);
+      // API returns player directly, not wrapped in { player: ... }
+      const playerData = response?.player ?? response;
+
+      // Transform the player data to match expected structure
+      if (playerData && playerData.users) {
+        const transformedPlayer = {
+          ...playerData,
+          firstName: playerData.users.firstName,
+          lastName: playerData.users.lastName,
+          currentClub: playerData.clubs ? {
+            id: playerData.clubs.id,
+            name: playerData.clubs.name,
+          } : undefined,
+          scoutingReports: playerData.scouting_reports || [],
+        };
+        setPlayer(transformedPlayer);
+      } else {
+        setPlayer(null);
+      }
     } catch (error) {
       console.error("Error fetching player:", error);
       toast.error("Erreur lors du chargement du joueur");
@@ -133,7 +152,7 @@ export default function PlayerDetailPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -152,13 +171,13 @@ export default function PlayerDetailPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
   if (!player) {
     return (
-      <ProtectedRoute>
+      <ProtectedPage>
         <MainLayout>
           <main className="min-h-screen overflow-hidden relative">
             <AnimatedBackground />
@@ -184,7 +203,7 @@ export default function PlayerDetailPage() {
             </div>
           </main>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPage>
     );
   }
 
@@ -197,7 +216,7 @@ export default function PlayerDetailPage() {
   const avgTacticalRating = getAverageRating(reports, "tacticalRating");
 
   return (
-    <ProtectedRoute>
+    <ProtectedPage>
       <MainLayout>
         <main className="min-h-screen overflow-hidden relative">
           <AnimatedBackground />
@@ -248,6 +267,9 @@ export default function PlayerDetailPage() {
                 { label: "Players", href: "/players" },
                 { label: `${player.firstName} ${player.lastName}` }
               ]} />
+              <div className="mt-3">
+                <PlayerTabs playerId={player.id} active="overview" />
+              </div>
             </div>
           </div>
 
@@ -468,6 +490,6 @@ export default function PlayerDetailPage() {
         </div>
       </main>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPage>
   );
 }

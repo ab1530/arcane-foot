@@ -8,7 +8,7 @@ export class RateBookingDto {
   @Max(5)
   userRating: number;
 
-  @ApiPropertyOptional({ example: 'Excellente séance, très à l\'écoute et de bons conseils' })
+  @ApiPropertyOptional({ example: "Excellente séance, très à l'écoute et de bons conseils" })
   @IsString()
   @IsOptional()
   userFeedback?: string;

@@ -10,13 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OnboardingService } from './onboarding.service';
 import { UpdateStepDto } from './dto/update-step.dto';
@@ -32,7 +26,8 @@ export class OnboardingController {
   @Get()
   @ApiOperation({
     summary: 'Get onboarding progress',
-    description: "Get the current user's onboarding progress, including completed steps and next actions",
+    description:
+      "Get the current user's onboarding progress, including completed steps and next actions",
   })
   @ApiResponse({
     status: 200,
@@ -114,7 +109,7 @@ export class OnboardingController {
   async completeStep(
     @Req() req: any,
     @Param('stepKey') stepKey: string,
-    @Body() metadata?: Record<string, any>
+    @Body() metadata?: Record<string, any>,
   ) {
     return this.onboardingService.completeStep(req.user.id, stepKey, metadata);
   }

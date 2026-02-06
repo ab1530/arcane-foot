@@ -143,11 +143,9 @@ describe('PaymentsService', () => {
       const result = await service.getOrCreateStripeCustomer('user-123');
 
       expect(result).toBe('cus_123');
-      expect(stripeService.createCustomer).toHaveBeenCalledWith(
-        'test@example.com',
-        'John Doe',
-        { userId: 'user-123' },
-      );
+      expect(stripeService.createCustomer).toHaveBeenCalledWith('test@example.com', 'John Doe', {
+        userId: 'user-123',
+      });
       expect(prismaService.subscriptions.create).toHaveBeenCalled();
     });
 
@@ -207,12 +205,9 @@ describe('PaymentsService', () => {
         clientSecret: 'pi_123_secret_456',
         paymentIntentId: 'pi_123',
       });
-      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(
-        1000,
-        'eur',
-        'cus_123',
-        { description: 'Test payment' },
-      );
+      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(1000, 'eur', 'cus_123', {
+        description: 'Test payment',
+      });
     });
 
     it('should create payment intent without customer ID if userId not provided', async () => {
@@ -229,7 +224,12 @@ describe('PaymentsService', () => {
         clientSecret: 'pi_123_secret_456',
         paymentIntentId: 'pi_123',
       });
-      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(1000, 'eur', undefined, undefined);
+      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(
+        1000,
+        'eur',
+        undefined,
+        undefined,
+      );
     });
 
     it('should create payment intent without description metadata if not provided', async () => {
@@ -244,7 +244,12 @@ describe('PaymentsService', () => {
 
       await service.createPaymentIntent(dtoWithoutDescription);
 
-      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(2000, 'usd', 'cus_123', undefined);
+      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(
+        2000,
+        'usd',
+        'cus_123',
+        undefined,
+      );
     });
 
     it('should propagate Stripe errors when payment intent creation fails', async () => {
@@ -795,9 +800,7 @@ describe('PaymentsService', () => {
       stripeService.createCustomer.mockResolvedValue(mockStripeCustomer);
       prismaService.subscriptions.create.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getOrCreateStripeCustomer('user-123')).rejects.toThrow(
-        'Database error',
-      );
+      await expect(service.getOrCreateStripeCustomer('user-123')).rejects.toThrow('Database error');
     });
 
     it('should handle Stripe errors when creating subscription', async () => {
@@ -861,7 +864,12 @@ describe('PaymentsService', () => {
       const result = await service.createPaymentIntent(dtoZeroAmount);
 
       expect(result).toBeDefined();
-      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(0, 'eur', 'cus_123', undefined);
+      expect(stripeService.createPaymentIntent).toHaveBeenCalledWith(
+        0,
+        'eur',
+        'cus_123',
+        undefined,
+      );
     });
 
     it('should handle subscription with different tiers', async () => {

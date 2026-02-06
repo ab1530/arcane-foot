@@ -8,13 +8,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
@@ -25,10 +19,7 @@ import { SmartScoutService } from './smart-scout.service';
 import { PartialReportDto } from './dto/partial-report.dto';
 import { ReportContextDto } from './dto/report-context.dto';
 import { SuggestionResponseDto } from './dto/suggestion-response.dto';
-import {
-  AutocompleteRequestDto,
-  AutocompleteResponseDto,
-} from './dto/autocomplete-request.dto';
+import { AutocompleteRequestDto, AutocompleteResponseDto } from './dto/autocomplete-request.dto';
 
 @ApiTags('SmartScout AI')
 @Controller('smart-scout')
@@ -94,14 +85,8 @@ export class SmartScoutController {
   @ApiResponse({ status: 400, description: 'Invalid field name' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-  async autocomplete(
-    @Body() dto: AutocompleteRequestDto,
-  ): Promise<AutocompleteResponseDto> {
-    return this.smartScoutService.autocomplete(
-      dto.fieldName,
-      dto.partialValue,
-      dto.context || {},
-    );
+  async autocomplete(@Body() dto: AutocompleteRequestDto): Promise<AutocompleteResponseDto> {
+    return this.smartScoutService.autocomplete(dto.fieldName, dto.partialValue, dto.context || {});
   }
 
   @Get('insights/:playerId')

@@ -1,3 +1,5 @@
+import type { CalendarMatch } from './calendar';
+
 export type AppStackParamList = {
   MainTabs: undefined;
   Dashboard: undefined;
@@ -13,23 +15,33 @@ export type AppStackParamList = {
   AutoScoutHistory: undefined;
   MarketValue: { playerId?: string };
   MarketValueDetail: { playerId: string };
+  Players: undefined;
+  ScoutQuickImport: undefined;
   PlayerDetail: { playerId: string };
   PlayerPassport: { playerId: string; player?: any };
   Matches: undefined;
   Kanban: undefined;
   CreateReport: { playerId?: string };
-  CampDetail: { id: string };
+  HardwareSessions: { playerId?: string; playerName?: string } | undefined;
+  HardwareSessionDetail: { sessionId: string };
+  ConnectGpsTracker: undefined;
+  ImportGpsSession: { deviceId: string; deviceName?: string };
+  QCBand: undefined;
+  CampDetail: { campId: string };
+  MyCamps: undefined;
   CreateCamp: undefined;
   ClubDetail: { clubId: string };
   Clubs: undefined;
   Reports: undefined;
   Calendar: undefined;
   ReportDetail: { reportId: string };
+  MatchDetail: { match: CalendarMatch };
   Membership: undefined;
   About: undefined;
   Contact: undefined;
   Services: undefined;
   Passport: undefined;
+  VoiceToReport: undefined;
   Settings: undefined;
   ScoutingReports: undefined;
   CreateScoutingReport: undefined;
@@ -37,12 +49,17 @@ export type AppStackParamList = {
   Marketplace: undefined;
   ScoutDetail: { listingId: string };
   CreateOffer: { listingId: string };
+  GlobalSearch: undefined;
+  LoggingTest: undefined;
+  LogConsole: undefined;
 };
 
 export type MainTabParamList = {
-  Dashboard: undefined;
-  Players: undefined;
-  Analytics: undefined;
-  Market: undefined;
+  Home: undefined;
+  AIHub: undefined;
+  Marketplace: undefined;
+  Camps: undefined;
+  Coaching: undefined;
+  Passport: undefined;
   Profile: undefined;
 };

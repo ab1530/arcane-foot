@@ -33,6 +33,10 @@ import MainLayout from "@/components/layout/MainLayout";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
+import type { Language } from "@/i18n";
+import { useAuth } from "@/contexts/auth-context";
+import { ProtectedPage } from "@/components/guards/ProtectedPage";
 
 interface UserProfile {
   id: string;
@@ -52,11 +56,13 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { logout } = useAuth();
   const { subscription, getTierName, loading: subLoading } = useSubscription();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { dictionary, t, language, setLanguage } = useLanguage();
   const [formData, setFormData] = useState({
     fullName: "",
     firstName: "",
@@ -69,9 +75,12 @@ export default function ProfilePage() {
     bio: "",
   });
 
+  const locale = language === "fr" ? "fr-FR" : "en-US";
+  const profileCopy = dictionary.profile.page;
+
   useEffect(() => {
     fetchProfile();
-  }, []);
+  }, [language]);
 
   const fetchProfile = async () => {
     try {
@@ -91,7 +100,7 @@ export default function ProfilePage() {
       });
     } catch (error: any) {
       console.error("Failed to fetch profile:", error);
-      toast.error("Impossible de charger le profil");
+      toast.error(profileCopy.toasts.loadError);
     } finally {
       setLoading(false);
     }
@@ -101,12 +110,12 @@ export default function ProfilePage() {
     try {
       setSaving(true);
       await apiClient.updateProfile(formData);
-      toast.success("Profil mis à jour avec succès");
+      toast.success(profileCopy.toasts.updateSuccess);
       setEditing(false);
       fetchProfile();
     } catch (error: any) {
       console.error("Failed to update profile:", error);
-      toast.error(error.message || "Erreur lors de la mise à jour du profil");
+      toast.error(error.message || profileCopy.toasts.updateError);
     } finally {
       setSaving(false);
     }
@@ -130,60 +139,62 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("arcane_auth_token");
-    router.push("/");
-    toast.success("Déconnexion réussie");
+    toast.success(profileCopy.toasts.logoutSuccess);
+    logout(); // Use the auth context logout function
   };
 
   const stats = [
-    { label: "Rapports créés", value: 24, icon: FileText, color: "text-purple-400" },
-    { label: "Joueurs suivis", value: 156, icon: Target, color: "text-blue-400" },
-    { label: "Camps participés", value: 8, icon: Trophy, color: "text-arcane-accent" },
-    { label: "Jours d'activité", value: 127, icon: TrendingUp, color: "text-green-400" },
+    { label: t("profile.stats.reports"), value: 24, icon: FileText, color: "text-purple-400" },
+    { label: t("profile.stats.players"), value: 156, icon: Target, color: "text-blue-400" },
+    { label: t("profile.stats.camps"), value: 8, icon: Trophy, color: "text-arcane-accent" },
+    { label: t("profile.stats.activity"), value: 127, icon: TrendingUp, color: "text-green-400" },
   ];
 
   const settingsSections = [
     {
       icon: Bell,
-      title: "Notifications",
-      description: "Gérer vos préférences de notifications",
+      title: profileCopy.settingsSections.notifications.title,
+      description: profileCopy.settingsSections.notifications.description,
       href: "/settings/notifications",
     },
     {
       icon: Shield,
-      title: "Sécurité",
-      description: "Mot de passe et authentification",
+      title: profileCopy.settingsSections.security.title,
+      description: profileCopy.settingsSections.security.description,
       href: "/settings/security",
     },
     {
       icon: CreditCard,
-      title: "Facturation",
-      description: "Méthodes de paiement et factures",
+      title: profileCopy.settingsSections.billing.title,
+      description: profileCopy.settingsSections.billing.description,
       href: "/settings/billing",
     },
     {
       icon: Settings,
-      title: "Préférences",
-      description: "Personnaliser votre expérience",
+      title: profileCopy.settingsSections.preferences.title,
+      description: profileCopy.settingsSections.preferences.description,
       href: "/settings/preferences",
     },
   ];
 
   if (loading || subLoading) {
     return (
-      <MainLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="h-12 w-12 border-4 border-arcane-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-arcane-grey">Chargement du profil...</p>
+      <ProtectedPage>
+        <MainLayout>
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="h-12 w-12 border-4 border-arcane-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-arcane-grey">{profileCopy.loader}</p>
+            </div>
           </div>
-        </div>
-      </MainLayout>
+        </MainLayout>
+      </ProtectedPage>
     );
   }
 
   return (
-    <MainLayout>
+    <ProtectedPage>
+      <MainLayout>
       <div className="min-h-screen relative">
         <AnimatedBackground />
 
@@ -195,9 +206,26 @@ export default function ProfilePage() {
             className="mb-8"
           >
             <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight mb-2">
-              Mon Profil
+              {t("profile.hero.title")}
             </h1>
-            <p className="text-arcane-grey">Gérez vos informations personnelles</p>
+            <p className="text-arcane-grey">{t("profile.hero.subtitle")}</p>
+            <div className="flex gap-2 mt-4">
+              {(["fr", "en"] as Language[]).map((code) => (
+                <button
+                  key={`profile-lang-${code}`}
+                  onClick={() => {
+                    if (language !== code) setLanguage(code);
+                  }}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full border transition ${
+                    language === code
+                      ? "border-arcane-accent text-white"
+                      : "border-arcane-darkBorder text-arcane-grey hover:text-white"
+                  }`}
+                >
+                  {t(`common.language.options.${code}`)}
+                </button>
+              ))}
+            </div>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -229,7 +257,7 @@ export default function ProfilePage() {
                       <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-arcane-accent/20 border border-arcane-accent/30 hover:bg-arcane-accent/30 transition-all cursor-pointer">
                         <Crown className="h-4 w-4 text-arcane-accent" />
                         <span className="text-sm font-bold text-arcane-accent">
-                          Plan {getTierName(subscription.tier)}
+                          {t("profile.page.planLabel", { plan: getTierName(subscription.tier) })}
                         </span>
                       </div>
                     </Link>
@@ -266,10 +294,11 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Calendar className="h-4 w-4 text-arcane-accent" />
                     <span className="text-arcane-grey">
-                      Membre depuis{" "}
-                      {new Date(profile?.createdAt || "").toLocaleDateString("fr-FR", {
-                        month: "long",
-                        year: "numeric",
+                      {t("profile.page.memberSince", {
+                        date: new Date(profile?.createdAt || "").toLocaleDateString(locale, {
+                          month: "long",
+                          year: "numeric",
+                        }),
                       })}
                     </span>
                   </div>
@@ -282,7 +311,7 @@ export default function ProfilePage() {
                   className="w-full mt-6 border-red-500/30 text-red-400 hover:bg-red-500/10"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Déconnexion
+                  {t("profile.actions.logout")}
                 </Button>
               </GlassCard>
 
@@ -290,7 +319,7 @@ export default function ProfilePage() {
               <GlassCard variant="elevated" className="p-6 mt-6">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <Award className="h-5 w-5 text-arcane-accent" />
-                  Statistiques
+                  {profileCopy.statsCardTitle}
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   {stats.map((stat) => {
@@ -320,12 +349,12 @@ export default function ProfilePage() {
               <GlassCard variant="elevated" className="p-6 mb-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-                    Informations Personnelles
+                    {dictionary.profile.sections.contact}
                   </h2>
                   {!editing ? (
                     <Button onClick={() => setEditing(true)} size="sm">
                       <Edit2 className="h-4 w-4 mr-2" />
-                      Modifier
+                      {t("profile.actions.edit")}
                     </Button>
                   ) : (
                     <div className="flex gap-2">
@@ -336,24 +365,24 @@ export default function ProfilePage() {
                         disabled={saving}
                       >
                         <X className="h-4 w-4 mr-2" />
-                        Annuler
+                        {t("profile.actions.cancel")}
                       </Button>
                       <Button
                         onClick={handleSaveProfile}
                         size="sm"
                         disabled={saving}
                       >
-                        {saving ? (
-                          <>
-                            <div className="h-4 w-4 border-2 border-arcane-dark border-t-transparent rounded-full animate-spin mr-2" />
-                            Enregistrement...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Enregistrer
-                          </>
-                        )}
+                    {saving ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-arcane-dark border-t-transparent rounded-full animate-spin mr-2" />
+                        {profileCopy.buttons.saving}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        {t("profile.actions.save")}
+                      </>
+                    )}
                       </Button>
                     </div>
                   )}
@@ -363,7 +392,7 @@ export default function ProfilePage() {
                   {/* Full Name */}
                   <div>
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Nom complet
+                      {profileCopy.fields.fullName.label}
                     </label>
                     {editing ? (
                       <input
@@ -373,6 +402,7 @@ export default function ProfilePage() {
                           setFormData({ ...formData, fullName: e.target.value })
                         }
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none"
+                        placeholder={profileCopy.fields.fullName.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">
@@ -384,7 +414,7 @@ export default function ProfilePage() {
                   {/* Email (read-only) */}
                   <div>
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Email
+                      {profileCopy.fields.email.label}
                     </label>
                     <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-arcane-darkBorder/30 border border-arcane-darkBorder/50">
                       <Mail className="h-4 w-4 text-arcane-accent" />
@@ -395,7 +425,7 @@ export default function ProfilePage() {
                   {/* Phone */}
                   <div>
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Téléphone
+                      {profileCopy.fields.phone.label}
                     </label>
                     {editing ? (
                       <input
@@ -405,7 +435,7 @@ export default function ProfilePage() {
                           setFormData({ ...formData, phone: e.target.value })
                         }
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none"
-                        placeholder="+33 6 12 34 56 78"
+                        placeholder={profileCopy.fields.phone.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">
@@ -417,7 +447,7 @@ export default function ProfilePage() {
                   {/* Location */}
                   <div>
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Localisation
+                      {profileCopy.fields.location.label}
                     </label>
                     {editing ? (
                       <input
@@ -427,7 +457,7 @@ export default function ProfilePage() {
                           setFormData({ ...formData, location: e.target.value })
                         }
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none"
-                        placeholder="Paris, France"
+                        placeholder={profileCopy.fields.location.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">
@@ -439,7 +469,7 @@ export default function ProfilePage() {
                   {/* Organization */}
                   <div>
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Organisation
+                      {profileCopy.fields.organization.label}
                     </label>
                     {editing ? (
                       <input
@@ -449,7 +479,7 @@ export default function ProfilePage() {
                           setFormData({ ...formData, organization: e.target.value })
                         }
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none"
-                        placeholder="Nom du club / agence"
+                        placeholder={profileCopy.fields.organization.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">
@@ -461,7 +491,7 @@ export default function ProfilePage() {
                   {/* Role */}
                   <div>
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Rôle
+                      {profileCopy.fields.role.label}
                     </label>
                     {editing ? (
                       <input
@@ -471,7 +501,7 @@ export default function ProfilePage() {
                           setFormData({ ...formData, role: e.target.value })
                         }
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none"
-                        placeholder="Scout, Coach, Agent..."
+                        placeholder={profileCopy.fields.role.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">{profile?.role || "-"}</p>
@@ -481,7 +511,7 @@ export default function ProfilePage() {
                   {/* Website */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Site Web
+                      {profileCopy.fields.website.label}
                     </label>
                     {editing ? (
                       <input
@@ -491,7 +521,7 @@ export default function ProfilePage() {
                           setFormData({ ...formData, website: e.target.value })
                         }
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none"
-                        placeholder="https://example.com"
+                        placeholder={profileCopy.fields.website.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">
@@ -503,7 +533,7 @@ export default function ProfilePage() {
                   {/* Bio */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-arcane-grey mb-2">
-                      Bio
+                      {profileCopy.fields.bio.label}
                     </label>
                     {editing ? (
                       <textarea
@@ -513,7 +543,7 @@ export default function ProfilePage() {
                         }
                         rows={4}
                         className="w-full px-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none resize-none"
-                        placeholder="Parlez-nous de vous..."
+                        placeholder={profileCopy.fields.bio.placeholder}
                       />
                     ) : (
                       <p className="text-white px-4 py-3">
@@ -527,7 +557,7 @@ export default function ProfilePage() {
               {/* Settings Sections */}
               <GlassCard variant="elevated" className="p-6">
                 <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-6">
-                  Paramètres
+                  {profileCopy.settingsCardTitle}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {settingsSections.map((section) => {
@@ -559,5 +589,6 @@ export default function ProfilePage() {
         </div>
       </div>
     </MainLayout>
+    </ProtectedPage>
   );
 }

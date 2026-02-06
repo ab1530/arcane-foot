@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlayerType, VerificationStatus, UserRole } from '@prisma/client';
 import { BulkImportDto, BulkPlayerDto } from './dto/bulk-import.dto';
@@ -40,15 +36,22 @@ export class BulkImportService {
     }
 
     // Parse header
-    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
 
     // Validate required columns
-    const requiredColumns = ['firstname', 'lastname', 'email', 'position', 'dateofbirth', 'nationality'];
-    const missingColumns = requiredColumns.filter(col => !header.includes(col));
+    const requiredColumns = [
+      'firstname',
+      'lastname',
+      'email',
+      'position',
+      'dateofbirth',
+      'nationality',
+    ];
+    const missingColumns = requiredColumns.filter((col) => !header.includes(col));
 
     if (missingColumns.length > 0) {
       throw new BadRequestException(
-        `CSV file is missing required columns: ${missingColumns.join(', ')}`
+        `CSV file is missing required columns: ${missingColumns.join(', ')}`,
       );
     }
 
@@ -201,10 +204,7 @@ export class BulkImportService {
   /**
    * Import players in bulk
    */
-  async importPlayers(
-    dto: BulkImportDto,
-    importedById: string,
-  ): Promise<ImportResult> {
+  async importPlayers(dto: BulkImportDto, importedById: string): Promise<ImportResult> {
     // Validate all players first
     const validationErrors = await this.validateBulkData(dto.players);
 
@@ -326,9 +326,7 @@ export class BulkImportService {
         importedPlayers.push(player);
         successCount++;
 
-        this.logger.log(
-          `Successfully imported player ${playerDto.email} (row ${row})`,
-        );
+        this.logger.log(`Successfully imported player ${playerDto.email} (row ${row})`);
       } catch (error) {
         failureCount++;
         errors.push({
@@ -337,15 +335,11 @@ export class BulkImportService {
           message: error.message || 'Failed to import player',
         });
 
-        this.logger.error(
-          `Failed to import player at row ${row}: ${error.message}`,
-        );
+        this.logger.error(`Failed to import player at row ${row}: ${error.message}`);
       }
     }
 
-    this.logger.log(
-      `Bulk import completed: ${successCount} success, ${failureCount} failed`,
-    );
+    this.logger.log(`Bulk import completed: ${successCount} success, ${failureCount} failed`);
 
     return {
       success: successCount > 0,
@@ -397,7 +391,7 @@ export class BulkImportService {
     ].join(',');
 
     // CSV rows
-    const rows = players.map(player => {
+    const rows = players.map((player) => {
       return [
         player.users.firstName,
         player.users.lastName,
@@ -412,7 +406,9 @@ export class BulkImportService {
         player.clubs?.name || '',
         player.verificationStatus,
         player.createdAt.toISOString(),
-      ].map(value => `"${value}"`).join(',');
+      ]
+        .map((value) => `"${value}"`)
+        .join(',');
     });
 
     return [header, ...rows].join('\n');

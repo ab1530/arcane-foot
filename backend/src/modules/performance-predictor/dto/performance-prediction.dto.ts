@@ -35,11 +35,11 @@ export class RatingDistributionDto {
   @IsNumber()
   average_5_7: number;
 
-  @ApiProperty({ example: 0.50, description: 'Probability of good performance (7-8)' })
+  @ApiProperty({ example: 0.5, description: 'Probability of good performance (7-8)' })
   @IsNumber()
   good_7_8: number;
 
-  @ApiProperty({ example: 0.20, description: 'Probability of excellent performance (8+)' })
+  @ApiProperty({ example: 0.2, description: 'Probability of excellent performance (8+)' })
   @IsNumber()
   excellent_8_plus: number;
 }
@@ -58,7 +58,7 @@ export class PerformancePredictionDto {
   @ApiProperty({
     example: [6.5, 8.1],
     description: '95% confidence interval [low, high]',
-    type: [Number]
+    type: [Number],
   })
   @IsArray()
   @IsNumber({}, { each: true })
@@ -84,7 +84,7 @@ export class PerformancePredictionDto {
   @ApiProperty({
     example: ['High performance expected. Consider giving player key role in match.'],
     description: 'Actionable recommendations',
-    type: [String]
+    type: [String],
   })
   @IsArray()
   @IsString({ each: true })
@@ -103,9 +103,9 @@ export class PredictionRequestDto {
       opponent_strength: 3,
       days_rest: 4,
       season_progress: 0.6,
-      playing_position: 'CM'
+      playing_position: 'CM',
     },
-    description: 'Match context data'
+    description: 'Match context data',
   })
   @IsObject()
   matchContext: {
@@ -120,7 +120,7 @@ export class PredictionRequestDto {
   @ApiProperty({
     example: [6.5, 7.0, 6.8, 7.2, 7.5],
     description: 'Recent match ratings (last 5-10 matches)',
-    type: [Number]
+    type: [Number],
   })
   @IsArray()
   @IsNumber({}, { each: true })
@@ -132,9 +132,9 @@ export class PredictionRequestDto {
       technical_rating: 7.0,
       tactical_rating: 6.8,
       physical_rating: 7.2,
-      mental_rating: 6.9
+      mental_rating: 6.9,
     },
-    description: 'Season statistics'
+    description: 'Season statistics',
   })
   @IsObject()
   seasonStats: {
@@ -151,9 +151,9 @@ export class PredictionRequestDto {
       height: 178,
       weight: 72,
       market_value: 5000000,
-      position: 'CM'
+      position: 'CM',
     },
-    description: 'Player attributes'
+    description: 'Player attributes',
   })
   @IsObject()
   playerAttributes: {
@@ -168,7 +168,7 @@ export class PredictionRequestDto {
 export class BatchPredictionRequestDto {
   @ApiProperty({ type: [PredictionRequestDto] })
   @IsArray()
-  @ValidateNested({ each: true})
+  @ValidateNested({ each: true })
   @Type(() => PredictionRequestDto)
   predictions: PredictionRequestDto[];
 }

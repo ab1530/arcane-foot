@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,19 +14,15 @@ import { Icon } from '../../components/ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { QualityScoreBadge } from '../../components/auto-scout/QualityScoreBadge';
 import { colors, spacing, typography, radius } from '../../design/theme';
+import { useLocalization } from '../../contexts/LocalizationContext';
 import autoScoutApi from '../../services/api/auto-scout';
+import api from '../../services/api';
 import type { AppStackParamList } from '../../types/navigation';
 import type { AutoScoutHistoryItem, ReportType } from '../../types/auto-scout';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AutoScoutHistory'>;
 
-const TEMPLATE_NAMES: Record<ReportType, string> = {
-  MATCH_PERFORMANCE: 'Match Performance',
-  SEASON_OVERVIEW: 'Season Overview',
-  TRANSFER_TARGET: 'Transfer Target',
-  YOUTH_PROSPECT: 'Youth Prospect',
-  QUICK_SCAN: 'Quick Scan',
-};
+type FilterValue = 'all' | 'draft' | 'saved';
 
 const TEMPLATE_ICONS: Record<ReportType, string> = {
   MATCH_PERFORMANCE: 'football',
@@ -37,32 +33,81 @@ const TEMPLATE_ICONS: Record<ReportType, string> = {
 };
 
 export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
+  const { dictionary } = useLocalization();
+  const historyCopy = dictionary.autoScout.history;
+
   const [reports, setReports] = useState<AutoScoutHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'draft' | 'saved'>('all');
+  const [filter, setFilter] = useState<FilterValue>('all');
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadReports();
+  const filterOptions: Array<{ value: FilterValue; label: string }> = [
+    { value: 'all', label: historyCopy.filters.tabs.all },
+    { value: 'saved', label: historyCopy.filters.tabs.saved },
+    { value: 'draft', label: historyCopy.filters.tabs.draft },
+  ];
+
+  const fetchFallbackPlayerId = useCallback(async (): Promise<string | null> => {
+    try {
+      const response = await api.getPlayers({ limit: 1 });
+      const candidate =
+        response?.data?.[0] ??
+        response?.items?.[0];
+      return (
+        candidate?.id ??
+        (candidate as any)?.playerId ??
+        (candidate as any)?.player?.id ??
+        null
+      );
+    } catch (err) {
+      console.warn('[AutoScoutHistory] Unable to resolve fallback player', err);
+      return null;
+    }
   }, []);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await autoScoutApi.getHistory();
+      setErrorMessage(null);
+      let targetPlayerId = playerId;
 
-      if (response.success && response.data) {
+      if (!targetPlayerId) {
+        const fallbackId = await fetchFallbackPlayerId();
+        if (fallbackId) {
+          targetPlayerId = fallbackId;
+          setPlayerId(fallbackId);
+        }
+      }
+
+      if (!targetPlayerId) {
+        setReports([]);
+        setErrorMessage(historyCopy.errors.noPlayer);
+        return;
+      }
+
+      const response = await autoScoutApi.getHistory(targetPlayerId);
+
+      if (response.success && Array.isArray(response.data)) {
         setReports(response.data);
+      } else {
+        setReports([]);
+        setErrorMessage(historyCopy.errors.load);
       }
     } catch (error) {
       console.error('Failed to load reports:', error);
-      // Use mock data as fallback
-      setReports(MOCK_REPORTS);
+      setReports([]);
+      setErrorMessage(historyCopy.errors.load);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [fetchFallbackPlayerId, historyCopy.errors.load, historyCopy.errors.noPlayer, playerId]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -71,16 +116,40 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleDeleteReport = (reportId: string) => {
     Alert.alert(
-      'Delete Report?',
-      'This action cannot be undone.',
+      historyCopy.alerts.deleteTitle,
+      historyCopy.alerts.deleteMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: historyCopy.alerts.cancel, style: 'cancel' },
         {
-          text: 'Delete',
+          text: historyCopy.alerts.confirm,
           style: 'destructive',
           onPress: async () => {
+            // Optimistically remove from UI
             setReports((prev) => prev.filter((r) => r.id !== reportId));
-            // TODO: Call API to delete
+
+            try {
+              // Call API to delete report
+              await autoScoutApi.deleteReport(reportId);
+
+              // Show success feedback
+              Alert.alert(
+                historyCopy.alerts.successTitle || 'Success',
+                historyCopy.alerts.successMessage || 'Report deleted successfully',
+                [{ text: historyCopy.alerts.close || 'Close' }]
+              );
+            } catch (error) {
+              console.error('Failed to delete report:', error);
+
+              // Revert optimistic update on error
+              await loadReports();
+
+              // Show error alert
+              Alert.alert(
+                historyCopy.alerts.errorTitle || 'Error',
+                historyCopy.alerts.errorMessage || 'Failed to delete report. Please try again.',
+                [{ text: historyCopy.alerts.close || 'Close' }]
+              );
+            }
           },
         },
       ]
@@ -88,12 +157,19 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleViewReport = (report: AutoScoutHistoryItem) => {
-    // Navigate to report detail or preview
-    Alert.alert('View Report', `Viewing report for ${report.playerName}`);
+    Alert.alert(
+      historyCopy.alerts.viewTitle,
+      historyCopy.alerts.viewMessage.replace('{{player}}', report.playerName),
+      [{ text: historyCopy.alerts.close }],
+    );
   };
 
-  const handleExportReport = (report: AutoScoutHistoryItem) => {
-    Alert.alert('Export Report', 'Report export feature coming soon!');
+  const handleExportReport = () => {
+    Alert.alert(
+      historyCopy.alerts.exportTitle,
+      historyCopy.alerts.exportMessage,
+      [{ text: historyCopy.alerts.close }],
+    );
   };
 
   const filteredReports = reports.filter((report) => {
@@ -103,6 +179,7 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderReportCard = ({ item }: { item: AutoScoutHistoryItem }) => (
     <TouchableOpacity
+      testID={`auto-scout-history-card-${item.id}`}
       style={styles.reportCard}
       onPress={() => handleViewReport(item)}
       activeOpacity={0.7}
@@ -144,7 +221,7 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 ]}
               />
               <Text style={styles.statusText}>
-                {item.status === 'saved' ? 'Saved' : 'Draft'}
+                {item.status === 'saved' ? historyCopy.statuses.saved : historyCopy.statuses.draft}
               </Text>
             </View>
           </View>
@@ -153,8 +230,9 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.cardRight}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleExportReport(item)}
+              onPress={handleExportReport}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              testID={`auto-scout-history-export-${item.id}`}
             >
               <Icon name="shareOutline" size={20} color={colors.brand.primary} />
             </TouchableOpacity>
@@ -162,6 +240,7 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.actionButton}
               onPress={() => handleDeleteReport(item.id)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              testID={`auto-scout-history-delete-${item.id}`}
             >
               <Icon name="trash" size={20} color={colors.status.error} />
             </TouchableOpacity>
@@ -174,16 +253,16 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Icon name="documentOutline" size={64} color={colors.text.tertiary} />
-      <Text style={styles.emptyTitle}>No Reports Yet</Text>
+      <Text style={styles.emptyTitle}>{historyCopy.empty.title}</Text>
       <Text style={styles.emptyText}>
-        Generate your first AI-powered scouting report to see it here
+        {historyCopy.empty.description}
       </Text>
       <TouchableOpacity
         style={styles.emptyButton}
         onPress={() => navigation.goBack()}
       >
         <Icon name="add" size={20} color={colors.background.primary} />
-        <Text style={styles.emptyButtonText}>Generate Report</Text>
+        <Text style={styles.emptyButtonText}>{historyCopy.empty.cta}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -195,27 +274,31 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrowBack" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Report History</Text>
+        <Text style={styles.headerTitle}>{historyCopy.title}</Text>
         <View style={styles.placeholder} />
       </View>
+      <Text style={styles.headerSubtitle}>{historyCopy.subtitle}</Text>
+      {errorMessage && (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      )}
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['all', 'saved', 'draft'] as const).map((tab) => (
+        {filterOptions.map((tab) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.filterTab, filter === tab && styles.filterTabActive]}
-            onPress={() => setFilter(tab)}
+            key={tab.value}
+            style={[styles.filterTab, filter === tab.value && styles.filterTabActive]}
+            onPress={() => setFilter(tab.value)}
           >
             <Text
               style={[
                 styles.filterTabText,
-                filter === tab && styles.filterTabTextActive,
+                filter === tab.value && styles.filterTabTextActive,
               ]}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab.label}
             </Text>
-            {filter === tab && <View style={styles.filterTabIndicator} />}
+            {filter === tab.value && <View style={styles.filterTabIndicator} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -224,7 +307,7 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brand.primary} />
-          <Text style={styles.loadingText}>Loading reports...</Text>
+          <Text style={styles.loadingText}>{historyCopy.loading}</Text>
         </View>
       ) : (
         <FlatList
@@ -241,50 +324,6 @@ export const AutoScoutHistoryScreen: React.FC<Props> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-// Mock data for testing
-const MOCK_REPORTS: AutoScoutHistoryItem[] = [
-  {
-    id: '1',
-    playerId: 'p1',
-    playerName: 'Marcus Silva',
-    qualityScore: {
-      total: 87,
-      grade: 'A',
-      breakdown: {
-        dataCompleteness: 90,
-        insightDepth: 85,
-        technicalAccuracy: 88,
-        actionability: 85,
-      },
-    },
-    template: 'MATCH_PERFORMANCE',
-    templateName: 'Match Performance',
-    status: 'saved',
-    createdAt: new Date('2024-11-05'),
-    overallRating: 8.5,
-  },
-  {
-    id: '2',
-    playerId: 'p2',
-    playerName: 'Luca Martinez',
-    qualityScore: {
-      total: 92,
-      grade: 'S',
-      breakdown: {
-        dataCompleteness: 95,
-        insightDepth: 90,
-        technicalAccuracy: 92,
-        actionability: 91,
-      },
-    },
-    template: 'TRANSFER_TARGET',
-    templateName: 'Transfer Target',
-    status: 'saved',
-    createdAt: new Date('2024-11-04'),
-    overallRating: 9.0,
-  },
-];
 
 const styles = StyleSheet.create({
   container: {
@@ -310,6 +349,17 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xl,
     fontWeight: 'bold',
     color: colors.text.primary,
+  },
+  headerSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
+    paddingHorizontal: spacing.md,
+  },
+  errorText: {
+    fontSize: typography.sizes.sm,
+    color: colors.status.error,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs / 2,
   },
   placeholder: {
     width: 40,

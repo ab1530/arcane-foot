@@ -367,9 +367,9 @@ describe('NotificationsService', () => {
 
       // Since Promise.all is used, if one fails, all fail
       // We expect this to throw because one user doesn't exist
-      await expect(
-        service.sendToMultipleUsers(userIds, title, body, type, data)
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.sendToMultipleUsers(userIds, title, body, type, data)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should send notifications without data parameter', async () => {
@@ -449,10 +449,7 @@ describe('NotificationsService', () => {
 
       const result = await service.subscribeToTopic(userIds, topic);
 
-      expect(firebaseService.subscribeToTopic).toHaveBeenCalledWith(
-        ['token-1', 'token-2'],
-        topic,
-      );
+      expect(firebaseService.subscribeToTopic).toHaveBeenCalledWith(['token-1', 'token-2'], topic);
       expect(result.success).toBe(true);
       expect(result.successCount).toBe(2);
       expect(result.failureCount).toBe(0);
@@ -959,7 +956,7 @@ describe('NotificationsService', () => {
         type: 'TEST',
         data: {
           'special-key': 'value-with-dashes',
-          'unicode': '你好世界',
+          unicode: '你好世界',
         },
       };
 

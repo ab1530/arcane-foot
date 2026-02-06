@@ -60,7 +60,13 @@ export class GamificationController {
   @ApiQuery({
     name: 'category',
     required: false,
-    enum: ['PLAYER_MILESTONE', 'SCOUT_EXPERTISE', 'CLUB_ACHIEVEMENT', 'SOCIAL_ENGAGEMENT', 'PERFORMANCE'],
+    enum: [
+      'PLAYER_MILESTONE',
+      'SCOUT_EXPERTISE',
+      'CLUB_ACHIEVEMENT',
+      'SOCIAL_ENGAGEMENT',
+      'PERFORMANCE',
+    ],
     description: 'Filter by achievement category',
   })
   @ApiResponse({
@@ -69,6 +75,28 @@ export class GamificationController {
   })
   async getAchievements(@Req() req: any, @Query('category') category?: string) {
     return this.gamificationService.getUserAchievements(req.user.id, category);
+  }
+
+  @Get('achievements/available')
+  @ApiOperation({
+    summary: 'Get available achievements',
+    description: 'List achievements that are not yet unlocked by the user',
+  })
+  @ApiResponse({ status: 200, description: 'Available achievements retrieved successfully' })
+  async getAvailableAchievements(@Req() req: any, @Query('category') category?: string) {
+    return this.gamificationService.getAvailableAchievements(req.user.id, category);
+  }
+
+  @Post('achievements/:id/claim')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Claim an achievement',
+    description: 'Unlock an achievement manually and award its rewards',
+  })
+  @ApiParam({ name: 'id', description: 'Achievement ID' })
+  @ApiResponse({ status: 200, description: 'Achievement claimed successfully' })
+  async claimAchievement(@Param('id') achievementId: string, @Req() req: any) {
+    return this.gamificationService.claimAchievement(req.user.id, achievementId);
   }
 
   @Get('badges')
@@ -112,6 +140,16 @@ export class GamificationController {
   ) {
     const limitNum = limit ? parseInt(limit, 10) : 100;
     return this.gamificationService.getLeaderboard(category, limitNum, req.user.id);
+  }
+
+  @Get('leaderboards')
+  @ApiOperation({
+    summary: 'Get leaderboard overview',
+    description: 'Retrieve available leaderboard types and a default leaderboard snapshot',
+  })
+  @ApiResponse({ status: 200, description: 'Leaderboard overview retrieved successfully' })
+  async getLeaderboardOverview(@Req() req: any) {
+    return this.gamificationService.getLeaderboardOverview(req.user.id);
   }
 
   @Get('daily-challenge')
@@ -202,7 +240,13 @@ export class GamificationController {
   })
   @ApiParam({
     name: 'action',
-    enum: ['GOAL_SCORED', 'MATCH_PLAYED', 'PROFILE_COMPLETED', 'PLAYER_VALIDATED', 'REPORT_SUBMITTED'],
+    enum: [
+      'GOAL_SCORED',
+      'MATCH_PLAYED',
+      'PROFILE_COMPLETED',
+      'PLAYER_VALIDATED',
+      'REPORT_SUBMITTED',
+    ],
     description: 'Action type to track',
   })
   @ApiResponse({

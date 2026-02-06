@@ -106,7 +106,10 @@ describe('GamificationService', () => {
       };
 
       prisma.user_stats.upsert.mockResolvedValue(userStatsBeforeLevelUp as any);
-      prisma.user_stats.update.mockResolvedValue({ ...userStatsBeforeLevelUp, currentLevel: 2 } as any);
+      prisma.user_stats.update.mockResolvedValue({
+        ...userStatsBeforeLevelUp,
+        currentLevel: 2,
+      } as any);
       prisma.achievements.findMany.mockResolvedValue([]);
 
       await service.awardPoints(userId, points);
@@ -829,7 +832,10 @@ describe('GamificationService', () => {
 
         prisma.daily_challenges.findFirst.mockResolvedValue(mockChallenge as any);
         prisma.user_daily_challenges.upsert.mockResolvedValue(mockUserChallenge as any);
-        prisma.user_daily_challenges.update.mockResolvedValue({ ...mockUserChallenge, isCompleted: true } as any);
+        prisma.user_daily_challenges.update.mockResolvedValue({
+          ...mockUserChallenge,
+          isCompleted: true,
+        } as any);
         prisma.user_stats.upsert.mockResolvedValue({} as any);
 
         await service.updateChallengeProgress(userId, challengeType);
@@ -888,7 +894,10 @@ describe('GamificationService', () => {
 
         prisma.daily_challenges.findFirst.mockResolvedValue(mockChallenge as any);
         prisma.user_daily_challenges.findUnique.mockResolvedValue(mockUserChallenge as any);
-        prisma.user_daily_challenges.update.mockResolvedValue({ ...mockUserChallenge, isClaimed: true } as any);
+        prisma.user_daily_challenges.update.mockResolvedValue({
+          ...mockUserChallenge,
+          isClaimed: true,
+        } as any);
         prisma.user_stats.upsert.mockResolvedValue({} as any);
 
         const result = await service.claimDailyChallengeReward(userId);
@@ -908,7 +917,9 @@ describe('GamificationService', () => {
       it('should throw error when no active challenge', async () => {
         prisma.daily_challenges.findFirst.mockResolvedValue(null);
 
-        await expect(service.claimDailyChallengeReward(userId)).rejects.toThrow('No active daily challenge found');
+        await expect(service.claimDailyChallengeReward(userId)).rejects.toThrow(
+          'No active daily challenge found',
+        );
       });
 
       it('should throw error when challenge not completed', async () => {
@@ -922,7 +933,9 @@ describe('GamificationService', () => {
         prisma.daily_challenges.findFirst.mockResolvedValue(mockChallenge as any);
         prisma.user_daily_challenges.findUnique.mockResolvedValue(mockUserChallenge as any);
 
-        await expect(service.claimDailyChallengeReward(userId)).rejects.toThrow('Challenge not completed yet');
+        await expect(service.claimDailyChallengeReward(userId)).rejects.toThrow(
+          'Challenge not completed yet',
+        );
       });
 
       it('should throw error when reward already claimed', async () => {
@@ -936,7 +949,9 @@ describe('GamificationService', () => {
         prisma.daily_challenges.findFirst.mockResolvedValue(mockChallenge as any);
         prisma.user_daily_challenges.findUnique.mockResolvedValue(mockUserChallenge as any);
 
-        await expect(service.claimDailyChallengeReward(userId)).rejects.toThrow('Reward already claimed');
+        await expect(service.claimDailyChallengeReward(userId)).rejects.toThrow(
+          'Reward already claimed',
+        );
       });
     });
   });
@@ -970,7 +985,9 @@ describe('GamificationService', () => {
       it('should throw error when achievement not unlocked', async () => {
         prisma.user_achievements.findUnique.mockResolvedValue(null);
 
-        await expect(service.shareAchievement(userId, achievementId)).rejects.toThrow('Achievement not unlocked');
+        await expect(service.shareAchievement(userId, achievementId)).rejects.toThrow(
+          'Achievement not unlocked',
+        );
       });
     });
 
@@ -1127,9 +1144,7 @@ describe('GamificationService', () => {
     });
 
     it('should award badge to top 3 players', async () => {
-      const mockTopPlayers = [
-        { userId: 'user-1', rank: 1, category, period: '2025-01' },
-      ];
+      const mockTopPlayers = [{ userId: 'user-1', rank: 1, category, period: '2025-01' }];
 
       prisma.leaderboards.findMany.mockResolvedValue(mockTopPlayers as any);
       prisma.user_stats.upsert.mockResolvedValue({} as any);

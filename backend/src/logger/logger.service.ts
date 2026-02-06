@@ -31,13 +31,24 @@ export class LoggerService implements NestLoggerService {
   }
 
   // Custom methods for structured logging
-  logHttpRequest(method: string, url: string, statusCode: number, duration: number, userId?: string) {
+  logHttpRequest(params: {
+    method: string;
+    url: string;
+    statusCode: number;
+    duration: number;
+    userId?: string;
+    role?: string;
+    requestId?: string;
+  }) {
+    const { method, url, statusCode, duration, userId, role, requestId } = params;
     this.logger.http('HTTP Request', {
       method,
       url,
       statusCode,
       duration,
       userId,
+      role,
+      requestId,
       timestamp: new Date().toISOString(),
     });
   }

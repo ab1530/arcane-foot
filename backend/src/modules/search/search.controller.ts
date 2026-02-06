@@ -11,7 +11,8 @@ export class SearchController {
   @Get()
   @ApiOperation({
     summary: 'Recherche globale',
-    description: 'Recherche dans toutes les entités (joueurs, clubs, matchs, événements, rapports de scouting)',
+    description:
+      'Recherche dans toutes les entités (joueurs, clubs, matchs, événements, rapports de scouting)',
   })
   @ApiResponse({ status: 200, description: 'Résultats de recherche récupérés avec succès' })
   @ApiResponse({ status: 400, description: 'Paramètres de recherche invalides' })
@@ -22,15 +23,19 @@ export class SearchController {
   @Get('quick')
   @ApiOperation({
     summary: 'Recherche rapide',
-    description: 'Recherche rapide dans les principales entités (joueurs, clubs, matchs) avec résultats limités',
+    description:
+      'Recherche rapide dans les principales entités (joueurs, clubs, matchs) avec résultats limités',
   })
   @ApiQuery({ name: 'query', required: true, description: 'Terme de recherche', example: 'Messi' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Nombre de résultats par entité', example: 5, default: 5 })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Nombre de résultats par entité',
+    example: 5,
+    default: 5,
+  })
   @ApiResponse({ status: 200, description: 'Résultats de recherche rapide récupérés avec succès' })
-  quickSearch(
-    @Query('query') query: string,
-    @Query('limit') limit?: string,
-  ) {
+  quickSearch(@Query('query') query: string, @Query('limit') limit?: string) {
     return this.searchService.quickSearch(query, limit ? parseInt(limit) : 5);
   }
 }

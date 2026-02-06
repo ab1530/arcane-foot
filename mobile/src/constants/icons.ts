@@ -135,6 +135,8 @@ export const ICONS = {
   videocamOutline: 'videocam-outline',
   play: 'play-circle',
   playOutline: 'play-circle-outline',
+  mic: 'mic',
+  micOutline: 'mic-outline',
 
   // Business
   card: 'card',
@@ -157,6 +159,10 @@ export const ICONS = {
   appsOutline: 'apps-outline',
   layers: 'layers',
   layersOutline: 'layers-outline',
+  text: 'text',
+  textOutline: 'text-outline',
+  sparkles: 'sparkles',
+  sparklesOutline: 'sparkles-outline',
 
   // Security & Privacy
   lock: 'lock-closed',
@@ -189,8 +195,14 @@ export const ICONS = {
   syncOutline: 'sync-outline',
   trending: 'trending-up',
   trendingOutline: 'trending-up-outline',
+  trendingUp: 'trending-up',
+  trendingDown: 'trending-down',
   analytics: 'analytics',
   analyticsOutline: 'analytics-outline',
+  barChart: 'bar-chart',
+  barChartOutline: 'bar-chart-outline',
+  target: 'locate',
+  targetOutline: 'locate-outline',
 
   // Logout & Exit
   logout: 'log-out',

@@ -3,7 +3,7 @@ import { IsEnum, IsOptional, IsDateString, IsString } from 'class-validator';
 import { EventType, EventStatus } from '@prisma/client';
 
 export class QueryEventDto {
-  @ApiPropertyOptional({ enum: EventType, description: 'Filtrer par type d\'événement' })
+  @ApiPropertyOptional({ enum: EventType, description: "Filtrer par type d'événement" })
   @IsEnum(EventType)
   @IsOptional()
   type?: EventType;
@@ -23,7 +23,7 @@ export class QueryEventDto {
   @IsOptional()
   endDate?: string;
 
-  @ApiPropertyOptional({ description: 'ID de l\'utilisateur assigné' })
+  @ApiPropertyOptional({ description: "ID de l'utilisateur assigné" })
   @IsString()
   @IsOptional()
   assignedUserId?: string;

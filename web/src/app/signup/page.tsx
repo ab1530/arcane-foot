@@ -12,18 +12,15 @@ import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Shield, Phone, Calendar } fro
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
-
-const ACCOUNT_TYPES = [
-  { value: "player", label: "Player" },
-  { value: "agent", label: "Agent" },
-  { value: "club", label: "Club" },
-] as const;
-
-type AccountType = typeof ACCOUNT_TYPES[number]["value"];
+import { useLanguage } from "@/contexts/language-context";
 
 export default function SignupPage() {
   const router = useRouter();
   const { signup } = useAuth();
+  const { dictionary } = useLanguage();
+  const signupCopy = dictionary.auth.signup;
+  const accountTypes = signupCopy.accountTypes.options;
+  type AccountType = keyof typeof accountTypes;
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -31,7 +28,7 @@ export default function SignupPage() {
     dateOfBirth: "",
     password: "",
     confirmPassword: "",
-    accountType: ACCOUNT_TYPES[0].value as AccountType,
+    accountType: Object.keys(accountTypes)[0] as AccountType,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -44,16 +41,16 @@ export default function SignupPage() {
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
-      const errorMsg = "Passwords do not match!";
+      const errorMsg = signupCopy.validation.mismatch;
       setError(errorMsg);
-      toast.error("Validation Error", { description: errorMsg });
+      toast.error(signupCopy.toast.errorTitle, { description: errorMsg });
       return;
     }
 
     if (formData.password.length < 8) {
-      const errorMsg = "Password must be at least 8 characters long!";
+      const errorMsg = signupCopy.validation.length;
       setError(errorMsg);
-      toast.error("Validation Error", { description: errorMsg });
+      toast.error(signupCopy.toast.errorTitle, { description: errorMsg });
       return;
     }
 
@@ -68,15 +65,15 @@ export default function SignupPage() {
         password: formData.password,
         accountType: formData.accountType,
       });
-      toast.success("Account created successfully!", {
-        description: "Welcome to Arcane Football! Redirecting...",
+      toast.success(signupCopy.toast.successTitle, {
+        description: signupCopy.toast.successDescription,
       });
       setTimeout(() => router.push("/dashboard"), 500);
     } catch (error) {
       console.error("Signup error:", error);
-      const errorMessage = "Signup failed. Please try again.";
+      const errorMessage = signupCopy.toast.errorDescription;
       setError(errorMessage);
-      toast.error("Signup Failed", {
+      toast.error(signupCopy.toast.errorTitle, {
         description: errorMessage,
       });
     } finally {
@@ -97,7 +94,7 @@ export default function SignupPage() {
           <ArrowLeft className="h-5 w-5 text-arcane-accent group-hover:-translate-x-1 transition-transform" />
         </div>
         <span className="text-arcane-grey group-hover:text-white transition-colors hidden md:inline">
-          Back to Home
+          {signupCopy.nav.back}
         </span>
       </Link>
 
@@ -120,19 +117,19 @@ export default function SignupPage() {
           >
             <motion.div className="inline-block mb-6">
               <span className="text-sm uppercase tracking-widest text-arcane-accent font-bold px-4 py-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/5">
-                Join Arcane
+                {signupCopy.hero.badge}
               </span>
             </motion.div>
             <h1 className="text-5xl md:text-6xl font-black mb-4">
               <GradientText animated className="block mb-2">
-                START YOUR
+                {signupCopy.hero.heading.line1.toUpperCase()}
               </GradientText>
               <NeonText className="block">
-                ELITE JOURNEY
+                {signupCopy.hero.heading.line2.toUpperCase()}
               </NeonText>
             </h1>
             <p className="text-xl text-arcane-grey">
-              Create your account and unlock world-class representation
+              {signupCopy.hero.description}
             </p>
           </motion.div>
 
@@ -158,21 +155,21 @@ export default function SignupPage() {
                   {/* Account Type */}
                   <div>
                     <label className="block text-sm font-bold text-white mb-3 uppercase tracking-wider">
-                      I am a *
+                      {signupCopy.accountTypes.title}
                     </label>
                     <div className="grid grid-cols-2 gap-4">
-                      {ACCOUNT_TYPES.map((type) => (
+                      {Object.entries(accountTypes).map(([value, label]) => (
                         <button
-                          key={type.value}
+                          key={value}
                           type="button"
-                          onClick={() => setFormData({ ...formData, accountType: type.value })}
+                          onClick={() => setFormData({ ...formData, accountType: value as AccountType })}
                           className={`p-4 rounded-lg border-2 transition-all ${
-                            formData.accountType === type.value
+                            formData.accountType === value
                               ? "border-arcane-accent bg-arcane-accent/10 text-white"
                               : "border-arcane-darkBorder bg-arcane-darkBorder/20 text-arcane-grey hover:border-arcane-accent/50"
                           }`}
                         >
-                          <span className="font-bold">{type.label}</span>
+                          <span className="font-bold">{label}</span>
                         </button>
                       ))}
                     </div>
@@ -181,7 +178,7 @@ export default function SignupPage() {
                   {/* Full Name */}
                   <div>
                     <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                      Full Name *
+                      {signupCopy.form.fields.fullName.label}
                     </label>
                     <div className="relative">
                       <input
@@ -190,7 +187,7 @@ export default function SignupPage() {
                         value={formData.fullName}
                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         className="w-full pl-12 pr-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                        placeholder="John Doe"
+                        placeholder={signupCopy.form.fields.fullName.placeholder}
                       />
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-arcane-grey" />
                     </div>
@@ -200,7 +197,7 @@ export default function SignupPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                        Email *
+                        {signupCopy.form.fields.email.label}
                       </label>
                       <div className="relative">
                         <input
@@ -209,7 +206,7 @@ export default function SignupPage() {
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className="w-full pl-12 pr-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                          placeholder="player@arcane.li"
+                          placeholder={signupCopy.form.fields.email.placeholder}
                         />
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-arcane-grey" />
                       </div>
@@ -217,7 +214,7 @@ export default function SignupPage() {
 
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                        Phone Number
+                        {signupCopy.form.fields.phone.label}
                       </label>
                       <div className="relative">
                         <input
@@ -225,7 +222,7 @@ export default function SignupPage() {
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="w-full pl-12 pr-4 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                          placeholder="+49 123 456 7890"
+                          placeholder={signupCopy.form.fields.phone.placeholder}
                         />
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-arcane-grey" />
                       </div>
@@ -235,7 +232,7 @@ export default function SignupPage() {
                   {/* Date of Birth */}
                   <div>
                     <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                      Date of Birth *
+                      {signupCopy.form.fields.dateOfBirth.label}
                     </label>
                     <div className="relative">
                       <input
@@ -252,7 +249,7 @@ export default function SignupPage() {
                   {/* Password */}
                   <div>
                     <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                      Password *
+                      {signupCopy.form.fields.password.label}
                     </label>
                     <div className="relative">
                       <input
@@ -261,7 +258,7 @@ export default function SignupPage() {
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         className="w-full pl-12 pr-12 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                        placeholder="Minimum 8 characters"
+                        placeholder={signupCopy.form.fields.password.placeholder}
                       />
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-arcane-grey" />
                       <button
@@ -281,7 +278,7 @@ export default function SignupPage() {
                   {/* Confirm Password */}
                   <div>
                     <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                      Confirm Password *
+                      {signupCopy.form.fields.confirmPassword.label}
                     </label>
                     <div className="relative">
                       <input
@@ -290,7 +287,7 @@ export default function SignupPage() {
                         value={formData.confirmPassword}
                         onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                         className="w-full pl-12 pr-12 py-3 rounded-lg bg-arcane-darkBorder/50 border border-arcane-darkBorder text-white placeholder-arcane-grey focus:border-arcane-accent focus:outline-none focus:ring-2 focus:ring-arcane-accent/20 transition-all"
-                        placeholder="Re-enter your password"
+                        placeholder={signupCopy.form.fields.confirmPassword.placeholder}
                       />
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-arcane-grey" />
                       <button
@@ -315,13 +312,13 @@ export default function SignupPage() {
                       className="mt-1 w-4 h-4 rounded border-arcane-darkBorder bg-arcane-darkBorder/50 text-arcane-accent focus:ring-2 focus:ring-arcane-accent/20"
                     />
                     <label className="text-sm text-arcane-grey">
-                      I agree to the{" "}
+                      {signupCopy.form.terms.text}{" "}
                       <Link href="/terms" className="text-arcane-accent hover:text-white transition-colors">
-                        Terms of Service
+                        {dictionary.auth.login.form.terms.terms}
                       </Link>{" "}
-                      and{" "}
+                      {dictionary.auth.login.form.terms.connector}{" "}
                       <Link href="/privacy" className="text-arcane-accent hover:text-white transition-colors">
-                        Privacy Policy
+                        {dictionary.auth.login.form.terms.privacy}
                       </Link>
                     </label>
                   </div>
@@ -343,12 +340,12 @@ export default function SignupPage() {
                           >
                             <Shield className="h-5 w-5" />
                           </motion.div>
-                          Creating Account...
+                          {signupCopy.form.submit.loading}
                         </>
                       ) : (
                         <>
                           <Shield className="mr-2 h-5 w-5" />
-                          Create Account
+                          {signupCopy.form.submit.idle}
                         </>
                       )}
                     </Button>
@@ -361,7 +358,7 @@ export default function SignupPage() {
                     </div>
                     <div className="relative flex justify-center text-sm">
                       <span className="px-4 bg-arcane-dark text-arcane-grey">
-                        Already have an account?
+                        {signupCopy.form.divider}
                       </span>
                     </div>
                   </div>
@@ -369,7 +366,7 @@ export default function SignupPage() {
                   {/* Sign In Link */}
                   <Link href="/login">
                     <Button variant="secondary" size="lg" className="w-full">
-                      Sign In Instead
+                      {signupCopy.form.signin}
                     </Button>
                   </Link>
                 </form>

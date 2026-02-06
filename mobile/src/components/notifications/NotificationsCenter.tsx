@@ -20,6 +20,7 @@ import { GlassCard } from '../ui/GlassCard';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import api from '../../services/api';
 import { logError, logInfo } from '../../utils/logger';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface NotificationsCenterProps {
   visible: boolean;
@@ -40,18 +41,24 @@ export const NotificationsCenter: React.FC<NotificationsCenterProps> = ({ visibl
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (visible) {
+    if (visible && user?.id) {
       fetchNotifications();
     }
-  }, [visible]);
+  }, [visible, user?.id]);
 
   const fetchNotifications = async () => {
+    if (!user?.id) {
+      setNotifications([]);
+      return;
+    }
+
     setLoading(true);
     try {
       logInfo('Fetching notifications');
-      const data = await api.getNotifications();
+      const data = await api.getNotifications(user.id);
 
       // Handle different response formats
       const notificationsList = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];

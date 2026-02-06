@@ -12,7 +12,7 @@ import {
   FilterOptions,
 } from '@/app/admin/player-validation/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 class ValidationService {
   private getAuthToken(): string | null {

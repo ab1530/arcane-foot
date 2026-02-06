@@ -11,8 +11,8 @@ drop policy if exists "Players are only managed by owner" on public.players;
 create policy "Players are only managed by owner"
   on public.players
   for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (auth.uid()::text = "userId")
+  with check (auth.uid()::text = "userId");
 
 ------------------------------------------
 -- SCOUTING REPORTS
@@ -25,11 +25,11 @@ create policy "Reports readable by creator and admins"
   on public.scouting_reports
   for select
   using (
-    auth.uid() = scout_id
+    auth.uid()::text = "scoutId"
     or exists (
       select 1
       from public.users u
-      where u.id = auth.uid()
+      where u.id = auth.uid()::text
       and u.role in ('ADMIN', 'SUPER_ADMIN')
     )
   );
@@ -38,8 +38,8 @@ drop policy if exists "Reports updatable by creator" on public.scouting_reports;
 create policy "Reports updatable by creator"
   on public.scouting_reports
   for all
-  using (auth.uid() = scout_id)
-  with check (auth.uid() = scout_id);
+  using (auth.uid()::text = "scoutId")
+  with check (auth.uid()::text = "scoutId");
 
 ------------------------------------------
 -- CLUB REQUESTS
@@ -52,8 +52,24 @@ create policy "Club requests visible by owner"
   on public.club_requests
   for select
   using (
-    auth.uid() = agent_id
-    or auth.uid() = club_contact_id
+    exists (
+      select 1
+      from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+    or exists (
+      select 1
+      from public.clubs c
+      where c.id = "clubId"
+      and c."contactUserId" = auth.uid()::text
+    )
+    or exists (
+      select 1
+      from public.users u
+      where u.id = auth.uid()::text
+      and u.role in ('ADMIN', 'SUPER_ADMIN')
+    )
   );
 
 ------------------------------------------
@@ -67,15 +83,15 @@ drop policy if exists "Users can view own profile" on public.users;
 create policy "Users can view own profile"
   on public.users
   for select
-  using (auth.uid() = id);
+  using (auth.uid()::text = id);
 
 -- Users can update their own profile
 drop policy if exists "Users can update own profile" on public.users;
 create policy "Users can update own profile"
   on public.users
   for update
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+  using (auth.uid()::text = id)
+  with check (auth.uid()::text = id);
 
 -- Only service role can create users (handled by auth flow)
 drop policy if exists "Service role can create users" on public.users;
@@ -95,32 +111,12 @@ drop policy if exists "Users can view own subscription" on public.subscriptions;
 create policy "Users can view own subscription"
   on public.subscriptions
   for select
-  using (auth.uid() = user_id);
+  using (auth.uid()::text = "userId");
 
 -- Only service role can manage subscriptions (Stripe webhooks)
 drop policy if exists "Service role can manage subscriptions" on public.subscriptions;
 create policy "Service role can manage subscriptions"
   on public.subscriptions
-  for all
-  using (auth.role() = 'service_role');
-
-------------------------------------------
--- PAYMENTS (CRITICAL!)
-------------------------------------------
-
-alter table public.payments enable row level security;
-
--- Users can view their own payments (read-only)
-drop policy if exists "Users can view own payments" on public.payments;
-create policy "Users can view own payments"
-  on public.payments
-  for select
-  using (auth.uid() = user_id);
-
--- Only service role can create/update payments (Stripe webhooks)
-drop policy if exists "Service role can manage payments" on public.payments;
-create policy "Service role can manage payments"
-  on public.payments
   for all
   using (auth.role() = 'service_role');
 
@@ -135,7 +131,7 @@ drop policy if exists "Public can view published camps" on public.camps;
 create policy "Public can view published camps"
   on public.camps
   for select
-  using (status = 'PUBLISHED' or status = 'OPEN');
+  using (status = 'PUBLISHED');
 
 -- Only admins can manage camps
 drop policy if exists "Admins can manage camps" on public.camps;
@@ -145,38 +141,66 @@ create policy "Admins can manage camps"
   using (
     exists (
       select 1 from public.users u
-      where u.id = auth.uid()
+      where u.id = auth.uid()::text
       and u.role in ('ADMIN', 'SUPER_ADMIN', 'SCOUT')
     )
   );
 
 ------------------------------------------
--- CAMP_PARTICIPATION
+-- CAMP_PARTICIPATIONS
 ------------------------------------------
 
-alter table public.camp_participation enable row level security;
+alter table public.camp_participations enable row level security;
 
 -- Users can view their own participations
-drop policy if exists "Users can view own participations" on public.camp_participation;
+drop policy if exists "Users can view own participations" on public.camp_participations;
 create policy "Users can view own participations"
-  on public.camp_participation
+  on public.camp_participations
   for select
-  using (auth.uid() = player_id);
+  using (
+    exists (
+      select 1
+      from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+  );
 
 -- Users can register for camps
-drop policy if exists "Users can register for camps" on public.camp_participation;
+drop policy if exists "Users can register for camps" on public.camp_participations;
 create policy "Users can register for camps"
-  on public.camp_participation
+  on public.camp_participations
   for insert
-  with check (auth.uid() = player_id);
+  with check (
+    exists (
+      select 1
+      from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+  );
 
 -- Users can update their own participations
-drop policy if exists "Users can update own participations" on public.camp_participation;
+drop policy if exists "Users can update own participations" on public.camp_participations;
 create policy "Users can update own participations"
-  on public.camp_participation
+  on public.camp_participations
   for update
-  using (auth.uid() = player_id)
-  with check (auth.uid() = player_id);
+  using (
+    exists (
+      select 1
+      from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+  );
 
 ------------------------------------------
 -- EVENTS
@@ -190,12 +214,12 @@ create policy "Users can view relevant events"
   on public.events
   for select
   using (
-    is_public = true
-    or created_by_id = auth.uid()
+    "createdById" = auth.uid()::text
     or exists (
-      select 1 from event_assignments ea
-      where ea.event_id = id
-      and ea.assigned_user_id = auth.uid()
+      select 1
+      from public.event_assignments ea
+      where ea."eventId" = id
+      and ea."userId" = auth.uid()::text
     )
   );
 
@@ -204,15 +228,15 @@ drop policy if exists "Users can create events" on public.events;
 create policy "Users can create events"
   on public.events
   for insert
-  with check (auth.uid() = created_by_id);
+  with check (auth.uid()::text = "createdById");
 
 -- Users can update their own events
 drop policy if exists "Users can update own events" on public.events;
 create policy "Users can update own events"
   on public.events
   for update
-  using (auth.uid() = created_by_id)
-  with check (auth.uid() = created_by_id);
+  using (auth.uid()::text = "createdById")
+  with check (auth.uid()::text = "createdById");
 
 ------------------------------------------
 -- EVENT_ASSIGNMENTS
@@ -225,7 +249,15 @@ drop policy if exists "Users can view own assignments" on public.event_assignmen
 create policy "Users can view own assignments"
   on public.event_assignments
   for select
-  using (auth.uid() = assigned_user_id);
+  using (
+    auth.uid()::text = "userId"
+    or exists (
+      select 1
+      from public.events e
+      where e.id = "eventId"
+      and e."createdById" = auth.uid()::text
+    )
+  );
 
 -- Event owners can manage assignments
 drop policy if exists "Event owners can manage assignments" on public.event_assignments;
@@ -235,8 +267,8 @@ create policy "Event owners can manage assignments"
   using (
     exists (
       select 1 from public.events e
-      where e.id = event_id
-      and e.created_by_id = auth.uid()
+      where e.id = "eventId"
+      and e."createdById" = auth.uid()::text
     )
   );
 
@@ -251,15 +283,15 @@ drop policy if exists "Users can view own kanban boards" on public.kanban_boards
 create policy "Users can view own kanban boards"
   on public.kanban_boards
   for select
-  using (auth.uid() = user_id);
+  using (auth.uid()::text = "ownerId");
 
 -- Users can manage own kanban boards
 drop policy if exists "Users can manage own kanban boards" on public.kanban_boards;
 create policy "Users can manage own kanban boards"
   on public.kanban_boards
   for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (auth.uid()::text = "ownerId")
+  with check (auth.uid()::text = "ownerId");
 
 ------------------------------------------
 -- KANBAN COLUMNS
@@ -275,8 +307,8 @@ create policy "Users can view own columns"
   using (
     exists (
       select 1 from public.kanban_boards kb
-      where kb.id = board_id
-      and kb.user_id = auth.uid()
+      where kb.id = "boardId"
+      and kb."ownerId" = auth.uid()::text
     )
   );
 
@@ -288,8 +320,8 @@ create policy "Users can manage own columns"
   using (
     exists (
       select 1 from public.kanban_boards kb
-      where kb.id = board_id
-      and kb.user_id = auth.uid()
+      where kb.id = "boardId"
+      and kb."ownerId" = auth.uid()::text
     )
   );
 
@@ -307,9 +339,9 @@ create policy "Users can view own cards"
   using (
     exists (
       select 1 from public.kanban_columns kc
-      join public.kanban_boards kb on kb.id = kc.board_id
-      where kc.id = column_id
-      and kb.user_id = auth.uid()
+      join public.kanban_boards kb on kb.id = kc."boardId"
+      where kc.id = "columnId"
+      and kb."ownerId" = auth.uid()::text
     )
   );
 
@@ -321,9 +353,9 @@ create policy "Users can manage own cards"
   using (
     exists (
       select 1 from public.kanban_columns kc
-      join public.kanban_boards kb on kb.id = kc.board_id
-      where kc.id = column_id
-      and kb.user_id = auth.uid()
+      join public.kanban_boards kb on kb.id = kc."boardId"
+      where kc.id = "columnId"
+      and kb."ownerId" = auth.uid()::text
     )
   );
 
@@ -338,15 +370,15 @@ drop policy if exists "Users can view own notifications" on public.notifications
 create policy "Users can view own notifications"
   on public.notifications
   for select
-  using (auth.uid() = user_id);
+  using (auth.uid()::text = "userId");
 
 -- Users can update their own notifications (mark as read)
 drop policy if exists "Users can update own notifications" on public.notifications;
 create policy "Users can update own notifications"
   on public.notifications
   for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (auth.uid()::text = "userId")
+  with check (auth.uid()::text = "userId");
 
 ------------------------------------------
 -- MEDIA
@@ -360,11 +392,15 @@ create policy "Users can view accessible media"
   on public.media
   for select
   using (
-    auth.uid() = uploaded_by_id
-    or exists (
+    exists (
       select 1 from public.players p
-      where p.id = entity_id
-      and p.user_id = auth.uid()
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+    or exists (
+      select 1 from public.scouting_reports r
+      where r.id = "reportId"
+      and r."scoutId" = auth.uid()::text
     )
   );
 
@@ -373,11 +409,35 @@ drop policy if exists "Users can upload media" on public.media;
 create policy "Users can upload media"
   on public.media
   for insert
-  with check (auth.uid() = uploaded_by_id);
+  with check (
+    auth.role() = 'service_role'
+    or exists (
+      select 1 from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+    or exists (
+      select 1 from public.scouting_reports r
+      where r.id = "reportId"
+      and r."scoutId" = auth.uid()::text
+    )
+  );
 
 -- Users can delete their own media
 drop policy if exists "Users can delete own media" on public.media;
 create policy "Users can delete own media"
   on public.media
   for delete
-  using (auth.uid() = uploaded_by_id);
+  using (
+    auth.role() = 'service_role'
+    or exists (
+      select 1 from public.players p
+      where p.id = "playerId"
+      and p."userId" = auth.uid()::text
+    )
+    or exists (
+      select 1 from public.scouting_reports r
+      where r.id = "reportId"
+      and r."scoutId" = auth.uid()::text
+    )
+  );

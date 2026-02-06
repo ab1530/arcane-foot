@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
@@ -224,7 +229,7 @@ export class KanbanService {
 
     if (column._count.kanban_cards > 0) {
       throw new BadRequestException(
-        `Impossible de supprimer une colonne contenant ${column._count.kanban_cards} carte(s). Déplacez ou supprimez d'abord les cartes.`
+        `Impossible de supprimer une colonne contenant ${column._count.kanban_cards} carte(s). Déplacez ou supprimez d'abord les cartes.`,
       );
     }
 
@@ -255,7 +260,7 @@ export class KanbanService {
     // Vérifier la limite de cartes
     if (column.cardLimit && column.kanban_cards.length >= column.cardLimit) {
       throw new BadRequestException(
-        `La colonne "${column.name}" a atteint sa limite de ${column.cardLimit} cartes`
+        `La colonne "${column.name}" a atteint sa limite de ${column.cardLimit} cartes`,
       );
     }
 
@@ -279,9 +284,7 @@ export class KanbanService {
     });
 
     if (existingCard) {
-      throw new ConflictException(
-        `Le joueur est déjà présent dans la colonne "${column.name}"`
-      );
+      throw new ConflictException(`Le joueur est déjà présent dans la colonne "${column.name}"`);
     }
 
     // Définir la position (à la fin si non spécifiée)
@@ -412,13 +415,19 @@ export class KanbanService {
     });
 
     if (!targetColumn) {
-      throw new NotFoundException(`Colonne de destination avec l'ID ${moveCardDto.targetColumnId} introuvable`);
+      throw new NotFoundException(
+        `Colonne de destination avec l'ID ${moveCardDto.targetColumnId} introuvable`,
+      );
     }
 
     // Vérifier la limite de cartes
-    if (targetColumn.cardLimit && targetColumn.kanban_cards.length >= targetColumn.cardLimit && card.columnId !== moveCardDto.targetColumnId) {
+    if (
+      targetColumn.cardLimit &&
+      targetColumn.kanban_cards.length >= targetColumn.cardLimit &&
+      card.columnId !== moveCardDto.targetColumnId
+    ) {
       throw new BadRequestException(
-        `La colonne "${targetColumn.name}" a atteint sa limite de ${targetColumn.cardLimit} cartes`
+        `La colonne "${targetColumn.name}" a atteint sa limite de ${targetColumn.cardLimit} cartes`,
       );
     }
 

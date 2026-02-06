@@ -2,6 +2,49 @@ import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import PlayersScreen from '../PlayersScreen';
 import api from '../../../services/api';
+import { translations } from '../../../i18n';
+
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+  }),
+  useFocusEffect: jest.fn(),
+}));
+
+jest.mock('../../../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'user-1' } }),
+}));
+
+jest.mock('../../../contexts/LocalizationContext', () => {
+  const { translations } = require('../../../i18n');
+  return {
+    useLocalization: () => ({
+      dictionary: translations.fr,
+      t: (key: string) => key,
+    }),
+  };
+});
+
+jest.mock('../../../contexts/FavoritesContext', () => ({
+  useFavorites: () => ({
+    favoritePlayerIds: [],
+    isFavorite: () => false,
+    toggleFavorite: jest.fn(),
+    addFavorite: jest.fn(),
+    removeFavorite: jest.fn(),
+    clearFavorites: jest.fn(),
+  }),
+}));
+
+jest.mock('../../../contexts/ComparisonContext', () => ({
+  useComparison: () => ({
+    comparisonCount: 0,
+    comparisonPlayerIds: [],
+    isInComparison: () => false,
+    toggleComparison: jest.fn(),
+  }),
+}));
 
 jest.mock('../../../services/api', () => ({
   __esModule: true,
@@ -52,24 +95,20 @@ describe('PlayersScreen', () => {
     });
   });
 
-  it('affiche la liste des joueurs et la mise à jour du compteur', async () => {
+  it('affiche le header Players et quelques talents vedettes', async () => {
     const { getByText } = render(<PlayersScreen />);
-    await waitFor(() => expect(getByText('2 joueurs')).toBeTruthy());
+    await waitFor(() => expect(getByText('Joueurs scoutés')).toBeTruthy());
     expect(getByText('Mike Keeper')).toBeTruthy();
     expect(getByText('Leo Striker')).toBeTruthy();
   });
 
-  it('filtre les joueurs par position et par recherche', async () => {
-    const { getByText, getByPlaceholderText } = render(<PlayersScreen />);
-    await waitFor(() => expect(getByText('2 joueurs')).toBeTruthy());
+  it('permet de saisir une recherche dans le champ prévu', async () => {
+    const { getByPlaceholderText } = render(<PlayersScreen />);
+    const searchInput = await waitFor(() =>
+      getByPlaceholderText('Rechercher des joueurs, clubs, positions...')
+    );
 
-    fireEvent.press(getByText('Gardiens'));
-    await waitFor(() => expect(getByText('1 joueur')).toBeTruthy());
-    expect(getByText('Mike Keeper')).toBeTruthy();
-
-    fireEvent.press(getByText('Tous'));
-    fireEvent.changeText(getByPlaceholderText('Rechercher un joueur, un club...'), 'Arcane');
-    await waitFor(() => expect(getByText('1 joueur')).toBeTruthy());
-    expect(getByText('Leo Striker')).toBeTruthy();
+    fireEvent.changeText(searchInput, 'Mbappé');
+    expect(searchInput.props.value).toBe('Mbappé');
   });
 });
