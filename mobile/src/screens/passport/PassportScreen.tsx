@@ -132,6 +132,16 @@ export const PassportScreen = ({ navigation }: any) => {
     refresh();
   };
 
+  const handleMyVideos = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const pid = player?.id ?? (user as any)?.playerId;
+    if (!pid) {
+      showError('Profil joueur introuvable');
+      return;
+    }
+    navigation.navigate('PlayerHighlights', { playerId: pid, mode: 'owner' });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -284,6 +294,21 @@ export const PassportScreen = ({ navigation }: any) => {
                       <Icon name="download" size="md" color={colors.semantic.info} />
                     </View>
                     <Text style={styles.actionText}>Télécharger en PDF</Text>
+                  </View>
+                  <Icon name="chevronForward" size={20} color={colors.text.secondary} />
+                </TouchableOpacity>
+
+                <View style={styles.divider} />
+
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={handleMyVideos}
+                >
+                  <View style={styles.actionLeft}>
+                    <View style={styles.actionIcon}>
+                      <Icon name="videocam" size="md" color={colors.brand.primary} />
+                    </View>
+                    <Text style={styles.actionText}>Mes vidéos</Text>
                   </View>
                   <Icon name="chevronForward" size={20} color={colors.text.secondary} />
                 </TouchableOpacity>

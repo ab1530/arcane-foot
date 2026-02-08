@@ -11,6 +11,83 @@ import type {
 } from '../types/marketplace';
 import type { PaginatedResponse } from '../types';
 
+const normalizeListing = (listing: any): MarketplaceListing => {
+  if (!listing || typeof listing !== 'object') return listing as MarketplaceListing;
+
+  const users = listing.users ?? listing.scout?.user ?? null;
+  const firstName = users?.firstName ?? '';
+  const lastName = users?.lastName ?? '';
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  const pricing =
+    listing.pricing ??
+    ({
+      hourlyRate: listing.hourlyRate ?? undefined,
+      matchRate: listing.matchRate ?? undefined,
+      reportRate: listing.reportRate ?? undefined,
+      currency: listing.currency ?? 'EUR',
+    } as any);
+
+  const scout =
+    listing.scout ??
+    (users
+      ? {
+          id: listing.userId ?? users?.id ?? '',
+          userId: listing.userId ?? users?.id ?? '',
+          user: {
+            firstName: users?.firstName ?? '',
+            lastName: users?.lastName ?? '',
+            avatar: users?.avatar ?? undefined,
+            country: users?.country ?? undefined,
+          },
+          isVerified: Boolean(listing.isVerified),
+          fullName: fullName || undefined,
+        }
+      : undefined);
+
+  return {
+    ...(listing as any),
+    users: listing.users ?? undefined,
+    pricing,
+    scout,
+  } as MarketplaceListing;
+};
+
+const normalizeListingsResponse = (payload: any): PaginatedResponse<MarketplaceListing> => {
+  const items: any[] = payload?.data ?? payload?.items ?? [];
+  const normalizedItems = Array.isArray(items) ? items.map(normalizeListing) : [];
+
+  const meta =
+    payload?.meta ??
+    payload?.pagination ??
+    {
+      total: normalizedItems.length,
+      page: payload?.page ?? 1,
+      limit: payload?.limit ?? normalizedItems.length,
+      totalPages: 1,
+    };
+
+  return {
+    ...(payload ?? {}),
+    data: normalizedItems,
+    items: normalizedItems,
+    meta,
+  };
+};
+
+const normalizeReviewsResponse = (payload: any): MarketplaceReview[] => {
+  const reviews = Array.isArray(payload) ? payload : payload?.reviews ?? [];
+  if (!Array.isArray(reviews)) return [];
+
+  return reviews.map((r: any) => {
+    const club = r.club ?? r.clubs ?? undefined;
+    return {
+      ...(r ?? {}),
+      club,
+    } as MarketplaceReview;
+  });
+};
+
 export const marketplaceApi = {
   // ==================== SEARCH & DISCOVERY ====================
 
@@ -20,16 +97,18 @@ export const marketplaceApi = {
   async searchListings(
     filters: SearchListingsFilters = {}
   ): Promise<PaginatedResponse<MarketplaceListing>> {
-    return api.getRaw<PaginatedResponse<MarketplaceListing>>('/marketplace/listings', {
+    const payload = await api.getRaw<any>('/marketplace/listings', {
       params: filters,
     });
+    return normalizeListingsResponse(payload);
   },
 
   /**
    * Get scout listing details by ID
    */
   async getListingById(id: string): Promise<MarketplaceListing> {
-    return api.getRaw<MarketplaceListing>(`/marketplace/listings/${id}`);
+    const payload = await api.getRaw<any>(`/marketplace/listings/${id}`);
+    return normalizeListing(payload);
   },
 
   /**
@@ -205,9 +284,8 @@ export const marketplaceApi = {
    * Get all reviews for a scout listing
    */
   async getListingReviews(listingId: string): Promise<MarketplaceReview[]> {
-    return api.getRaw<MarketplaceReview[]>(
-      `/marketplace/reviews/listing/${listingId}`
-    );
+    const payload = await api.getRaw<any>(`/marketplace/reviews/listing/${listingId}`);
+    return normalizeReviewsResponse(payload);
   },
 
   // ==================== FAVORITES ====================

@@ -10,6 +10,7 @@ import {
   Body,
   BadRequestException,
   Res,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MediaService } from './media.service';
@@ -25,6 +26,7 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
+    @Request() req,
     @UploadedFile() file: Express.Multer.File,
     @Body() uploadMediaDto: UploadMediaDto,
   ) {
@@ -32,7 +34,7 @@ export class MediaController {
       throw new BadRequestException('No file provided');
     }
 
-    return this.mediaService.uploadFile(file, uploadMediaDto);
+    return this.mediaService.uploadFile(file, uploadMediaDto, req?.user);
   }
 
   @Post('upload/player/:playerId/avatar')
@@ -93,7 +95,7 @@ export class MediaController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  remove(@Param('id') id: string) {
-    return this.mediaService.remove(id);
+  remove(@Param('id') id: string, @Request() req) {
+    return this.mediaService.remove(id, req?.user);
   }
 }

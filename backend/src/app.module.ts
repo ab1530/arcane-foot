@@ -41,6 +41,8 @@ import { SmartScoutModule } from './modules/smart-scout/smart-scout.module';
 import { AutoScoutModule } from './modules/auto-scout/auto-scout.module';
 import { MarketValueModule } from './modules/market-value/market-value.module';
 import { HardwareModule } from './modules/hardware/hardware.module';
+import { ClubNeedsModule } from './modules/club-needs/club-needs.module';
+import { PassportSharesModule } from './modules/passport-shares/passport-shares.module';
 import { UsersController } from './modules/users/users.controller';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
@@ -98,6 +100,8 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     AutoScoutModule,
     MarketValueModule,
     HardwareModule,
+    ClubNeedsModule,
+    PassportSharesModule,
     LoggerModule,
   ],
   providers: [

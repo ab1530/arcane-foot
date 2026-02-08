@@ -22,7 +22,7 @@ export class PassportController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.AGENT, UserRole.SCOUT)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.SCOUT)
   async createPassport(@Body() createPassportDto: CreatePassportDto) {
     return this.passportService.createPassport(
       createPassportDto.playerId,

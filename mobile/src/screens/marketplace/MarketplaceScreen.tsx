@@ -285,29 +285,35 @@ const MarketplaceScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: spacing.xs }}>
-          {favoriteListings.map((listing) => (
-            <TouchableOpacity
-              key={listing.id}
-              style={styles.favoriteCard}
-              onPress={() => navigation.navigate('ScoutDetail', { listingId: listing.id })}
-            >
-              <View style={styles.favoriteCardHeader}>
-                <Text style={styles.favoriteCardName}>{listing.scout.fullName}</Text>
-                <Star size={14} color={colors.brand.primary} />
-              </View>
-              <Text style={styles.favoriteCardHeadline} numberOfLines={2}>
-                {listing.headline || t.defaults.headline}
-              </Text>
-              <View style={styles.favoriteCardFooter}>
-                <Text style={styles.favoriteCardTag}>
-                  {listing.expertise?.positions?.[0] ?? t.defaults.position}
+          {favoriteListings.map((listing) => {
+            const u = (listing as any)?.scout?.user ?? (listing as any)?.users;
+            const name = u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() : 'Scout';
+            const hourlyRate = (listing as any)?.pricing?.hourlyRate ?? (listing as any)?.hourlyRate;
+
+            return (
+              <TouchableOpacity
+                key={listing.id}
+                style={styles.favoriteCard}
+                onPress={() => navigation.navigate('ScoutDetail', { listingId: listing.id })}
+              >
+                <View style={styles.favoriteCardHeader}>
+                  <Text style={styles.favoriteCardName}>{name}</Text>
+                  <Star size={14} color={colors.brand.primary} />
+                </View>
+                <Text style={styles.favoriteCardHeadline} numberOfLines={2}>
+                  {listing.headline || t.defaults.headline}
                 </Text>
-                <Text style={styles.favoriteCardRate}>
-                  {listing.hourlyRate ? `€${listing.hourlyRate}/h` : t.defaults.rate}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.favoriteCardFooter}>
+                  <Text style={styles.favoriteCardTag}>
+                    {listing.expertise?.positions?.[0] ?? t.defaults.position}
+                  </Text>
+                  <Text style={styles.favoriteCardRate}>
+                    {hourlyRate ? `€${hourlyRate}/h` : t.defaults.rate}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </GlassCard>
     );

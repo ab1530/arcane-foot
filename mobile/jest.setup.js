@@ -39,7 +39,7 @@ jest.mock('react-native-reanimated', () => {
   const { View, ScrollView } = require('react-native');
 
   const createAnimationMock = () => {
-    const mock: any = {};
+    const mock = {};
     mock.delay = jest.fn(() => mock);
     mock.duration = jest.fn(() => mock);
     mock.springify = jest.fn(() => mock);
@@ -383,9 +383,9 @@ jest.mock('expo-clipboard', () => ({
 // Simplify native-stack navigator to avoid animated native deps in tests
 jest.mock('@react-navigation/native-stack', () => {
   const React = require('react');
-  const MockStack: any = () => null;
-  MockStack.Navigator = ({ children }: any) => React.createElement(React.Fragment, null, children);
-  MockStack.Screen = ({ component: Component, children, ...rest }: any) =>
+  const MockStack = () => null;
+  MockStack.Navigator = ({ children }) => React.createElement(React.Fragment, null, children);
+  MockStack.Screen = ({ component: Component, children, ...rest }) =>
     React.createElement(Component, { ...(rest.initialParams || {}) }, children);
   return { createNativeStackNavigator: () => MockStack };
 });

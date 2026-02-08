@@ -115,6 +115,45 @@ class ApiClient {
     this.onTokenRefreshed = handlers.onTokenRefreshed;
   }
 
+  // ============================================================================
+  // MEDIA (Highlights Videos)
+  // ============================================================================
+
+  async getPlayerMedia(playerId: string): Promise<any[]> {
+    const { data } = await this.client.get(`/media/player/${playerId}`);
+    return data;
+  }
+
+  async uploadPlayerHighlightVideo(params: {
+    playerId: string;
+    uri: string;
+    mimeType?: string;
+    name?: string;
+  }): Promise<any> {
+    const formData = new FormData();
+
+    // @ts-ignore React Native FormData file shape
+    formData.append('file', {
+      uri: params.uri,
+      type: params.mimeType ?? 'video/mp4',
+      name: params.name ?? `highlight-${Date.now()}.mp4`,
+    });
+
+    formData.append('type', 'VIDEO');
+    formData.append('playerId', params.playerId);
+
+    const { data } = await this.client.post('/media/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+    return data;
+  }
+
+  async deleteMedia(mediaId: string): Promise<any> {
+    const { data } = await this.client.delete(`/media/${mediaId}`);
+    return data;
+  }
+
   private async handleTokenRefresh(): Promise<string | null> {
     if (this.refreshPromise) {
       return this.refreshPromise;
@@ -457,6 +496,28 @@ class ApiClient {
 
   async getMarketRequest(id: string): Promise<any> {
     const { data } = await this.client.get(`/club-requests/${id}`);
+    return data;
+  }
+
+  // Club Needs (Admin-only)
+  async createClubNeedRequest(rawText: string, topN: number = 5): Promise<any> {
+    const { data } = await this.client.post('/club-needs', { rawText, topN });
+    return data;
+  }
+
+  async listClubNeedRequests(page: number = 1, limit: number = 20): Promise<any> {
+    const { data } = await this.client.get('/club-needs', { params: { page, limit } });
+    return data;
+  }
+
+  async getClubNeedRequest(id: string, topN: number = 5): Promise<any> {
+    const { data } = await this.client.get(`/club-needs/${id}`, { params: { topN } });
+    return data;
+  }
+
+  // Passport share sets (Admin-only create, public read on web)
+  async createPassportShareSet(payload: { playerIds: string[]; title?: string; clubName?: string }): Promise<any> {
+    const { data } = await this.client.post('/passport-shares', payload);
     return data;
   }
 

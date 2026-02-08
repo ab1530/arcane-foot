@@ -108,7 +108,10 @@ export function DebugLogPanel() {
     const unsubscribe = logger.subscribe((entry) => {
       setLogs((prev) => [...prev, entry].slice(-MAX_VIEW));
     });
-    return unsubscribe;
+    return () => {
+      // Ignore any return value from the underlying unsubscribe implementation.
+      unsubscribe();
+    };
   }, [enabled]);
 
   const scopes = useMemo(() => {

@@ -1,7 +1,8 @@
 export interface MarketplaceListing {
   id: string;
-  scoutId: string;
-  scout: {
+  // Legacy shape (older mobile UI expected nested scout/user)
+  scoutId?: string;
+  scout?: {
     id: string;
     userId: string;
     user: {
@@ -11,7 +12,28 @@ export interface MarketplaceListing {
       country?: string;
     };
     isVerified: boolean;
+    // Some screens used scout.fullName in the past
+    fullName?: string;
   };
+
+  // Backend shape (current)
+  userId?: string;
+  users?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatar?: string | null;
+    country?: string | null;
+  };
+
+  // Backend pricing fields at root
+  hourlyRate?: number | null;
+  matchRate?: number | null;
+  reportRate?: number | null;
+  currency?: string | null;
+
+  // Backend verification flag at root
+  isVerified?: boolean;
   headline: string;
   bio?: string;
   expertise: {
@@ -24,7 +46,8 @@ export interface MarketplaceListing {
     countries: string[];
     travelRadius?: number;
   };
-  pricing: {
+  // Preferred normalized pricing shape for UI
+  pricing?: {
     hourlyRate?: number;
     matchRate?: number;
     reportRate?: number;
@@ -81,19 +104,30 @@ export interface MarketplaceOffer {
 
 export interface MarketplaceReview {
   id: string;
-  listingId: string;
-  offerId: string;
-  clubId: string;
-  club: {
+  // Mobile legacy shape
+  listingId?: string;
+  offerId?: string;
+  clubId?: string;
+  club?: {
+    id?: string;
     name: string;
-    logo?: string;
+    logo?: string | null;
+  };
+
+  // Backend shape
+  scoutListingId?: string;
+  clubs?: {
+    id: string;
+    name: string;
+    logo?: string | null;
   };
   rating: number;
   comment?: string;
-  professionalism: number;
-  communication: number;
-  qualityOfWork: number;
-  timeliness: number;
+  reviewedAt?: string;
+  professionalism?: number;
+  communication?: number;
+  qualityOfWork?: number;
+  timeliness?: number;
   createdAt: string;
 }
 

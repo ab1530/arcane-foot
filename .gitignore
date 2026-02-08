@@ -159,6 +159,14 @@ admin-dashboard/.next/
 admin-dashboard/out/
 admin-dashboard/.vercel
 
+# ===== EXPO / REACT NATIVE =====
+.expo/
+mobile/.expo/
+
+# ===== SUPABASE CLI =====
+.supabase/
+supabase/.temp/
+
 # ===== MISC =====
 .turbo/
 storybook-static/

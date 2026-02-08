@@ -1,7 +1,26 @@
 // API Configuration
+import Constants from 'expo-constants';
+
+const getDevApiUrl = () => {
+  // Expo usually exposes the Metro host as e.g. "192.168.1.133:8081".
+  // We reuse that host so physical devices can reach the backend on the same LAN.
+  const c: any = Constants as any;
+  const hostUri =
+    c?.expoConfig?.hostUri ??
+    c?.manifest2?.extra?.expoClient?.hostUri ??
+    c?.manifest?.debuggerHost ??
+    c?.manifest?.hostUri;
+
+  const host = typeof hostUri === 'string' ? hostUri.split(':')[0] : null;
+  if (host) return `http://${host}:5002/api`;
+
+  // Simulator only fallback. On physical devices, prefer setting EXPO_PUBLIC_API_URL.
+  return 'http://localhost:5002/api';
+};
+
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
-  (__DEV__ ? 'http://192.168.1.64:5002/api' : 'https://arcane-foot-staging.up.railway.app/api');
+  (__DEV__ ? getDevApiUrl() : 'https://arcane-foot-staging.up.railway.app/api');
 
 export const API_TIMEOUT = 30000; // 30 seconds
 

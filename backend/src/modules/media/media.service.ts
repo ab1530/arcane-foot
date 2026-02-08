@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { MediaType } from '@prisma/client';
+import { MediaType, UserRole } from '@prisma/client';
 import { UploadMediaDto } from './dto/upload-media.dto';
 import { randomUUID } from 'crypto';
 
@@ -17,8 +17,40 @@ export class MediaService {
   /**
    * Upload a file
    */
-  async uploadFile(file: Express.Multer.File, uploadMediaDto: UploadMediaDto) {
+  async uploadFile(file: Express.Multer.File, uploadMediaDto: UploadMediaDto, user?: any) {
     const { type, playerId, matchId, reportId } = uploadMediaDto;
+
+    // Authorization (highlights videos): player can only upload to their own profile.
+    if (user && playerId && type === MediaType.VIDEO) {
+      const role = user?.role as UserRole | string | undefined;
+      const userPlayerId = user?.playerId;
+      const isAdmin = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+      const isOwnerPlayer = role === UserRole.PLAYER && userPlayerId && userPlayerId === playerId;
+
+      if (!isAdmin && !isOwnerPlayer) {
+        throw new ForbiddenException('Not allowed to upload video for this player');
+      }
+
+      // Limit: 3 highlight videos per player (V1)
+      const currentCount = await this.prisma.media.count({
+        where: { playerId, type: MediaType.VIDEO },
+      });
+      if (currentCount >= 3) {
+        throw new BadRequestException('Maximum 3 videos per player');
+      }
+    }
+
+    // Size limit for videos (V1)
+    if (type === MediaType.VIDEO) {
+      const maxMbRaw = process.env.VIDEO_MAX_SIZE_MB;
+      const maxMb = maxMbRaw ? Number(maxMbRaw) : NaN;
+      if (Number.isFinite(maxMb) && maxMb > 0) {
+        const maxBytes = Math.floor(maxMb * 1024 * 1024);
+        if (file.size > maxBytes) {
+          throw new BadRequestException(`Video too large (max ${maxMb} MB)`);
+        }
+      }
+    }
 
     // Validate entity exists
     if (playerId) {
@@ -240,10 +272,26 @@ export class MediaService {
   /**
    * Delete media
    */
-  async remove(id: string) {
+  async remove(id: string, user?: any) {
     const media = await this.prisma.media.findUnique({ where: { id } });
     if (!media) {
       throw new NotFoundException(`Media with ID ${id} not found`);
+    }
+
+    if (user) {
+      const role = user?.role as UserRole | string | undefined;
+      const isAdmin = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+      if (!isAdmin) {
+        // Player can only delete their own player-linked media.
+        if (
+          role !== UserRole.PLAYER ||
+          !user?.playerId ||
+          !media.playerId ||
+          media.playerId !== user.playerId
+        ) {
+          throw new ForbiddenException('Not allowed to delete this media');
+        }
+      }
     }
 
     // Delete from Supabase

@@ -68,7 +68,7 @@ const ScoutDetailScreen: React.FC = () => {
   const fetchReviews = async () => {
     try {
       const data = await marketplaceApi.getListingReviews(listingId);
-      setReviews(data);
+      setReviews(Array.isArray(data) ? data : []);
     } catch (error) {
       logError('Failed to fetch reviews', error);
     }
@@ -104,8 +104,12 @@ const ScoutDetailScreen: React.FC = () => {
   const handleShare = async () => {
     if (!listing) return;
     try {
+      const scoutUser = listing.scout?.user ?? (listing as any).users;
+      const first = scoutUser?.firstName ?? '';
+      const last = scoutUser?.lastName ?? '';
+      const name = `${first} ${last}`.trim() || 'Scout';
       await Share.share({
-        message: `Check out ${listing.scout.user.firstName} ${listing.scout.user.lastName} on Arcane Football - ${listing.headline}`,
+        message: `Check out ${name} on Arcane Football - ${listing.headline}`,
         title: 'Scout Profile',
       });
     } catch (error) {
@@ -115,12 +119,24 @@ const ScoutDetailScreen: React.FC = () => {
 
   const getAvatarUri = () => {
     if (!listing) return '';
-    return listing.scout.user.avatar || `https://ui-avatars.com/api/?name=${listing.scout.user.firstName}+${listing.scout.user.lastName}&background=E4FF3B&color=080C1D&size=400`;
+    const scoutUser = listing.scout?.user ?? (listing as any).users;
+    const first = scoutUser?.firstName ?? '';
+    const last = scoutUser?.lastName ?? '';
+    const avatar = scoutUser?.avatar ?? null;
+    if (avatar) return avatar;
+    const seed = `${first}+${last}`.trim() || listing.headline || 'Scout';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(seed)}&background=E4FF3B&color=080C1D&size=400`;
   };
 
   const formatPrice = () => {
     if (!listing) return '';
-    const { pricing } = listing;
+    const pricing =
+      listing.pricing ?? ({
+        hourlyRate: (listing as any).hourlyRate,
+        matchRate: (listing as any).matchRate,
+        reportRate: (listing as any).reportRate,
+        currency: (listing as any).currency ?? 'EUR',
+      } as any);
     const parts = [];
     if (pricing.hourlyRate) parts.push(`€${pricing.hourlyRate}/hr`);
     if (pricing.matchRate) parts.push(`€${pricing.matchRate}/match`);
@@ -132,13 +148,18 @@ const ScoutDetailScreen: React.FC = () => {
     <View key={review.id} style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
         <View style={styles.reviewClubInfo}>
-          {review.club.logo && (
-            <Image source={{ uri: review.club.logo }} style={styles.reviewClubLogo} />
+          {((review as any).club?.logo ?? (review as any).clubs?.logo) && (
+            <Image
+              source={{ uri: ((review as any).club?.logo ?? (review as any).clubs?.logo) as string }}
+              style={styles.reviewClubLogo}
+            />
           )}
           <View>
-            <Text style={styles.reviewClubName}>{review.club.name}</Text>
+            <Text style={styles.reviewClubName}>
+              {((review as any).club?.name ?? (review as any).clubs?.name) || 'Club'}
+            </Text>
             <Text style={styles.reviewDate}>
-              {new Date(review.createdAt).toLocaleDateString()}
+              {new Date((review as any).reviewedAt ?? review.createdAt).toLocaleDateString()}
             </Text>
           </View>
         </View>
@@ -148,24 +169,29 @@ const ScoutDetailScreen: React.FC = () => {
         </View>
       </View>
       {review.comment && <Text style={styles.reviewComment}>{review.comment}</Text>}
-      <View style={styles.reviewMetrics}>
-        <View style={styles.reviewMetric}>
-          <Text style={styles.reviewMetricLabel}>Professionalism</Text>
-          <Text style={styles.reviewMetricValue}>{review.professionalism}/5</Text>
+      {typeof review.professionalism === 'number' &&
+      typeof review.communication === 'number' &&
+      typeof review.qualityOfWork === 'number' &&
+      typeof review.timeliness === 'number' ? (
+        <View style={styles.reviewMetrics}>
+          <View style={styles.reviewMetric}>
+            <Text style={styles.reviewMetricLabel}>Professionalism</Text>
+            <Text style={styles.reviewMetricValue}>{review.professionalism}/5</Text>
+          </View>
+          <View style={styles.reviewMetric}>
+            <Text style={styles.reviewMetricLabel}>Communication</Text>
+            <Text style={styles.reviewMetricValue}>{review.communication}/5</Text>
+          </View>
+          <View style={styles.reviewMetric}>
+            <Text style={styles.reviewMetricLabel}>Quality</Text>
+            <Text style={styles.reviewMetricValue}>{review.qualityOfWork}/5</Text>
+          </View>
+          <View style={styles.reviewMetric}>
+            <Text style={styles.reviewMetricLabel}>Timeliness</Text>
+            <Text style={styles.reviewMetricValue}>{review.timeliness}/5</Text>
+          </View>
         </View>
-        <View style={styles.reviewMetric}>
-          <Text style={styles.reviewMetricLabel}>Communication</Text>
-          <Text style={styles.reviewMetricValue}>{review.communication}/5</Text>
-        </View>
-        <View style={styles.reviewMetric}>
-          <Text style={styles.reviewMetricLabel}>Quality</Text>
-          <Text style={styles.reviewMetricValue}>{review.qualityOfWork}/5</Text>
-        </View>
-        <View style={styles.reviewMetric}>
-          <Text style={styles.reviewMetricLabel}>Timeliness</Text>
-          <Text style={styles.reviewMetricValue}>{review.timeliness}/5</Text>
-        </View>
-      </View>
+      ) : null}
     </View>
   );
 
@@ -176,6 +202,13 @@ const ScoutDetailScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
+
+  const scoutUser = listing.scout?.user ?? (listing as any).users;
+  const isVerified = (listing.scout?.isVerified ?? (listing as any).isVerified) as boolean;
+  const country =
+    scoutUser?.country ??
+    (listing.availability as any)?.countries?.[0] ??
+    null;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -210,9 +243,9 @@ const ScoutDetailScreen: React.FC = () => {
               <View style={styles.heroInfo}>
                 <View style={styles.heroNameRow}>
                   <Text style={styles.heroName}>
-                    {listing.scout.user.firstName} {listing.scout.user.lastName}
+                    {(scoutUser?.firstName ?? '')} {(scoutUser?.lastName ?? '')}
                   </Text>
-                  {listing.scout.isVerified && (
+                  {isVerified && (
                     <BadgeCheck
                       size={24}
                       color={colors.brand.primary}
@@ -221,11 +254,11 @@ const ScoutDetailScreen: React.FC = () => {
                   )}
                 </View>
                 <Text style={styles.heroHeadline}>{listing.headline}</Text>
-                {listing.scout.user.country && (
+                {country && (
                   <View style={styles.heroLocation}>
                     <MapPin size={16} color={colors.text.secondary} />
                     <Text style={styles.heroLocationText}>
-                      {listing.scout.user.country}
+                      {country}
                     </Text>
                   </View>
                 )}

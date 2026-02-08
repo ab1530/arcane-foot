@@ -32,7 +32,7 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
 }) => {
   const scale = useSharedValue(1);
   const favoriteScale = useSharedValue(1);
-  const scoutUser = listing.scout?.user;
+  const scoutUser = listing.scout?.user ?? (listing as any).users;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -58,7 +58,14 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
   };
 
   const formatPrice = () => {
-    const pricing = listing.pricing;
+    const pricing =
+      listing.pricing ??
+      ({
+        hourlyRate: (listing as any).hourlyRate,
+        matchRate: (listing as any).matchRate,
+        reportRate: (listing as any).reportRate,
+        currency: (listing as any).currency ?? 'EUR',
+      } as any);
     if (pricing?.hourlyRate) {
       return `${pricing.currency} ${pricing.hourlyRate}/hr`;
     }
@@ -104,7 +111,7 @@ const ScoutCard: React.FC<ScoutCardProps> = ({
               style={styles.avatar}
               resizeMode="cover"
             />
-            {listing.scout?.isVerified && (
+            {(listing.scout?.isVerified ?? (listing as any).isVerified) && (
               <View style={styles.verifiedBadge}>
                 <BadgeCheck size={16} color={colors.brand.primary} fill={colors.brand.primary} />
               </View>

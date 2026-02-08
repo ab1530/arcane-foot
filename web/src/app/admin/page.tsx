@@ -91,6 +91,7 @@ export default function SuperAdminDashboard() {
     id: number;
     type: string;
     message: string;
+    timestamp: string;
     status: 'success' | 'warning' | 'error' | 'info';
   }[];
 

@@ -515,9 +515,12 @@ export const PlayerDetailScreen = ({ route, navigation }: any) => {
             <Icon name="analytics" size={18} color={colors.text.primary} style={styles.actionButtonIcon} />
             <Text style={styles.secondaryActionText}>Generate Full Report</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tertiaryAction}>
-            <Icon name="calendar" size={18} color={colors.brand.primary} style={styles.actionButtonIcon} />
-            <Text style={styles.tertiaryActionText}>Schedule Live Scout</Text>
+          <TouchableOpacity
+            style={styles.tertiaryAction}
+            onPress={() => navigation.navigate('PlayerHighlights', { playerId, mode: 'adminView' })}
+          >
+            <Icon name="videocam" size={18} color={colors.brand.primary} style={styles.actionButtonIcon} />
+            <Text style={styles.tertiaryActionText}>Vidéos</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

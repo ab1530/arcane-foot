@@ -157,6 +157,35 @@ model club_requests {
   @@index([status])
 }
 
+model club_need_requests {
+  id          String   @id @default(uuid())
+  createdById String
+  rawText     String
+  parsed      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       users    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model passport_share_sets {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  createdById String
+  title       String?
+  clubName    String?
+  items       Json
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       users    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+  @@index([createdAt])
+}
+
 model clubs {
   id                                String                @id
   name                              String
@@ -818,6 +847,7 @@ model users {
   auto_generated_reports                                  auto_generated_reports[]
   clubs                                                   clubs?
   coaching_bookings                                       coaching_bookings[]
+  club_need_requests                                      club_need_requests[]
   comments                                                comments[]
   event_assignments                                       event_assignments[]
   events                                                  events[]
@@ -830,6 +860,7 @@ model users {
   onboarding_steps                                        onboarding_steps[]
   player_views                                            player_views[]
   players                                                 players?
+  passport_share_sets                                     passport_share_sets[]
   scout_listings                                          scout_listings?
   scouting_reports                                        scouting_reports[]
   subscriptions                                           subscriptions?

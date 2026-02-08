@@ -5,6 +5,7 @@ export type AppStackParamList = {
   Dashboard: undefined;
   Analytics: undefined;
   Market: undefined;
+  ClubNeeds: undefined;
   Camps: undefined;
   AI: undefined;
   ArcaneGPT: undefined;
@@ -19,6 +20,7 @@ export type AppStackParamList = {
   ScoutQuickImport: undefined;
   PlayerDetail: { playerId: string };
   PlayerPassport: { playerId: string; player?: any };
+  PlayerHighlights: { playerId: string; mode?: 'owner' | 'adminView' };
   Matches: undefined;
   Kanban: undefined;
   CreateReport: { playerId?: string };
@@ -41,6 +43,7 @@ export type AppStackParamList = {
   Contact: undefined;
   Services: undefined;
   Passport: undefined;
+  PassportPreview: { playerId: string };
   VoiceToReport: undefined;
   Settings: undefined;
   ScoutingReports: undefined;

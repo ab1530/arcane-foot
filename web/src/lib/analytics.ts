@@ -63,7 +63,8 @@ class Analytics {
 
     logger.debug('Analytics event', {
       scope: 'Analytics',
-      event,
+      event: event.type,
+      payload: event,
     });
 
     // Log in development

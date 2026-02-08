@@ -41,8 +41,8 @@ export default function ScoutDashboard() {
   });
 
   const analytics = dashboardData || {};
-  const reportsData = reportsQuery.data?.data ?? reportsQuery.data?.items ?? [];
-  const matchesData = matchesQuery.data?.data ?? matchesQuery.data?.items ?? [];
+  const reportsData = reportsQuery.data?.data ?? [];
+  const matchesData = matchesQuery.data?.data ?? [];
   const marketplaceData = marketplaceQuery.data?.data ?? [];
 
   const stats = useMemo(() => {
@@ -69,10 +69,8 @@ export default function ScoutDashboard() {
       completionRate,
       averageRating:
         reportsData.length > 0
-          ? (
-              reportsData.reduce((sum: number, report: any) => sum + (report.overallRating || 0), 0) /
-              reportsData.length
-            ).toFixed(1)
+          ? reportsData.reduce((sum: number, report: any) => sum + (report.overallRating || 0), 0) /
+            reportsData.length
           : 0,
     };
   }, [analytics, matchesData.length, marketplaceData.length, reportsData]);
@@ -189,7 +187,7 @@ export default function ScoutDashboard() {
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.averageRating}</div>
+            <div className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</div>
             <div className="flex gap-1 mt-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star

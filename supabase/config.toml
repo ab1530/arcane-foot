@@ -1,0 +1,4 @@
+# Supabase CLI project config (local)
+# Remote project is linked via: `supabase link --project-ref <ref>`
+project_id = "appfoot"
+

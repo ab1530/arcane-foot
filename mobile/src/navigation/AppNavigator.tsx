@@ -6,6 +6,7 @@ import MainTabNavigator from './MainTabNavigator';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { AnalyticsScreen } from '../screens/analytics/AnalyticsScreen';
 import { MarketScreen } from '../screens/market/MarketScreen';
+import ClubNeedsScreen from '../screens/admin/ClubNeedsScreen';
 import { CampsListScreen } from '../screens/camps/CampsListScreen';
 import { CampDetailScreen } from '../screens/camps/CampDetailScreen';
 import { MyCampsScreen } from '../screens/camps/MyCampsScreen';
@@ -32,7 +33,9 @@ import AboutScreen from '../screens/info/AboutScreen';
 import ContactScreen from '../screens/info/ContactScreen';
 import ServicesScreen from '../screens/info/ServicesScreen';
 import PassportScreen from '../screens/passport/PassportScreen';
+import PassportPreviewScreen from '../screens/passport/PassportPreviewScreen';
 import { PlayerPassport } from '../screens/players/PlayerPassport';
+import PlayerHighlightsScreen from '../screens/players/PlayerHighlightsScreen';
 import PlayerComparisonScreen from '../screens/players/PlayerComparisonScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ScoutingReportsScreen } from '../screens/scouting/ScoutingReportsScreen';
@@ -88,6 +91,11 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Market"
         component={MarketScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ClubNeeds"
+        component={ClubNeedsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -168,6 +176,11 @@ export default function AppNavigator() {
       <Stack.Screen
         name="PlayerPassport"
         component={PlayerPassport}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PlayerHighlights"
+        component={PlayerHighlightsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -268,6 +281,11 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Passport"
         component={PassportScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PassportPreview"
+        component={PassportPreviewScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

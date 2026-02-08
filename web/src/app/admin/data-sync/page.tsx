@@ -220,8 +220,8 @@ export default function DataSyncMonitor() {
               <Download className="mr-2 h-4 w-4" />
               Export Logs
             </Button>
-            <Button onClick={() => handleSync('full')} disabled={syncMutation.isLoading}>
-              {syncMutation.isLoading ? (
+            <Button onClick={() => handleSync('full')} disabled={syncMutation.isPending}>
+              {syncMutation.isPending ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   Syncing...
@@ -237,7 +237,7 @@ export default function DataSyncMonitor() {
         </div>
 
         {/* Sync Status Alert */}
-        {syncMutation.isLoading && (
+        {syncMutation.isPending && (
           <Alert>
             <Activity className="h-4 w-4" />
             <AlertDescription>
@@ -420,7 +420,7 @@ export default function DataSyncMonitor() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => handleSync('competitions')}
-                  disabled={syncMutation.isLoading}
+                  disabled={syncMutation.isPending}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Sync competitions ({DEFAULT_SOURCE})
@@ -429,7 +429,7 @@ export default function DataSyncMonitor() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => handleSync('clubs')}
-                  disabled={syncMutation.isLoading}
+                  disabled={syncMutation.isPending}
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Sync clubs by competition
@@ -438,7 +438,7 @@ export default function DataSyncMonitor() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => handleSync('players')}
-                  disabled={syncMutation.isLoading}
+                  disabled={syncMutation.isPending}
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Sync players by club
@@ -447,7 +447,7 @@ export default function DataSyncMonitor() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => handleSync('matches')}
-                  disabled={syncMutation.isLoading}
+                  disabled={syncMutation.isPending}
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Sync matches by competition

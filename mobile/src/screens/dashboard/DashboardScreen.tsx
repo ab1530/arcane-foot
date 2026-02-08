@@ -102,15 +102,6 @@ interface Activity {
   timestamp: string;
 }
 
-interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  progress: number;
-  total: number;
-  xpReward: number;
-}
-
 interface Match {
   id: string;
   homeTeam: string;
@@ -205,10 +196,14 @@ export const DashboardScreen = ({ navigation }: any) => {
   const playerCopy = dashboardCopy.player;
   const effectiveRole = (activeRole ?? user?.role ?? DEFAULT_ROLE) as UserRole;
   const isPlayerRole = effectiveRole === 'PLAYER';
+  const isAdminRole = effectiveRole === 'ADMIN' || effectiveRole === 'SUPER_ADMIN';
+  const showLevelBar = false; // Demo: remove gamification "level/XP" bar from dashboard
+  const showDailyChallenge = false; // Demo: remove "defi du jour"
   const playerDashboardV2Enabled = isFeatureEnabled('playerDashboardV2');
   const braceletCardEnabled = isFeatureEnabled('playerBraceletCard');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [clubNeedsCount, setClubNeedsCount] = useState<number | null>(null);
 
   // State
   const [stats, setStats] = useState<DashboardStats>({
@@ -227,15 +222,6 @@ export const DashboardScreen = ({ navigation }: any) => {
   const [recentActivities, setRecentActivities] = useState<Activity[]>(
     dashboardCopy.activity.samples,
   );
-
-  const [todayChallenge, setTodayChallenge] = useState<Challenge>({
-    id: 'challenge-1',
-    title: dashboardCopy.challenge.sample.title,
-    description: dashboardCopy.challenge.sample.description,
-    progress: 1,
-    total: 3,
-    xpReward: 500,
-  });
 
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>(
     dashboardCopy.matches.samples,
@@ -376,7 +362,7 @@ export const DashboardScreen = ({ navigation }: any) => {
         return;
       }
 
-      const [overviewData, playersData, reportsData] = await Promise.all([
+      const [overviewData, playersData, reportsData, clubNeedsData] = await Promise.all([
         api.getDashboardStats().catch(error => {
           handleApiFailure(error, 'getDashboardStats');
           return null;
@@ -389,10 +375,23 @@ export const DashboardScreen = ({ navigation }: any) => {
           handleApiFailure(error, 'getReports');
           return { items: [], data: [] };
         }),
+        isAdminRole
+          ? (api as any).listClubNeedRequests(1, 1).catch((error: any) => {
+              handleApiFailure(error, 'listClubNeedRequests');
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
 
       const players = playersData?.items ?? playersData?.data ?? [];
       const reports = reportsData?.items ?? reportsData?.data ?? [];
+
+      if (isAdminRole) {
+        const total = (clubNeedsData as any)?.meta?.total;
+        setClubNeedsCount(typeof total === 'number' ? total : null);
+      } else {
+        setClubNeedsCount(null);
+      }
 
       setStats({
         totalReports: overviewData?.totalReports ?? reports.length,
@@ -494,6 +493,35 @@ export const DashboardScreen = ({ navigation }: any) => {
     navigation.navigate(screen);
   };
 
+  const quickActions = useMemo(() => {
+    const base = Array.isArray(dashboardCopy.quickActions?.items)
+      ? [...dashboardCopy.quickActions.items]
+      : [];
+
+    // Demo: keep "Besoins clubs" out of Quick Actions (it's promoted to a stat card instead).
+    return base.filter((a: any) => a?.target !== 'ClubNeeds');
+  }, [dashboardCopy.quickActions?.items]);
+
+  const statCards = useMemo(() => {
+    // Remove XP/gamification card for demo; replace with Club Needs for admins.
+    const base = STAT_CARD_META.filter((m) => m.key !== 'xp');
+    if (!isAdminRole) return base;
+
+    return [
+      ...base,
+      {
+        key: 'clubNeeds',
+        icon: 'clipboard-outline' as const,
+        color: tokens.colors.feature.scouting,
+        target: 'ClubNeeds',
+        trendValue: clubNeedsCount != null ? `+${clubNeedsCount}` : '+0',
+        trendLabel: 'demandes',
+        title: 'BESOINS CLUBS',
+        valueGetter: () => (clubNeedsCount ?? 0) as any,
+      },
+    ];
+  }, [clubNeedsCount, isAdminRole]);
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -548,29 +576,31 @@ export const DashboardScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.xpContainer}>
-                <View style={styles.xpHeader}>
-                  <View style={styles.xpLevel}>
-                    <Ionicons
-                      name="shield"
-                      size={tokens.iconSize.sm}
-                      color={tokens.colors.yellow.DEFAULT}
-                    />
-                    <Text style={styles.xpLevelText}>
-                      {t('dashboard.hero.level', { level: userLevel.level })}
+              {showLevelBar ? (
+                <View style={styles.xpContainer}>
+                  <View style={styles.xpHeader}>
+                    <View style={styles.xpLevel}>
+                      <Ionicons
+                        name="shield"
+                        size={tokens.iconSize.sm}
+                        color={tokens.colors.yellow.DEFAULT}
+                      />
+                      <Text style={styles.xpLevelText}>
+                        {t('dashboard.hero.level', { level: userLevel.level })}
+                      </Text>
+                    </View>
+                    <Text style={styles.xpText}>
+                      {t('dashboard.hero.xp', {
+                        current: userLevel.currentXP,
+                        next: userLevel.nextLevelXP,
+                      })}
                     </Text>
                   </View>
-                  <Text style={styles.xpText}>
-                    {t('dashboard.hero.xp', {
-                      current: userLevel.currentXP,
-                      next: userLevel.nextLevelXP,
-                    })}
-                  </Text>
+                  <View style={styles.xpBar}>
+                    <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
+                  </View>
                 </View>
-                <View style={styles.xpBar}>
-                  <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
-                </View>
-              </View>
+              ) : null}
 
               <View style={styles.playerTagRow}>
                 <View style={styles.playerTag}>
@@ -878,29 +908,31 @@ export const DashboardScreen = ({ navigation }: any) => {
                 </View>
               </TouchableOpacity>
             </View>
-            <View style={styles.xpContainer}>
-              <View style={styles.xpHeader}>
-                <View style={styles.xpLevel}>
-                  <Ionicons
-                    name="shield"
-                    size={tokens.iconSize.sm}
-                    color={tokens.colors.yellow.DEFAULT}
-                  />
-                  <Text style={styles.xpLevelText}>
-                    {t('dashboard.hero.level', { level: userLevel.level })}
+            {showLevelBar ? (
+              <View style={styles.xpContainer}>
+                <View style={styles.xpHeader}>
+                  <View style={styles.xpLevel}>
+                    <Ionicons
+                      name="shield"
+                      size={tokens.iconSize.sm}
+                      color={tokens.colors.yellow.DEFAULT}
+                    />
+                    <Text style={styles.xpLevelText}>
+                      {t('dashboard.hero.level', { level: userLevel.level })}
+                    </Text>
+                  </View>
+                  <Text style={styles.xpText}>
+                    {t('dashboard.hero.xp', {
+                      current: userLevel.currentXP,
+                      next: userLevel.nextLevelXP,
+                    })}
                   </Text>
                 </View>
-                <Text style={styles.xpText}>
-                  {t('dashboard.hero.xp', {
-                    current: userLevel.currentXP,
-                    next: userLevel.nextLevelXP,
-                  })}
-                </Text>
+                <View style={styles.xpBar}>
+                  <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
+                </View>
               </View>
-              <View style={styles.xpBar}>
-                <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
-              </View>
-            </View>
+            ) : null}
           </View>
 
           <View style={styles.section}>
@@ -1053,50 +1085,56 @@ export const DashboardScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
 
-          {/* XP Progress */}
-          <View style={styles.xpContainer}>
-            <View style={styles.xpHeader}>
-              <View style={styles.xpLevel}>
-                <Ionicons
-                  name="shield"
-                  size={tokens.iconSize.sm}
-                  color={tokens.colors.yellow.DEFAULT}
-                />
-                <Text style={styles.xpLevelText}>
-                  {t('dashboard.hero.level', { level: userLevel.level })}
+          {showLevelBar ? (
+            <View style={styles.xpContainer}>
+              <View style={styles.xpHeader}>
+                <View style={styles.xpLevel}>
+                  <Ionicons
+                    name="shield"
+                    size={tokens.iconSize.sm}
+                    color={tokens.colors.yellow.DEFAULT}
+                  />
+                  <Text style={styles.xpLevelText}>
+                    {t('dashboard.hero.level', { level: userLevel.level })}
+                  </Text>
+                </View>
+                <Text style={styles.xpText}>
+                  {t('dashboard.hero.xp', {
+                    current: userLevel.currentXP,
+                    next: userLevel.nextLevelXP,
+                  })}
                 </Text>
               </View>
-              <Text style={styles.xpText}>
-                {t('dashboard.hero.xp', {
-                  current: userLevel.currentXP,
-                  next: userLevel.nextLevelXP,
-                })}
-              </Text>
+              <View style={styles.xpBar}>
+                <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
+              </View>
             </View>
-            <View style={styles.xpBar}>
-              <View style={[styles.xpProgress, { width: `${xpProgress}%` }]} />
-            </View>
-          </View>
+          ) : null}
         </View>
 
         {/* ================================================================ */}
         {/* STAT CARDS GRID (2x2) */}
         {/* ================================================================ */}
-        <View style={styles.section}>
+          <View style={styles.section}>
           <View style={styles.statsGrid}>
-            {STAT_CARD_META.map(meta => {
+            {statCards.map(meta => {
               const copy = dashboardCopy.stats.cards.find(card => card.key === meta.key);
+              const title = copy?.title || (meta as any).title || '';
+              const trend =
+                meta.trendValue
+                  ? {
+                      direction: 'up' as const,
+                      value: meta.trendValue,
+                      label: copy?.trendLabel || '',
+                    }
+                  : undefined;
               return (
                 <View style={styles.statCardWrapper} key={meta.key}>
                   <StatCard
-                    title={copy?.title || ''}
+                    title={title}
                     value={meta.valueGetter(stats)}
                     icon={meta.icon}
-                    trend={{
-                      direction: 'up',
-                      value: meta.trendValue,
-                      label: copy?.trendLabel || '',
-                    }}
+                    trend={trend}
                     color={meta.color}
                     onPress={meta.target ? () => handleNavigate(meta.target) : undefined}
                     testID={`stat-${meta.key}`}
@@ -1117,7 +1155,7 @@ export const DashboardScreen = ({ navigation }: any) => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.quickActionsScroll}
           >
-            {dashboardCopy.quickActions.items.map(action => (
+            {quickActions.map((action: any) => (
               <QuickActionCard
                 key={action.label}
                 icon={action.icon as any}
@@ -1198,65 +1236,23 @@ export const DashboardScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
-        {/* ================================================================ */}
-        {/* TODAY'S CHALLENGE */}
-        {/* ================================================================ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{dashboardCopy.challenge.title}</Text>
-            <View style={styles.xpBadge}>
-              <Ionicons
-                name="star"
-                size={tokens.iconSize.xs}
-                color={tokens.colors.feature.gamification}
-              />
-              <Text style={styles.xpBadgeText}>
-                {t('dashboard.challenge.xpLabel', { xp: todayChallenge.xpReward })}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.challengeCard}>
-            <View style={styles.challengeHeader}>
-              <View style={styles.challengeIcon}>
+        {showDailyChallenge ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{dashboardCopy.challenge.title}</Text>
+              <View style={styles.xpBadge}>
                 <Ionicons
-                  name="trophy"
-                  size={tokens.iconSize.md}
+                  name="star"
+                  size={tokens.iconSize.xs}
                   color={tokens.colors.feature.gamification}
                 />
-              </View>
-              <View style={styles.challengeTextContainer}>
-                <Text style={styles.challengeTitle}>{todayChallenge.title}</Text>
-                <Text style={styles.challengeDescription}>
-                  {todayChallenge.description}
+                <Text style={styles.xpBadgeText}>
+                  {t('dashboard.challenge.xpLabel', { xp: 500 })}
                 </Text>
               </View>
             </View>
-
-            {/* Progress Bar */}
-            <View style={styles.challengeProgress}>
-              <View style={styles.challengeProgressBar}>
-                <View
-                  style={[
-                    styles.challengeProgressFill,
-                    {
-                      width: `${(todayChallenge.progress / todayChallenge.total) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={styles.challengeProgressText}>
-                {todayChallenge.progress} / {todayChallenge.total}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.challengeButton}
-              onPress={() => handleNavigate('CreateReport')}
-            >
-              <Text style={styles.challengeButtonText}>{dashboardCopy.challenge.button}</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        ) : null}
 
         {/* ================================================================ */}
         {/* RECENT ACTIVITY */}

@@ -48,7 +48,12 @@ export default function PublicPassportPage() {
     if (!token) return;
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/passport/token/${token}`);
+      const shareApiUrl =
+        process.env.NEXT_PUBLIC_PUBLIC_SHARE_API_URL ?? process.env.NEXT_PUBLIC_API_URL;
+      const base = String(shareApiUrl ?? "").replace(/\/+$/, "");
+      if (!base) throw new Error("Missing API URL");
+      const path = base.includes("functions.supabase.co") ? "passport" : "passport/token";
+      const response = await fetch(`${base}/${path}/${token}`);
       
       if (!response.ok) {
         throw new Error('Passport not found');
