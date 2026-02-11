@@ -227,7 +227,11 @@ async function bootstrap() {
     customCssUrl: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.5/swagger-ui.min.css'],
   });
 
-  const port = process.env.API_PORT || 3000;
+  const portRaw = process.env.PORT ?? process.env.API_PORT ?? '3000';
+  const port = Number.parseInt(portRaw, 10);
+  if (Number.isNaN(port)) {
+    throw new Error(`[BOOT] Invalid port value: "${portRaw}". Set PORT or API_PORT to a valid integer.`);
+  }
   await app.listen(port);
 
   logger.log(`\n🚀 [START] Arcane API running on: http://localhost:${port}/api`);
