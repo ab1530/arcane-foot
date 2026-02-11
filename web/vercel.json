@@ -6,11 +6,6 @@
       "use": "@vercel/next"
     }
   ],
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@api-url",
-    "NEXT_PUBLIC_SENTRY_DSN": "@sentry-dsn-frontend",
-    "NEXT_PUBLIC_APP_VERSION": "1.0.0"
-  },
   "headers": [
     {
       "source": "/(.*)",
