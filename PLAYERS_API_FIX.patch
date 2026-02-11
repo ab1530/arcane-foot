@@ -1,0 +1,202 @@
+From: Claude Code <claude@anthropic.com>
+Date: Thu, 14 Nov 2025 12:00:00 +0000
+Subject: [PATCH] fix: Add missing database columns for players table
+
+Fixes #1 - Players API returning 500 error due to schema drift
+
+The Players API endpoint was returning HTTP 500 because two columns defined
+in the Prisma schema (conversionNotes, rejectionReason) were missing from
+the actual PostgreSQL database.
+
+This patch adds the missing columns via SQL migration and regenerates the
+Prisma client to ensure TypeScript types are in sync.
+
+Root cause:
+- prisma/schema.prisma defined conversionNotes and rejectionReason
+- Database migration was not run after schema changes
+- Prisma queries failed with "column does not exist" error
+
+Changes:
+- add-missing-fields.sql: Added 2 missing columns
+- Created run-migration.ts for safe migration execution
+- Created debug-players.ts for direct database testing
+- Created test-players-api.sh for HTTP endpoint testing
+
+Test results:
+- Direct DB query: ✅ 5 players returned
+- HTTP endpoint: ✅ 200 OK, 20 players with complete data
+
+---
+ backend/add-missing-fields.sql | 2 ++
+ backend/run-migration.ts       | 30 ++++++++++++++++++++++++++++++
+ backend/debug-players.ts       | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/test-players-api.sh    | 22 ++++++++++++++++++++++
+ 4 files changed, 111 insertions(+)
+ create mode 100644 backend/run-migration.ts
+ create mode 100644 backend/debug-players.ts
+ create mode 100755 backend/test-players-api.sh
+
+diff --git a/backend/add-missing-fields.sql b/backend/add-missing-fields.sql
+index 1234567..abcdefg 100644
+--- a/backend/add-missing-fields.sql
++++ b/backend/add-missing-fields.sql
+@@ -16,6 +16,8 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS "verificationStatus" TEXT DEFAULT
+ ALTER TABLE players ADD COLUMN IF NOT EXISTS "verifiedAt" TIMESTAMP;
+ ALTER TABLE players ADD COLUMN IF NOT EXISTS "verifiedById" TEXT;
+ ALTER TABLE players ADD COLUMN IF NOT EXISTS "lastSyncAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
++ALTER TABLE players ADD COLUMN IF NOT EXISTS "conversionNotes" TEXT;
++ALTER TABLE players ADD COLUMN IF NOT EXISTS "rejectionReason" TEXT;
+
+ -- Create indexes
+ CREATE INDEX IF NOT EXISTS "clubs_externalId_idx" ON clubs("externalId");
+
+diff --git a/backend/run-migration.ts b/backend/run-migration.ts
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/backend/run-migration.ts
+@@ -0,0 +1,30 @@
++import { PrismaClient } from '@prisma/client';
++import * as fs from 'fs';
++
++const prisma = new PrismaClient();
++
++async function migrate() {
++  const sql = fs.readFileSync('add-missing-fields.sql', 'utf8');
++  const statements = sql.split(';').filter(s => s.trim());
++
++  console.log(`Applying ${statements.length} SQL statements...\n`);
++
++  for (const statement of statements) {
++    if (statement.trim()) {
++      try {
++        await prisma.$executeRawUnsafe(statement);
++        console.log('✓ OK:', statement.trim().substring(0, 70) + '...');
++      } catch (error: any) {
++        if (!error.message.includes('already exists')) {
++          console.error('✗ ERROR:', error.message);
++        }
++      }
++    }
++  }
++
++  console.log('\n✅ Migration completed!');
++  await prisma.$disconnect();
++}
++
++migrate().catch(console.error);
+
+diff --git a/backend/debug-players.ts b/backend/debug-players.ts
+new file mode 100644
+index 0000000..abcdefg
+--- /dev/null
++++ b/backend/debug-players.ts
+@@ -0,0 +1,57 @@
++import { PrismaClient } from '@prisma/client';
++
++const prisma = new PrismaClient({ log: ['query', 'error', 'warn'] });
++
++async function testPlayersQuery() {
++  try {
++    console.log('Testing players query...\n');
++
++    // Test the exact query used by players.service.ts findAll()
++    const players = await prisma.players.findMany({
++      take: 5,
++      include: {
++        users: {
++          select: {
++            id: true,
++            email: true,
++            firstName: true,
++            lastName: true,
++            avatar: true,
++          },
++        },
++        clubs: {
++          select: {
++            id: true,
++            name: true,
++            shortName: true,
++            logo: true,
++            country: true,
++          },
++        },
++        _count: {
++          select: {
++            scouting_reports: true,
++            media: true,
++          },
++        },
++      },
++      orderBy: { createdAt: 'desc' },
++    });
++
++    console.log(`✅ SUCCESS: Found ${players.length} players\n`);
++    console.log('Sample player:');
++    if (players[0]) {
++      console.log(JSON.stringify(players[0], null, 2));
++    }
++
++  } catch (error) {
++    console.error('❌ ERROR:', error.message);
++    console.error('\nFull error:');
++    console.error(error);
++  } finally {
++    await prisma.$disconnect();
++  }
++}
++
++testPlayersQuery();
+
+diff --git a/backend/test-players-api.sh b/backend/test-players-api.sh
+new file mode 100755
+index 0000000..1234567
+--- /dev/null
++++ b/backend/test-players-api.sh
+@@ -0,0 +1,22 @@
++#!/bin/bash
++
++# Get auth token
++echo "Getting auth token..."
++TOKEN=$(curl -X POST http://localhost:5001/api/auth/login \
++  -H "Content-Type: application/json" \
++  -d '{"email":"scout1@arcane.com","password":"<DEMO_PASSWORD>"}' \
++  -s | jq -r '.accessToken')
++
++echo "Token: ${TOKEN:0:50}..."
++echo ""
++echo "Testing /api/players endpoint..."
++echo ""
++
++# Call players endpoint
++curl -v http://localhost:5001/api/players \
++  -H "Authorization: Bearer $TOKEN" \
++  2>&1 | tee players-response.log
++
++echo ""
++echo "Response saved to players-response.log"
+--
+2.45.2
+
+
+APPLICATION INSTRUCTIONS:
+
+1. Run migration:
+   cd backend
+   npx ts-node run-migration.ts
+   npx prisma generate
+
+2. Test database query:
+   npx ts-node debug-players.ts
+   # Expected: ✅ SUCCESS: Found X players
+
+3. Test HTTP endpoint:
+   chmod +x test-players-api.sh
+   ./test-players-api.sh
+   # Expected: HTTP 200 OK with player data
+
+4. Verify in production:
+   curl http://localhost:5001/api/players \
+     -H "Authorization: Bearer <TOKEN>"
+   # Should return 200 OK with real data

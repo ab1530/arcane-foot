@@ -1,0 +1,195 @@
+/* ========================================
+   ARCANE DESIGN SYSTEM 2.0 - DESIGN TOKENS
+   ======================================== */
+
+:root {
+  /* ========================================
+     COLOR SYSTEM
+     ======================================== */
+
+  /* Dark Foundation */
+  --arcane-black: #0A0A0A;        /* Deep black background */
+  --arcane-anthracite: #1B1B1F;   /* Subtle gray secondary */
+  --arcane-charcoal: #27272A;     /* Card backgrounds */
+  --arcane-slate: #3F3F46;        /* Dividers, borders */
+
+  /* Electric Accent */
+  --arcane-yellow: #E4FF3B;       /* Primary brand accent */
+  --arcane-yellow-glow: #E4FF3B40; /* Glow effect (25% opacity) */
+  --arcane-yellow-dim: #E4FF3B20;  /* Subtle highlights (12%) */
+
+  /* Neutral Grays */
+  --arcane-gray-50: #FAFAFA;      /* Pure white text */
+  --arcane-gray-100: #F4F4F5;     /* Headings */
+  --arcane-gray-200: #E4E4E7;     /* Primary text */
+  --arcane-gray-300: #D4D4D8;     /* Secondary text */
+  --arcane-gray-400: #A1A1AA;     /* Tertiary text */
+  --arcane-gray-500: #71717A;     /* Disabled text */
+  --arcane-gray-600: #52525B;     /* Subtle elements */
+
+  /* Semantic Colors - Status & Feedback */
+  --color-success: #10B981;       /* Green - success states */
+  --color-success-bg: #10B98120;  /* Success backgrounds */
+
+  --color-warning: #F59E0B;       /* Amber - warnings */
+  --color-warning-bg: #F59E0B20;
+
+  --color-error: #EF4444;         /* Red - errors */
+  --color-error-bg: #EF444420;
+
+  --color-info: #3B82F6;          /* Blue - information */
+  --color-info-bg: #3B82F620;
+
+  /* Feature Colors (Module-specific) */
+  --color-scouting: #3B82F6;      /* Blue - scouting features */
+  --color-ai: #8B5CF6;            /* Purple - AI features */
+  --color-coaching: #10B981;      /* Green - coaching */
+  --color-gamification: #F59E0B;  /* Gold - achievements */
+  --color-analytics: #06B6D4;     /* Cyan - analytics */
+  --color-marketplace: #EC4899;   /* Pink - marketplace */
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #E4FF3B 0%, #10B981 100%);
+  --gradient-dark: linear-gradient(180deg, #0A0A0A 0%, #1B1B1F 100%);
+  --gradient-glow: radial-gradient(circle, #E4FF3B40 0%, transparent 70%);
+  --gradient-ai: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+  --gradient-performance: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+  --gradient-premium: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
+
+  /* Chart Colors */
+  --chart-primary: #E4FF3B;
+  --chart-secondary: #10B981;
+  --chart-tertiary: #3B82F6;
+  --chart-quaternary: #8B5CF6;
+  --chart-quinary: #F59E0B;
+  --chart-gradient-1: linear-gradient(180deg, #E4FF3B40 0%, transparent 100%);
+  --chart-gradient-2: linear-gradient(180deg, #10B98140 0%, transparent 100%);
+
+  /* ========================================
+     TYPOGRAPHY
+     ======================================== */
+
+  /* Font Families */
+  --font-display: 'Poppins', system-ui, sans-serif;    /* Headings, titles */
+  --font-sans: 'Inter', system-ui, sans-serif;         /* Subtitles, UI */
+  --font-body: 'Manrope', system-ui, sans-serif;       /* Body text, paragraphs */
+  --font-mono: 'JetBrains Mono', monospace;            /* Code, data */
+
+  /* Type Scale */
+  --text-7xl: 4.5rem;    /* 72px - Hero */
+  --text-6xl: 3.75rem;   /* 60px - Page titles */
+  --text-5xl: 3rem;      /* 48px - H1 */
+  --text-4xl: 2.25rem;   /* 36px - H2 */
+  --text-3xl: 1.875rem;  /* 30px - H3 */
+  --text-2xl: 1.5rem;    /* 24px - H4 */
+  --text-xl: 1.25rem;    /* 20px - H5 */
+  --text-lg: 1.125rem;   /* 18px - Large text */
+  --text-base: 1rem;     /* 16px - Base text */
+  --text-sm: 0.875rem;   /* 14px - Small text */
+  --text-xs: 0.75rem;    /* 12px - Captions */
+
+  /* Font Weights */
+  --font-black: 900;     /* Extra bold headers */
+  --font-bold: 700;      /* Bold emphasis */
+  --font-semibold: 600;  /* Semi-bold UI elements */
+  --font-medium: 500;    /* Medium weight */
+  --font-regular: 400;   /* Normal text */
+  --font-light: 300;     /* Light text */
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ========================================
+     SPACING & LAYOUT (8-point grid)
+     ======================================== */
+
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+
+  /* ========================================
+     BORDER RADIUS
+     ======================================== */
+
+  --radius-sm: 0.375rem;   /* 6px - Small elements */
+  --radius-md: 0.5rem;     /* 8px - Buttons, inputs */
+  --radius-lg: 0.75rem;    /* 12px - Cards */
+  --radius-xl: 1rem;       /* 16px - Large cards */
+  --radius-2xl: 1.5rem;    /* 24px - Modals */
+  --radius-full: 9999px;   /* Pills, avatars */
+
+  /* ========================================
+     SHADOWS
+     ======================================== */
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+
+  /* Glow effects */
+  --shadow-glow-yellow: 0 0 20px rgba(228, 255, 59, 0.3);
+  --shadow-glow-ai: 0 0 20px rgba(139, 92, 246, 0.3);
+  --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+
+  /* ========================================
+     ANIMATIONS & TRANSITIONS
+     ======================================== */
+
+  /* Easing Functions */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);  /* Primary easing */
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Duration */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+
+  /* ========================================
+     BREAKPOINTS
+     ======================================== */
+
+  --breakpoint-sm: 640px;   /* Mobile */
+  --breakpoint-md: 768px;   /* Tablet */
+  --breakpoint-lg: 1024px;  /* Desktop */
+  --breakpoint-xl: 1280px;  /* Large desktop */
+  --breakpoint-2xl: 1536px; /* Extra large */
+
+  /* ========================================
+     ICON SIZES
+     ======================================== */
+
+  --icon-xs: 16px;
+  --icon-sm: 20px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+  --icon-xl: 48px;
+}

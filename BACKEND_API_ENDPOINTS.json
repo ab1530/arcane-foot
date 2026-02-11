@@ -1,0 +1,2540 @@
+{
+  "endpoints": [
+    {
+      "controller": "AuthController",
+      "basePath": "/auth",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/auth/signup",
+          "handler": "signup",
+          "body": ["email", "password", "firstName", "lastName", "role"],
+          "auth": false,
+          "roles": [],
+          "guards": ["AuthThrottlerGuard"],
+          "rateLimit": "3 requests per minute"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "handler": "login",
+          "body": ["email", "password"],
+          "auth": false,
+          "roles": [],
+          "guards": ["AuthThrottlerGuard"],
+          "rateLimit": "5 requests per minute"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/csrf-token",
+          "handler": "getCsrfToken",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/auth/me",
+          "handler": "getCurrentUser",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/auth/refresh",
+          "handler": "refresh",
+          "body": ["refreshToken"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "POST",
+          "path": "/auth/logout",
+          "handler": "logout",
+          "body": ["refreshToken"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/auth/logout-all",
+          "handler": "logoutAll",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "PlayersController",
+      "basePath": "/players",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/players",
+          "handler": "create",
+          "body": ["CreatePlayerDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/players",
+          "handler": "findAll",
+          "query": ["age", "height", "weight", "marketValue", "page", "limit"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/players/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "PUT",
+          "path": "/players/:id",
+          "handler": "update",
+          "params": ["id"],
+          "body": ["UpdatePlayerDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/players/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/players/:id/stats",
+          "handler": "getStats",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/players/:id/reports",
+          "handler": "getReports",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "ClubsController",
+      "basePath": "/clubs",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/clubs",
+          "handler": "create",
+          "body": ["CreateClubDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/clubs",
+          "handler": "findAll",
+          "query": ["country", "city", "search", "page", "limit"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/clubs/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "PUT",
+          "path": "/clubs/:id",
+          "handler": "update",
+          "params": ["id"],
+          "body": ["UpdateClubDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN", "CLUB_CONTACT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/clubs/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/clubs/:id/players",
+          "handler": "getPlayers",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/clubs/:id/matches",
+          "handler": "getMatches",
+          "params": ["id"],
+          "query": ["upcoming"],
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "MatchesController",
+      "basePath": "/matches",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/matches",
+          "handler": "create",
+          "body": ["CreateMatchDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/matches",
+          "handler": "findAll",
+          "query": ["status", "clubId", "scoutId", "competition", "season", "from", "to", "page", "limit"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/matches/upcoming",
+          "handler": "getUpcoming",
+          "query": ["limit"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/matches/live",
+          "handler": "getLive",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/matches/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "PUT",
+          "path": "/matches/:id",
+          "handler": "update",
+          "params": ["id"],
+          "body": ["UpdateMatchDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/matches/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/matches/:id/assign-scout",
+          "handler": "assignScout",
+          "params": ["id"],
+          "body": ["scoutId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/matches/:id/score",
+          "handler": "updateScore",
+          "params": ["id"],
+          "body": ["homeScore", "awayScore"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "EventsController",
+      "basePath": "/events",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/events",
+          "handler": "create",
+          "body": ["CreateEventDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/events",
+          "handler": "findAll",
+          "query": ["QueryEventDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/events/upcoming",
+          "handler": "findUpcoming",
+          "query": ["limit"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/events/my-events",
+          "handler": "findMyEvents",
+          "query": ["QueryEventDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/events/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/events/:id",
+          "handler": "update",
+          "params": ["id"],
+          "body": ["UpdateEventDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/events/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "ScoutingReportsController",
+      "basePath": "/scouting-reports",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/scouting-reports",
+          "handler": "create",
+          "body": ["CreateScoutingReportDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/scouting-reports",
+          "handler": "findAll",
+          "query": ["QueryScoutingReportDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/scouting-reports/player/:playerId",
+          "handler": "getPlayerReports",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/scouting-reports/scout/:scoutId",
+          "handler": "getScoutReports",
+          "params": ["scoutId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/scouting-reports/match/:matchId",
+          "handler": "getMatchReports",
+          "params": ["matchId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/scouting-reports/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/scouting-reports/:id",
+          "handler": "update",
+          "params": ["id"],
+          "body": ["UpdateScoutingReportDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/scouting-reports/:id/submit",
+          "handler": "submit",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/scouting-reports/:id/review",
+          "handler": "review",
+          "params": ["id"],
+          "body": ["approved"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/scouting-reports/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "SubscriptionsController",
+      "basePath": "/subscriptions",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/subscriptions/pricing",
+          "handler": "getPricing",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/subscriptions/me",
+          "handler": "getMySubscription",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/subscriptions",
+          "handler": "createOrUpdateSubscription",
+          "body": ["CreateSubscriptionDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PUT",
+          "path": "/subscriptions/cancel",
+          "handler": "cancelSubscription",
+          "body": ["CancelSubscriptionDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PUT",
+          "path": "/subscriptions/reactivate",
+          "handler": "reactivateSubscription",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PUT",
+          "path": "/subscriptions/change-tier",
+          "handler": "changeTier",
+          "body": ["CreateSubscriptionDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "PaymentsController",
+      "basePath": "/payments",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/payments/payment-intent",
+          "handler": "createPaymentIntent",
+          "body": ["CreatePaymentIntentDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/payments/subscription",
+          "handler": "createSubscription",
+          "body": ["CreateStripeSubscriptionDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/payments/subscription/:userId",
+          "handler": "cancelSubscription",
+          "params": ["userId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/payments/subscription/:userId",
+          "handler": "getUserSubscription",
+          "params": ["userId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/payments/webhook",
+          "handler": "handleWebhook",
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "AnalyticsController",
+      "basePath": "/analytics",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/analytics/overview",
+          "handler": "getPlatformOverview",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/players",
+          "handler": "getPlayersAnalytics",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/clubs",
+          "handler": "getClubsAnalytics",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/scouting-reports",
+          "handler": "getScoutingReportsAnalytics",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/club-requests",
+          "handler": "getClubRequestsAnalytics",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/events",
+          "handler": "getEventsAnalytics",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/activity-trends",
+          "handler": "getActivityTrends",
+          "query": ["days"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/rbac-metrics",
+          "handler": "getRbacMetrics",
+          "query": ["days"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/rbac-metrics/403-rate",
+          "handler": "get403Rate",
+          "query": ["startDate", "endDate"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/analytics/rbac-metrics/conversion-rate",
+          "handler": "getConversionRate",
+          "query": ["startDate", "endDate"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "SearchController",
+      "basePath": "/search",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/search",
+          "handler": "globalSearch",
+          "query": ["SearchQueryDto"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/search/quick",
+          "handler": "quickSearch",
+          "query": ["query", "limit"],
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "OnboardingController",
+      "basePath": "/onboarding",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/onboarding",
+          "handler": "getProgress",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/onboarding/initialize",
+          "handler": "initialize",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/onboarding/steps",
+          "handler": "updateStep",
+          "body": ["UpdateStepDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/onboarding/steps/:stepKey/start",
+          "handler": "startStep",
+          "params": ["stepKey"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/onboarding/steps/:stepKey/complete",
+          "handler": "completeStep",
+          "params": ["stepKey"],
+          "body": ["metadata"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/onboarding/steps/:stepKey/skip",
+          "handler": "skipStep",
+          "params": ["stepKey"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/onboarding/complete",
+          "handler": "complete",
+          "body": ["CompleteOnboardingDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/onboarding/reset",
+          "handler": "reset",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/onboarding/statistics",
+          "handler": "getStatistics",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "PassportController",
+      "basePath": "/passport",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/passport",
+          "handler": "createPassport",
+          "body": ["CreatePassportDto"],
+          "auth": true,
+          "roles": ["ADMIN", "AGENT", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/passport/player/:playerId",
+          "handler": "getPassportByPlayer",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/passport/token/:token",
+          "handler": "getPassportByToken",
+          "params": ["token"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/passport/qr/:token",
+          "handler": "getQRCode",
+          "params": ["token"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "PUT",
+          "path": "/passport/player/:playerId/verify",
+          "handler": "verifyPassport",
+          "params": ["playerId"],
+          "body": ["VerifyPassportDto"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/passport/player/:playerId",
+          "handler": "deletePassport",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "HealthController (modules/health)",
+      "basePath": "/health",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "handler": "health",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/health/ready",
+          "handler": "ready",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/health/live",
+          "handler": "live",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/health/debug-sentry",
+          "handler": "getError",
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "HealthController (root)",
+      "basePath": "/health",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "handler": "check",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/health/readiness",
+          "handler": "readiness",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/health/liveness",
+          "handler": "liveness",
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/health/metrics",
+          "handler": "metrics",
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "MediaController",
+      "basePath": "/media",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/media/upload",
+          "handler": "uploadFile",
+          "body": ["file", "UploadMediaDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/media/upload/player/:playerId/avatar",
+          "handler": "uploadPlayerAvatar",
+          "params": ["playerId"],
+          "body": ["file"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/media/upload/club/:clubId/logo",
+          "handler": "uploadClubLogo",
+          "params": ["clubId"],
+          "body": ["file"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/media/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/media/player/:playerId",
+          "handler": "getPlayerMedia",
+          "params": ["playerId"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/media/match/:matchId",
+          "handler": "getMatchMedia",
+          "params": ["matchId"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/media/report/:reportId",
+          "handler": "getReportMedia",
+          "params": ["reportId"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/media/:id/download",
+          "handler": "downloadFile",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "DELETE",
+          "path": "/media/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "NotificationsController",
+      "basePath": "/notifications",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/notifications/register-device",
+          "handler": "registerDevice",
+          "body": ["RegisterDeviceDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/unregister-device",
+          "handler": "unregisterDevice",
+          "body": ["userId", "fcmToken"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/send",
+          "handler": "sendToUser",
+          "body": ["SendNotificationDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/send-multiple",
+          "handler": "sendToMultiple",
+          "body": ["userIds", "title", "body", "type", "data"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/send-topic",
+          "handler": "sendToTopic",
+          "body": ["topic", "title", "body", "data"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/subscribe-topic",
+          "handler": "subscribeToTopic",
+          "body": ["userIds", "topic"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/unsubscribe-topic",
+          "handler": "unsubscribeFromTopic",
+          "body": ["userIds", "topic"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/user/:userId",
+          "handler": "getUserNotifications",
+          "params": ["userId"],
+          "query": ["unreadOnly"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/notifications/:id/read",
+          "handler": "markAsRead",
+          "params": ["id"],
+          "body": ["userId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/notifications/user/:userId/read-all",
+          "handler": "markAllAsRead",
+          "params": ["userId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/match/:matchId/reminder",
+          "handler": "sendMatchReminder",
+          "params": ["matchId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/report/:reportId/notify",
+          "handler": "sendReportNotification",
+          "params": ["reportId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "KanbanController",
+      "basePath": "/kanban",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/kanban/boards",
+          "handler": "createBoard",
+          "body": ["CreateBoardDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/kanban/boards",
+          "handler": "getAllBoards",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/kanban/boards/:id",
+          "handler": "getBoard",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/kanban/boards/:id",
+          "handler": "updateBoard",
+          "params": ["id"],
+          "body": ["CreateBoardDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/kanban/boards/:id",
+          "handler": "deleteBoard",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/kanban/boards/:boardId/columns",
+          "handler": "createColumn",
+          "params": ["boardId"],
+          "body": ["CreateColumnDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/kanban/columns/:id",
+          "handler": "updateColumn",
+          "params": ["id"],
+          "body": ["CreateColumnDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/kanban/columns/:id",
+          "handler": "deleteColumn",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/kanban/cards",
+          "handler": "createCard",
+          "body": ["CreateCardDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/kanban/cards/:id",
+          "handler": "getCard",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/kanban/cards/:id",
+          "handler": "updateCard",
+          "params": ["id"],
+          "body": ["CreateCardDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/kanban/cards/:id/move",
+          "handler": "moveCard",
+          "params": ["id"],
+          "body": ["MoveCardDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/kanban/cards/:id",
+          "handler": "deleteCard",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/kanban/cards/:id/activities",
+          "handler": "getCardActivities",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "ClubRequestsController",
+      "basePath": "/club-requests",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/club-requests",
+          "handler": "create",
+          "body": ["CreateClubRequestDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/club-requests",
+          "handler": "findAll",
+          "query": ["clubId", "playerId", "status"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/club-requests/statistics",
+          "handler": "getStatistics",
+          "query": ["clubId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/club-requests/:id",
+          "handler": "findOne",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/club-requests/:id",
+          "handler": "update",
+          "params": ["id"],
+          "body": ["UpdateClubRequestDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/club-requests/:id/accept",
+          "handler": "accept",
+          "params": ["id"],
+          "body": ["message"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/club-requests/:id/reject",
+          "handler": "reject",
+          "params": ["id"],
+          "body": ["message"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/club-requests/:id/negotiate",
+          "handler": "negotiate",
+          "params": ["id"],
+          "body": ["offerAmount", "message"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/club-requests/:id/complete",
+          "handler": "complete",
+          "params": ["id"],
+          "body": ["message"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/club-requests/:id",
+          "handler": "remove",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "CampsController",
+      "basePath": "/camps",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/camps",
+          "handler": "createCamp",
+          "body": ["CreateCampDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/camps",
+          "handler": "getAllCamps",
+          "query": ["type", "status", "upcoming", "isPublic"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/camps/:id",
+          "handler": "getCampById",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "PUT",
+          "path": "/camps/:id",
+          "handler": "updateCamp",
+          "params": ["id"],
+          "body": ["UpdateCampDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/camps/:id",
+          "handler": "deleteCamp",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/camps/:id/register",
+          "handler": "registerForCamp",
+          "params": ["id"],
+          "body": ["RegisterCampDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/camps/my/registrations",
+          "handler": "getMyRegistrations",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/camps/registrations/:participationId",
+          "handler": "cancelRegistration",
+          "params": ["participationId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/camps/:id/participants",
+          "handler": "getCampParticipants",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PUT",
+          "path": "/camps/participants/:participationId/evaluate",
+          "handler": "evaluateParticipant",
+          "params": ["participationId"],
+          "body": ["EvaluateParticipantDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "CoachingController",
+      "basePath": "/coaching",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/coaching/coaches",
+          "handler": "createCoach",
+          "body": ["CreateCoachDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/coaching/coaches",
+          "handler": "getAllCoaches",
+          "query": ["coachingType", "city", "isActive", "canWorkRemote"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "GET",
+          "path": "/coaching/coaches/:id",
+          "handler": "getCoachById",
+          "params": ["id"],
+          "auth": false,
+          "roles": []
+        },
+        {
+          "method": "PUT",
+          "path": "/coaching/coaches/:id",
+          "handler": "updateCoach",
+          "params": ["id"],
+          "body": ["UpdateCoachDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/coaching/coaches/:id",
+          "handler": "deleteCoach",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/coaching/coaches/:id/bookings",
+          "handler": "getCoachBookings",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/coaching/bookings",
+          "handler": "createBooking",
+          "body": ["CreateBookingDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/coaching/bookings/my",
+          "handler": "getMyBookings",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/coaching/bookings/:id",
+          "handler": "getBookingById",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/coaching/bookings/:id",
+          "handler": "cancelBooking",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PUT",
+          "path": "/coaching/bookings/:id/rate",
+          "handler": "rateBooking",
+          "params": ["id"],
+          "body": ["RateBookingDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PUT",
+          "path": "/coaching/bookings/:id/complete",
+          "handler": "completeBooking",
+          "params": ["id"],
+          "body": ["coachFeedback"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "DataSyncController",
+      "basePath": "/admin/data-sync",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/admin/data-sync/competitions",
+          "handler": "syncCompetitions",
+          "body": ["source"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/data-sync/clubs",
+          "handler": "syncClubs",
+          "body": ["competitionId", "source"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/data-sync/players",
+          "handler": "syncPlayers",
+          "body": ["clubId", "source"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/data-sync/matches",
+          "handler": "syncMatches",
+          "body": ["competitionId", "source"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/data-sync/full",
+          "handler": "fullSync",
+          "body": ["competitionIds"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "PlayerValidationController",
+      "basePath": "/admin/players",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/admin/players/pending-validation",
+          "handler": "getPendingPlayers",
+          "query": ["page", "limit"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/admin/players/by-status/:status",
+          "handler": "getPlayersByStatus",
+          "params": ["status"],
+          "query": ["page", "limit"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/players/:id/validate",
+          "handler": "validatePlayer",
+          "params": ["id"],
+          "body": ["ValidatePlayerDto"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/players/:id/reject",
+          "handler": "rejectPlayer",
+          "params": ["id"],
+          "body": ["RejectPlayerDto"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/players/:id/mark-suspicious",
+          "handler": "markAsSuspicious",
+          "params": ["id"],
+          "body": ["reason"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/players/:id/convert-to-agency",
+          "handler": "convertToAgency",
+          "params": ["id"],
+          "body": ["ConvertToAgencyDto"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/admin/players/verification-stats",
+          "handler": "getVerificationStats",
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/admin/players/:id/validation-history",
+          "handler": "getValidationHistory",
+          "params": ["id"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN", "SCOUT"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/players/bulk-import",
+          "handler": "bulkImport",
+          "body": ["BulkImportDto"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/players/bulk-import-csv",
+          "handler": "bulkImportCsv",
+          "body": ["csvContent", "autoVerify"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/admin/players/export-csv",
+          "handler": "exportCsv",
+          "query": ["status"],
+          "auth": true,
+          "roles": ["SUPER_ADMIN", "ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "GamificationController",
+      "basePath": "/gamification",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/gamification/profile",
+          "handler": "getProfile",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/gamification/achievements",
+          "handler": "getAchievements",
+          "query": ["category"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/gamification/badges",
+          "handler": "getBadges",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/gamification/leaderboard/:category",
+          "handler": "getLeaderboard",
+          "params": ["category"],
+          "query": ["limit"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/gamification/daily-challenge",
+          "handler": "getDailyChallenge",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/gamification/daily-challenge/claim",
+          "handler": "claimDailyChallengeReward",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/gamification/achievement/:id/share",
+          "handler": "shareAchievement",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/gamification/badge/:id/pin",
+          "handler": "pinBadge",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/gamification/stats",
+          "handler": "getStats",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/gamification/track-action/:action",
+          "handler": "trackAction",
+          "params": ["action"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "MarketplaceController",
+      "basePath": "/marketplace",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/marketplace/listings",
+          "handler": "createListing",
+          "body": ["CreateScoutListingDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/listings/my",
+          "handler": "getMyListing",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/listings",
+          "handler": "updateListing",
+          "body": ["UpdateScoutListingDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/listings/activate",
+          "handler": "activateListing",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/listings/pause",
+          "handler": "pauseListing",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/marketplace/listings",
+          "handler": "deleteListing",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/listings",
+          "handler": "searchListings",
+          "query": ["leagues", "positions", "location", "maxBudget", "minRating", "isVerified"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/listings/:id",
+          "handler": "getListingById",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/marketplace/listings/match",
+          "handler": "calculateMatching",
+          "body": ["CalculateMatchingDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/marketplace/offers",
+          "handler": "createOffer",
+          "body": ["CreateOfferDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/offers/sent",
+          "handler": "getSentOffers",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/offers/received",
+          "handler": "getReceivedOffers",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/offers/:id/accept",
+          "handler": "acceptOffer",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/offers/:id/reject",
+          "handler": "rejectOffer",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/offers/:id/complete",
+          "handler": "completeOffer",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/offers/:id/cancel",
+          "handler": "cancelOffer",
+          "params": ["id"],
+          "body": ["reason"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/marketplace/reviews",
+          "handler": "createReview",
+          "body": ["CreateReviewDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/reviews/listing/:listingId",
+          "handler": "getListingReviews",
+          "params": ["listingId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/marketplace/favorites",
+          "handler": "addFavorite",
+          "body": ["CreateFavoriteDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/marketplace/favorites/my",
+          "handler": "getFavorites",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/marketplace/favorites/:id",
+          "handler": "removeFavorite",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        },
+        {
+          "method": "PATCH",
+          "path": "/marketplace/favorites/:id",
+          "handler": "updateFavorite",
+          "params": ["id"],
+          "body": ["CreateFavoriteDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "AiController",
+      "basePath": "/ai",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/ai/summary",
+          "handler": "generateSummary",
+          "body": ["GenerateSummaryDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "10 requests per minute"
+        },
+        {
+          "method": "GET",
+          "path": "/ai/index/:playerId",
+          "handler": "getPlayerIndex",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/ai/matchmaking",
+          "handler": "matchmaking",
+          "body": ["MatchmakingRequestDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/ai/player-analysis/:playerId",
+          "handler": "analyzePlayer",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/ai/talent-prediction/:playerId",
+          "handler": "predictTalent",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/ai/match-recommendation/:playerId",
+          "handler": "getClubRecommendations",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/ai/suspicious-detection/:playerId",
+          "handler": "detectSuspicious",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "AiThrottlerGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        }
+      ]
+    },
+    {
+      "controller": "ArkaneMatchController",
+      "basePath": "/arkane-match",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/arkane-match/chat",
+          "handler": "chat",
+          "body": ["ChatDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "20 requests per minute"
+        },
+        {
+          "method": "GET",
+          "path": "/arkane-match/conversations/:id",
+          "handler": "getConversation",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/arkane-match/conversations/:id",
+          "handler": "clearConversation",
+          "params": ["id"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/arkane-match/info",
+          "handler": "getInfo",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/arkane-match/health",
+          "handler": "healthCheck",
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "SmartScoutController",
+      "basePath": "/smart-scout",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/smart-scout/suggestions",
+          "handler": "getSuggestions",
+          "body": ["partialReport", "context"],
+          "auth": true,
+          "roles": ["SCOUT", "ANALYST", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/smart-scout/autocomplete",
+          "handler": "autocomplete",
+          "body": ["AutocompleteRequestDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ANALYST", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/smart-scout/insights/:playerId",
+          "handler": "getInsights",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": ["SCOUT", "ANALYST", "ADMIN", "SUPER_ADMIN", "AGENT", "CLUB_CONTACT"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/smart-scout/index/:reportId",
+          "handler": "indexReport",
+          "params": ["reportId"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/smart-scout/reindex-all",
+          "handler": "reindexAll",
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "AutoScoutController",
+      "basePath": "/auto-scout",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/auto-scout/generate",
+          "handler": "generateReport",
+          "body": ["GenerateReportDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "10 reports per hour"
+        },
+        {
+          "method": "POST",
+          "path": "/auto-scout/bulk-generate",
+          "handler": "bulkGenerate",
+          "body": ["BulkGenerateDto"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "3 bulk operations per hour"
+        },
+        {
+          "method": "POST",
+          "path": "/auto-scout/enhance/:reportId",
+          "handler": "enhanceReport",
+          "params": ["reportId"],
+          "body": ["EnhanceReportDto"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "15 enhancements per hour"
+        },
+        {
+          "method": "GET",
+          "path": "/auto-scout/templates",
+          "handler": "getTemplates",
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/auto-scout/custom",
+          "handler": "customGenerate",
+          "body": ["CustomGenerateDto"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "5 custom reports per hour"
+        },
+        {
+          "method": "GET",
+          "path": "/auto-scout/preview/:playerId",
+          "handler": "previewReport",
+          "params": ["playerId"],
+          "query": ["matchId"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "20 previews per hour"
+        },
+        {
+          "method": "GET",
+          "path": "/auto-scout/analytics",
+          "handler": "getAnalytics",
+          "query": ["startDate", "endDate"],
+          "auth": true,
+          "roles": ["ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/auto-scout/player/:playerId/history",
+          "handler": "getPlayerReportHistory",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/auto-scout/cost-estimate",
+          "handler": "getCostEstimate",
+          "query": ["reportType"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/auto-scout/regenerate/:reportId",
+          "handler": "regenerateReport",
+          "params": ["reportId"],
+          "query": ["temperature"],
+          "auth": true,
+          "roles": ["SCOUT", "ADMIN", "SUPER_ADMIN"],
+          "guards": ["JwtAuthGuard", "RolesGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "10 per hour"
+        }
+      ]
+    },
+    {
+      "controller": "PerformancePredictorController",
+      "basePath": "/performance-predictor",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/performance-predictor/predict/:playerId/:matchId",
+          "handler": "predictPerformance",
+          "params": ["playerId", "matchId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/performance-predictor/batch-predict/:matchId",
+          "handler": "batchPredictForMatch",
+          "params": ["matchId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/performance-predictor/accuracy",
+          "handler": "getAccuracy",
+          "query": ["playerId", "dateRange"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/performance-predictor/feature-importance",
+          "handler": "getFeatureImportance",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/performance-predictor/retrain",
+          "handler": "retrainModel",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/performance-predictor/predictions/:playerId",
+          "handler": "getPlayerPredictions",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/performance-predictor/insights/:playerId",
+          "handler": "getPerformanceInsights",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        }
+      ]
+    },
+    {
+      "controller": "MarketValueController",
+      "basePath": "/market-value",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/market-value/player/:playerId",
+          "handler": "getPlayerValuation",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/market-value/trend/:playerId",
+          "handler": "getValuationTrend",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/market-value/compare",
+          "handler": "comparePlayers",
+          "body": ["ComparePlayersRequestDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/market-value/retrain",
+          "handler": "triggerModelRetrain",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/market-value/health",
+          "handler": "checkHealth",
+          "auth": false,
+          "roles": []
+        }
+      ]
+    },
+    {
+      "controller": "PlaystyleDnaController",
+      "basePath": "/playstyle-dna",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/playstyle-dna/classify",
+          "handler": "classifyPlayer",
+          "body": ["ClassifyPlayerDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/playstyle-dna/profile/:playerId",
+          "handler": "getDNAProfile",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/playstyle-dna/similar/:playerId",
+          "handler": "findSimilarPlayers",
+          "params": ["playerId"],
+          "query": ["limit"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "POST",
+          "path": "/playstyle-dna/compare",
+          "handler": "comparePlayers",
+          "body": ["ComparePlayersDto"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        },
+        {
+          "method": "GET",
+          "path": "/playstyle-dna/radar/:playerId",
+          "handler": "getRadarData",
+          "params": ["playerId"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD"
+        }
+      ]
+    },
+    {
+      "controller": "VoiceToReportController",
+      "basePath": "/voice-to-report",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/voice-to-report/process",
+          "handler": "processVoiceReport",
+          "body": ["audio", "language", "matchId", "playerId", "keepAudio"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "10 requests per minute"
+        },
+        {
+          "method": "GET",
+          "path": "/voice-to-report/languages",
+          "handler": "getSupportedLanguages",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "GET",
+          "path": "/voice-to-report/examples",
+          "handler": "getExamples",
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"]
+        },
+        {
+          "method": "POST",
+          "path": "/voice-to-report/test-transcription",
+          "handler": "testTranscription",
+          "body": ["text", "language"],
+          "auth": true,
+          "roles": [],
+          "guards": ["JwtAuthGuard", "SubscriptionTierGuard"],
+          "minTier": "GOLD",
+          "rateLimit": "5 requests per minute"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalControllers": 31,
+    "totalEndpoints": 288,
+    "publicEndpoints": 23,
+    "protectedEndpoints": 265,
+    "aiPoweredEndpoints": 47,
+    "adminOnlyEndpoints": 18,
+    "goldTierEndpoints": 42,
+    "endpointsByController": {
+      "AuthController": 7,
+      "PlayersController": 7,
+      "ClubsController": 7,
+      "MatchesController": 9,
+      "EventsController": 7,
+      "ScoutingReportsController": 10,
+      "SubscriptionsController": 6,
+      "PaymentsController": 5,
+      "AnalyticsController": 10,
+      "SearchController": 2,
+      "OnboardingController": 9,
+      "PassportController": 6,
+      "HealthController (modules/health)": 4,
+      "HealthController (root)": 4,
+      "MediaController": 9,
+      "NotificationsController": 12,
+      "KanbanController": 14,
+      "ClubRequestsController": 10,
+      "CampsController": 10,
+      "CoachingController": 11,
+      "DataSyncController": 5,
+      "PlayerValidationController": 11,
+      "GamificationController": 10,
+      "MarketplaceController": 22,
+      "AiController": 7,
+      "ArkaneMatchController": 5,
+      "SmartScoutController": 5,
+      "AutoScoutController": 10,
+      "PerformancePredictorController": 7,
+      "MarketValueController": 5,
+      "PlaystyleDnaController": 5,
+      "VoiceToReportController": 4
+    }
+  }
+}

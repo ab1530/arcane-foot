@@ -1,0 +1,21 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /reports
+Disallow: /calendar
+Disallow: /market
+Disallow: /my-camps
+Disallow: /ai
+Disallow: /analytics
+Disallow: /players/[id]
+Disallow: /clubs/[id]
+Disallow: /camps/[id]
+Disallow: /passport
+
+# Sitemap
+Sitemap: https://arcane-football.com/sitemap.xml
+
+# Crawl-delay (optional, adjust as needed)
+Crawl-delay: 10
