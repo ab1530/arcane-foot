@@ -48,8 +48,9 @@ async function bootstrap() {
     next();
   });
 
-  // CSRF Protection (only in production or if explicitly enabled)
-  const csrfEnabled = process.env.CSRF_ENABLED === 'true' || isProduction;
+  // CSRF Protection: enabled by default in production, but can be explicitly disabled.
+  const csrfToggle = process.env.CSRF_ENABLED;
+  const csrfEnabled = csrfToggle ? csrfToggle === 'true' : isProduction;
   if (csrfEnabled) {
     const {
       doubleCsrfProtection, // CSRF protection middleware
@@ -161,7 +162,7 @@ async function bootstrap() {
     origin: isProduction ? corsOrigins : true, // En dev, accepte tout
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-csrf-token'],
   });
 
   // Global validation pipe
