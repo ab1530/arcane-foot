@@ -131,11 +131,15 @@ unit_test_backend:
         POSTGRES_USER: postgres
         POSTGRES_DB: postgres
   variables:
+    CI_POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
     SUPABASE_SERVICE_KEY: local-service-key
     SUPABASE_STORAGE_BUCKET: arcane-media
   script:
+    - export DATABASE_URL="$CI_POSTGRES_URL"
+    - export CI_POSTGRES_PSQL_URL="${CI_POSTGRES_URL%%\?*}"
+    - echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
     - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
     - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
     - echo "Installing dependencies..." | tee -a $LOG_FILE
@@ -144,8 +148,8 @@ unit_test_backend:
     - (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
     - echo "Applying database policies..." | tee -a $LOG_FILE
     - |
-      if psql postgresql://postgres:postgres@postgres:5432/postgres -Atc "select 1 from pg_namespace where nspname='auth'" | grep -q 1; then
-        psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+      if psql "$CI_POSTGRES_PSQL_URL" -Atc "select 1 from pg_namespace where nspname='auth'" | grep -q 1; then
+        psql "$CI_POSTGRES_PSQL_URL" -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
       else
         echo "Skipping supabase/policies.sql in CI: auth schema not present on vanilla postgres service." | tee -a $LOG_FILE
       fi
