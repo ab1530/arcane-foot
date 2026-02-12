@@ -28,6 +28,9 @@ fi
 echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
 (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
 
+echo "Syncing Prisma schema for QA ephemeral database..." | tee -a $LOG_FILE
+(cd backend && npx --no-install prisma db push --schema prisma/schema.prisma --skip-generate --accept-data-loss) 2>&1 | tee -a $LOG_FILE
+
 echo "Note: Prisma Client already generated during npm ci postinstall" | tee -a $LOG_FILE
 
 echo "Applying database policies..." | tee -a $LOG_FILE
