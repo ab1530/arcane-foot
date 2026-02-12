@@ -136,7 +136,7 @@ unit_test_backend:
     - echo "Installing dependencies..." | tee -a $LOG_FILE
     - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
     - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
-    - cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma 2>&1 | tee -a ../$LOG_FILE
+    - (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
     - echo "Applying database policies..." | tee -a $LOG_FILE
     - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
     - echo "Running backend tests with coverage..." | tee -a $LOG_FILE
