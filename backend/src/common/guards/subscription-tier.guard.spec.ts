@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { SubscriptionTierGuard } from './subscription-tier.guard';
+import { MIN_TIER_KEY, SubscriptionTierGuard } from './subscription-tier.guard';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { SubscriptionsService } from '../../modules/subscriptions/subscriptions.service';
 import { SubscriptionTier } from '@prisma/client';
 
@@ -54,10 +55,22 @@ describe('SubscriptionTierGuard', () => {
     } as unknown as ExecutionContext;
   };
 
+  const setTierRequirement = (requiredTier?: SubscriptionTier, isPublic = false) => {
+    mockReflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === IS_PUBLIC_KEY) {
+        return isPublic;
+      }
+      if (key === MIN_TIER_KEY) {
+        return requiredTier;
+      }
+      return undefined;
+    });
+  };
+
   describe('canActivate', () => {
     it('should allow access when no tier requirement is set', async () => {
       const mockContext = createMockExecutionContext({ id: 'user-123' });
-      mockReflector.getAllAndOverride.mockReturnValue(undefined);
+      setTierRequirement(undefined);
 
       const result = await guard.canActivate(mockContext);
 
@@ -69,7 +82,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
       const result = await guard.canActivate(mockContext);
@@ -85,7 +98,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.GOLD);
+      setTierRequirement(SubscriptionTier.GOLD);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(false);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(ForbiddenException);
@@ -98,7 +111,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
       const result = await guard.canActivate(mockContext);
@@ -114,7 +127,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.GOLD);
+      setTierRequirement(SubscriptionTier.GOLD);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(false);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(ForbiddenException);
@@ -124,7 +137,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.PRO);
+      setTierRequirement(SubscriptionTier.PRO);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
       const result = await guard.canActivate(mockContext);
@@ -140,7 +153,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.ENTERPRISE);
+      setTierRequirement(SubscriptionTier.ENTERPRISE);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(false);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
@@ -154,12 +167,16 @@ describe('SubscriptionTierGuard', () => {
       const mockHandler = mockContext.getHandler();
       const mockClass = mockContext.getClass();
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
       await guard.canActivate(mockContext);
 
-      expect(mockReflector.getAllAndOverride).toHaveBeenCalledWith('minTier', [
+      expect(mockReflector.getAllAndOverride).toHaveBeenNthCalledWith(1, IS_PUBLIC_KEY, [
+        mockHandler,
+        mockClass,
+      ]);
+      expect(mockReflector.getAllAndOverride).toHaveBeenNthCalledWith(2, MIN_TIER_KEY, [
         mockHandler,
         mockClass,
       ]);
@@ -167,7 +184,7 @@ describe('SubscriptionTierGuard', () => {
 
     it('should throw ForbiddenException if user is not authenticated', async () => {
       const mockContext = createMockExecutionContext(undefined);
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
         new ForbiddenException('User not authenticated'),
@@ -177,7 +194,7 @@ describe('SubscriptionTierGuard', () => {
 
     it('should throw ForbiddenException if user has no id', async () => {
       const mockContext = createMockExecutionContext({});
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
         new ForbiddenException('User not authenticated'),
@@ -187,7 +204,7 @@ describe('SubscriptionTierGuard', () => {
 
     it('should handle null user correctly', async () => {
       const mockContext = createMockExecutionContext(null);
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
         new ForbiddenException('User not authenticated'),
@@ -198,7 +215,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.FREE);
+      setTierRequirement(SubscriptionTier.FREE);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
       const result = await guard.canActivate(mockContext);
@@ -223,7 +240,7 @@ describe('SubscriptionTierGuard', () => {
         const mockUser = { id: 'user-123' };
         const mockContext = createMockExecutionContext(mockUser);
 
-        mockReflector.getAllAndOverride.mockReturnValue(tier);
+        setTierRequirement(tier);
         mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
         const result = await guard.canActivate(mockContext);
@@ -239,7 +256,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
       mockSubscriptionsService.hasMinimumTier.mockRejectedValue(
         new Error('Database connection failed'),
       );
@@ -251,7 +268,7 @@ describe('SubscriptionTierGuard', () => {
       const mockUser = { id: 'test-user-456' };
       const mockContext = createMockExecutionContext(mockUser);
 
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.PRO);
+      setTierRequirement(SubscriptionTier.PRO);
       mockSubscriptionsService.hasMinimumTier.mockResolvedValue(true);
 
       await guard.canActivate(mockContext);
@@ -266,7 +283,7 @@ describe('SubscriptionTierGuard', () => {
     it('should return true immediately when no tier requirement', async () => {
       const mockUser = { id: 'user-123' };
       const mockContext = createMockExecutionContext(mockUser);
-      mockReflector.getAllAndOverride.mockReturnValue(null);
+      setTierRequirement(undefined);
 
       const result = await guard.canActivate(mockContext);
 
@@ -277,7 +294,7 @@ describe('SubscriptionTierGuard', () => {
     it('should handle empty string as user id', async () => {
       const mockUser = { id: '' };
       const mockContext = createMockExecutionContext(mockUser);
-      mockReflector.getAllAndOverride.mockReturnValue(SubscriptionTier.BASIC);
+      setTierRequirement(SubscriptionTier.BASIC);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
         new ForbiddenException('User not authenticated'),

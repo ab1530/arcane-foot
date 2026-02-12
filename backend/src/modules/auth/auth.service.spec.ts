@@ -79,7 +79,7 @@ describe('AuthService', () => {
       email: signupDto.email,
       firstName: signupDto.firstName,
       lastName: signupDto.lastName,
-      role: 'SCOUT',
+      role: 'PUBLIC',
       phone: signupDto.phone,
       avatar: null,
       createdAt: new Date(),
@@ -95,6 +95,7 @@ describe('AuthService', () => {
 
       prisma.users.findUnique.mockResolvedValue(null);
       prisma.users.create.mockResolvedValue(mockUser as any);
+      prisma.players.findUnique.mockResolvedValue(null as any);
       refreshTokenService.generateTokens.mockResolvedValue(mockTokens);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
@@ -111,7 +112,9 @@ describe('AuthService', () => {
           firstName: signupDto.firstName,
           lastName: signupDto.lastName,
           phone: signupDto.phone,
-          role: signupDto.role,
+          id: expect.any(String),
+          role: 'PUBLIC',
+          updatedAt: expect.any(Date),
         }),
         select: expect.any(Object),
       });
@@ -121,7 +124,10 @@ describe('AuthService', () => {
         mockUser.role,
       );
       expect(result).toEqual({
-        user: mockUser,
+        user: {
+          ...mockUser,
+          playerId: null,
+        },
         ...mockTokens,
         tokenType: 'Bearer',
       });
@@ -176,6 +182,7 @@ describe('AuthService', () => {
       prisma.users.findUnique.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
       prisma.users.create.mockResolvedValue(mockUser as any);
+      prisma.players.findUnique.mockResolvedValue(null as any);
       refreshTokenService.generateTokens.mockResolvedValue(mockTokens);
 
       await service.signup(signupDto);
@@ -197,6 +204,7 @@ describe('AuthService', () => {
       prisma.users.findUnique.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
       prisma.users.create.mockResolvedValue({ ...mockUser, phone: null } as any);
+      prisma.players.findUnique.mockResolvedValue(null as any);
       refreshTokenService.generateTokens.mockResolvedValue(mockTokens);
 
       const result = await service.signup(dtoWithoutPhone);
@@ -234,6 +242,7 @@ describe('AuthService', () => {
 
       prisma.users.findUnique.mockResolvedValue(mockUser as any);
       prisma.users.update.mockResolvedValue(mockUser as any);
+      prisma.players.findUnique.mockResolvedValue(null as any);
       refreshTokenService.generateTokens.mockResolvedValue(mockTokens);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
@@ -261,6 +270,7 @@ describe('AuthService', () => {
           role: mockUser.role,
           phone: mockUser.phone,
           avatar: mockUser.avatar,
+          playerId: null,
         },
         ...mockTokens,
         tokenType: 'Bearer',
@@ -383,9 +393,17 @@ describe('AuthService', () => {
               id: true,
             },
           },
+          players: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual({
+        ...mockUser,
+        playerId: null,
+      });
     });
 
     it('should return null if user not found', async () => {
@@ -419,6 +437,7 @@ describe('AuthService', () => {
         lastName: mockUser.lastName,
         role: mockUser.role,
         isActive: mockUser.isActive,
+        playerId: null,
       });
     });
   });

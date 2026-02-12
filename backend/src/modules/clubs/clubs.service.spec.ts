@@ -16,7 +16,6 @@ describe('ClubsService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      count: jest.fn(),
     },
     players: {
       findMany: jest.fn(),
@@ -128,19 +127,16 @@ describe('ClubsService', () => {
 
     it('should return paginated clubs', async () => {
       mockPrismaService.clubs.findMany.mockResolvedValue(mockClubs);
-      mockPrismaService.clubs.count.mockResolvedValue(2);
 
       const result = await service.findAll({ page: 1, limit: 20 });
 
       expect(prismaService.clubs.findMany).toHaveBeenCalled();
-      expect(prismaService.clubs.count).toHaveBeenCalled();
       expect(result).toEqual(mockClubs);
       expect(result).toHaveLength(2);
     });
 
     it('should filter by country', async () => {
       mockPrismaService.clubs.findMany.mockResolvedValue(mockClubs);
-      mockPrismaService.clubs.count.mockResolvedValue(2);
 
       await service.findAll({ country: 'FR', page: 1, limit: 20 });
 
@@ -155,7 +151,6 @@ describe('ClubsService', () => {
 
     it('should filter by city', async () => {
       mockPrismaService.clubs.findMany.mockResolvedValue([mockClubs[0]]);
-      mockPrismaService.clubs.count.mockResolvedValue(1);
 
       await service.findAll({ city: 'Paris', page: 1, limit: 20 });
 
@@ -170,7 +165,6 @@ describe('ClubsService', () => {
 
     it('should search by club name', async () => {
       mockPrismaService.clubs.findMany.mockResolvedValue([mockClubs[0]]);
-      mockPrismaService.clubs.count.mockResolvedValue(1);
 
       await service.findAll({ search: 'PSG', page: 1, limit: 20 });
 
@@ -185,7 +179,6 @@ describe('ClubsService', () => {
 
     it('should calculate pagination correctly', async () => {
       mockPrismaService.clubs.findMany.mockResolvedValue(mockClubs);
-      mockPrismaService.clubs.count.mockResolvedValue(50);
 
       const result = await service.findAll({ page: 3, limit: 20 });
 
