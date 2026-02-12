@@ -4,7 +4,12 @@ stages:
   - qa
   - deploy
 
+default:
+  tags:
+    - arcane-local
+
 variables:
+  CI_NODE_IMAGE: registry.gitlab.com/ab1530/arcane-foot/ci-node20-tools:latest
   NODE_ENV: test
   NPM_CONFIG_FUND: "false"
   PLAYWRIGHT_BROWSERS_PATH: /cache/ms-playwright
@@ -53,7 +58,7 @@ cache:
 
 build_backend:
   stage: build
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   script:
     - echo "Installing dependencies..." | tee -a $LOG_FILE
@@ -71,7 +76,7 @@ build_backend:
 
 build_web:
   stage: build
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   script:
     - echo "Installing dependencies..." | tee -a $LOG_FILE
@@ -104,7 +109,7 @@ build_docker_images:
 
 unit_test_backend:
   stage: test
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   needs:
     - build_backend
@@ -152,7 +157,7 @@ unit_test_backend:
 
 unit_test_web:
   stage: test
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   needs:
     - build_web
@@ -177,7 +182,7 @@ unit_test_web:
 
 qa_job:
   stage: qa
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   needs:
     - unit_test_backend
     - unit_test_web
