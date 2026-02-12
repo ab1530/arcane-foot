@@ -1,0 +1,1174 @@
+export const en = {
+  common: {
+    language: {
+      title: 'App language',
+      description: 'Choose the default language for all screens, notifications and emails.',
+      notice: 'The preference syncs automatically between web and mobile when you use the same account.',
+      options: {
+        fr: 'French',
+        en: 'English',
+      },
+    },
+    actions: {
+      cancel: 'Cancel',
+      confirm: 'Confirm',
+      close: 'Close',
+      logout: 'Log out',
+      back: 'Back',
+      next: 'Next',
+      retry: 'Retry',
+      save: 'Save',
+      delete: 'Delete',
+      comingSoonTitle: 'Coming soon',
+      comingSoonBody: 'This section is being polished. Check back shortly!',
+    },
+    feedback: {
+      success: 'Success',
+      error: 'Error',
+      warning: 'Warning',
+      info: 'Information',
+    },
+    notAvailable: 'N/A',
+    versus: 'vs',
+  },
+  auth: {
+    login: {
+      appName: 'Arcane Football',
+      tagline: 'Professional Scouting Platform',
+      title: 'Sign in',
+      inputs: {
+        email: 'Email',
+        password: 'Password',
+      },
+      forgot: 'Forgot password?',
+      forgotTitle: 'Forgot password',
+      forgotMessage: 'Password reset will be available shortly.',
+      forgotConfirm: 'OK',
+      button: 'Sign in',
+      noAccount: 'Don’t have an account?',
+      signupCta: 'Create an account',
+      testCredentials: 'Test: admin@arcane.com / (demo password provided separately)',
+      toasts: {
+        missingFields: 'Please fill every field',
+        success: 'Signed in successfully!',
+        invalidCredentials: 'Invalid email or password',
+        network: 'Server connection error',
+        generic: 'Something went wrong',
+      },
+    },
+    signup: {
+      title: 'Create an account',
+      subtitle: 'Join the Arcane platform',
+      inputs: {
+        firstName: 'First name',
+        lastName: 'Last name',
+        email: 'Email',
+        password: 'Password',
+        confirmPassword: 'Confirm password',
+      },
+      placeholders: {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'club@arcane.gg',
+        password: '••••••••',
+        confirmPassword: '••••••••',
+      },
+      errors: {
+        mismatch: 'Passwords do not match',
+        generic: 'An error occurred while creating the account',
+      },
+      button: 'Create my account',
+      haveAccount: 'Already registered? Sign in',
+    },
+  },
+  aiTools: {
+    index: {
+      header: {
+        title: 'ArkaneIndex',
+      },
+      hero: {
+        title: 'AI talent score',
+        subtitle:
+          'Real-time player analysis using Arcane criteria (technical, physical, mental, tactical, potential…).',
+      },
+      search: {
+        title: 'Search a player',
+        placeholder: 'Enter the player ID',
+        button: 'Analyze',
+        errors: {
+          generic: 'Unable to fetch the index for this player.',
+        },
+      },
+      scoreCard: {
+        globalScore: 'Overall score',
+        lastUpdated: 'Last update',
+        notAvailable: 'Unavailable',
+        sourceLabel: 'Source',
+        sourceFallback: 'ai-service',
+      },
+      breakdown: {
+        title: 'Scoring breakdown',
+        empty: {
+          title: 'No detailed data',
+          description:
+            'Enable ArkaneIndex in the backend to display technical, physical and tactical components.',
+        },
+        fallbackName: 'Unknown dimension',
+        fallbackDescription: 'No description provided by the AI engine.',
+      },
+    },
+  },
+  dashboard: {
+    loading: 'Loading dashboard…',
+    hero: {
+      greeting: 'Welcome back,',
+      level: 'Level {{level}}',
+      xp: '{{current}} / {{next}} XP',
+      defaultName: 'Arcane Scout',
+    },
+    stats: {
+      cards: [
+        {
+          key: 'reports',
+          title: 'Reports',
+          trendLabel: 'vs last week',
+        },
+        {
+          key: 'players',
+          title: 'Players scouted',
+          trendLabel: 'this month',
+        },
+        {
+          key: 'matches',
+          title: 'Matches attended',
+          trendLabel: 'this week',
+        },
+        {
+          key: 'xp',
+          title: 'Total XP',
+          trendLabel: 'today',
+        },
+      ],
+    },
+    quickActions: {
+      title: 'Quick actions',
+      items: [
+        { icon: 'add-circle', label: 'New report', target: 'CreateReport', variant: 'primary' },
+        { icon: 'search', label: 'Global Search', target: 'GlobalSearch' },
+        { icon: 'analytics', label: 'View analytics', target: 'Analytics' },
+        { icon: 'sparkles', label: 'AI assistant', target: 'AI' },
+        { icon: 'flag', label: 'Training camps', target: 'Camps' },
+      ],
+    },
+    player: {
+      profileTitle: 'Profile summary',
+      profileNameLabel: 'Name',
+      profilePositionLabel: 'Position',
+      profileAgeLabel: 'Age',
+      performanceTitle: 'Performance',
+      sessionsTitle: 'Training sessions',
+      distanceLabel: 'Distance',
+      durationLabel: 'Duration',
+      maxSpeedLabel: 'Max speed',
+      viewAllLabel: 'View all',
+      viewSessionsCta: 'View sessions',
+      emptySessions: 'No sessions available',
+      notProvided: 'Not provided',
+      shareButton: 'Share my profile',
+      shareTitle: 'Share my profile',
+      sharePlaceholder: 'Action coming soon',
+      braceletTitle: 'QC Band bracelet',
+      braceletIosLabel: 'iOS live',
+      braceletIosOnlyLabel: 'iOS only',
+      braceletStateUnsupported: 'Live bracelet available on iOS',
+      braceletStateDisconnected: 'Bracelet disconnected',
+      braceletStateConnecting: 'Connecting...',
+      braceletStateConnected: 'Bracelet connected',
+      braceletStateError: 'Bracelet unavailable',
+      braceletBatteryLabel: 'Battery',
+      braceletStepsLabel: 'Steps',
+      braceletDistanceLabel: 'Distance',
+      braceletHrLabel: 'HR',
+      braceletLastSyncLabel: 'Sync',
+      braceletConnectCta: 'Connect',
+      braceletConnectingCta: 'Connecting...',
+      braceletRefreshCta: 'Refresh',
+      braceletOpenCta: 'My bracelet',
+      braceletAndroidCta: 'View sessions',
+    },
+    ai: {
+      sectionTitle: 'AI insights',
+      cardTitle: 'Top talent recommendations',
+      subtitle: 'Powered by Arcane AI',
+      descriptionWithData: 'AI identified {{count}} promising players from your scouting criteria.',
+      descriptionEmpty: 'Start scouting to unlock AI-powered insights.',
+      cta: 'Get AI insights',
+    },
+    challenge: {
+      title: 'Today’s challenge',
+      button: 'Complete challenge',
+      xpLabel: '+{{xp}} XP',
+      sample: {
+        title: 'Complete 3 scouting reports',
+        description: 'Submit three detailed reports today',
+      },
+    },
+    activity: {
+      title: 'Recent activity',
+      viewAll: 'View all',
+      samples: [
+        {
+          id: 'act-1',
+          icon: 'document-text',
+          iconColor: '#E4FF3B',
+          title: 'Report created',
+          description: 'New report for a U19 striker',
+          timestamp: '2 hours ago',
+        },
+        {
+          id: 'act-2',
+          icon: 'people',
+          iconColor: '#3B82F6',
+          title: 'Player scouted',
+          description: 'Added to your database',
+          timestamp: '5 hours ago',
+        },
+        {
+          id: 'act-3',
+          icon: 'football',
+          iconColor: '#10B981',
+          title: 'Match attended',
+          description: 'Scouting session completed',
+          timestamp: '1 day ago',
+        },
+        {
+          id: 'act-4',
+          icon: 'trophy',
+          iconColor: '#F59E0B',
+          title: 'Achievement unlocked',
+          description: 'Earned “Expert Scout” badge',
+          timestamp: '2 days ago',
+        },
+        {
+          id: 'act-5',
+          icon: 'trending-up',
+          iconColor: '#06B6D4',
+          title: 'Stats updated',
+          description: 'Performance metrics recalculated',
+          timestamp: '3 days ago',
+        },
+      ],
+    },
+    matches: {
+      title: 'Upcoming matches',
+      viewAll: 'View all',
+      vs: 'vs',
+      samples: [
+        { id: 'match-1', homeTeam: 'FC Barcelona', awayTeam: 'Real Madrid', date: 'Tomorrow', time: '20:00' },
+        { id: 'match-2', homeTeam: 'Manchester United', awayTeam: 'Liverpool', date: 'Saturday', time: '15:00' },
+        { id: 'match-3', homeTeam: 'Bayern Munich', awayTeam: 'Dortmund', date: 'Sunday', time: '18:30' },
+      ],
+    },
+  },
+  profile: {
+    header: {
+      title: 'My profile',
+      subtitle: 'Fine-tune your Arcane professional identity',
+      stats: {
+        reports: 'Reports',
+        players: 'Players',
+        success: 'Success',
+        rating: 'Rating',
+      },
+    },
+    quickSettings: {
+      title: 'Quick settings',
+      notifications: {
+        title: 'Push notifications',
+        subtitle: 'Receive alerts for new reports',
+      },
+      darkMode: {
+        title: 'Dark mode',
+        subtitle: 'Easier on the eyes at night',
+      },
+      haptics: {
+        title: 'Haptic feedback',
+        subtitle: 'Vibration on interactions',
+      },
+    },
+    logout: {
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirm: 'Logout',
+    },
+    menu: {
+      settings: 'Settings',
+      membership: 'Membership',
+      passport: 'My Passport',
+      account: 'Account settings',
+      subscription: 'Subscription',
+      privacy: 'Privacy & security',
+      support: 'Help & support',
+      about: 'About Arcane',
+      logout: 'Logout',
+    },
+    cards: {
+      subscriptionComingSoon: 'Full subscription management will be available on mobile shortly.',
+      privacyComingSoon: 'Advanced privacy controls are coming soon.',
+      supportComingSoon: 'Help center integration is on the way.',
+    },
+    about: {
+      message: 'Arcane Football \nVersion 1.0.0 • 2025 \nAll rights reserved.',
+    },
+    language: {
+      title: 'Language & region',
+      description: 'French is enabled by default, but you can switch to English whenever you want.',
+      sync: 'Synced with your account',
+      realtime: 'Instant language change',
+    },
+    fallbacks: {
+      displayName: 'Arcane Scout',
+      username: 'arcane-user',
+      role: 'Arcane Scout',
+      avatarInitial: 'A',
+    },
+    alerts: {
+      editProfile: {
+        title: 'Coming soon',
+        description: 'Profile editing is rolling out very soon.',
+      },
+    },
+  },
+  membership: {
+    hero: {
+      eyebrow: 'Arcane premium programs',
+      title: 'Choose your level',
+      subtitle: 'Unlock AI, automation and 24/7 success support for your scouting operations.',
+    },
+    sections: {
+      benefitsTitle: 'Why Arcane?',
+      notesTitle: 'Pricing notes',
+    },
+    current: {
+      label: 'Your subscription',
+      tierFree: 'Free plan',
+      helper: 'Upgrade to a premium plan to activate ArkaneGPT, ArkaneIndex and automations.',
+      cancel: 'Cancel my subscription',
+      reactivate: 'Reactivate my subscription',
+      infoActive: 'Renewal scheduled on {{date}}',
+      infoCancelled: 'Premium access until {{date}}',
+      infoFree: 'You are currently using the Free version of Arcane.',
+      currentBadge: 'Current plan',
+      popularBadge: 'Popular',
+      moreFeatures: '+{{count}} additional benefits',
+    },
+    status: {
+      ACTIVE: 'Active',
+      TRIAL: 'Trial',
+      CANCELLED: 'Cancelled',
+      EXPIRED: 'Expired',
+      PAST_DUE: 'Past due',
+    },
+    billing: {
+      monthly: 'Monthly',
+      yearly: 'Yearly (-17%)',
+      monthlyHelper: 'Flexible billing, cancel anytime.',
+      yearlyHelper: 'Annual billing with discount and priority support.',
+      monthlyShort: '/month',
+      yearlyShort: '/year',
+    },
+    warnings: {
+      pricingFallback: 'Unable to fetch live pricing. Displayed amounts are indicative.',
+    },
+    modals: {
+      alreadyOnPlan: 'You are already on the {{plan}} plan.',
+      confirmTitle: 'Confirm change',
+      confirmDescription: 'Would you like to {{action}}?',
+      success: 'Your subscription has been updated.',
+      error: 'Unable to update your subscription right now.',
+      cancelTitle: 'Cancel subscription',
+      cancelMessage: 'You will lose premium capabilities at the end of the billing period. Continue?',
+      cancelConfirm: 'Yes, cancel',
+      cancelSuccess: 'Subscription cancelled',
+      cancelSuccessMessage: 'Premium access remains active until the end date.',
+      cancelError: 'Unable to cancel the subscription. Please try again later.',
+      reactivateSuccess: 'Reactivation in progress',
+      reactivateSuccessMessage: 'Your subscription will be reactivated shortly.',
+      reactivateError: 'Unable to reactivate right now.',
+    },
+    notes: [
+      'Pricing updated after the 2025 audit (+150% MRR).',
+      'Still 10x cheaper than a full Wyscout license.',
+      'Annual plans include a 17% discount.',
+      'Prices shown before VAT. Billing in EUR.',
+    ],
+    benefits: [
+      {
+        title: 'AI & automation',
+        description: 'ArkaneGPT, ArkaneIndex™, Voice-to-Report and AI matchmaking included from Gold.',
+      },
+      {
+        title: 'Reliability & support',
+        description: 'Dedicated account manager, 24/7 SLA and tailored onboarding for your team.',
+      },
+      {
+        title: 'Business control',
+        description: 'Multi-team kanban, deep analytics, webhooks and APIs for your internal stack.',
+      },
+    ],
+    actions: {
+      upgrade: 'upgrade to {{plan}} ({{price}})',
+      downgrade: 'switch back to {{plan}}',
+      contact: 'contact Arcane',
+    },
+    plans: {
+      FREE: {
+        name: 'Free',
+        tagline: 'Unlimited discovery',
+        description: 'Test Arcane with zero commitment.',
+        priceMonthly: 0,
+        priceYearly: 0,
+        currency: 'EUR',
+        features: [
+          'Access to public players',
+          'Basic player profile',
+          'Limited search (10/day)',
+          'Community support',
+        ],
+        cta: 'Get started',
+      },
+      BASIC: {
+        name: 'Basic',
+        tagline: 'Independent scouts',
+        description: 'Level up with Arcane reports and workflows.',
+        priceMonthly: 19.99,
+        priceYearly: 199.99,
+        currency: 'EUR',
+        features: [
+          'Up to 10 reports / month guaranteed',
+          'Personal kanban board',
+          'PDF export',
+          'Unlimited advanced search',
+          'Email support (48h)',
+        ],
+        cta: 'Upgrade to Basic',
+      },
+      GOLD: {
+        name: 'Gold',
+        tagline: 'Pro scouting units',
+        description: 'Unlock the full Arcane AI stack for your scouting team.',
+        priceMonthly: 49.99,
+        priceYearly: 499.99,
+        currency: 'EUR',
+        features: [
+          'ArkaneGPT & ArkaneIndex™',
+          'Unlimited reports & automations',
+          'AI matchmaking clubs <> players',
+          'Team collaboration (up to 3 seats)',
+          'API access (10,000 calls/month)',
+          'Priority support (24h)',
+        ],
+        cta: 'Upgrade to Gold',
+      },
+      PRO: {
+        name: 'Pro',
+        tagline: 'Global agencies',
+        description: 'Everything you need to scale a multi-country agency.',
+        priceMonthly: 149,
+        priceYearly: 1488,
+        currency: 'EUR',
+        features: [
+          'Unlimited seats & advanced roles',
+          'AI video analysis & auto detection',
+          'Webhooks & custom integrations',
+          'Advanced analytics dashboards',
+          'Dedicated account manager',
+          '99.9% SLA & premium support',
+        ],
+        cta: 'Upgrade to Pro',
+      },
+      ENTERPRISE: {
+        name: 'Enterprise',
+        tagline: 'Tailor-made programs',
+        description: 'Custom deployments for federations, leagues and groups.',
+        priceMonthly: 999,
+        priceYearly: 9999,
+        currency: 'EUR',
+        features: [
+          'Dedicated infrastructure & SSO',
+          'GDPR compliance + yearly audit',
+          'On-site training',
+          'Custom feature development',
+          'Unlimited API usage',
+          '24/7 support with 99.95% SLA',
+        ],
+        cta: 'Contact Arcane',
+      },
+    },
+  },
+  autoScout: {
+    hero: {
+      title: 'AutoScout AI',
+      subtitle: 'Automated report generation powered by artificial intelligence',
+    },
+    wizard: {
+      header: {
+        title: 'AutoScout AI',
+        stepLabel: 'Step {{current}} of {{total}}',
+      },
+      navigation: {
+        continue: 'Continue',
+        generate: 'Generate report',
+      },
+      template: {
+        title: 'Select report template',
+        subtitle: 'Choose the analysis type that fits your need',
+        loading: 'Loading templates…',
+      },
+      config: {
+        title: 'Configure the report',
+        subtitle: 'Select a player and optionally a match to analyze',
+        playerLabel: 'Player *',
+        playerPlaceholder: 'Select a player',
+        searchPlaceholder: 'Search players…',
+        cancel: 'Cancel',
+        matchLabel: 'Match (optional)',
+        matchHint: 'Pick the match you want the AI to focus on',
+        matchPlaceholder: 'Select a match (optional)',
+        contextLabel: 'Custom context (optional)',
+        contextHint: 'Add specific focus areas or instructions',
+        contextPlaceholder: 'Ex: focus on defensive traits and suitability as holding midfielder.',
+        autoSaveLabel: 'Auto-save report',
+        autoSaveHint: 'Automatically saves once the report is generated',
+      },
+      alerts: {
+        cost: {
+          title: 'Generate the report?',
+          message: 'This will cost roughly $0.02-0.03 using GPT-4.',
+          cancel: 'Cancel',
+          confirm: 'Generate',
+        },
+        rateLimit: {
+          title: 'Rate limit reached',
+          message: 'You reached the hourly limit of reports. Please try again later.',
+          confirm: 'OK',
+        },
+        failure: {
+          title: 'Generation failed',
+          message: 'Unable to generate the report. Please retry.',
+          cancel: 'Cancel',
+          retry: 'Retry',
+        },
+        save: {
+          successTitle: 'Success',
+          successMessage: 'Report saved successfully.',
+          errorTitle: 'Error',
+          errorMessage: 'Unable to save the report. Please try again later.',
+        },
+        exitPreview: {
+          title: 'Leave the preview?',
+          message: 'Going back will discard this generated report.',
+          cancel: 'Cancel',
+          confirm: 'Go back',
+        },
+      },
+      progress: {
+        title: 'Generating report',
+        initializing: 'Initializing pipeline…',
+        timeEstimate: 'Estimated time remaining: {{seconds}} s',
+        poweredBy: 'Powered by GPT-4',
+        stages: {
+          fetching: {
+            label: 'Fetching data',
+            description: 'Collecting stats and performance history',
+            message: 'Fetching player statistics…',
+          },
+          generating: {
+            label: 'AI analysis',
+            description: 'Arcane AI produces insights and narrative',
+            message: 'AI analysis in progress…',
+          },
+          scoring: {
+            label: 'Quality scoring',
+            description: 'Coherence checks and final scoring',
+            message: 'Evaluating report quality…',
+          },
+          complete: {
+            label: 'Complete',
+            description: 'Report is ready',
+            message: 'Report ready!',
+          },
+        },
+      },
+      preview: {
+        summary: 'Summary',
+        sections: {
+          technical: 'Technical skills',
+          tactical: 'Tactical awareness',
+          physical: 'Physical profile',
+          mental: 'Mental & leadership',
+        },
+        ratings: {
+          overall: 'Overall rating',
+          potential: 'Potential',
+        },
+        recommendations: 'Recommendations',
+        comparable: 'Comparable players',
+        metadata: {
+          generated: 'Generated on {{date}}',
+          model: 'Model: {{model}}',
+        },
+        actions: {
+          discard: 'Discard',
+          regenerate: 'Regenerate',
+          save: 'Save',
+        },
+        alerts: {
+          discard: {
+            title: 'Discard this report?',
+            message: 'This action cannot be undone.',
+            cancel: 'Cancel',
+            confirm: 'Discard',
+          },
+          regenerate: {
+            title: 'Regenerate report?',
+            message: 'The current report will be replaced by a new one.',
+            cancel: 'Cancel',
+            confirm: 'Regenerate',
+          },
+          lowQuality: {
+            title: 'Low quality warning',
+            message: 'This report has a low score. Save it anyway?',
+            cancel: 'Cancel',
+            confirm: 'Save anyway',
+          },
+        },
+        sectionDetails: {
+          strengths: 'Strengths',
+          weaknesses: 'Areas to improve',
+          details: 'Details',
+        },
+      },
+      quality: {
+        modalTitle: 'Quality score breakdown',
+        grades: {
+          S: 'Exceptional',
+          A: 'Excellent',
+          B: 'Good',
+          C: 'Fair',
+          D: 'Needs improvement',
+        },
+        breakdown: {
+          dataCompleteness: {
+            label: 'Data completeness',
+            description: 'Depth and reliability of source data',
+          },
+          insightDepth: {
+            label: 'Insight depth',
+            description: 'Quality and precision of AI insights',
+          },
+          technicalAccuracy: {
+            label: 'Technical accuracy',
+            description: 'Correctness of technical evaluations',
+          },
+          actionability: {
+            label: 'Actionability',
+            description: 'Practical value of recommendations',
+          },
+        },
+      },
+    },
+    history: {
+      title: 'AutoScout history',
+      subtitle: 'Your latest AI-generated scouting reports',
+      loading: 'Loading reports…',
+      filters: {
+        tabs: {
+          all: 'All',
+          saved: 'Saved',
+          draft: 'Drafts',
+        },
+      },
+      statuses: {
+        saved: 'Saved',
+        draft: 'Draft',
+      },
+      alerts: {
+        deleteTitle: 'Delete this report?',
+        deleteMessage: 'This action cannot be undone.',
+        cancel: 'Cancel',
+        confirm: 'Delete',
+        successTitle: 'Success',
+        successMessage: 'Operation successful',
+        close: 'Close',
+        errorTitle: 'Error',
+        errorMessage: 'An error occurred',
+        viewTitle: 'Report preview',
+        viewMessage: 'Opening report for {{player}}',
+        exportTitle: 'Export report',
+        exportMessage: 'Export will be available very soon.',
+      },
+      empty: {
+        title: 'No reports yet',
+        description: 'Generate an AutoScout report to populate this history.',
+        cta: 'Create a report',
+      },
+      errors: {
+        load: 'Unable to load report history.',
+        noPlayer: 'No player available. Add a player to access the history.',
+      },
+    },
+  },
+  matches: {
+    header: {
+      title: 'Matches',
+    },
+    search: {
+      placeholder: 'Search for a match, a club...',
+    },
+    status: {
+      scheduled: 'Scheduled',
+      live: 'LIVE',
+      halfTime: 'Half-time',
+      completed: 'Completed',
+      postponed: 'Postponed',
+      cancelled: 'Cancelled',
+    },
+    filters: {
+      all: 'All',
+      scheduled: 'Scheduled',
+      live: 'Live',
+      completed: 'Completed',
+    },
+    empty: {
+      search: 'No matches found for this search',
+      default: 'No matches available',
+    },
+    competition: {
+      friendly: 'Friendly match',
+    },
+  },
+  players: {
+    header: {
+      title: 'Players',
+    },
+    layout: {
+      title: 'Scouted Players',
+      subtitle: 'Manage prospects, watchlists, and trending talents',
+    },
+    search: {
+      placeholder: 'Search players, clubs, positions...',
+    },
+    cards: {
+      overall: 'Overall',
+      position: 'Position',
+      foot: 'Preferred foot',
+      league: 'League',
+      value: 'Market value',
+      goals: 'Goals',
+      assists: 'Assists',
+    },
+    stats: {
+      totalLabel: 'Total players',
+      watchlistLabel: 'On watchlist',
+      delta: {
+        month: 'this month',
+        today: 'today',
+        stableMonth: 'No change this month',
+        stableToday: 'No change today',
+      },
+    },
+    filters: {
+      all: 'All',
+      position: 'Position',
+      league: 'League',
+      trending: 'Trending',
+      contextAll: 'All positions',
+    },
+    sections: {
+      allPlayers: 'All players',
+      sort: 'Sort',
+    },
+    empty: {
+      title: 'No players found',
+    },
+  },
+  ai: {
+    header: {
+      title: 'AI Assistant',
+    },
+    hero: {
+      title: 'ARCANE AI',
+      subtitle: 'Your intelligent football scouting assistant',
+    },
+    quickChat: {
+      title: 'Quick Chat',
+      placeholder: 'Ask me anything about scouting...',
+      responseLabel: 'ArkaneGPT',
+      fallbackResponse: 'I don\'t have an answer available at the moment, try again with more context.',
+      errorMessage: 'Unable to get an AI response. Check your connection or try again later.',
+    },
+    features: {
+      title: 'AI Features',
+      cards: {
+        arkaneMatch: {
+          title: 'ArkaneMatch AI',
+          description: 'Find scouts using conversational AI',
+        },
+        arkaneGPT: {
+          title: 'ARCANE GPT',
+          description: 'Chat with AI for insights and analysis',
+        },
+        arkaneIndex: {
+          title: 'ARCANE Index',
+          description: 'Advanced player search and recommendations',
+        },
+        marketValue: {
+          title: 'Market Value AI',
+          description: 'AI-powered player market valuation',
+        },
+        smartScout: {
+          title: 'SmartScout AI',
+          description: 'Smart suggestions and autocomplete for reports',
+        },
+        autoScout: {
+          title: 'AutoScout AI',
+          description: 'Generate comprehensive AI-powered scouting reports',
+        },
+        comparison: {
+          title: 'Player Comparison',
+          description: 'Compare players using AI',
+        },
+      },
+    },
+    conversations: {
+      title: 'Recent Conversations',
+      empty: {
+        title: 'No recent conversations',
+        subtitle: 'Start chatting with ARCANE AI to see your history',
+      },
+    },
+    usage: {
+      title: 'AI Usage',
+      stats: {
+        queries: 'Queries',
+        reportsAnalyzed: 'Reports Analyzed',
+      },
+    },
+  },
+  home: {
+    header: {
+      login: 'Login',
+      userFallback: 'User',
+    },
+    hero: {
+      badge: 'REDEFINING FOOTBALL',
+      title: 'EMPOWERING',
+      subtitle: 'FOOTBALL',
+      tagline: 'Through',
+      performance: 'performance',
+      precision: 'precision',
+      and: 'and',
+      ambition: 'bold ambition',
+      ctaAuth: 'Explore Players',
+      ctaGuest: 'Start Your Journey',
+    },
+    stats: {
+      elitePlayers: 'Elite Players',
+      topClubs: 'Top Clubs',
+      successRate: 'Success Rate',
+    },
+    services: {
+      title: 'OUR SERVICES',
+      subtitle: 'Comprehensive solutions for modern football',
+      playerManagement: {
+        title: 'Player Management',
+        description: 'End-to-end career development with personalized strategies',
+      },
+      performanceAnalytics: {
+        title: 'Performance Analytics',
+        description: 'AI-powered tracking and insights for peak performance',
+      },
+      globalNetwork: {
+        title: 'Global Network',
+        description: 'Connect with elite clubs and scouts worldwide',
+      },
+    },
+    cta: {
+      badge: 'JOIN THE ELITE',
+      title: 'Ready to Elevate?',
+      description: 'Join the elite network of players, scouts, and clubs',
+      button: 'Get Started Now',
+    },
+    footer: {
+      copyright: '© 2025 Arcane Football GmbH. All rights reserved.',
+    },
+  },
+  settings: {
+    title: 'Settings',
+    sections: {
+      appearance: {
+        title: 'Appearance',
+        theme: {
+          title: 'Theme',
+          subtitle: 'Choose app theme',
+          options: {
+            light: 'Light',
+            dark: 'Dark',
+            system: 'System',
+          },
+        },
+      },
+      language: {
+        title: 'Language',
+        subtitle: 'App language',
+        description: 'Choose interface language',
+        options: {
+          fr: 'Français',
+          en: 'English',
+        },
+      },
+      notifications: {
+        title: 'Notifications',
+        push: {
+          title: 'Push notifications',
+          subtitle: 'Receive alerts',
+        },
+        matchReminders: {
+          title: 'Match reminders',
+          subtitle: 'Alerts before matches',
+        },
+      },
+      data: {
+        title: 'Data',
+        clearCache: {
+          title: 'Clear cache',
+          subtitle: 'Free up space',
+          alertTitle: 'Clear cache',
+          alertMessage: 'This will delete all temporary data. Continue?',
+          successTitle: 'Success',
+          successMessage: 'Cache cleared successfully',
+          errorTitle: 'Error',
+          errorMessage: 'Unable to clear cache',
+        },
+      },
+      about: {
+        title: 'About',
+        version: {
+          title: 'Version',
+          value: '1.0.0',
+        },
+        terms: {
+          title: 'Terms of Service',
+          subtitle: 'Read the TOS',
+        },
+        privacy: {
+          title: 'Privacy Policy',
+          subtitle: 'Data management',
+        },
+      },
+    },
+    profile: {
+      defaultName: 'User',
+      defaultEmail: 'email@example.com',
+      editProfile: 'Edit profile',
+    },
+    logout: {
+      button: 'Logout',
+      alertTitle: 'Logout',
+      alertMessage: 'Are you sure you want to logout?',
+      cancel: 'Cancel',
+      confirm: 'Logout',
+    },
+  },
+  marketplace: {
+    header: {
+      title: 'Scout Marketplace',
+      subtitle: 'Find expert scouts for your club',
+    },
+    search: {
+      placeholder: 'Search scouts...',
+    },
+    filters: {
+      leagues: 'Leagues: {{count}}',
+      positions: 'Positions: {{count}}',
+      maxBudget: 'Max €{{amount}}/hr',
+      minRating: '{{rating}}+ ★',
+      verified: 'Verified',
+    },
+    favorites: {
+      title: 'Favorite scouts',
+      showAll: 'Show all',
+      onlyFavorites: 'Only favorites',
+    },
+    defaults: {
+      headline: 'Elite scouting profile',
+      position: 'Any position',
+      rate: 'Quote',
+    },
+    empty: {
+      title: 'No scouts found',
+      description: 'Try adjusting your filters or search criteria',
+    },
+    errors: {
+      loadListings: 'Failed to load scout listings. Please try again.',
+      toggleFavorite: 'Failed to update favorite. Please try again.',
+    },
+  },
+  voiceReport: {
+    header: {
+      title: 'Voice to Report',
+    },
+    toasts: {
+      recordingStarted: {
+        title: 'Recording Started',
+        message: 'Speak your scouting report',
+      },
+      recordingComplete: {
+        title: 'Recording Complete',
+        message: 'Tap "Process Recording" to generate report',
+      },
+      maxDuration: {
+        title: 'Max Duration Reached',
+        message: 'Recording stopped at 5 minutes',
+      },
+      processingComplete: {
+        title: 'Processing Complete',
+        message: 'Confidence: {{confidence}}%',
+      },
+      draftCreated: {
+        title: 'Report Draft Created',
+        message: 'Review and submit your report',
+      },
+    },
+    errors: {
+      startRecording: 'Failed to start recording. Please try again.',
+      stopRecording: 'Failed to stop recording. Please try again.',
+      noAudio: 'No audio recording found',
+      processingFailed: {
+        title: 'Processing Failed',
+        message: 'Failed to process voice recording. Please try again.',
+      },
+      noData: 'No data to generate report',
+    },
+    instructions: {
+      idle: 'Tap the microphone to start recording',
+      recording: 'Recording... Tap again to stop',
+      recorded: 'Recording saved. Process to generate report',
+      processing: 'Processing your voice recording...',
+    },
+    actions: {
+      process: 'Process Recording',
+      generate: 'Generate Report',
+    },
+    processing: {
+      message: 'Transcribing and analyzing...',
+    },
+    sections: {
+      warnings: 'Warnings',
+      suggestions: 'Suggestions',
+    },
+  },
+  gamification: {
+    hub: {
+      title: 'Gamification Hub',
+      subtitle: 'Track your progress and achievements',
+    },
+    stats: {
+      achievements: 'Achievements',
+      totalXP: 'Total XP',
+      streak: 'Streak',
+      validations: 'Validations',
+      daysUnit: 'days',
+    },
+    dailyChallenge: {
+      title: 'Daily Challenge',
+      empty: {
+        emoji: '🛌',
+        title: 'No challenge today',
+        subtitle: 'Come back later for bonus points',
+      },
+    },
+    quickActions: {
+      title: 'Quick Actions',
+      viewAchievements: 'View Achievements',
+      leaderboards: 'Leaderboards',
+      myBadges: 'My Badges',
+    },
+    recentUnlocks: {
+      title: 'Recently Unlocked',
+      seeAll: 'See All',
+    },
+  },
+  coaching: {
+    hub: {
+      title: 'Find Your Coach',
+      subtitle: 'Expert guidance for your football journey',
+    },
+    search: {
+      placeholder: 'Search coaches...',
+      sortOptions: {
+        rating: 'Highest rated',
+        priceLow: 'Price: low to high',
+        priceHigh: 'Price: high to low',
+        experience: 'Most experienced',
+      },
+    },
+    sections: {
+      featured: 'Featured Coaches',
+      all: 'All Coaches',
+      coachCount: 'coaches',
+    },
+    results: {
+      loading: 'Loading coaches...',
+      count: {
+        singular: 'Showing {{count}} coach',
+        plural: 'Showing {{count}} coaches',
+      },
+      filtersApplied: {
+        singular: '{{count}} filter applied',
+        plural: '{{count}} filters applied',
+      },
+      empty: {
+        title: 'No coaches found',
+        description: 'Try adjusting your filters or search query',
+        reset: 'Reset filters',
+      },
+    },
+    filters: {
+      title: 'Filters',
+      reset: 'Reset',
+      sections: {
+        coachingType: 'Coaching type',
+        rating: 'Minimum rating',
+        price: 'Max price per hour',
+        city: 'City',
+        languages: 'Languages',
+        remote: 'Remote sessions',
+      },
+      ratingSuffix: 'Stars',
+      priceSteps: [50, 100, 150, 200],
+      coachingTypes: [
+        { value: 'Tactics', label: 'Tactics' },
+        { value: 'Fitness', label: 'Fitness' },
+        { value: 'Mental', label: 'Mental' },
+        { value: 'Technical', label: 'Technical' },
+        { value: 'Video Analysis', label: 'Video analysis' },
+        { value: 'Goalkeeper', label: 'Goalkeeper' },
+        { value: 'Nutrition', label: 'Nutrition' },
+      ],
+    },
+    cta: {
+      becomeCoach: 'Become a Coach',
+      title: 'Become a coach',
+      description: 'Share your expertise and help players reach their potential',
+      button: 'Apply now',
+    },
+    error: {
+      message: 'Failed to load coaches',
+      retry: 'Try again',
+    },
+  },
+};
+
+export type ENTranslations = typeof en;

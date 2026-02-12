@@ -1,0 +1,295 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+      when: always
+    - when: never
+
+stages:
+  - build
+  - test
+  - qa
+  - deploy
+
+variables:
+  NODE_ENV: test
+  NPM_CONFIG_FUND: "false"
+  PLAYWRIGHT_BROWSERS_PATH: /cache/ms-playwright
+  SENTRY_VALIDATE: "true"
+  LOG_LEVEL: "debug"
+  CI_DEBUG_TRACE: "false"
+
+  # Performance optimizations
+  FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fast"
+  CACHE_COMPRESSION_LEVEL: "fast"
+  TRANSFER_METER_FREQUENCY: "5s"
+
+  # Node.js optimizations
+  NODE_OPTIONS: "--max-old-space-size=4096"
+  NPM_CONFIG_LOGLEVEL: "error"
+  NPM_CONFIG_PROGRESS: "false"
+
+  # Parallel execution
+  JEST_MAX_WORKERS: "4"
+  PLAYWRIGHT_WORKERS: "2"
+
+cache:
+  key:
+    files:
+      - backend/package-lock.json
+      - web/package-lock.json
+  paths:
+    - web/node_modules
+    - backend/node_modules
+    - .cache/ms-playwright
+  policy: pull-push
+  when: on_success
+
+# Template pour le logging
+.setup_logging:
+  before_script:
+    - mkdir -p logs
+    - export LOG_FILE="logs/${CI_JOB_NAME}_${CI_COMMIT_SHORT_SHA}.log"
+    - echo "=== Job ${CI_JOB_NAME} started at $(date -u +\"%Y-%m-%dT%H:%M:%SZ\") ===" | tee -a $LOG_FILE
+    - echo "Pipeline ID - ${CI_PIPELINE_ID}" | tee -a $LOG_FILE
+    - echo "Commit - ${CI_COMMIT_SHORT_SHA}" | tee -a $LOG_FILE
+    - echo "Branch - ${CI_COMMIT_REF_NAME}" | tee -a $LOG_FILE
+  after_script:
+    - echo "=== Job ${CI_JOB_NAME} finished at $(date -u +\"%Y-%m-%dT%H:%M:%SZ\") ===" | tee -a logs/${CI_JOB_NAME}_${CI_COMMIT_SHORT_SHA}.log || true
+
+build_backend:
+  stage: build
+  image: node:20-bullseye
+  extends: .setup_logging
+  script:
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Building backend..." | tee -a $LOG_FILE
+    - npm run build --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Build completed successfully" | tee -a $LOG_FILE
+  artifacts:
+    when: always
+    paths:
+      - backend/dist
+      - backend/node_modules
+      - logs/
+    expire_in: 1 week
+
+build_web:
+  stage: build
+  image: node:20-bullseye
+  extends: .setup_logging
+  script:
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Building web..." | tee -a $LOG_FILE
+    - npm run build --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Build completed successfully" | tee -a $LOG_FILE
+  artifacts:
+    when: always
+    paths:
+      - web/.next
+      - web/node_modules
+      - logs/
+    expire_in: 1 week
+
+build_docker_images:
+  stage: build
+  image: docker:24.0.6
+  services:
+    - docker:24.0.6-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  script:
+    - docker build -f Dockerfile.backend -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" .
+    - docker build -f Dockerfile.web -t "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA" .
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+unit_test_backend:
+  stage: test
+  image: node:20-bullseye
+  extends: .setup_logging
+  needs:
+    - build_backend
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+      variables:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: postgres
+  variables:
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+    SUPABASE_URL: http://localhost:9999
+    SUPABASE_SERVICE_KEY: local-service-key
+    SUPABASE_STORAGE_BUCKET: arcane-media
+  script:
+    - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
+    - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
+    - (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
+    - echo "Applying database policies..." | tee -a $LOG_FILE
+    - |
+      if psql postgresql://postgres:postgres@postgres:5432/postgres -Atc "select 1 from pg_namespace where nspname='auth'" | grep -q 1; then
+        psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+      else
+        echo "Skipping supabase/policies.sql in CI: auth schema not present on vanilla postgres service." | tee -a $LOG_FILE
+      fi
+    - echo "Running backend tests with coverage..." | tee -a $LOG_FILE
+    - npm run test:cov --prefix backend 2>&1 | tee -a $LOG_FILE
+    - echo "Tests completed" | tee -a $LOG_FILE
+    - echo "Generating coverage summary..." | tee -a $LOG_FILE
+    - cat backend/coverage/coverage-summary.json 2>&1 | tee -a $LOG_FILE || echo "No coverage summary found"
+    - echo "Generating coverage badge data..." | tee -a $LOG_FILE
+    - chmod +x scripts/generate-coverage-badge.sh
+    - ./scripts/generate-coverage-badge.sh 2>&1 | tee -a $LOG_FILE || echo "Failed to generate badge data"
+  artifacts:
+    when: always
+    paths:
+      - backend/coverage
+      - logs/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage/cobertura-coverage.xml
+      dotenv: backend/coverage/coverage.env
+    expire_in: 1 week
+  coverage: '/Total coverage: (\d+\.?\d*)%/'
+
+unit_test_web:
+  stage: test
+  image: node:20-bullseye
+  extends: .setup_logging
+  needs:
+    - build_web
+  script:
+    - echo "Installing dependencies..." | tee -a $LOG_FILE
+    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Running linter..." | tee -a $LOG_FILE
+    - npm run lint --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Running web tests..." | tee -a $LOG_FILE
+    - npm run test:ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - echo "Tests completed" | tee -a $LOG_FILE
+  artifacts:
+    when: always
+    paths:
+      - web/coverage
+      - logs/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: web/coverage/cobertura-coverage.xml
+    expire_in: 1 week
+
+qa_job:
+  stage: qa
+  image: node:20-bullseye
+  needs:
+    - unit_test_backend
+    - unit_test_web
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+      variables:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: postgres
+        POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      command:
+        - postgres
+        - -c
+        - shared_buffers=256MB
+        - -c
+        - max_connections=100
+        - -c
+        - fsync=off
+        - -c
+        - synchronous_commit=off
+        - -c
+        - full_page_writes=off
+  variables:
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+    SUPABASE_URL: http://localhost:9999
+    SUPABASE_SERVICE_KEY: local-service-key
+    SUPABASE_STORAGE_BUCKET: arcane-media
+    NEXT_PUBLIC_API_URL: http://localhost:5000
+    API_PORT: "5000"
+    JWT_SECRET: test-jwt-secret-for-ci
+    JWT_EXPIRES_IN: 7d
+    ARCANE_DEMO_PASSWORD: ci-demo-password
+    NODE_ENV: test
+    NODE_OPTIONS: "--max-old-space-size=2048"
+    CI: "true"
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+  before_script:
+    - mkdir -p logs
+    - export LOG_FILE="logs/qa_job_${CI_COMMIT_SHORT_SHA}.log"
+  script:
+    - chmod +x scripts/ci/run-qa-tests.sh
+    - ./scripts/ci/run-qa-tests.sh
+  artifacts:
+    when: always
+    paths:
+      - tests/output/qa_report.md
+      - web/playwright-report
+      - logs/
+    expire_in: 1 week
+  timeout: 2h
+  # Resource limits for Kubernetes runners (when migrated)
+  # Uncomment when using K8s runners
+  # tags:
+  #   - kubernetes
+  # resource_group: qa-environment
+  # retry:
+  #   max: 1
+  #   when:
+  #     - runner_system_failure
+  #     - stuck_or_timeout_failure
+
+deploy_staging:
+  stage: deploy
+  image: docker:24.0.6
+  services:
+    - docker:24.0.6-dind
+  needs:
+    - qa_job
+  script:
+    - chmod +x scripts/deploy/deploy-staging.sh
+    - ./scripts/deploy/deploy-staging.sh
+  environment:
+    name: staging
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: false
+
+deploy_production:
+  stage: deploy
+  image: docker:24.0.6
+  services:
+    - docker:24.0.6-dind
+  needs:
+    - qa_job
+  script:
+    - chmod +x scripts/deploy/deploy-production.sh
+    - ./scripts/deploy/deploy-production.sh
+  environment:
+    name: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+      allow_failure: false

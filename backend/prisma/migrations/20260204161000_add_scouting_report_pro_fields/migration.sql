@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "scouting_reports"
+ADD COLUMN IF NOT EXISTS     "withBallAnalysis" TEXT,
+ADD COLUMN IF NOT EXISTS     "offBallAnalysis" TEXT,
+ADD COLUMN IF NOT EXISTS     "gameIntelligenceAnalysis" TEXT,
+ADD COLUMN IF NOT EXISTS     "attitudeAnalysis" TEXT,
+ADD COLUMN IF NOT EXISTS     "staffOpinion" TEXT,
+ADD COLUMN IF NOT EXISTS     "observedDominantFoot" TEXT,
+ADD COLUMN IF NOT EXISTS     "observedHeightCm" INTEGER,
+ADD COLUMN IF NOT EXISTS     "observedWeightKg" INTEGER,
+ADD COLUMN IF NOT EXISTS     "observedClubName" TEXT,
+ADD COLUMN IF NOT EXISTS     "sprint10mSec" DOUBLE PRECISION,
+ADD COLUMN IF NOT EXISTS     "sprint20mSec" DOUBLE PRECISION,
+ADD COLUMN IF NOT EXISTS     "sprint40mSec" DOUBLE PRECISION,
+ADD COLUMN IF NOT EXISTS     "vmaKmh" DOUBLE PRECISION;

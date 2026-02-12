@@ -1,0 +1,431 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                    ARCANE FOOTBALL - WEB ARCHITECTURE                        ║
+║                              EXECUTIVE SUMMARY                               ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                               📊 OVERVIEW                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Framework:         Next.js 15 (App Router)                                  │
+│  Language:          TypeScript                                               │
+│  Total Pages:       51 routes                                                │
+│  Total Components:  201 files                                                │
+│  API Endpoints:     150+                                                     │
+│  Documentation:     ~221 KB (7 files)                                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           🗂️  DOCUMENTATION FILES                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. WEB_ARCHITECTURE_MAP.md (42 KB)         ⭐ MAIN REFERENCE                │
+│     → Complete architecture mapping                                          │
+│     → 51 pages, 201 components, 150+ API endpoints                           │
+│                                                                              │
+│  2. WEB_FLOWS_AND_DIAGRAMS.md (24 KB)       🔄 USER FLOWS                   │
+│     → User authentication, scouting, AI features                             │
+│     → Marketplace, gamification, notifications                               │
+│                                                                              │
+│  3. WEB_QUICK_REFERENCE.md (15 KB)          ⚡ DEVELOPER GUIDE              │
+│     → Quick start, common tasks                                              │
+│     → API examples, troubleshooting                                          │
+│                                                                              │
+│  4. WEB_ARCHITECTURE_DIAGRAM.txt (37 KB)    📊 VISUAL DIAGRAM               │
+│     → ASCII architecture diagram                                             │
+│     → Component hierarchy, data flow                                         │
+│                                                                              │
+│  5. WEB_UX_REORGANIZATION.md (72 KB)        🎨 UX OPTIMIZATION              │
+│     → UX improvements & reorganization plan                                  │
+│                                                                              │
+│  6. WEB_AUDIT_REPORT.md (31 KB)             🔍 CODE AUDIT                   │
+│     → Code quality, performance, security                                    │
+│                                                                              │
+│  7. WEB_DOCUMENTATION_INDEX.md              📚 THIS INDEX                   │
+│     → Navigation guide for all docs                                          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            🏗️  ARCHITECTURE                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                           PAGES (51)                                 │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  Public:        7  (/login, /signup, /pricing, etc.)                │    │
+│  │  Core App:      15 (/dashboard, /players, /reports, etc.)           │    │
+│  │  AI Features:   9  (/ai, /auto-scout, /market-value, etc.)          │    │
+│  │  Marketplace:   3  (/marketplace, /arkane-match)                    │    │
+│  │  Other:         14 (/camps, /coaching, /achievements, etc.)         │    │
+│  │  Admin:         3  (/admin, /admin/data-sync, etc.)                 │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                       COMPONENTS (201)                               │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  UI Primitives:     30+  (button, card, modal, skeleton, etc.)      │    │
+│  │  Design Primitives: 20+  (Badge, Button, Card, Input, Typography)   │    │
+│  │  Composite:         40+  (Forms, Navigation, Feedback, DataDisplay) │    │
+│  │  Feature Components:100+ (auto-scout, marketplace, gamification)    │    │
+│  │  Charts:            4    (Line, Bar, Pie, Area)                     │    │
+│  │  Layout:            6    (Navbar, Sidebar, Header, etc.)            │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                     STATE MANAGEMENT                                 │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  Contexts:          4  (Auth, Favorites, Comparison, Language)      │    │
+│  │  Custom Hooks:      10+ (useSubscription, useGamification, etc.)    │    │
+│  │  Services:          4  (event, notification, passport, validation)  │    │
+│  │  Type Definitions:  11 (marketplace, auto-scout, etc.)              │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            🔌 API INTEGRATION                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  API Client:        /lib/api-client.ts (singleton, 150+ endpoints)           │
+│  Backend URL:       http://localhost:5001                                    │
+│  Auth:              Bearer JWT tokens                                        │
+│  Error Handling:    Sentry + Analytics + Subscription interceptor           │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    ENDPOINT CATEGORIES                               │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  Auth:                  5   (login, signup, logout, me, update)     │    │
+│  │  Players:               5   (CRUD + list)                           │    │
+│  │  Reports:               9   (CRUD + submit, review, filters)        │    │
+│  │  Matches:               8   (CRUD + assign, score, live)            │    │
+│  │  AI - Auto Scout:       10  (generate, templates, history, etc.)    │    │
+│  │  AI - ArkaneIndex:      3   (summary, index, matchmaking)           │    │
+│  │  AI - Market Value:     5   (valuation, trend, compare, ML ops)     │    │
+│  │  AI - Performance:      7   (predict, batch, accuracy, insights)    │    │
+│  │  AI - SmartScout:       5   (suggestions, autocomplete, index)      │    │
+│  │  Marketplace:           6   (search, reviews, favorites)            │    │
+│  │  ArkaneMatch:           4   (chat, conversations)                   │    │
+│  │  Voice-to-Report:       3   (process, languages, examples)          │    │
+│  │  Camps:                 5   (CRUD + registration)                   │    │
+│  │  Subscriptions:         5   (CRUD + tier management)                │    │
+│  │  Notifications (FCM):   11  (register, send, topics, reminders)     │    │
+│  │  Gamification:          5   (profile, achievements, badges, etc.)   │    │
+│  │  Events:                7   (CRUD + upcoming, myEvents)             │    │
+│  │  Kanban:                15  (boards, columns, cards + CRUD)         │    │
+│  │  Passport:              6   (CRUD + QR generation)                  │    │
+│  │  Analytics:             8   (overview, reports, trends)             │    │
+│  │  Other:                 10+ (clubs, users, dashboard, contact)      │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          ✨ SPECIAL FEATURES                                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  🔔 NOTIFICATIONS (Firebase Cloud Messaging)                                 │
+│     → Push notifications (web + mobile)                                      │
+│     → Device registration, topic subscriptions                               │
+│     → Match reminders, report notifications                                  │
+│                                                                              │
+│  🎫 PASSPORT (QR Player Profiles)                                            │
+│     → QR code generation                                                     │
+│     → Public shareable player profiles                                       │
+│     → Token-based access, verification status                                │
+│                                                                              │
+│  🤖 AI FEATURES (10+ features)                                               │
+│     → Auto Scout: AI-generated reports                                       │
+│     → SmartScout: AI-assisted report writing                                 │
+│     → ArkaneMatch: AI scout matching (conversational)                        │
+│     → Market Value AI: ML-based player valuation                             │
+│     → Performance Predictor: ML performance predictions                      │
+│     → PlayStyle DNA: ML player profiling                                     │
+│     → ArkaneGPT: Conversational AI                                           │
+│     → ArkaneIndex: AI player scoring                                         │
+│                                                                              │
+│  🎮 GAMIFICATION                                                             │
+│     → XP system & levels                                                     │
+│     → Achievements (locked/unlocked)                                         │
+│     → Badges (common → legendary)                                            │
+│     → Leaderboards (points, reports, streak)                                 │
+│     → Daily challenges                                                       │
+│                                                                              │
+│  💳 SUBSCRIPTION SYSTEM                                                      │
+│     → Tiers: FREE → BASIC → PRO → ENTERPRISE                                 │
+│     → Tier-based feature access                                              │
+│     → Upgrade modals on 403 errors                                           │
+│     → Plan management (cancel, reactivate, change)                           │
+│                                                                              │
+│  📅 CALENDAR & EVENTS                                                        │
+│     → Month view calendar                                                    │
+│     → Match scheduling                                                       │
+│     → Scout assignment                                                       │
+│     → Event types (match, training, camp, etc.)                              │
+│                                                                              │
+│  🛒 MARKETPLACE                                                              │
+│     → Scout listings & search                                                │
+│     → Scout profiles with stats                                              │
+│     → Reviews & ratings                                                      │
+│     → Favorites system                                                       │
+│                                                                              │
+│  🎓 COACHING HUB                                                             │
+│     → Coach profiles                                                         │
+│     → Session booking                                                        │
+│     → Rating & reviews                                                       │
+│     → Calendar integration                                                   │
+│                                                                              │
+│  🎪 CAMPS                                                                    │
+│     → Camp listings                                                          │
+│     → Registration system                                                    │
+│     → Parental consent & waivers                                             │
+│                                                                              │
+│  🎤 VOICE-TO-REPORT                                                          │
+│     → Voice recording                                                        │
+│     → Audio transcription                                                    │
+│     → Data extraction from speech                                            │
+│     → Waveform visualization                                                 │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         🎨 DESIGN & STYLING                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Theme:             Arcane Dark (custom)                                     │
+│  CSS Framework:     Tailwind CSS                                             │
+│  UI Library:        Radix UI + custom components                             │
+│  Icons:             Lucide React                                             │
+│  Animations:        Framer Motion                                            │
+│  Charts:            Recharts                                                 │
+│                                                                              │
+│  Color Palette:                                                              │
+│    • Dark:         #0A0E27 (main background)                                 │
+│    • Dark Border:  #1a1f3a (borders)                                         │
+│    • Accent:       #FFD700 (gold accent)                                     │
+│    • Grey:         #8B92AB (text grey)                                       │
+│                                                                              │
+│  Typography:        Inter (primary), Ananston (custom, not included)         │
+│  Responsive:        Mobile-first, breakpoints: sm, md, lg, xl, 2xl           │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                       🔐 AUTHENTICATION & SECURITY                            │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Auth Type:         JWT (Bearer tokens)                                      │
+│  Storage:           localStorage (arcane_auth_token, arcane_user)            │
+│  Token Validation:  Auto-validation on mount (GET /api/auth/me)              │
+│                                                                              │
+│  Roles:                                                                      │
+│    • PUBLIC         → No account required                                    │
+│    • PLAYER         → Player features                                        │
+│    • AGENT          → Agent features                                         │
+│    • CLUB_CONTACT   → Club features (marketplace, matching)                  │
+│    • SCOUT          → Scouting features (reports, AI tools)                  │
+│    • ADMIN          → Admin dashboard & analytics                            │
+│                                                                              │
+│  Route Protection:  useAuth() hook + AuthContext                             │
+│  Tier Protection:   useSubscription() + RequireTier component                │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         📱 RESPONSIVE & MOBILE                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Approach:          Mobile-first design                                      │
+│  Breakpoints:       sm (640px), md (768px), lg (1024px), xl (1280px)         │
+│  Navigation:        Hamburger menu (mobile), Navbar + Sidebar (desktop)      │
+│  Components:        Responsive variants (e.g., BottomNav for mobile)         │
+│  Images:            Next.js Image optimization (WebP/AVIF)                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                       🌍 INTERNATIONALIZATION (i18n)                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Implementation:    Custom LanguageContext                                   │
+│  Languages:         Français (fr) - primary                                  │
+│                     English (en)                                             │
+│                     Español (es)                                             │
+│                                                                              │
+│  Usage:             const { t } = useLanguage();                             │
+│                     t('key.path')                                            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      📈 ANALYTICS & MONITORING                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Analytics:         Google Analytics (custom events)                         │
+│  Error Tracking:    Sentry (with context & breadcrumbs)                      │
+│  Performance:       API call tracking (duration, status)                     │
+│  Logging:           Custom logger (/lib/logger.ts)                           │
+│                                                                              │
+│  Tracked Events:                                                             │
+│    • API calls (endpoint, method, duration, status)                          │
+│    • Errors (with context, tags, level)                                      │
+│    • User actions (custom events)                                            │
+│    • Page views (Next.js automatic)                                          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            🚀 PERFORMANCE                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Code Splitting:    Route-based (Next.js automatic)                          │
+│  Dynamic Imports:   Component-based lazy loading                             │
+│  Image Optimization: Next.js Image (WebP, AVIF, responsive)                  │
+│  Bundle Optimization: Tree-shaking, minification                             │
+│  Caching:           localStorage for static data                             │
+│  Service Worker:    PWA support (/firebase-messaging-sw.js)                  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              ♿ ACCESSIBILITY                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Target:            WCAG 2.1 AA compliance                                   │
+│  Features:          Skip links, ARIA labels, keyboard navigation             │
+│  Tools:             Contrast checker, accessibility hooks                    │
+│  Testing:           Manual testing + automated tools                         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                               🔧 TECH STACK                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Framework:         Next.js 15 (App Router)                                  │
+│  Language:          TypeScript                                               │
+│  Styling:           Tailwind CSS                                             │
+│  UI Components:     Radix UI                                                 │
+│  Icons:             Lucide React                                             │
+│  Animations:        Framer Motion                                            │
+│  Charts:            Recharts                                                 │
+│  Forms:             React Hook Form                                          │
+│  State:             React Context API + custom hooks                         │
+│  API:               REST (fetch) + custom client                             │
+│  Auth:              JWT (Bearer tokens)                                      │
+│  Notifications:     Firebase Cloud Messaging (FCM)                           │
+│  Analytics:         Google Analytics + Sentry                                │
+│  SEO:               Next.js Metadata API + JSON-LD                           │
+│  i18n:              Custom context (fr, en, es)                              │
+│  Testing:           Jest + React Testing Library + Playwright                │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          📁 PROJECT STRUCTURE                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  /web                                                                        │
+│  ├── /src                                                                    │
+│  │   ├── /app (51 pages)                                                    │
+│  │   ├── /components (201 components)                                       │
+│  │   ├── /contexts (4 contexts)                                             │
+│  │   ├── /hooks (10+ hooks)                                                 │
+│  │   ├── /lib (utilities, API client, Firebase, etc.)                       │
+│  │   ├── /services (4 services)                                             │
+│  │   ├── /types (11 type files)                                             │
+│  │   └── /styles (global CSS)                                               │
+│  ├── /public (static assets, service worker)                                │
+│  ├── next.config.ts                                                          │
+│  ├── tailwind.config.ts                                                      │
+│  └── tsconfig.json                                                           │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           🎯 KEY FEATURES                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ✅ Modern UI/UX with Arcane dark theme                                      │
+│  ✅ 10+ AI-powered features (AutoScout, SmartScout, ML models)               │
+│  ✅ Role-based dashboards (Player, Scout, Club, Admin)                       │
+│  ✅ Subscription-based access (4 tiers)                                      │
+│  ✅ Real-time notifications (FCM)                                            │
+│  ✅ Gamification system (XP, achievements, badges, leaderboards)             │
+│  ✅ Marketplace & AI matching                                                │
+│  ✅ Calendar & event management                                              │
+│  ✅ Coaching hub with bookings                                               │
+│  ✅ Player passports with QR codes                                           │
+│  ✅ Voice-to-report feature                                                  │
+│  ✅ Comprehensive analytics                                                  │
+│  ✅ Multi-language support (fr, en, es)                                      │
+│  ✅ Mobile-responsive design                                                 │
+│  ✅ WCAG 2.1 AA accessibility                                                │
+│  ✅ SEO optimized (meta tags, structured data)                               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         📚 DOCUMENTATION ACCESS                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Location:  /Users/lakhdari/Desktop/AppFoot/                                 │
+│                                                                              │
+│  Files:     WEB_ARCHITECTURE_MAP.md                                          │
+│             WEB_FLOWS_AND_DIAGRAMS.md                                        │
+│             WEB_QUICK_REFERENCE.md                                           │
+│             WEB_ARCHITECTURE_DIAGRAM.txt                                     │
+│             WEB_UX_REORGANIZATION.md                                         │
+│             WEB_AUDIT_REPORT.md                                              │
+│             WEB_DOCUMENTATION_INDEX.md                                       │
+│             WEB_ARCHITECTURE_SUMMARY.txt (this file)                         │
+│                                                                              │
+│  Total:     ~221 KB of documentation                                         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           🚀 QUICK START                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. Install dependencies:                                                    │
+│     cd /Users/lakhdari/Desktop/AppFoot/web                                   │
+│     npm install                                                              │
+│                                                                              │
+│  2. Configure environment:                                                   │
+│     cp .env.example .env.local                                               │
+│     # Edit .env.local with your values                                       │
+│                                                                              │
+│  3. Start development server:                                                │
+│     npm run dev                                                              │
+│                                                                              │
+│  4. Open browser:                                                            │
+│     http://localhost:3000                                                    │
+│                                                                              │
+│  5. Start backend (required):                                                │
+│     cd /Users/lakhdari/Desktop/AppFoot/backend                               │
+│     npm run start:dev                                                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          📞 NEED HELP?                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. Read WEB_DOCUMENTATION_INDEX.md (navigation guide)                       │
+│  2. Check WEB_QUICK_REFERENCE.md (common tasks & troubleshooting)            │
+│  3. Consult WEB_ARCHITECTURE_MAP.md (detailed reference)                     │
+│  4. Review WEB_FLOWS_AND_DIAGRAMS.md (user flows)                            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                         END OF ARCHITECTURE SUMMARY                          ║
+║                                                                              ║
+║                        Version: 1.0 | Date: 2025-11-16                       ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝

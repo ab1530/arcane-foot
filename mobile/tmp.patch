@@ -1,0 +1,65 @@
+*** Begin Patch
+*** Update File: mobile/src/screens/dashboard/__tests__/DashboardScreen.test.tsx
+@@
+-    mockApi.getDashboardStats.mockResolvedValueOnce({
+-      totalReports: 5,
+-      pendingReports: 1,
+-      totalPlayers: 10,
+-      upcomingMatches: 2,
+-    });
+-
+-    const { getByTestId, getByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
+-
+-    await waitFor(() => {
+-      expect(mockApi.getDashboardStats).toHaveBeenCalledTimes(1);
+-      expect(getByText('5')).toBeTruthy();
+-    });
+-
+-    mockApi.getDashboardStats.mockResolvedValueOnce({
+-      totalReports: 9,
+-      pendingReports: 4,
+-      totalPlayers: 20,
+-      upcomingMatches: 3,
+-    });
+-
+-    const scrollView = getByTestId('dashboard-scroll');
+-    await act(async () => {
+-      await scrollView.props.refreshControl.props.onRefresh();
+-    });
+-
+-    await waitFor(() => expect(mockApi.getDashboardStats).toHaveBeenCalledTimes(2));
+-    await waitFor(() => {
+-      const totalReportsValue = getByTestId('dashboard-stat-totalReports-value');
+-      expect(totalReportsValue.props.children).toBe(9);
+-    });
++    mockApi.getDashboardStats.mockResolvedValueOnce({
++      totalReports: 5,
++      pendingReports: 1,
++      totalPlayers: 10,
++      upcomingMatches: 2,
++    });
++
++    const { getByTestId, getByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
++
++    await waitFor(() => {
++      expect(mockApi.getDashboardStats).toHaveBeenCalledTimes(1);
++      expect(getByText('5')).toBeTruthy();
++    });
++
++    mockApi.getDashboardStats.mockResolvedValueOnce({
++      totalReports: 9,
++      pendingReports: 4,
++      totalPlayers: 20,
++      upcomingMatches: 3,
++    });
++
++    const scrollView = getByTestId('dashboard-scroll');
++    await act(async () => {
++      await scrollView.props.refreshControl.props.onRefresh();
++    });
++
++    await waitFor(() => expect(mockApi.getDashboardStats).toHaveBeenCalledTimes(2));
++    const totalReportsValue = getByTestId('dashboard-stat-totalReports-value');
++    expect(totalReportsValue.props.children).toBe(9);
+   });
+*** End Patch

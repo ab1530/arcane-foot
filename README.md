@@ -39,7 +39,8 @@
 │                        CLIENTS                               │
 ├──────────────┬──────────────┬──────────────┬────────────────┤
 │  iOS App     │ Android App  │   Web App    │ Admin Dashboard│
-│  (Flutter)   │  (Flutter)   │  (Flutter)   │   (Next.js)    │
+│ (React Native + Expo) │ (React Native + Expo) │   Next.js    │     Next.js    │
+│                       │                       │              │                │
 └──────────────┴──────────────┴──────────────┴────────────────┘
                             │
                             ▼
@@ -79,17 +80,24 @@
 - **Payments:** Stripe
 - **Push Notifications:** Firebase Cloud Messaging
 
-### Mobile & Web
-- **Framework:** Flutter 3.24+ (Dart)
-- **State Management:** Riverpod
-- **Architecture:** Clean Architecture (feature-first)
-- **Routing:** go_router
-- **HTTP Client:** Dio
-- **Local Storage:** flutter_secure_storage + shared_preferences
-- **Code Generation:** freezed + json_serializable
+### Mobile App
+- **Framework:** React Native + Expo (SDK 54)
+- **Language:** TypeScript
+- **Navigation:** React Navigation (stack + tabs)
+- **State Management:** React Context + Zustand (feature stores)
+- **Styling:** Arcane Design System (custom tokens, Glass components)
+- **Networking:** Axios + typed services, AsyncStorage for persistence
+- **Tooling:** Jest + Testing Library, Expo Dev Client, EAS builds
 
-### Admin Dashboard (Optional MVP)
-- **Framework:** Next.js 14 (App Router)
+### Web App
+- **Framework:** Next.js 15 (App Router)
+- **UI:** Tailwind CSS with Arcane palette, shadcn/ui components
+- **State/Data:** Server Components + React Query/Zustand per feature
+- **Animations:** Framer Motion, custom gradients/glow system
+- **Fonts:** Ananston + Inter (self-hosted)
+
+### Admin Dashboard (Optional)
+- **Framework:** Next.js 15 (separate workspace)
 - **UI Library:** shadcn/ui + Tailwind CSS
 - **State Management:** Zustand or React Context
 
@@ -106,7 +114,7 @@
 ### Prerequisites
 
 - **Node.js** >= 20.x
-- **Flutter** >= 3.24.x
+- **Expo CLI / React Native tooling** (Expo SDK 54, Xcode/Android Studio for simulators)
 - **PostgreSQL** >= 16.x (or Docker)
 - **Git**
 
@@ -150,33 +158,21 @@ npm run start:dev
 
 Backend will run on `http://localhost:3000`
 
-### 3. Setup Mobile (Flutter)
+### 3. Setup Mobile (React Native + Expo)
 
 ```bash
 cd mobile
 
-# Get dependencies
-flutter pub get
+# Install dependencies
+npm install
 
-# Run code generation (freezed, json_serializable)
-flutter pub run build_runner build --delete-conflicting-outputs
+# Start Expo
+npm start
 
-# Create .env file
-cat > .env << EOF
-API_BASE_URL=http://localhost:3000
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-EOF
-
-# Run on iOS Simulator
-flutter run -d ios
-
-# Or Android Emulator
-flutter run -d android
-
-# Or Web
-flutter run -d chrome --web-port 8080
+# i = iOS simulator, a = Android emulator, r = reload
 ```
+
+Set `EXPO_PUBLIC_API_URL` in `mobile/app.json` or use `.env` files (Expo loads `EXPO_PUBLIC_*` automatically). Default points to `http://localhost:3000/api`.
 
 ### 4. Setup Database with Docker (Alternative)
 
@@ -209,16 +205,17 @@ arcane-platform/
 │   │   └── seed.ts         # Seed data
 │   └── test/               # E2E tests
 │
-├── mobile/                  # Flutter App
-│   ├── lib/
-│   │   ├── core/           # App-wide utilities
-│   │   ├── features/       # Feature modules (Clean Architecture)
-│   │   │   ├── auth/
-│   │   │   ├── players/
-│   │   │   ├── scouting/
-│   │   │   └── ...
-│   │   └── shared/         # Shared widgets
-│   └── test/
+├── mobile/                  # React Native + Expo App
+│   ├── App.tsx
+│   ├── src/
+│   │   ├── design/        # Arcane design system (tokens, components)
+│   │   ├── navigation/    # Root + tab navigators
+│   │   ├── screens/       # Feature modules (AI, coaching, marketplace, etc.)
+│   │   ├── services/      # Axios clients
+│   │   └── contexts/      # Auth + theme providers
+│   └── jest.setup.js      # Mobile test config
+│
+├── design/                  # Shared JSON tokens (web & mobile)
 │
 ├── admin-dashboard/         # Next.js Admin (Optional)
 │   ├── src/
@@ -239,6 +236,20 @@ arcane-platform/
 ├── .env.example
 └── README.md
 ```
+
+### Mobile/Web Parity Roadmap
+
+We track the end-to-end alignment between the React Native app and the Next.js web client in `docs/MOBILE_PARITY_PLAN.md`.  
+High-level phases:
+
+1. **Foundations** – Docs, design tokens, auth/state cleanup (in progress).  
+2. **Navigation & Discoverability** – Expose every implemented RN screen (AI, marketplace, coaching, passport, gamification).  
+3. **API Integration** – Wire missing service calls (coaching, gamification, passport, auto-scout, etc.) to the NestJS API.  
+4. **UX Harmonisation** – Apply Arcane 2.0 components everywhere and retire legacy theme/constants.  
+5. **QA & Demo Readiness** – Expand automated tests + demo scripts covering both clients.
+
+Use the roadmap doc to see actionable tasks, owners, and status.  
+Navigation details + points d’entrée mobile : `docs/NAVIGATION_MAP.md`.
 
 ---
 
@@ -264,14 +275,11 @@ npm run test:cov
 ```bash
 cd mobile
 
-# Unit & widget tests
-flutter test
+# Unit tests (Jest + Testing Library)
+npm test
 
-# Integration tests
-flutter test integration_test/
-
-# Generate coverage
-flutter test --coverage
+# Run a specific suite
+npm test -- --runTestsByPath src/screens/auth/__tests__/LoginScreen.test.tsx
 ```
 
 ---
@@ -323,16 +331,13 @@ railway link
 railway up
 ```
 
-### Flutter Web (Vercel)
+### Web (Next.js on Vercel)
 
 ```bash
-# Build web
-cd mobile
-flutter build web --release
-
-# Deploy with Vercel CLI
-cd build/web
-vercel --prod
+cd web
+npm install
+npm run build
+npx vercel --prod
 ```
 
 ### Mobile Apps
@@ -397,6 +402,49 @@ flutter build appbundle --release
 
 ---
 
+## ✅ QA Status & Tooling
+
+- **Statut QA global :** plateforme stable (tests backend & lint web verts), couverture partielle en cours sur IA, Supabase et surfaces web/mobile.
+
+### QA locale rapide
+
+```bash
+# 1. Lancer l’infra locale (Postgres, Redis, AI service, backend, web)
+docker-compose up --build
+
+# 2. Appliquer les migrations Prisma et les policies Supabase
+cd backend
+npx prisma migrate deploy
+psql $DATABASE_URL -f ../supabase/policies.sql
+
+# 3. Exécuter les tests backend
+npm run test -- --runInBand
+
+# 4. Frontend : lint + Playwright (Chromium)
+cd ../web
+npm run lint
+npm run test:e2e
+
+# 5. Générer le rapport QA complet
+npm run test:ci
+```
+
+> ℹ️ Configure les secrets Stripe, Supabase et Sentry avant de lancer les tests. Voir [QA.md](QA.md) pour le détail des variables requises.
+
+### Variables critiques à définir
+
+```env
+SUPABASE_URL=...
+SUPABASE_SERVICE_KEY=...
+STRIPE_SECRET_KEY=...
+SENTRY_DSN=...
+SENTRY_ENVIRONMENT=staging
+SENTRY_VALIDATE=true
+OPENAI_API_KEY=
+```
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -424,7 +472,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 ## 🙏 Acknowledgments
 
 - NestJS Team
-- Flutter Team
+- Expo & React Native Team
 - Prisma Team
 - All open-source contributors
 

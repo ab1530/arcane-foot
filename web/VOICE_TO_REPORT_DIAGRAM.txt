@@ -1,0 +1,409 @@
+# Voice-to-Report System Architecture
+
+## 🎯 High-Level Overview
+
+┌─────────────────────────────────────────────────────────────────┐
+│                         SCOUT USER                              │
+│                            👤                                   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (Next.js + React)                   │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              VoiceRecorder Component                     │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────────┐    │  │
+│  │  │ Microphone │  │  Waveform  │  │   Recording    │    │  │
+│  │  │ Permission │→ │ Visualizer │→ │   Controls     │    │  │
+│  │  └────────────┘  └────────────┘  └────────────────┘    │  │
+│  │         │                                  │             │  │
+│  │         ↓                                  ↓             │  │
+│  │  ┌─────────────────────────────────────────────────┐   │  │
+│  │  │        MediaRecorder API (Browser)              │   │  │
+│  │  │  ┌──────────┐      ┌──────────┐                │   │  │
+│  │  │  │ Audio In │  →   │ Blob Out │                │   │  │
+│  │  │  └──────────┘      └──────────┘                │   │  │
+│  │  └─────────────────────────────────────────────────┘   │  │
+│  │                          │                              │  │
+│  │                          ↓                              │  │
+│  │  ┌─────────────────────────────────────────────────┐   │  │
+│  │  │     API Client (processVoiceReport)             │   │  │
+│  │  │     FormData: audio + language                  │   │  │
+│  │  └─────────────────────────────────────────────────┘   │  │
+│  └──────────────────────────┬───────────────────────────────┘  │
+│                             │                                  │
+└─────────────────────────────┼──────────────────────────────────┘
+                              │ HTTP POST
+                              │ /api/voice-to-report/process
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    BACKEND (NestJS)                             │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │        Voice-to-Report Controller                        │  │
+│  │        POST /api/voice-to-report/process                 │  │
+│  └──────────────────┬───────────────────────────────────────┘  │
+│                     │                                           │
+│                     ↓                                           │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │        Voice-to-Report Service                           │  │
+│  │                                                          │  │
+│  │  Step 1: Transcribe Audio                               │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  OpenAI Whisper API                                │ │  │
+│  │  │  Input:  Audio file (webm/mp4/ogg)                │ │  │
+│  │  │  Output: Full transcription text                   │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  │                          ↓                              │  │
+│  │  Step 2: Extract Data                                   │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  OpenAI GPT-4 API                                  │ │  │
+│  │  │  Input:  Transcription                             │ │  │
+│  │  │  Output: Structured JSON                           │ │  │
+│  │  │  {                                                 │ │  │
+│  │  │    playerName: "John Doe",                         │ │  │
+│  │  │    position: "ST",                                 │ │  │
+│  │  │    technicalRating: 8,                             │ │  │
+│  │  │    ...                                             │ │  │
+│  │  │  }                                                 │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  │                          ↓                              │  │
+│  │  Step 3: Calculate Confidence                           │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  Analyze completeness of extracted data            │ │  │
+│  │  │  Return confidence score (0-1)                     │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  │                          ↓                              │  │
+│  │  Step 4: Generate Suggestions                           │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  Identify missing fields                           │ │  │
+│  │  │  Suggest improvements                              │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  └──────────────────┬───────────────────────────────────────┘  │
+│                     │                                           │
+└─────────────────────┼───────────────────────────────────────────┘
+                      │ JSON Response
+                      ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (Next.js + React)                   │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │        VoiceRecorder Component (State: COMPLETE)         │  │
+│  │                                                          │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │   TranscriptionDisplay                             │ │  │
+│  │  │   - Show full transcription                        │ │  │
+│  │  │   - Confidence indicator                           │ │  │
+│  │  │   - Edit option                                    │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  │                          ↓                              │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │   ExtractedDataPreview                             │ │  │
+│  │  │   - Show all extracted fields                      │ │  │
+│  │  │   - Confidence per field                           │ │  │
+│  │  │   - Edit individual fields                         │ │  │
+│  │  │   - Missing fields warning                         │ │  │
+│  │  │   - [Apply to Form] button                         │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  └──────────────────┬───────────────────────────────────────┘  │
+│                     │ User clicks "Apply to Form"              │
+│                     ↓                                           │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │        Scouting Report Form                              │  │
+│  │        (All fields pre-filled)                           │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  Player Name:     [John Doe]                       │ │  │
+│  │  │  Position:        [ST]                             │ │  │
+│  │  │  Technical:       [8/10]                           │ │  │
+│  │  │  Physical:        [9/10]                           │ │  │
+│  │  │  Mental:          [7/10]                           │ │  │
+│  │  │  Tactical:        [8/10]                           │ │  │
+│  │  │  Overall:         [8/10]                           │ │  │
+│  │  │  Strengths:       [Excellent positioning...]       │ │  │
+│  │  │  Weaknesses:      [Needs better passing...]        │ │  │
+│  │  │  Recommendation:  [SIGN]                           │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  │                          ↓                              │  │
+│  │           Scout reviews and submits                      │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+
+## 📊 State Flow Diagram
+
+┌─────────┐
+│  IDLE   │  Scout clicks "Start Recording"
+└────┬────┘
+     │
+     ↓  Browser requests microphone permission
+     │
+┌────┴────────┐
+│ RECORDING   │  Audio waveform animating, timer running
+└────┬────────┘  Max 3 minutes
+     │
+     ↓  Scout clicks "Stop" (or auto-stop at 3 min)
+     │
+┌────┴────────┐
+│  RECORDED   │  Audio saved as Blob, playback available
+└────┬────────┘
+     │
+     ↓  Scout clicks "Process Recording"
+     │
+┌────┴─────────┐
+│ PROCESSING   │  Uploading → Transcribing → Extracting
+└────┬─────────┘  Shows progress messages
+     │
+     ↓  Processing complete
+     │
+┌────┴────────┐
+│  COMPLETE   │  Shows transcription + extracted data
+└────┬────────┘
+     │
+     ↓  Scout clicks "Apply to Form"
+     │
+┌────┴────────┐
+│    FORM     │  All fields pre-filled
+│  POPULATED  │  Scout reviews and submits
+└─────────────┘
+
+## 🎨 Component Tree
+
+VoiceRecorder (Main Container)
+├── Header
+│   ├── Title: "Voice to Report"
+│   ├── Subtitle: "Create reports 10x faster"
+│   └── Close Button
+│
+├── Warnings (Conditional)
+│   ├── Browser Not Supported
+│   ├── Insecure Connection (HTTP)
+│   └── Error Display
+│
+├── Language Selector (State: idle)
+│   └── Dropdown: EN, ES, FR, DE, IT, PT
+│
+├── Recording State Display
+│   ├── State Icon
+│   │   ├── Mic (idle)
+│   │   ├── Pulsing Mic (recording)
+│   │   ├── Check (recorded/complete)
+│   │   └── Loader (processing)
+│   │
+│   ├── State Title & Description
+│   │
+│   ├── WaveformVisualizer
+│   │   └── 20 Animated Bars (Web Audio API)
+│   │       ├── Responsive to audio levels
+│   │       └── 60fps smooth animation
+│   │
+│   ├── Timer Display (recording/recorded)
+│   │   └── Format: MM:SS / 03:00
+│   │
+│   ├── File Size Display (recorded)
+│   │   └── Format: X.X MB
+│   │
+│   └── RecordingControls (State-based)
+│       ├── [idle]       → Start Button
+│       ├── [recording]  → Stop Button (pulsing red)
+│       ├── [recorded]   → Play, Re-record, Process
+│       ├── [processing] → Loading Spinner
+│       └── [complete]   → Success Message
+│
+├── TranscriptionDisplay (State: complete)
+│   ├── Header
+│   │   ├── Confidence Badge (High/Medium/Low)
+│   │   └── Actions (Copy, Edit)
+│   └── Content
+│       ├── Full transcription text
+│       └── Editable textarea (if editing)
+│
+├── ExtractedDataPreview (State: complete)
+│   ├── Header: "Extracted Data"
+│   ├── Field List
+│   │   └── For each field:
+│   │       ├── Label
+│   │       ├── Value
+│   │       ├── Confidence indicator
+│   │       └── Edit button
+│   ├── Missing Fields Warning
+│   └── Apply Button
+│
+└── Tips Section (State: idle)
+    ├── Best Practices List
+    └── Example Prompt
+
+## 🔄 Data Flow Detail
+
+┌─────────────┐
+│  User Voice │
+└──────┬──────┘
+       │
+       ↓
+┌──────────────────────┐
+│  Browser Audio Input │
+│  (getUserMedia)      │
+└──────┬───────────────┘
+       │
+       ↓
+┌──────────────────────┐
+│  MediaRecorder API   │
+│  - Captures audio    │
+│  - Creates chunks    │
+└──────┬───────────────┘
+       │
+       ↓
+┌──────────────────────┐
+│  Audio Blob          │
+│  (webm/ogg/mp4)      │
+└──────┬───────────────┘
+       │
+       ↓
+┌──────────────────────┐
+│  FormData            │
+│  - audio: Blob       │
+│  - language: "en"    │
+└──────┬───────────────┘
+       │
+       ↓
+┌──────────────────────┐
+│  HTTP POST Request   │
+│  /api/voice-to-report│
+└──────┬───────────────┘
+       │
+       ↓
+┌──────────────────────────┐
+│  Backend Processing      │
+│  1. Save temp file       │
+│  2. Send to Whisper API  │
+│  3. Get transcription    │
+│  4. Send to GPT-4 API    │
+│  5. Parse JSON response  │
+│  6. Calculate confidence │
+│  7. Generate suggestions │
+│  8. Delete temp file     │
+└──────┬───────────────────┘
+       │
+       ↓
+┌──────────────────────────┐
+│  JSON Response           │
+│  {                       │
+│    transcription,        │
+│    extractedData,        │
+│    confidence,           │
+│    suggestions           │
+│  }                       │
+└──────┬───────────────────┘
+       │
+       ↓
+┌──────────────────────────┐
+│  Frontend Updates        │
+│  - Show transcription    │
+│  - Show extracted fields │
+│  - Show confidence       │
+│  - Enable editing        │
+└──────┬───────────────────┘
+       │
+       ↓
+┌──────────────────────────┐
+│  User Reviews & Edits    │
+│  (if needed)             │
+└──────┬───────────────────┘
+       │
+       ↓
+┌──────────────────────────┐
+│  Apply to Form           │
+│  - Pre-fill all fields   │
+│  - User submits          │
+└──────────────────────────┘
+
+## 🎯 File Structure Tree
+
+web/
+├── src/
+│   ├── components/
+│   │   └── voice-to-report/
+│   │       ├── VoiceRecorder.tsx           ⭐ Main
+│   │       ├── WaveformVisualizer.tsx      📊 Viz
+│   │       ├── RecordingControls.tsx       🎮 Controls
+│   │       ├── TranscriptionDisplay.tsx    📝 Text
+│   │       ├── ExtractedDataPreview.tsx    📋 Data
+│   │       ├── index.ts                    📦 Exports
+│   │       └── README.md                   📚 Docs
+│   │
+│   ├── hooks/
+│   │   └── useVoiceRecorder.ts            🪝 Logic
+│   │
+│   ├── lib/
+│   │   ├── api-client.ts                  🌐 API (updated)
+│   │   └── browser-compatibility.ts       🔍 Utils
+│   │
+│   ├── types/
+│   │   └── voice-to-report.ts             📐 Types
+│   │
+│   └── app/
+│       └── reports/
+│           └── voice/
+│               └── page.tsx               🎬 Demo
+│
+├── VOICE_TO_REPORT_SUMMARY.md            📖 Summary
+├── VOICE_TO_REPORT_INTEGRATION.md        🔧 Guide
+├── VOICE_TO_REPORT_QUICKSTART.md         ⚡ Quick
+├── VOICE_TO_REPORT_FILES.txt             📁 List
+├── VOICE_TO_REPORT_DIAGRAM.txt           📊 This
+└── VOICE_TO_REPORT_DELIVERY.md           📦 Report
+
+## 🚀 Quick Start Flow
+
+Developer:
+1. Import component → 2. Add to JSX → 3. Handle onComplete
+
+User:
+1. Click voice button → 2. Record → 3. Process → 4. Apply
+
+Backend:
+1. Receive audio → 2. Transcribe → 3. Extract → 4. Return JSON
+
+## ✅ Success Path
+
+Scout opens form
+     ↓
+Clicks "Voice Report"
+     ↓
+Modal opens
+     ↓
+Clicks "Start Recording"
+     ↓
+Grants microphone permission
+     ↓
+Speaks for 1-2 minutes
+     ↓
+Clicks "Stop Recording"
+     ↓
+Reviews audio (optional play)
+     ↓
+Clicks "Process Recording"
+     ↓
+Waits 10-20 seconds
+     ↓
+Reviews transcription
+     ↓
+Reviews extracted data
+     ↓
+Edits if needed
+     ↓
+Clicks "Apply to Form"
+     ↓
+Form is pre-filled
+     ↓
+Scout submits report
+     ↓
+✅ Report saved in database
+
+Time: ~2 minutes (vs 10-15 minutes manual)
+Savings: 80-85% faster!
+
+---
+
+Created: November 2025
+Purpose: Visual documentation of Voice-to-Report system
+Version: 1.0.0

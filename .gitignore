@@ -20,6 +20,8 @@ lerna-debug.log*
 .env.production
 .env.test
 *.env
+.env.railway.template
+*.backup
 
 # ===== PRISMA =====
 prisma/migrations/**/migration.sql.bak
@@ -85,20 +87,56 @@ junit.xml
 *.dSYM.zip
 *.dSYM
 
-# ===== SECRETS & KEYS =====
+# ===== SECRETS & CREDENTIALS (CRITIQUE) =====
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+.env.staging
+.env.staging.local
+.env.development.local
+.env.test.local
+**/.env
+**/.env.local
+
+# Private keys & certificates
 *.pem
 *.key
+*.p8
 *.p12
+*.pfx
+*.cer
 *.jks
-credentials.json
-service-account.json
+
+# Service accounts & credentials
+credentials*.json
+firebase*.json
+service-account*.json
+*-service-account.json
+google-services.json
+GoogleService-Info.plist
 firebase-adminsdk-*.json
+
+# Secrets
+secrets/
+.secrets/
+*.secret
+*.secrets
 
 # ===== LOGS =====
 logs/
 *.log
 combined.log
 error.log
+http.log
+debug.log
+
+# CI/CD Artifacts
+aggregated_logs/
+pipeline-logs-*/
+tests/output/
 
 # ===== TEMP FILES =====
 tmp/
@@ -121,6 +159,63 @@ admin-dashboard/.next/
 admin-dashboard/out/
 admin-dashboard/.vercel
 
+# ===== EXPO / REACT NATIVE =====
+.expo/
+mobile/.expo/
+
+# ===== SUPABASE CLI =====
+.supabase/
+supabase/.temp/
+
 # ===== MISC =====
 .turbo/
 storybook-static/
+.github/SECRETS.txt
+
+# ===== LOCAL SNAPSHOT SAFETY =====
+# Demo credentials must never be committed.
+LOGIN_CREDENTIALS.md
+
+# Local-only debug output / artifacts
+backend/src/coverage-temp/
+backend/test-results.json
+backend/test-results*.json
+codex_pack/
+
+# TypeScript build metadata
+**/*.tsbuildinfo
+
+# Generated JS outputs from local TS runs (keep TS sources instead)
+backend/add-gold-sub.js
+backend/add-gold-sub.js.map
+backend/add-gold-sub.d.ts
+backend/debug-players.js
+backend/debug-players.js.map
+backend/debug-players.d.ts
+backend/run-migration.js
+backend/run-migration.js.map
+backend/run-migration.d.ts
+backend/test-achievements.js
+backend/test-achievements.js.map
+backend/test-achievements.d.ts
+
+backend/prisma/**/*.js
+backend/prisma/**/*.js.map
+backend/prisma/**/*.d.ts
+backend/test/**/*.js
+backend/test/**/*.js.map
+backend/test/**/*.d.ts
+
+# Keep these scripts as sources (TS); ignore compiled outputs only.
+backend/scripts/backfill-club-logos.js
+backend/scripts/backfill-club-logos.js.map
+backend/scripts/backfill-club-logos.d.ts
+backend/scripts/generate-demo-data.js
+backend/scripts/generate-demo-data.js.map
+backend/scripts/generate-demo-data.d.ts
+backend/scripts/setup-test-users.js
+backend/scripts/setup-test-users.js.map
+backend/scripts/setup-test-users.d.ts
+
+# Misc local logs
+web/log*.txt
