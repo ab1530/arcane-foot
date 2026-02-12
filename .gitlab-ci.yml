@@ -95,12 +95,16 @@ build_web:
 build_docker_images:
   stage: build
   image: docker:24.0.6
+  variables:
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKER_BUILDKIT: "0"
   retry:
     max: 2
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
   script:
+    - docker info
     - docker build -f Dockerfile.backend -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" .
     - docker build -f Dockerfile.web -t "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA" .
   rules:
