@@ -143,7 +143,12 @@ unit_test_backend:
     - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
     - (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
     - echo "Applying database policies..." | tee -a $LOG_FILE
-    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+    - |
+      if psql postgresql://postgres:postgres@postgres:5432/postgres -Atc "select 1 from pg_namespace where nspname='auth'" | grep -q 1; then
+        psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+      else
+        echo "Skipping supabase/policies.sql in CI: auth schema not present on vanilla postgres service." | tee -a $LOG_FILE
+      fi
     - echo "Running backend tests with coverage..." | tee -a $LOG_FILE
     - npm run test:cov --prefix backend 2>&1 | tee -a $LOG_FILE
     - echo "Tests completed" | tee -a $LOG_FILE
