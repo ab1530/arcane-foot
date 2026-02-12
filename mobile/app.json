@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "mobile",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "192.168.1.64": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        },
+        "NSBluetoothAlwaysUsageDescription": "Arcane a besoin de Bluetooth pour se connecter à votre tracker GPS.",
+        "NSBluetoothPeripheralUsageDescription": "Arcane utilise le Bluetooth pour synchroniser vos données GPS."
+      },
+      "bundleIdentifier": "com.arcane.football",
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json",
+      "package": "com.arcane.football"
+    },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#E4FF3B",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Arcane Football"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E4FF3B",
+          "sounds": []
+        }
+      ],
+      "./plugins/withQCBand"
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

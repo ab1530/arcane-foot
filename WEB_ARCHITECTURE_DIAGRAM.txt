@@ -1,0 +1,305 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     ARCANE FOOTBALL - WEB ARCHITECTURE                        ║
+║                            Next.js 15 (App Router)                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT BROWSER                                   │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │
+                                 │ HTTPS
+                                 │
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│                           NEXT.JS APP ROUTER                                  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  /app/layout.tsx (Root Layout)                                         │  │
+│  │  ├── ClientProviders                                                   │  │
+│  │  │   ├── AuthProvider (authentication state)                           │  │
+│  │  │   ├── FavoritesProvider (favorites state)                           │  │
+│  │  │   ├── ComparisonProvider (player comparison)                        │  │
+│  │  │   ├── LanguageProvider (i18n)                                       │  │
+│  │  │   └── UpgradeModalProvider (subscription modals)                    │  │
+│  │  ├── Navbar (persistent navigation)                                    │  │
+│  │  └── {children} (page content)                                         │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                           PAGES (51 routes)                             │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │  PUBLIC ROUTES                                                          │ │
+│  │  ├── / (landing)                                                        │ │
+│  │  ├── /about, /contact, /services, /pricing                             │ │
+│  │  ├── /login, /signup                                                    │ │
+│  │  └── /passport/[token] (public QR access)                               │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │  CORE APP ROUTES (authenticated)                                       │ │
+│  │  ├── /dashboard (role-based dashboard)                                 │ │
+│  │  ├── /profile, /settings, /favorites                                   │ │
+│  │  ├── /players, /players/[id], /players/compare                         │ │
+│  │  ├── /reports, /reports/[id], /reports/voice, /reports/templates       │ │
+│  │  ├── /calendar, /calendar/[id]                                         │ │
+│  │  └── /clubs/[id]                                                        │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │  AI FEATURES (subscription-gated)                                      │ │
+│  │  ├── /ai (AI Hub)                                                       │ │
+│  │  ├── /ai/arkane-gpt (conversational AI)                                │ │
+│  │  ├── /ai/arkane-index (player scoring)                                 │ │
+│  │  ├── /ai/arkane-scout (AI scout)                                       │ │
+│  │  ├── /auto-scout (AI report generation)                                │ │
+│  │  ├── /smart-scout (AI-assisted scouting)                               │ │
+│  │  ├── /market-value (ML valuation)                                      │ │
+│  │  ├── /performance-predictor (ML predictions)                           │ │
+│  │  └── /playstyle-dna (ML profiling)                                     │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │  MARKETPLACE & MATCHING                                                │ │
+│  │  ├── /marketplace (scout marketplace)                                  │ │
+│  │  ├── /marketplace/scouts/[id] (scout profile)                          │ │
+│  │  └── /arkane-match (AI scout matching)                                 │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │  OTHER FEATURES                                                        │ │
+│  │  ├── /camps, /camps/[id], /my-camps                                    │ │
+│  │  ├── /coaching, /coaching/[id], /coaching/my-bookings                  │ │
+│  │  ├── /achievements, /achievements/badges, /achievements/leaderboards   │ │
+│  │  └── /market, /analytics                                               │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │  ADMIN ROUTES (ADMIN role only)                                       │ │
+│  │  ├── /admin (admin dashboard)                                          │ │
+│  │  ├── /admin/data-sync                                                  │ │
+│  │  └── /admin/player-validation                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          COMPONENTS (201 files)                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  UI PRIMITIVES (Base components)                                       │  │
+│  │  ├── button, card, modal, loader, skeleton                             │  │
+│  │  ├── animated-counter, animated-badge, gradient-text                   │  │
+│  │  └── glass-card, premium-card, 3d-card                                 │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  DESIGN SYSTEM PRIMITIVES                                              │  │
+│  │  ├── Badge, Button, Card, Input, Typography                            │  │
+│  │  └── All with Arcane theme variants                                    │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  COMPOSITE COMPONENTS                                                  │  │
+│  │  ├── Forms (Form, FormField, Radio, Switch, Checkbox)                  │  │
+│  │  ├── Navigation (Tabs, Breadcrumbs, Sidebar, BottomNav)                │  │
+│  │  ├── Feedback (Modal, Toast, AlertDialog, Popover, Tooltip)            │  │
+│  │  ├── DataDisplay (Table, DataGrid, List)                               │  │
+│  │  └── Progress (ProgressBar, CircularProgress, Spinner, Skeleton)       │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  FEATURE COMPONENTS (100+ components)                                  │  │
+│  │  ├── auto-scout/ (8 components)                                        │  │
+│  │  ├── smart-scout/ (5 components)                                       │  │
+│  │  ├── arkane-match/ (7 components)                                      │  │
+│  │  ├── voice-to-report/ (5 components)                                   │  │
+│  │  ├── marketplace/ (10+ components)                                     │  │
+│  │  ├── market-value/ (6 components)                                      │  │
+│  │  ├── playstyle-dna/ (8 components)                                     │  │
+│  │  ├── performance-predictor/ (9 components)                             │  │
+│  │  ├── gamification/ (7 components)                                      │  │
+│  │  ├── coaching/ (6 components)                                          │  │
+│  │  ├── calendar/ (4 components)                                          │  │
+│  │  ├── charts/ (4 components: Line, Bar, Pie, Area)                      │  │
+│  │  └── layout/ (6 components: Navbar, Sidebar, Header, etc.)             │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        STATE MANAGEMENT & DATA FLOW                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  CONTEXTS (React Context API)                                          │  │
+│  │  ├── AuthContext         → User authentication & session               │  │
+│  │  ├── FavoritesContext    → Favorite players management                 │  │
+│  │  ├── ComparisonContext   → Player comparison state                     │  │
+│  │  └── LanguageContext     → i18n (fr, en, es)                           │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  CUSTOM HOOKS (10+ hooks)                                              │  │
+│  │  ├── useSubscription     → Subscription tier management                │  │
+│  │  ├── useSubscriptionGuard → Tier-based access control                  │  │
+│  │  ├── useGamification     → Achievements & badges                       │  │
+│  │  ├── useNotifications    → FCM notifications                           │  │
+│  │  ├── useCoaching         → Coaching sessions                           │  │
+│  │  ├── useEvents           → Calendar events                             │  │
+│  │  ├── usePassport         → Player passport                             │  │
+│  │  ├── useVoiceRecorder    → Voice recording                             │  │
+│  │  └── useData             → Generic data fetching                       │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  LOCAL STORAGE (persistence)                                           │  │
+│  │  ├── arcane_auth_token   → JWT token                                   │  │
+│  │  └── arcane_user         → User data (cached)                          │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                       API INTEGRATION (150+ endpoints)                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  API CLIENT (singleton instance)                                       │  │
+│  │  ├── Base: /lib/api-client.ts                                          │  │
+│  │  ├── URL: process.env.NEXT_PUBLIC_API_URL (default: localhost:5001)   │  │
+│  │  ├── Auth: Bearer token from localStorage                              │  │
+│  │  ├── Error handling: Sentry + Analytics                                │  │
+│  │  └── Subscription interceptor (403 → upgrade modal)                    │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  ENDPOINT GROUPS                                                       │  │
+│  │  ├── Auth (5): login, signup, logout, me, updateProfile               │  │
+│  │  ├── Players (5): get, getById, create, update, delete                │  │
+│  │  ├── Reports (9): CRUD + submit, review, getByPlayer/Scout/Match      │  │
+│  │  ├── Matches (8): CRUD + assignScout, updateScore, upcoming, live     │  │
+│  │  ├── Clubs (2): get, getById                                          │  │
+│  │  ├── Users (1): get (with role filter)                                │  │
+│  │  ├── AI - Auto Scout (10): generate, bulk, enhance, templates, etc.  │  │
+│  │  ├── AI - ArkaneIndex (3): summary, index, matchmaking                │  │
+│  │  ├── AI - Market Value (5): valuation, trend, compare, health, retrain│ │
+│  │  ├── AI - Performance Predictor (7): predict, batch, accuracy, etc.  │  │
+│  │  ├── AI - SmartScout (5): suggestions, autocomplete, insights, index │  │
+│  │  ├── Marketplace (6): search, getById, reviews, favorites            │  │
+│  │  ├── ArkaneMatch (4): chat, getConversation, clear, getAll           │  │
+│  │  ├── Voice-to-Report (3): process, languages, examples               │  │
+│  │  ├── Camps (5): get, getById, register, myRegistrations, cancel      │  │
+│  │  ├── Subscriptions (5): get, create, cancel, reactivate, changeTier  │  │
+│  │  ├── Notifications (11): FCM device reg, send, topics, match/report  │  │
+│  │  ├── Gamification (5): profile, achievements, badges, leaderboard    │  │
+│  │  ├── Events (7): CRUD + upcoming, myEvents                           │  │
+│  │  ├── Kanban (15): boards, columns, cards + CRUD operations           │  │
+│  │  ├── Passport (6): create, getByPlayer/Token, verify, delete, QR     │  │
+│  │  ├── Analytics (8): overview, players, clubs, reports, trends        │  │
+│  │  └── Dashboard (2): stats, upcomingMatches                           │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  SPECIALIZED API SERVICES (/lib/api/)                                  │  │
+│  │  ├── coaching.ts           → Coaching API (sessions, bookings)        │  │
+│  │  ├── events.ts             → Events API (calendar)                    │  │
+│  │  ├── gamification.ts       → Gamification API                         │  │
+│  │  ├── market-value.ts       → Market Value AI API                      │  │
+│  │  ├── performance-predictor.ts → Performance Predictor API             │  │
+│  │  ├── playstyle-dna.ts      → PlayStyle DNA API                        │  │
+│  │  └── smart-scout.ts        → SmartScout API                           │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            SPECIAL FEATURES                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  NOTIFICATIONS (Firebase Cloud Messaging)                              │  │
+│  │  ├── /lib/firebase.ts              → Firebase config                   │  │
+│  │  ├── /public/firebase-messaging-sw.js → Service worker                 │  │
+│  │  ├── /hooks/useNotifications.ts    → React hook                        │  │
+│  │  ├── /services/notificationService.ts → Service layer                  │  │
+│  │  └── Features: Push, device reg, topics, match/report notifications   │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  PASSPORT (QR Player Profiles)                                         │  │
+│  │  ├── /app/passport/[token]/page.tsx → Public view                      │  │
+│  │  ├── /hooks/usePassport.ts         → React hook                        │  │
+│  │  ├── /services/passportService.ts  → Service layer                     │  │
+│  │  └── Features: QR generation, public URLs, verification                │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  SUBSCRIPTION SYSTEM                                                   │  │
+│  │  ├── Tiers: FREE → BASIC → PRO → ENTERPRISE                            │  │
+│  │  ├── /hooks/useSubscription.ts     → Subscription hook                 │  │
+│  │  ├── /hooks/useSubscriptionGuard.ts → Access control                   │  │
+│  │  ├── /components/UpgradeModal.tsx  → Upgrade modal                     │  │
+│  │  ├── /lib/api-interceptor.ts       → 403 error handler                 │  │
+│  │  └── Features: Tier checks, upgrade prompts, plan management           │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  GAMIFICATION                                                          │  │
+│  │  ├── XP & Levels (points-based progression)                            │  │
+│  │  ├── Achievements (locked/unlocked)                                    │  │
+│  │  ├── Badges (common, rare, epic, legendary)                            │  │
+│  │  ├── Leaderboards (points, reports, streak)                            │  │
+│  │  ├── Daily Challenges                                                  │  │
+│  │  └── Streak Tracking                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      EXTERNAL INTEGRATIONS                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐   │
+│  │  Firebase (FCM)    │   │  Sentry            │   │  Google Analytics  │   │
+│  │  - Push notifs     │   │  - Error tracking  │   │  - User analytics  │   │
+│  │  - Cloud messaging │   │  - Performance     │   │  - Event tracking  │   │
+│  └────────────────────┘   └────────────────────┘   └────────────────────┘   │
+│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐   │
+│  │  Stripe (future)   │   │  Next.js Image     │   │  Tailwind CSS      │   │
+│  │  - Payments        │   │  - Optimization    │   │  - Styling         │   │
+│  │  - Subscriptions   │   │  - WebP/AVIF       │   │  - Responsive      │   │
+│  └────────────────────┘   └────────────────────┘   └────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           BACKEND CONNECTION                                  │
+└──────────────────────────────┬───────────────────────────────────────────────┘
+                               │
+                               │ REST API (JSON)
+                               │ Auth: Bearer JWT
+                               │
+┌──────────────────────────────▼───────────────────────────────────────────────┐
+│                        NESTJS BACKEND (Port 5001)                             │
+│  ├── /api/auth                 → Authentication                               │
+│  ├── /api/players              → Players management                           │
+│  ├── /api/scouting-reports     → Scouting reports                             │
+│  ├── /api/matches              → Matches & calendar                           │
+│  ├── /api/clubs                → Clubs                                        │
+│  ├── /api/auto-scout           → AI report generation                         │
+│  ├── /api/ai/*                 → AI features (Index, GPT, etc.)               │
+│  ├── /api/market-value         → ML valuation models                          │
+│  ├── /api/performance-predictor → ML performance models                       │
+│  ├── /api/smart-scout          → AI-assisted scouting                         │
+│  ├── /api/marketplace          → Scout marketplace                            │
+│  ├── /api/arkane-match         → AI scout matching                            │
+│  ├── /api/voice-to-report      → Voice transcription                          │
+│  ├── /api/notifications        → FCM notifications                            │
+│  ├── /api/gamification         → Achievements & gamification                  │
+│  ├── /api/events               → Calendar events                              │
+│  ├── /api/subscriptions        → Subscription management                      │
+│  ├── /api/passport             → Player passports                             │
+│  └── /api/analytics            → Analytics & reporting                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              TECH STACK                                       ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Framework:     Next.js 15 (App Router)                                      ║
+║  Language:      TypeScript                                                   ║
+║  Styling:       Tailwind CSS + custom Arcane theme                           ║
+║  UI Library:    Radix UI + custom components                                 ║
+║  Icons:         Lucide React                                                 ║
+║  Animations:    Framer Motion                                                ║
+║  Charts:        Recharts                                                     ║
+║  Forms:         React Hook Form                                              ║
+║  State:         React Context API + hooks                                    ║
+║  API:           REST (fetch) + custom client                                 ║
+║  Auth:          JWT (Bearer tokens)                                          ║
+║  Notifications: Firebase Cloud Messaging                                     ║
+║  Analytics:     Google Analytics + Sentry                                    ║
+║  SEO:           Next.js Metadata API + JSON-LD                               ║
+║  i18n:          Custom (fr, en, es)                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            PROJECT STATS                                      ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Total Pages:           51                                                   ║
+║  Total Components:      201                                                  ║
+║  Total API Endpoints:   150+                                                 ║
+║  Contexts:              4                                                    ║
+║  Custom Hooks:          10+                                                  ║
+║  Services:              4                                                    ║
+║  Type Definitions:      11                                                   ║
+║  Feature Modules:       20+                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+

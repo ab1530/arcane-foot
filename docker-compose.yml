@@ -1,10 +1,8 @@
 version: '3.9'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: arcane_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: arcane_user
@@ -20,10 +18,8 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache (optional)
   redis:
     image: redis:7-alpine
-    container_name: arcane_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -36,10 +32,69 @@ services:
       timeout: 3s
       retries: 5
 
-  # PgAdmin (optional - for database management)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    environment:
+      PORT: 8000
+    ports:
+      - "8000:8000"
+
+  ai-market-value:
+    build:
+      context: ./ai-service/market-value
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://arcane_user:arcane_pass@postgres:5432/arcane_db
+    ports:
+      - "8001:8001"
+    volumes:
+      - market_value_models:/app/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+      ai-market-value:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://arcane_user:arcane_pass@postgres:5432/arcane_db
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_MARKET_VALUE_URL: http://ai-market-value:8001
+    ports:
+      - "3001:3000"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://backend:3000/api
+    ports:
+      - "3000:3000"
+
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: arcane_pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@arcane.com
@@ -54,12 +109,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
   pgadmin_data:
-    driver: local
-
-networks:
-  default:
-    name: arcane_network
+  market_value_models:

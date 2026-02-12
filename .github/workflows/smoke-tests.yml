@@ -1,0 +1,169 @@
+name: Smoke Tests
+
+on:
+  workflow_run:
+    workflows: ["Deploy to Production"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  smoke-tests:
+    name: Run Smoke Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Set API URL
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ] || [ "${{ github.event.workflow_run.head_branch }}" == "main" ]; then
+            echo "API_URL=${{ secrets.PROD_API_URL }}" >> $GITHUB_ENV
+            echo "ENVIRONMENT=production" >> $GITHUB_ENV
+          else
+            echo "API_URL=${{ secrets.STAGING_API_URL }}" >> $GITHUB_ENV
+            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+          fi
+
+      - name: Health Check
+        run: |
+          echo "🏥 Running health check on ${{ env.ENVIRONMENT }}..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.API_URL }}/api/health)
+          if [ $RESPONSE -eq 200 ]; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed with status $RESPONSE"
+            exit 1
+          fi
+
+      - name: Readiness Check
+        run: |
+          echo "🔍 Checking readiness..."
+          RESPONSE=$(curl -s ${{ env.API_URL }}/api/health/ready)
+          READY=$(echo $RESPONSE | jq -r '.ready')
+          if [ "$READY" == "true" ]; then
+            echo "✅ Service is ready"
+          else
+            echo "❌ Service not ready: $RESPONSE"
+            exit 1
+          fi
+
+      - name: Liveness Check
+        run: |
+          echo "💓 Checking liveness..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.API_URL }}/api/health/live)
+          if [ $RESPONSE -eq 200 ]; then
+            echo "✅ Service is alive"
+          else
+            echo "❌ Liveness check failed"
+            exit 1
+          fi
+
+      - name: Database Connectivity Test
+        run: |
+          echo "🗄️ Testing database connectivity..."
+          HEALTH=$(curl -s ${{ env.API_URL }}/api/health)
+          DB_STATUS=$(echo $HEALTH | jq -r '.checks.database')
+          if [ "$DB_STATUS" == "up" ]; then
+            echo "✅ Database is connected"
+          else
+            echo "❌ Database connection failed"
+            exit 1
+          fi
+
+      - name: API Response Time Test
+        run: |
+          echo "⏱️ Testing API response time..."
+          START=$(date +%s%N)
+          curl -s ${{ env.API_URL }}/api/health > /dev/null
+          END=$(date +%s%N)
+          DURATION=$((($END - $START) / 1000000))
+          echo "Response time: ${DURATION}ms"
+          if [ $DURATION -lt 500 ]; then
+            echo "✅ Response time is acceptable"
+          else
+            echo "⚠️ Response time is slow: ${DURATION}ms"
+          fi
+
+      - name: Rate Limiting Test
+        run: |
+          echo "🛡️ Testing rate limiting..."
+          for i in {1..110}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.API_URL }}/api/health)
+            if [ $STATUS -eq 429 ]; then
+              echo "✅ Rate limiting is working (hit limit at request $i)"
+              exit 0
+            fi
+          done
+          echo "⚠️ Rate limiting may not be configured correctly"
+
+      - name: Security Headers Check
+        run: |
+          echo "🔒 Checking security headers..."
+          HEADERS=$(curl -sI ${{ env.API_URL }}/api/health)
+
+          if echo "$HEADERS" | grep -q "X-Content-Type-Options"; then
+            echo "✅ X-Content-Type-Options header present"
+          else
+            echo "⚠️ X-Content-Type-Options header missing"
+          fi
+
+          if echo "$HEADERS" | grep -q "X-Frame-Options"; then
+            echo "✅ X-Frame-Options header present"
+          else
+            echo "⚠️ X-Frame-Options header missing"
+          fi
+
+          if echo "$HEADERS" | grep -q "Strict-Transport-Security"; then
+            echo "✅ HSTS header present"
+          else
+            echo "⚠️ HSTS header missing (expected in production)"
+          fi
+
+      - name: CORS Check
+        run: |
+          echo "🌐 Testing CORS configuration..."
+          RESPONSE=$(curl -s -I -X OPTIONS -H "Origin: https://example.com" ${{ env.API_URL }}/api/health)
+          if echo "$RESPONSE" | grep -q "Access-Control-Allow-Origin"; then
+            echo "✅ CORS headers present"
+          else
+            echo "❌ CORS not configured correctly"
+            exit 1
+          fi
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "🎉 All smoke tests passed for ${{ env.ENVIRONMENT }}"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "💥 Smoke tests failed for ${{ env.ENVIRONMENT }}"
+          echo "Please investigate immediately!"
+
+      - name: Send Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Smoke tests for ${{ env.ENVIRONMENT }}: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
