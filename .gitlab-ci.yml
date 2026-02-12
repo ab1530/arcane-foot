@@ -19,7 +19,7 @@ stages:
   - deploy
 
 variables:
-  CI_NODE_IMAGE: arcane-ci-node20-tools:latest
+  CI_NODE_IMAGE: registry.gitlab.com/ab1530/arcane-foot/ci-node20-tools:latest
   NODE_ENV: test
   NPM_CONFIG_CACHE: /cache/npm
   NPM_CONFIG_FUND: "false"
