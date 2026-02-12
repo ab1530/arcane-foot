@@ -219,3 +219,4 @@ backend/scripts/setup-test-users.d.ts
 
 # Misc local logs
 web/log*.txt
+.vercel
