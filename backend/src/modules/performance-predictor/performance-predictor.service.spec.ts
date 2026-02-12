@@ -16,6 +16,7 @@ describe('PerformancePredictorService', () => {
     },
     matches: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     scouting_reports: {
       findMany: jest.fn(),
@@ -39,6 +40,7 @@ describe('PerformancePredictorService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.matches.findMany.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

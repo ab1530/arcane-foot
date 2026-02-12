@@ -32,7 +32,9 @@ describe('DataSyncService', () => {
       create: jest.fn(),
     },
     matches: {
-      upsert: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -89,6 +91,10 @@ describe('DataSyncService', () => {
     clubMapper = module.get<ClubMapper>(ClubMapper);
     playerMapper = module.get<PlayerMapper>(PlayerMapper);
     competitionMapper = module.get<CompetitionMapper>(CompetitionMapper);
+
+    mockPrismaService.matches.findFirst.mockResolvedValue(null);
+    mockPrismaService.matches.create.mockResolvedValue({});
+    mockPrismaService.matches.update.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -418,7 +424,8 @@ describe('DataSyncService', () => {
       });
       expect(mockApiFootballService.getFixtures).toHaveBeenCalledWith('39');
       expect(mockPrismaService.clubs.findUnique).toHaveBeenCalledTimes(2);
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.matches.findFirst).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.matches.create).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error if competition not found', async () => {
@@ -478,8 +485,9 @@ describe('DataSyncService', () => {
 
       // Should be called 4 times (2 for each match)
       expect(mockPrismaService.clubs.findUnique).toHaveBeenCalledTimes(4);
-      // Transaction should only include 1 match (second one)
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      // Match upsert path should run only for the second match
+      expect(mockPrismaService.matches.findFirst).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.matches.create).toHaveBeenCalledTimes(1);
     });
 
     it('should handle API errors during match sync', async () => {
@@ -533,7 +541,8 @@ describe('DataSyncService', () => {
 
       await service.syncMatches('39', 'api-football');
 
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.matches.findFirst).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.matches.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -859,8 +868,9 @@ describe('DataSyncService', () => {
 
       await service.syncMatches('39', 'api-football');
 
-      // Should be called twice (600 matches / 500 batch size = 2 batches)
-      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(2);
+      // Should process all matches through findFirst/create flow
+      expect(mockPrismaService.matches.findFirst).toHaveBeenCalledTimes(600);
+      expect(mockPrismaService.matches.create).toHaveBeenCalledTimes(600);
     });
   });
 });
