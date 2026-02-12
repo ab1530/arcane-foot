@@ -296,16 +296,20 @@ describe('HealthService', () => {
 
   describe('Response time measurement', () => {
     it('should measure response time accurately', async () => {
-      mockPrismaService.$queryRaw.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve([{ result: 1 }]), 10)),
-      );
+      mockPrismaService.$queryRaw.mockResolvedValue([{ result: 1 }]);
+      const dateNowSpy = jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(1000)
+        .mockReturnValueOnce(1012);
 
       const result = await service.getHealth();
 
       const responseTimeMatch = result.responseTime.match(/(\d+)ms/);
       expect(responseTimeMatch).toBeTruthy();
       const responseTimeMs = parseInt(responseTimeMatch[1], 10);
-      expect(responseTimeMs).toBeGreaterThanOrEqual(10);
+      expect(responseTimeMs).toBe(12);
+
+      dateNowSpy.mockRestore();
     });
 
     it('should include response time even when database is down', async () => {
