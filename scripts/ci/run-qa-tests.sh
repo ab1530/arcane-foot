@@ -20,8 +20,13 @@ npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
 echo "Installing web dependencies..." | tee -a $LOG_FILE
 npm ci --prefix web 2>&1 | tee -a $LOG_FILE
 
+if [[ ! -f backend/prisma/schema.prisma ]]; then
+  echo "ERROR: Missing Prisma schema at backend/prisma/schema.prisma" | tee -a $LOG_FILE
+  exit 1
+fi
+
 echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
-npm --prefix backend exec -- prisma migrate deploy --schema prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
+(cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
 
 echo "Note: Prisma Client already generated during npm ci postinstall" | tee -a $LOG_FILE
 
@@ -32,9 +37,13 @@ else
   echo "Skipping Supabase policies: auth schema not available in CI postgres." | tee -a $LOG_FILE
 fi
 
+if [[ ! -f backend/prisma/seed.ts ]]; then
+  echo "ERROR: Missing seed script at backend/prisma/seed.ts" | tee -a $LOG_FILE
+  exit 1
+fi
+
 echo "Seeding database with test data..." | tee -a $LOG_FILE
-ARCANE_DEMO_PASSWORD="${ARCANE_DEMO_PASSWORD:-ci-demo-password}" \
-  npm --prefix backend exec -- ts-node --project tsconfig.json prisma/seed.ts 2>&1 | tee -a $LOG_FILE
+(cd backend && ARCANE_DEMO_PASSWORD="${ARCANE_DEMO_PASSWORD:-ci-demo-password}" npx --no-install ts-node --project tsconfig.json prisma/seed.ts) 2>&1 | tee -a $LOG_FILE
 
 echo "Starting backend server in background..." | tee -a $LOG_FILE
 npm run start:prod --prefix backend > "$(dirname "$LOG_FILE")/backend.log" 2>&1 &
