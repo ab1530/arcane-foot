@@ -74,7 +74,9 @@ echo "Backend is ready" | tee -a $LOG_FILE
 
 cd web
 echo "Ensuring Playwright Chromium is available..." | tee -a $LOG_FILE
-npx playwright install chromium 2>&1 | tee -a $LOG_FILE
+echo "Installing Playwright system dependencies..." | tee -a $LOG_FILE
+npx --no-install playwright install-deps chromium 2>&1 | tee -a $LOG_FILE
+npx --no-install playwright install chromium 2>&1 | tee -a $LOG_FILE
 
 echo "Running E2E tests..." | tee -a $LOG_FILE
 npm run test:e2e 2>&1 | tee -a $LOG_FILE
