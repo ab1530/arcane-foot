@@ -2,6 +2,23 @@
 
 Ce dossier contient des scripts utilitaires pour le projet AppFoot.
 
+## Scripts Supabase Migration (sans casse)
+
+Nouveau dossier: `/Users/lakhdari/Desktop/AppFoot/scripts/supabase`
+
+Scripts disponibles:
+- `01_export_old_db.sh` - export DB source (`pg_dump`)
+- `02_apply_schema_new_db.sh` - applique migrations Prisma sur la nouvelle DB
+- `03_restore_new_db.sh` - restore dump vers la nouvelle DB
+- `04_compare_counts.sh` - compare volumétrie old/new sur tables critiques
+- `05_apply_policies_new_db.sh` - applique `supabase/policies.sql` + `supabase/storage_policies.sql`
+- `06_deploy_edge_functions.sh` - déploie `health`, `passport`, `shortlist`
+- `07_vercel_env_checklist.sh` - imprime les variables/secrets à poser dans Vercel
+- `sync_storage.py` - synchronise Storage old -> new (`--dry-run` par défaut)
+
+Guide détaillé:
+- `/Users/lakhdari/Desktop/AppFoot/scripts/supabase/README.md`
+
 ## Scripts de Logging CI/CD
 
 ### analyze-ci-logs.sh

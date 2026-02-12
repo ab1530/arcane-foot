@@ -104,7 +104,7 @@
 ### Infrastructure
 - **Containerization:** Docker + Docker Compose
 - **CI/CD:** GitHub Actions
-- **Hosting:** Railway / Render (API), Vercel (Web), Supabase (DB/Storage)
+- **Hosting:** Supabase Edge Functions + Supabase (DB/Storage), Vercel (Web)
 - **Monitoring:** Sentry
 
 ---
@@ -315,20 +315,14 @@ npm test -- --runTestsByPath src/screens/auth/__tests__/LoginScreen.test.tsx
 
 ## 🚢 Deployment
 
-### Backend (Railway)
+### Backend / API (Supabase Edge Functions)
 
 ```bash
-# Install Railway CLI
-npm i -g @railway/cli
-
-# Login
-railway login
-
-# Link project
-railway link
-
-# Deploy
-railway up
+cd /Users/lakhdari/Desktop/AppFoot
+# Deploy selected production functions
+supabase functions deploy health --project-ref <project-ref>
+supabase functions deploy passport --project-ref <project-ref>
+supabase functions deploy shortlist --project-ref <project-ref>
 ```
 
 ### Web (Next.js on Vercel)
@@ -340,21 +334,28 @@ npm run build
 npx vercel --prod
 ```
 
+Set these Vercel env vars in production:
+- `NEXT_PUBLIC_API_URL`
+- `NEXT_PUBLIC_PUBLIC_SHARE_API_URL` (recommended for public passport/shortlist links)
+- `NEXT_PUBLIC_SENTRY_DSN`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
 ### Mobile Apps
 
 **iOS (TestFlight):**
 ```bash
 cd mobile
-flutter build ios --release
-# Use Xcode or fastlane to upload to App Store Connect
+# Manual release with Xcode:
+# 1) Open ios/mobile.xcworkspace
+# 2) Select client Apple Developer team
+# 3) Product > Archive
+# 4) Upload to TestFlight
 ```
 
-**Android (Google Play):**
-```bash
-cd mobile
-flutter build appbundle --release
-# Upload AAB to Google Play Console
-```
+Detailed production runbook:
+- `docs/PRODUCTION_PHASE1_RUNBOOK.md`
+- Edge deployment notes: `backend/DEPLOYMENT.md`
 
 ---
 

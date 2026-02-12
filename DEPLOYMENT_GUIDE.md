@@ -1,5 +1,7 @@
 # 🚀 GUIDE DE DÉPLOIEMENT PRODUCTION - ARCANE FOOTBALL
 
+> Référence opérationnelle actuelle (Phase 1 stable): `docs/PRODUCTION_PHASE1_RUNBOOK.md`
+
 **Status:** Post-Démo
 **Durée estimée:** 2-4 heures
 **Niveau:** Intermédiaire

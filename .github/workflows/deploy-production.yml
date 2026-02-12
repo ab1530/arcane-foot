@@ -2,133 +2,108 @@ name: Deploy to Production
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - 'supabase/**'
+      - '.github/workflows/deploy-production.yml'
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Deployment environment'
+      deploy_edge:
+        description: 'Deploy Supabase Edge Functions'
         required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
+        default: true
+        type: boolean
+      deploy_web:
+        description: 'Deploy web to Vercel'
+        required: true
+        default: true
+        type: boolean
 
 jobs:
-  deploy-backend:
-    name: Deploy Backend to Railway/Render
+  deploy-edge-functions:
+    name: Deploy Supabase Edge Functions
     runs-on: ubuntu-latest
     environment: production
+    if: ${{ github.event_name == 'push' || inputs.deploy_edge }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Railway
-        if: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Deploy to Render (alternative)
-        if: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"clearCache": false}'
-
-      - name: Run database migrations
-        run: |
-          echo "Running Prisma migrations on production..."
-          # Use Railway CLI or direct connection to run migrations
-          # railway run npx prisma migrate deploy
-
-      - name: Notify deployment
-        if: always()
-        uses: 8398a7/action-slack@v3
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
         with:
-          status: ${{ job.status }}
-          text: 'Backend deployment completed'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          version: latest
+
+      - name: Deploy functions
+        if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_REF != '' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -euo pipefail
+          supabase functions deploy health --project-ref "$SUPABASE_PROJECT_REF"
+          supabase functions deploy passport --project-ref "$SUPABASE_PROJECT_REF"
+          supabase functions deploy shortlist --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Sync Edge secrets
+        if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_REF != '' && secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          supabase secrets set SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Supabase Secrets Check
+        if: ${{ secrets.SUPABASE_ACCESS_TOKEN == '' || secrets.SUPABASE_PROJECT_REF == '' }}
+        run: |
+          echo "Missing SUPABASE_ACCESS_TOKEN and/or SUPABASE_PROJECT_REF secrets."
+          echo "Configure them to enable Edge Functions production deployment."
+          exit 1
 
   deploy-web:
-    name: Deploy Flutter Web to Vercel
+    name: Deploy Web to Vercel
     runs-on: ubuntu-latest
     environment: production
+    if: ${{ github.event_name == 'push' || inputs.deploy_web }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          flutter-version: '3.24.x'
-          channel: 'stable'
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
 
-      - name: Get dependencies
-        working-directory: ./mobile
-        run: flutter pub get
+      - name: Install web dependencies
+        working-directory: ./web
+        run: npm ci
 
-      - name: Build Flutter web
-        working-directory: ./mobile
-        run: flutter build web --release --web-renderer canvaskit
+      - name: Build web app
+        working-directory: ./web
+        run: npm run build
 
       - name: Deploy to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./mobile/build/web
+          working-directory: ./web
           vercel-args: '--prod'
 
-  deploy-mobile:
-    name: Deploy Mobile to Stores
-    runs-on: macos-latest
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.x'
-          channel: 'stable'
-
-      - name: Get dependencies
-        working-directory: ./mobile
-        run: flutter pub get
-
-      - name: Build iOS IPA
-        working-directory: ./mobile
+      - name: Vercel Secrets Check
+        if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
         run: |
-          flutter build ios --release --no-codesign
-          # Add code signing and IPA creation here
-
-      - name: Upload to TestFlight
-        if: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
-        run: |
-          # Use fastlane or xcrun altool to upload to TestFlight
-          echo "Uploading to TestFlight..."
-
-      - name: Build Android AAB
-        working-directory: ./mobile
-        run: flutter build appbundle --release
-
-      - name: Upload to Google Play Console
-        if: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
-          packageName: com.arcane.app
-          releaseFiles: mobile/build/app/outputs/bundle/release/app-release.aab
-          track: internal
-          status: completed
+          echo "Missing VERCEL_TOKEN, VERCEL_ORG_ID, and/or VERCEL_PROJECT_ID secrets."
+          echo "Configure them to enable web production deploys from GitHub Actions."
+          echo "If Vercel Git integration is already configured on main, this step can be disabled."
+          exit 1

@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import tokens from "../design/tokens.json";
+import tokens from "./design/tokens.json";
 
 const arcaneColors = tokens.colors;
 const pxToRem = (px: number) => `${px / 16}rem`;
