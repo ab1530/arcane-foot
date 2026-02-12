@@ -8,6 +8,10 @@ workflow:
       when: always
     - when: never
 
+default:
+  tags:
+    - arcane-local
+
 stages:
   - build
   - test
@@ -15,8 +19,11 @@ stages:
   - deploy
 
 variables:
+  CI_NODE_IMAGE: arcane-ci-node20-tools:latest
   NODE_ENV: test
+  NPM_CONFIG_CACHE: /cache/npm
   NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_AUDIT: "false"
   PLAYWRIGHT_BROWSERS_PATH: /cache/ms-playwright
   SENTRY_VALIDATE: "true"
   LOG_LEVEL: "debug"
@@ -37,18 +44,6 @@ variables:
   JEST_MAX_WORKERS: "4"
   PLAYWRIGHT_WORKERS: "2"
 
-cache:
-  key:
-    files:
-      - backend/package-lock.json
-      - web/package-lock.json
-  paths:
-    - web/node_modules
-    - backend/node_modules
-    - .cache/ms-playwright
-  policy: pull-push
-  when: on_success
-
 # Template pour le logging
 .setup_logging:
   before_script:
@@ -63,7 +58,7 @@ cache:
 
 build_backend:
   stage: build
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   script:
     - echo "Installing dependencies..." | tee -a $LOG_FILE
@@ -81,7 +76,7 @@ build_backend:
 
 build_web:
   stage: build
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   script:
     - echo "Installing dependencies..." | tee -a $LOG_FILE
@@ -104,6 +99,8 @@ build_docker_images:
     - docker:24.0.6-dind
   variables:
     DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   retry:
     max: 2
     when:
@@ -119,7 +116,7 @@ build_docker_images:
 
 unit_test_backend:
   stage: test
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   needs:
     - build_backend
@@ -140,10 +137,13 @@ unit_test_backend:
     - export DATABASE_URL="$CI_POSTGRES_URL"
     - export CI_POSTGRES_PSQL_URL="${CI_POSTGRES_URL%%\?*}"
     - 'echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE'
-    - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
-    - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
-    - echo "Installing dependencies..." | tee -a $LOG_FILE
-    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - |
+      if [ -d backend/node_modules ]; then
+        echo "Reusing backend/node_modules from build artifacts." | tee -a $LOG_FILE
+      else
+        echo "Installing backend dependencies..." | tee -a $LOG_FILE
+        npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+      fi
     - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
     - (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
     - echo "Applying database policies..." | tee -a $LOG_FILE
@@ -176,13 +176,18 @@ unit_test_backend:
 
 unit_test_web:
   stage: test
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   extends: .setup_logging
   needs:
     - build_web
   script:
-    - echo "Installing dependencies..." | tee -a $LOG_FILE
-    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - |
+      if [ -d web/node_modules ]; then
+        echo "Reusing web/node_modules from build artifacts." | tee -a $LOG_FILE
+      else
+        echo "Installing web dependencies..." | tee -a $LOG_FILE
+        npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+      fi
     - echo "Running linter..." | tee -a $LOG_FILE
     - npm run lint --prefix web 2>&1 | tee -a $LOG_FILE
     - echo "Running web tests..." | tee -a $LOG_FILE
@@ -201,10 +206,12 @@ unit_test_web:
 
 qa_job:
   stage: qa
-  image: node:20-bullseye
+  image: $CI_NODE_IMAGE
   needs:
     - unit_test_backend
     - unit_test_web
+    - build_backend
+    - build_web
   services:
     - name: postgres:16-alpine
       alias: postgres
