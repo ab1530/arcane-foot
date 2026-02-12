@@ -94,7 +94,7 @@ build_web:
 
 build_docker_images:
   stage: build
-  image: docker:24.0.6
+  image: docker:29.0.1
   variables:
     DOCKER_HOST: "unix:///var/run/docker.sock"
     DOCKER_BUILDKIT: "0"
@@ -274,9 +274,9 @@ qa_job:
 
 deploy_staging:
   stage: deploy
-  image: docker:24.0.6
+  image: docker:29.0.1
   services:
-    - docker:24.0.6-dind
+    - docker:29.0.1-dind
   needs:
     - qa_job
   script:
@@ -291,9 +291,9 @@ deploy_staging:
 
 deploy_production:
   stage: deploy
-  image: docker:24.0.6
+  image: docker:29.0.1
   services:
-    - docker:24.0.6-dind
+    - docker:29.0.1-dind
   needs:
     - qa_job
   script:
