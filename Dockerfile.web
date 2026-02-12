@@ -5,6 +5,8 @@ COPY web/package*.json ./
 RUN npm ci
 
 COPY web/ .
+COPY shared /shared
+COPY design /design
 
 RUN npm run build
 

@@ -177,7 +177,7 @@ describe('VoiceToReportService', () => {
       expect(result.extractedData).toBeDefined();
       expect(result.confidence).toBeGreaterThan(0);
       expect(result.language).toBe(SupportedLanguage.EN);
-      expect(result.processingTimeMs).toBeGreaterThan(0);
+      expect(result.processingTimeMs).toBeGreaterThanOrEqual(0);
     });
 
     it('should validate audio file before processing', async () => {

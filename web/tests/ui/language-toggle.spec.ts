@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { gotoAndWait, setLanguage, verifyTranslations } from './utils/language';
+import {
+  gotoAndWait,
+  mockAuthenticatedProAccess,
+  setLanguage,
+  verifyTranslations,
+} from './utils/language';
 
 const contactUrl = '/contact';
 const aiHubUrl = '/ai';
@@ -11,6 +16,10 @@ const dashboardUrl = '/dashboard';
 const servicesUrl = '/services';
 
 test.describe('Language toggle smoke tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockAuthenticatedProAccess(page);
+  });
+
   test('Contact page updates copy when switching languages', async ({ page }) => {
     await verifyTranslations(page, {
       url: contactUrl,

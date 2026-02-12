@@ -34,8 +34,16 @@ export class AutoScoutService {
     private readonly statsAggregator: StatsAggregatorService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
+    const openAiApiKey = process.env.OPENAI_API_KEY;
+    if (!openAiApiKey) {
+      this.logger.warn(
+        'OpenAI API key not found. AutoScout AI generation will fallback when invoked.',
+      );
+    }
+
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      // Keep service boot-safe when AI credentials are not configured in prod.
+      apiKey: openAiApiKey || 'missing-openai-api-key',
     });
   }
 

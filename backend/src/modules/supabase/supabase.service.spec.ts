@@ -70,8 +70,10 @@ describe('SupabaseService', () => {
       expect(createClient).toHaveBeenCalledWith('https://test.supabase.co', 'test-service-key');
     });
 
-    it('should throw error if SUPABASE_URL is missing', () => {
-      const module = Test.createTestingModule({
+    it('should disable client gracefully if SUPABASE_URL is missing', async () => {
+      (createClient as jest.Mock).mockClear();
+
+      const module = await Test.createTestingModule({
         providers: [
           SupabaseService,
           {
@@ -84,15 +86,19 @@ describe('SupabaseService', () => {
             },
           },
         ],
-      });
+      }).compile();
 
-      expect(module.compile()).rejects.toThrow(
-        'Supabase credentials missing. Please configure SUPABASE_URL and SUPABASE_SERVICE_KEY.',
+      const testService = module.get<SupabaseService>(SupabaseService);
+      expect(createClient).not.toHaveBeenCalled();
+      await expect(testService.listFiles()).rejects.toThrow(
+        'Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY.',
       );
     });
 
-    it('should throw error if SUPABASE_SERVICE_KEY is missing', () => {
-      const module = Test.createTestingModule({
+    it('should disable client gracefully if SUPABASE_SERVICE_KEY is missing', async () => {
+      (createClient as jest.Mock).mockClear();
+
+      const module = await Test.createTestingModule({
         providers: [
           SupabaseService,
           {
@@ -105,10 +111,12 @@ describe('SupabaseService', () => {
             },
           },
         ],
-      });
+      }).compile();
 
-      expect(module.compile()).rejects.toThrow(
-        'Supabase credentials missing. Please configure SUPABASE_URL and SUPABASE_SERVICE_KEY.',
+      const testService = module.get<SupabaseService>(SupabaseService);
+      expect(createClient).not.toHaveBeenCalled();
+      await expect(testService.uploadFile(Buffer.from('x'), 'file.txt')).rejects.toThrow(
+        'Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY.',
       );
     });
 

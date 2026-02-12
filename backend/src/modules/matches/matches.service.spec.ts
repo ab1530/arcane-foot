@@ -130,14 +130,39 @@ describe('MatchesService', () => {
     const mockMatches = [
       {
         id: 'match-1',
+        clubs_matches_homeClubIdToclubs: { name: 'PSG' },
+        clubs_matches_awayClubIdToclubs: { name: 'OM' },
+        users_matches_scoutIdTousers: null,
+        _count: { scouting_reports: 3 },
+      },
+      {
+        id: 'match-2',
+        clubs_matches_homeClubIdToclubs: { name: 'Lyon' },
+        clubs_matches_awayClubIdToclubs: { name: 'PSG' },
+        users_matches_scoutIdTousers: null,
+        _count: { scouting_reports: 5 },
+      },
+    ];
+
+    const expectedMatches = [
+      {
+        id: 'match-1',
+        clubs_matches_homeClubIdToclubs: { name: 'PSG' },
+        clubs_matches_awayClubIdToclubs: { name: 'OM' },
+        users_matches_scoutIdTousers: null,
         homeClub: { name: 'PSG' },
         awayClub: { name: 'OM' },
+        scout: null,
         _count: { scoutingReports: 3 },
       },
       {
         id: 'match-2',
+        clubs_matches_homeClubIdToclubs: { name: 'Lyon' },
+        clubs_matches_awayClubIdToclubs: { name: 'PSG' },
+        users_matches_scoutIdTousers: null,
         homeClub: { name: 'Lyon' },
         awayClub: { name: 'PSG' },
+        scout: null,
         _count: { scoutingReports: 5 },
       },
     ];
@@ -151,7 +176,7 @@ describe('MatchesService', () => {
       expect(prismaService.matches.findMany).toHaveBeenCalled();
       expect(prismaService.matches.count).toHaveBeenCalled();
       expect(result).toEqual({
-        data: mockMatches,
+        data: expectedMatches,
         meta: {
           total: 2,
           page: 1,
@@ -222,11 +247,25 @@ describe('MatchesService', () => {
   describe('findOne', () => {
     const mockMatch = {
       id: 'match-123',
+      clubs_matches_homeClubIdToclubs: { name: 'PSG' },
+      clubs_matches_awayClubIdToclubs: { name: 'OM' },
+      users_matches_scoutIdTousers: { firstName: 'John', lastName: 'Doe' },
+      scouting_reports: [],
+      media: [],
+      _count: { scouting_reports: 0 },
+    };
+
+    const expectedMatch = {
+      id: 'match-123',
+      clubs_matches_homeClubIdToclubs: { name: 'PSG' },
+      clubs_matches_awayClubIdToclubs: { name: 'OM' },
+      users_matches_scoutIdTousers: { firstName: 'John', lastName: 'Doe' },
+      scouting_reports: [],
+      media: [],
       homeClub: { name: 'PSG' },
       awayClub: { name: 'OM' },
       scout: { firstName: 'John', lastName: 'Doe' },
-      scoutingReports: [],
-      media: [],
+      _count: { scoutingReports: 0 },
     };
 
     it('should return a match by ID', async () => {
@@ -238,7 +277,7 @@ describe('MatchesService', () => {
         where: { id: 'match-123' },
         include: expect.any(Object),
       });
-      expect(result).toEqual(mockMatch);
+      expect(result).toEqual(expectedMatch);
     });
 
     it('should throw NotFoundException if match not found', async () => {
@@ -490,6 +529,17 @@ describe('MatchesService', () => {
       {
         id: 'match-1',
         status: MatchStatus.LIVE,
+        clubs_matches_homeClubIdToclubs: { name: 'PSG' },
+        clubs_matches_awayClubIdToclubs: { name: 'OM' },
+      },
+    ];
+
+    const expectedLiveMatches = [
+      {
+        id: 'match-1',
+        status: MatchStatus.LIVE,
+        clubs_matches_homeClubIdToclubs: { name: 'PSG' },
+        clubs_matches_awayClubIdToclubs: { name: 'OM' },
         homeClub: { name: 'PSG' },
         awayClub: { name: 'OM' },
       },
@@ -504,7 +554,7 @@ describe('MatchesService', () => {
         where: { status: MatchStatus.LIVE },
         include: expect.any(Object),
       });
-      expect(result).toEqual(mockLiveMatches);
+      expect(result).toEqual(expectedLiveMatches);
     });
   });
 });

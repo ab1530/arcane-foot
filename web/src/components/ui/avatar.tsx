@@ -20,10 +20,11 @@ export function Avatar({ className, ...props }: AvatarProps) {
 export type AvatarImageProps = React.ImgHTMLAttributes<HTMLImageElement>;
 
 export const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
-  ({ className, ...props }, ref) => (
+  ({ className, alt, ...props }, ref) => (
     <img
       ref={ref}
       className={cn("h-full w-full object-cover", className)}
+      alt={alt ?? ""}
       {...props}
     />
   ),

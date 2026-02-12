@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ScoutingReportsController } from './scouting-reports.controller';
 import { ScoutingReportsService } from './scouting-reports.service';
+import { PdfService } from './pdf.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ReportStatus, RecommendationType } from '@prisma/client';
 
@@ -20,6 +21,10 @@ describe('ScoutingReportsController', () => {
     getScoutReports: jest.fn(),
     getMatchReports: jest.fn(),
     getReportsByRecommendation: jest.fn(),
+  };
+
+  const mockPdfService = {
+    generateReportPdf: jest.fn(),
   };
 
   const mockReport = {
@@ -95,6 +100,10 @@ describe('ScoutingReportsController', () => {
         {
           provide: ScoutingReportsService,
           useValue: mockScoutingReportsService,
+        },
+        {
+          provide: PdfService,
+          useValue: mockPdfService,
         },
       ],
     })
@@ -493,9 +502,24 @@ describe('ScoutingReportsController', () => {
 
   describe('JwtAuthGuard protection', () => {
     it('should be protected by JwtAuthGuard', () => {
-      const guards = Reflect.getMetadata('__guards__', ScoutingReportsController);
-      const guardNames = guards.map((guard: any) => guard.name);
-      expect(guardNames).toContain('JwtAuthGuard');
+      const protectedMethods = ['create', 'update', 'submit', 'review', 'remove'] as const;
+
+      for (const method of protectedMethods) {
+        const guards = Reflect.getMetadata(
+          '__guards__',
+          ScoutingReportsController.prototype[method],
+        );
+        expect(guards).toBeDefined();
+        expect(guards.length).toBeGreaterThan(0);
+
+        const hasJwtAuthGuard = guards.some(
+          (guard: any) =>
+            guard === JwtAuthGuard ||
+            guard?.name === 'JwtAuthGuard' ||
+            guard?.metatype?.name === 'JwtAuthGuard',
+        );
+        expect(hasJwtAuthGuard).toBe(true);
+      }
     });
   });
 
@@ -506,8 +530,15 @@ describe('ScoutingReportsController', () => {
     });
 
     it('should have ApiBearerAuth decorator', () => {
-      const security = Reflect.getMetadata('swagger/apiSecurity', ScoutingReportsController);
-      expect(security).toBeDefined();
+      const protectedMethods = ['create', 'update', 'submit', 'review', 'remove'] as const;
+
+      for (const method of protectedMethods) {
+        const security = Reflect.getMetadata(
+          'swagger/apiSecurity',
+          ScoutingReportsController.prototype[method],
+        );
+        expect(security).toBeDefined();
+      }
     });
   });
 

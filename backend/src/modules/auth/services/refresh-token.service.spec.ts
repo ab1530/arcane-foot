@@ -15,6 +15,7 @@ describe('RefreshTokenService', () => {
     get: jest.fn().mockResolvedValue(null),
     del: jest.fn().mockResolvedValue(1),
     exists: jest.fn().mockResolvedValue(false),
+    keys: jest.fn().mockResolvedValue([]),
     smembers: jest.fn().mockResolvedValue([]),
   };
 
@@ -205,7 +206,7 @@ describe('RefreshTokenService', () => {
   describe('revokeAllUserTokens', () => {
     it('should revoke all tokens for a user', async () => {
       const userId = 'user-123';
-      mockRedisService.smembers.mockResolvedValueOnce([
+      mockRedisService.keys.mockResolvedValueOnce([
         'refresh_token:token-1',
         'refresh_token:token-2',
       ]);

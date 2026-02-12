@@ -2,6 +2,50 @@ import { expect, Page } from '@playwright/test';
 
 export const languageToggleSelector = '[data-test="language-toggle"]';
 
+const mockedAuthUser = {
+  id: 'qa-user',
+  email: 'qa@arcane.ai',
+  firstName: 'QA',
+  lastName: 'Lead',
+  role: 'PLAYER',
+};
+
+const mockedStoredUser = {
+  id: 'qa-user',
+  email: 'qa@arcane.ai',
+  fullName: 'QA Lead',
+  accountType: 'player',
+};
+
+const mockedProSubscription = {
+  id: 'qa-subscription',
+  tier: 'PRO',
+  status: 'ACTIVE',
+};
+
+export async function mockAuthenticatedProAccess(page: Page) {
+  await page.addInitScript(({ user }) => {
+    window.localStorage.setItem('arcane_auth_token', 'playwright-token');
+    window.localStorage.setItem('arcane_user', JSON.stringify(user));
+  }, { user: mockedStoredUser });
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(mockedAuthUser),
+    });
+  });
+
+  await page.route('**/api/subscriptions/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(mockedProSubscription),
+    });
+  });
+}
+
 export async function gotoAndWait(page: Page, url: string) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   try {

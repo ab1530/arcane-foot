@@ -398,7 +398,7 @@ describe('PerformancePredictorController', () => {
     it('should return not implemented message for player predictions', async () => {
       const result = await controller.getPlayerPredictions('player-123');
 
-      expect(result).toEqual({ message: 'Not implemented yet' });
+      expect(result).toEqual({ message: 'Not implemented yet', playerId: 'player-123' });
     });
   });
 
@@ -408,6 +408,7 @@ describe('PerformancePredictorController', () => {
 
       expect(result).toEqual({
         message: 'Not implemented yet - placeholder for future insights',
+        playerId: 'player-123',
       });
     });
   });

@@ -1,17 +1,30 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+      when: always
+    - when: never
+
+default:
+  tags:
+    - arcane-local
+
 stages:
   - build
   - test
   - qa
   - deploy
 
-default:
-  tags:
-    - arcane-local
-
 variables:
+  GIT_STRATEGY: clone
   CI_NODE_IMAGE: registry.gitlab.com/ab1530/arcane-foot/ci-node20-tools:latest
   NODE_ENV: test
+  NPM_CONFIG_CACHE: /cache/npm
   NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_AUDIT: "false"
   PLAYWRIGHT_BROWSERS_PATH: /cache/ms-playwright
   SENTRY_VALIDATE: "true"
   LOG_LEVEL: "debug"
@@ -31,18 +44,6 @@ variables:
   # Parallel execution
   JEST_MAX_WORKERS: "4"
   PLAYWRIGHT_WORKERS: "2"
-
-cache:
-  key:
-    files:
-      - backend/package-lock.json
-      - web/package-lock.json
-  paths:
-    - web/node_modules
-    - backend/node_modules
-    - .cache/ms-playwright
-  policy: pull-push
-  when: on_success
 
 # Template pour le logging
 .setup_logging:
@@ -94,12 +95,17 @@ build_web:
 
 build_docker_images:
   stage: build
-  image: docker:24.0.6
-  services:
-    - docker:24.0.6-dind
+  image: docker:29.0.1
   variables:
-    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKER_BUILDKIT: "0"
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
   script:
+    - docker info
     - docker build -f Dockerfile.backend -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" .
     - docker build -f Dockerfile.web -t "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA" .
   rules:
@@ -121,21 +127,51 @@ unit_test_backend:
         POSTGRES_USER: postgres
         POSTGRES_DB: postgres
   variables:
+    CI_POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
     SUPABASE_SERVICE_KEY: local-service-key
     SUPABASE_STORAGE_BUCKET: arcane-media
   script:
-    - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
-    - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
-    - echo "Installing dependencies..." | tee -a $LOG_FILE
-    - npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+    - |
+      export DB_HOST="${POSTGRES_PORT_5432_TCP_ADDR:-postgres}"
+      export DB_PORT="${POSTGRES_PORT_5432_TCP_PORT:-5432}"
+      export CI_POSTGRES_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres?schema=public"
+      export DATABASE_URL="$CI_POSTGRES_URL"
+      export CI_POSTGRES_PSQL_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres"
+      echo "Using CI DB host: ${DB_HOST}:${DB_PORT}" | tee -a $LOG_FILE
+    - |
+      echo "Waiting for PostgreSQL service..." | tee -a $LOG_FILE
+      for i in $(seq 1 60); do
+        if pg_isready -h postgres -p 5432 -U postgres -d postgres >/dev/null 2>&1; then
+          echo "PostgreSQL is ready." | tee -a $LOG_FILE
+          break
+        fi
+        if [ "$i" -eq 60 ]; then
+          echo "PostgreSQL did not become ready in time." | tee -a $LOG_FILE
+          pg_isready -h postgres -p 5432 -U postgres -d postgres 2>&1 | tee -a $LOG_FILE || true
+          exit 1
+        fi
+        sleep 2
+      done
+    - |
+      if [ -d backend/node_modules ]; then
+        echo "Reusing backend/node_modules from build artifacts." | tee -a $LOG_FILE
+      else
+        echo "Installing backend dependencies..." | tee -a $LOG_FILE
+        npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+      fi
     - echo "Deploying Prisma migrations..." | tee -a $LOG_FILE
-    - npx prisma migrate deploy --schema backend/prisma/schema.prisma 2>&1 | tee -a $LOG_FILE
+    - (cd backend && npx --no-install prisma migrate deploy --schema prisma/schema.prisma) 2>&1 | tee -a $LOG_FILE
     - echo "Applying database policies..." | tee -a $LOG_FILE
-    - psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+    - |
+      if psql "$CI_POSTGRES_PSQL_URL" -Atc "select 1 from pg_namespace where nspname='auth'" | grep -q 1; then
+        psql "$CI_POSTGRES_PSQL_URL" -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+      else
+        echo "Skipping supabase/policies.sql in CI: auth schema not present on vanilla postgres service." | tee -a $LOG_FILE
+      fi
     - echo "Running backend tests with coverage..." | tee -a $LOG_FILE
-    - npm run test:cov --prefix backend 2>&1 | tee -a $LOG_FILE
+    - npm run test:ci --prefix backend -- --coverage 2>&1 | tee -a $LOG_FILE
     - echo "Tests completed" | tee -a $LOG_FILE
     - echo "Generating coverage summary..." | tee -a $LOG_FILE
     - cat backend/coverage/coverage-summary.json 2>&1 | tee -a $LOG_FILE || echo "No coverage summary found"
@@ -162,8 +198,13 @@ unit_test_web:
   needs:
     - build_web
   script:
-    - echo "Installing dependencies..." | tee -a $LOG_FILE
-    - npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+    - |
+      if [ -d web/node_modules ]; then
+        echo "Reusing web/node_modules from build artifacts." | tee -a $LOG_FILE
+      else
+        echo "Installing web dependencies..." | tee -a $LOG_FILE
+        npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+      fi
     - echo "Running linter..." | tee -a $LOG_FILE
     - npm run lint --prefix web 2>&1 | tee -a $LOG_FILE
     - echo "Running web tests..." | tee -a $LOG_FILE
@@ -186,6 +227,8 @@ qa_job:
   needs:
     - unit_test_backend
     - unit_test_web
+    - build_backend
+    - build_web
   services:
     - name: postgres:16-alpine
       alias: postgres
@@ -207,6 +250,7 @@ qa_job:
         - -c
         - full_page_writes=off
   variables:
+    CI_POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
     SUPABASE_SERVICE_KEY: local-service-key
@@ -215,6 +259,7 @@ qa_job:
     API_PORT: "5000"
     JWT_SECRET: test-jwt-secret-for-ci
     JWT_EXPIRES_IN: 7d
+    ARCANE_DEMO_PASSWORD: ci-demo-password
     NODE_ENV: test
     NODE_OPTIONS: "--max-old-space-size=2048"
     CI: "true"
@@ -223,6 +268,27 @@ qa_job:
     - mkdir -p logs
     - export LOG_FILE="logs/qa_job_${CI_COMMIT_SHORT_SHA}.log"
   script:
+    - |
+      export DB_HOST="${POSTGRES_PORT_5432_TCP_ADDR:-postgres}"
+      export DB_PORT="${POSTGRES_PORT_5432_TCP_PORT:-5432}"
+      export CI_POSTGRES_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres?schema=public"
+      export DATABASE_URL="$CI_POSTGRES_URL"
+      export CI_POSTGRES_PSQL_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres"
+      echo "Using CI DB host: ${DB_HOST}:${DB_PORT}" | tee -a $LOG_FILE
+    - |
+      echo "Waiting for PostgreSQL service..." | tee -a $LOG_FILE
+      for i in $(seq 1 60); do
+        if pg_isready -h postgres -p 5432 -U postgres -d postgres >/dev/null 2>&1; then
+          echo "PostgreSQL is ready." | tee -a $LOG_FILE
+          break
+        fi
+        if [ "$i" -eq 60 ]; then
+          echo "PostgreSQL did not become ready in time." | tee -a $LOG_FILE
+          pg_isready -h postgres -p 5432 -U postgres -d postgres 2>&1 | tee -a $LOG_FILE || true
+          exit 1
+        fi
+        sleep 2
+      done
     - chmod +x scripts/ci/run-qa-tests.sh
     - ./scripts/ci/run-qa-tests.sh
   artifacts:
@@ -246,9 +312,9 @@ qa_job:
 
 deploy_staging:
   stage: deploy
-  image: docker:24.0.6
+  image: docker:29.0.1
   services:
-    - docker:24.0.6-dind
+    - docker:29.0.1-dind
   needs:
     - qa_job
   script:
@@ -263,9 +329,9 @@ deploy_staging:
 
 deploy_production:
   stage: deploy
-  image: docker:24.0.6
+  image: docker:29.0.1
   services:
-    - docker:24.0.6-dind
+    - docker:29.0.1-dind
   needs:
     - qa_job
   script:

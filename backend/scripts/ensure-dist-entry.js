@@ -9,7 +9,7 @@ if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
 }
 
-const banner = `require('./backend/src/main');\n`;
+const banner = `require('./src/main');\n`;
 fs.writeFileSync(entryPath, banner);
 fs.writeFileSync(typesPath, 'export {};');
 

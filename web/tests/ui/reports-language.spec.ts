@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoAndWait, setLanguage, verifyTranslations } from './utils/language';
+import { gotoAndWait, mockAuthenticatedProAccess, setLanguage, verifyTranslations } from './utils/language';
 
 const reportsUrl = '/reports';
 const autoScoutUrl = '/auto-scout';
@@ -90,17 +90,7 @@ async function mockAutoScoutApis(page) {
 
 test.describe('Protected reports & AutoScout translations', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(({ user }) => {
-      window.localStorage.setItem('arcane_auth_token', 'playwright-token');
-      window.localStorage.setItem('arcane_user', JSON.stringify(user));
-    }, {
-      user: {
-        id: 'qa-user',
-        email: 'qa@arcane.ai',
-        fullName: 'QA Lead',
-        accountType: 'club',
-      },
-    });
+    await mockAuthenticatedProAccess(page);
   });
 
   test('Reports hero updates copy when switching languages', async ({ page }) => {

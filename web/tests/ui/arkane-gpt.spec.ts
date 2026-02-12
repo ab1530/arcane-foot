@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { gotoAndWait, setLanguage } from './utils/language';
+import { gotoAndWait, mockAuthenticatedProAccess, setLanguage } from './utils/language';
 
 const arkaneGptUrl = '/ai/arkane-gpt';
 
 test.describe('Arkane GPT suggestions translations', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockAuthenticatedProAccess(page);
+  });
+
   test('Suggested questions and warnings switch language', async ({ page }) => {
     await setLanguage(page, 'fr');
     await gotoAndWait(page, arkaneGptUrl);
