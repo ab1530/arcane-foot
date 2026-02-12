@@ -133,9 +133,13 @@ unit_test_backend:
     SUPABASE_SERVICE_KEY: local-service-key
     SUPABASE_STORAGE_BUCKET: arcane-media
   script:
-    - export DATABASE_URL="$CI_POSTGRES_URL"
-    - export CI_POSTGRES_PSQL_URL="${CI_POSTGRES_URL%%\?*}"
-    - 'echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE'
+    - |
+      export DB_HOST="${POSTGRES_PORT_5432_TCP_ADDR:-postgres}"
+      export DB_PORT="${POSTGRES_PORT_5432_TCP_PORT:-5432}"
+      export CI_POSTGRES_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres?schema=public"
+      export DATABASE_URL="$CI_POSTGRES_URL"
+      export CI_POSTGRES_PSQL_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres"
+      echo "Using CI DB host: ${DB_HOST}:${DB_PORT}" | tee -a $LOG_FILE
     - |
       echo "Waiting for PostgreSQL service..." | tee -a $LOG_FILE
       for i in $(seq 1 60); do
@@ -264,8 +268,13 @@ qa_job:
     - mkdir -p logs
     - export LOG_FILE="logs/qa_job_${CI_COMMIT_SHORT_SHA}.log"
   script:
-    - export DATABASE_URL="$CI_POSTGRES_URL"
-    - 'echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE'
+    - |
+      export DB_HOST="${POSTGRES_PORT_5432_TCP_ADDR:-postgres}"
+      export DB_PORT="${POSTGRES_PORT_5432_TCP_PORT:-5432}"
+      export CI_POSTGRES_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres?schema=public"
+      export DATABASE_URL="$CI_POSTGRES_URL"
+      export CI_POSTGRES_PSQL_URL="postgresql://postgres:postgres@${DB_HOST}:${DB_PORT}/postgres"
+      echo "Using CI DB host: ${DB_HOST}:${DB_PORT}" | tee -a $LOG_FILE
     - |
       echo "Waiting for PostgreSQL service..." | tee -a $LOG_FILE
       for i in $(seq 1 60); do
