@@ -11,6 +11,12 @@ fi
 
 mkdir -p "$(dirname "${LOG_FILE}")"
 
+CI_POSTGRES_URL="${CI_POSTGRES_URL:-postgresql://postgres:postgres@postgres:5432/postgres?schema=public}"
+CI_POSTGRES_PSQL_URL="${CI_POSTGRES_URL%%\?*}"
+export DATABASE_URL="$CI_POSTGRES_URL"
+
+echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
+
 echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
 apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
 
@@ -34,8 +40,8 @@ echo "Syncing Prisma schema for QA ephemeral database..." | tee -a $LOG_FILE
 echo "Note: Prisma Client already generated during npm ci postinstall" | tee -a $LOG_FILE
 
 echo "Applying database policies..." | tee -a $LOG_FILE
-if psql postgresql://postgres:postgres@postgres:5432/postgres -tAc "SELECT 1 FROM pg_namespace WHERE nspname='auth'" | grep -q 1; then
-  psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+if psql "$CI_POSTGRES_PSQL_URL" -tAc "SELECT 1 FROM pg_namespace WHERE nspname='auth'" | grep -q 1; then
+  psql "$CI_POSTGRES_PSQL_URL" -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
 else
   echo "Skipping Supabase policies: auth schema not available in CI postgres." | tee -a $LOG_FILE
 fi

@@ -226,6 +226,7 @@ qa_job:
         - -c
         - full_page_writes=off
   variables:
+    CI_POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres?schema=public
     SUPABASE_URL: http://localhost:9999
     SUPABASE_SERVICE_KEY: local-service-key
@@ -243,6 +244,8 @@ qa_job:
     - mkdir -p logs
     - export LOG_FILE="logs/qa_job_${CI_COMMIT_SHORT_SHA}.log"
   script:
+    - export DATABASE_URL="$CI_POSTGRES_URL"
+    - echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
     - chmod +x scripts/ci/run-qa-tests.sh
     - ./scripts/ci/run-qa-tests.sh
   artifacts:
