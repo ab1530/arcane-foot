@@ -171,7 +171,7 @@ unit_test_backend:
         echo "Skipping supabase/policies.sql in CI: auth schema not present on vanilla postgres service." | tee -a $LOG_FILE
       fi
     - echo "Running backend tests with coverage..." | tee -a $LOG_FILE
-    - npm run test:cov --prefix backend 2>&1 | tee -a $LOG_FILE
+    - npm run test:ci --prefix backend -- --coverage 2>&1 | tee -a $LOG_FILE
     - echo "Tests completed" | tee -a $LOG_FILE
     - echo "Generating coverage summary..." | tee -a $LOG_FILE
     - cat backend/coverage/coverage-summary.json 2>&1 | tee -a $LOG_FILE || echo "No coverage summary found"
