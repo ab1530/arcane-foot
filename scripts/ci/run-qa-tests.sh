@@ -17,6 +17,30 @@ export DATABASE_URL="$CI_POSTGRES_URL"
 export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/cache/ms-playwright}"
 mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" /cache/npm
 
+run_with_retry() {
+  local max_attempts="$1"
+  local base_delay="$2"
+  shift 2
+
+  local attempt=1
+  while true; do
+    if "$@" 2>&1 | tee -a "$LOG_FILE"; then
+      return 0
+    fi
+
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "Command failed after ${max_attempts} attempts: $*" | tee -a "$LOG_FILE"
+      return 1
+    fi
+
+    local wait_seconds=$((base_delay * attempt))
+    echo "Command failed (attempt ${attempt}/${max_attempts}): $*" | tee -a "$LOG_FILE"
+    echo "Retrying in ${wait_seconds}s..." | tee -a "$LOG_FILE"
+    sleep "$wait_seconds"
+    attempt=$((attempt + 1))
+  done
+}
+
 echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
 echo "Using Playwright cache: $PLAYWRIGHT_BROWSERS_PATH" | tee -a $LOG_FILE
 
@@ -74,8 +98,8 @@ echo "Backend is ready" | tee -a $LOG_FILE
 
 cd web
 echo "Ensuring Playwright Chromium is available..." | tee -a $LOG_FILE
-echo "Installing Playwright system dependencies..." | tee -a $LOG_FILE
-npx --no-install playwright install-deps chromium 2>&1 | tee -a $LOG_FILE
+echo "Installing Playwright system dependencies (retry up to 3 attempts)..." | tee -a $LOG_FILE
+run_with_retry 3 15 npx --no-install playwright install-deps chromium
 npx --no-install playwright install chromium 2>&1 | tee -a $LOG_FILE
 
 echo "Running E2E tests..." | tee -a $LOG_FILE
