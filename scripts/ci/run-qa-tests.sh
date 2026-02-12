@@ -11,14 +11,28 @@ fi
 
 mkdir -p "$(dirname "${LOG_FILE}")"
 
-echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
-apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
+CI_POSTGRES_URL="${CI_POSTGRES_URL:-postgresql://postgres:postgres@postgres:5432/postgres?schema=public}"
+CI_POSTGRES_PSQL_URL="${CI_POSTGRES_URL%%\?*}"
+export DATABASE_URL="$CI_POSTGRES_URL"
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/cache/ms-playwright}"
+mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" /cache/npm
 
-echo "Installing backend dependencies..." | tee -a $LOG_FILE
-npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
+echo "Using Playwright cache: $PLAYWRIGHT_BROWSERS_PATH" | tee -a $LOG_FILE
 
-echo "Installing web dependencies..." | tee -a $LOG_FILE
-npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+if [ -d backend/node_modules ]; then
+  echo "Reusing backend/node_modules from upstream artifacts." | tee -a $LOG_FILE
+else
+  echo "Installing backend dependencies..." | tee -a $LOG_FILE
+  npm ci --prefix backend 2>&1 | tee -a $LOG_FILE
+fi
+
+if [ -d web/node_modules ]; then
+  echo "Reusing web/node_modules from upstream artifacts." | tee -a $LOG_FILE
+else
+  echo "Installing web dependencies..." | tee -a $LOG_FILE
+  npm ci --prefix web 2>&1 | tee -a $LOG_FILE
+fi
 
 if [[ ! -f backend/prisma/schema.prisma ]]; then
   echo "ERROR: Missing Prisma schema at backend/prisma/schema.prisma" | tee -a $LOG_FILE
@@ -34,8 +48,8 @@ echo "Syncing Prisma schema for QA ephemeral database..." | tee -a $LOG_FILE
 echo "Note: Prisma Client already generated during npm ci postinstall" | tee -a $LOG_FILE
 
 echo "Applying database policies..." | tee -a $LOG_FILE
-if psql postgresql://postgres:postgres@postgres:5432/postgres -tAc "SELECT 1 FROM pg_namespace WHERE nspname='auth'" | grep -q 1; then
-  psql postgresql://postgres:postgres@postgres:5432/postgres -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
+if psql "$CI_POSTGRES_PSQL_URL" -tAc "SELECT 1 FROM pg_namespace WHERE nspname='auth'" | grep -q 1; then
+  psql "$CI_POSTGRES_PSQL_URL" -f supabase/policies.sql 2>&1 | tee -a $LOG_FILE
 else
   echo "Skipping Supabase policies: auth schema not available in CI postgres." | tee -a $LOG_FILE
 fi
@@ -59,8 +73,10 @@ timeout 60 bash -c 'until curl -f http://localhost:5000/api/health 2>/dev/null; 
 echo "Backend is ready" | tee -a $LOG_FILE
 
 cd web
-echo "Installing Playwright with dependencies..." | tee -a $LOG_FILE
-npx playwright install --with-deps chromium 2>&1 | tee -a $LOG_FILE
+echo "Ensuring Playwright Chromium is available..." | tee -a $LOG_FILE
+echo "Installing Playwright system dependencies..." | tee -a $LOG_FILE
+npx --no-install playwright install-deps chromium 2>&1 | tee -a $LOG_FILE
+npx --no-install playwright install chromium 2>&1 | tee -a $LOG_FILE
 
 echo "Running E2E tests..." | tee -a $LOG_FILE
 npm run test:e2e 2>&1 | tee -a $LOG_FILE
