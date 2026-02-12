@@ -139,7 +139,7 @@ unit_test_backend:
   script:
     - export DATABASE_URL="$CI_POSTGRES_URL"
     - export CI_POSTGRES_PSQL_URL="${CI_POSTGRES_URL%%\?*}"
-    - echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
+    - 'echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE'
     - echo "Installing PostgreSQL client..." | tee -a $LOG_FILE
     - apt-get update && apt-get install -y postgresql-client 2>&1 | tee -a $LOG_FILE
     - echo "Installing dependencies..." | tee -a $LOG_FILE
@@ -245,7 +245,7 @@ qa_job:
     - export LOG_FILE="logs/qa_job_${CI_COMMIT_SHORT_SHA}.log"
   script:
     - export DATABASE_URL="$CI_POSTGRES_URL"
-    - echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE
+    - 'echo "Using CI DB host: postgres:5432" | tee -a $LOG_FILE'
     - chmod +x scripts/ci/run-qa-tests.sh
     - ./scripts/ci/run-qa-tests.sh
   artifacts:
