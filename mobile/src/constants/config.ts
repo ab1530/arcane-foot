@@ -18,9 +18,25 @@ const getDevApiUrl = () => {
   return 'http://localhost:5002/api';
 };
 
-export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ??
-  (__DEV__ ? getDevApiUrl() : 'https://arcane-foot-staging.up.railway.app/api');
+const normalizeApiUrl = (value?: string | null): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/\/+$/, '');
+};
+
+const envApiUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
+const defaultApiUrl = __DEV__
+  ? getDevApiUrl()
+  : 'https://appfoot-api-production.up.railway.app/api';
+
+export const API_URL = normalizeApiUrl(envApiUrl ?? defaultApiUrl) ?? defaultApiUrl;
+
+if (__DEV__) {
+  const source = envApiUrl ? 'EXPO_PUBLIC_API_URL' : 'auto-detected dev host';
+  // Keep this log in dev to make backend routing issues visible quickly.
+  console.info(`[Mobile Config] API_URL=${API_URL} (source=${source})`);
+}
 
 export const API_TIMEOUT = 30000; // 30 seconds
 
