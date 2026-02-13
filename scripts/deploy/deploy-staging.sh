@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/bin/sh
+set -eu
 
 ###############################################################################
 # ARCANE Football - Staging Deployment Script
@@ -22,9 +22,12 @@ echo ""
 # Step 1: Docker Login
 ###############################################################################
 echo "🔐 Step 1/5: Docker Registry Login"
-if [ -n "$CI_REGISTRY_PASSWORD" ]; then
+if [ -n "${CI_REGISTRY_PASSWORD:-}" ]; then
     echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY"
     echo "✅ Docker login successful"
+else
+    echo "❌ ERROR: CI_REGISTRY_PASSWORD is not set"
+    exit 1
 fi
 echo ""
 

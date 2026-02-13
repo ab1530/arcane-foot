@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/bin/sh
+set -eu
 
 ###############################################################################
 # ARCANE Football - Production Deployment Script  
@@ -36,7 +36,13 @@ echo ""
 ###############################################################################
 echo "🏗️  Building Production Images"
 
-docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY" <<< "$CI_REGISTRY_PASSWORD"
+if [ -n "${CI_REGISTRY_PASSWORD:-}" ]; then
+    echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY"
+    echo "✅ Docker login successful"
+else
+    echo "❌ ERROR: CI_REGISTRY_PASSWORD is not set"
+    exit 1
+fi
 
 docker build -f Dockerfile.backend -t "$REGISTRY/$PROJECT_PATH/backend:$IMAGE_TAG" .
 docker build -f Dockerfile.web -t "$REGISTRY/$PROJECT_PATH/web:$IMAGE_TAG" .

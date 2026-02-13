@@ -318,8 +318,8 @@ deploy_staging:
   needs:
     - qa_job
   script:
-    - chmod +x scripts/deploy/deploy-staging.sh
-    - ./scripts/deploy/deploy-staging.sh
+    - ls -la scripts/deploy
+    - sh scripts/deploy/deploy-staging.sh
   environment:
     name: staging
   rules:
@@ -335,8 +335,8 @@ deploy_production:
   needs:
     - qa_job
   script:
-    - chmod +x scripts/deploy/deploy-production.sh
-    - ./scripts/deploy/deploy-production.sh
+    - ls -la scripts/deploy
+    - sh scripts/deploy/deploy-production.sh
   environment:
     name: production
   rules:
