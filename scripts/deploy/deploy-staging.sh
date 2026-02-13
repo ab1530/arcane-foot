@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/bin/sh
+set -eu
 
 ###############################################################################
 # ARCANE Football - Staging Deployment Script
