@@ -37,7 +37,12 @@ export default function ShortlistPage() {
   const [error, setError] = useState<string | null>(null);
 
   const shareApiUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_PUBLIC_SHARE_API_URL ?? process.env.NEXT_PUBLIC_API_URL,
+    () => {
+      const raw = process.env.NEXT_PUBLIC_PUBLIC_SHARE_API_URL ?? process.env.NEXT_PUBLIC_API_URL;
+      return String(raw ?? "")
+        .trim()
+        .replace(/\/+$/, "");
+    },
     [],
   );
 
@@ -46,9 +51,8 @@ export default function ShortlistPage() {
     try {
       setLoading(true);
       setError(null);
-      const base = String(shareApiUrl).replace(/\/+$/, "");
-      const path = base.includes("functions.supabase.co") ? "shortlist" : "passport-shares";
-      const res = await fetch(`${base}/${path}/${token}`);
+      const path = shareApiUrl.includes("functions.supabase.co") ? "shortlist" : "passport-shares";
+      const res = await fetch(`${shareApiUrl}/${path}/${token}`);
       if (!res.ok) {
         throw new Error("Shortlist not found");
       }

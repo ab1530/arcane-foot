@@ -50,7 +50,9 @@ export default function PublicPassportPage() {
       setLoading(true);
       const shareApiUrl =
         process.env.NEXT_PUBLIC_PUBLIC_SHARE_API_URL ?? process.env.NEXT_PUBLIC_API_URL;
-      const base = String(shareApiUrl ?? "").replace(/\/+$/, "");
+      const base = String(shareApiUrl ?? "")
+        .trim()
+        .replace(/\/+$/, "");
       if (!base) throw new Error("Missing API URL");
       const path = base.includes("functions.supabase.co") ? "passport" : "passport/token";
       const response = await fetch(`${base}/${path}/${token}`);

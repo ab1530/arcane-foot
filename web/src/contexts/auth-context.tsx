@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      const API_URL = getApiBaseUrl();
       let lastError: Error | null = null;
 
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -145,19 +145,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const login = async (email: string, password: string) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+    const API_URL = getApiBaseUrl();
 
-    const response = await fetch(`${API_URL}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (error) {
+      logger.error("Login request failed before reaching backend", error as Error, {
+        scope: "AUTH",
+        endpoint: "/api/auth/login",
+      });
+      throw new Error("NETWORK_ERROR");
+    }
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Login failed");
+      let backendMessage = "Login failed";
+      try {
+        const error = await response.json();
+        backendMessage = error?.message || backendMessage;
+      } catch {
+        // Ignore non-JSON response and keep fallback message.
+      }
+
+      if (response.status === 401) {
+        throw new Error("INVALID_CREDENTIALS");
+      }
+
+      throw new Error(`LOGIN_HTTP_${response.status}:${backendMessage}`);
     }
 
     const data = await response.json();
@@ -173,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signup = async (data: SignupData) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+    const API_URL = getApiBaseUrl();
 
     const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: "POST",
@@ -324,4 +344,10 @@ function safeParseUser(userStr: string | null): User | null {
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getApiBaseUrl() {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
+  const normalized = raw.trim().replace(/\/+$/, "");
+  return normalized || "http://localhost:5001";
 }

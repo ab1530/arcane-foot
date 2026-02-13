@@ -49,7 +49,7 @@ export default function LoginPage() {
       setTimeout(() => router.push("/dashboard"), 500);
     } catch (error) {
       console.error("Login error:", error);
-      const errorMessage = loginCopy.toast.errorDescription;
+      const errorMessage = getLoginErrorMessage(error, loginCopy.toast.errorDescription);
       setError(errorMessage);
       toast.error(loginCopy.toast.errorTitle, {
         description: errorMessage,
@@ -293,4 +293,22 @@ export default function LoginPage() {
       </div>
     </main>
   );
+}
+
+function getLoginErrorMessage(error: unknown, defaultMessage: string) {
+  if (!(error instanceof Error)) return defaultMessage;
+
+  if (error.message === "INVALID_CREDENTIALS") {
+    return defaultMessage;
+  }
+
+  if (error.message === "NETWORK_ERROR" || error.message.startsWith("LOGIN_HTTP_5")) {
+    return "Connexion au serveur impossible. Vérifiez votre réseau et réessayez.";
+  }
+
+  if (error.message.startsWith("LOGIN_HTTP_")) {
+    return "La connexion a échoué. Réessayez dans un instant.";
+  }
+
+  return defaultMessage;
 }
