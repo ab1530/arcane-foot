@@ -19,6 +19,7 @@ import { colors, spacing, typography, radius } from '../../design/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { showSuccess, showError } from '../../services/toast';
 import api from '../../services/api';
+import { API_URL } from '../../constants/config';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { useLocalization } from '../../contexts/LocalizationContext';
 
@@ -63,14 +64,35 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         showSuccess(loginCopy.toasts.success);
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      const status = error?.response?.status as number | undefined;
+      const backendMessage =
+        typeof error?.response?.data?.message === 'string'
+          ? error.response.data.message
+          : null;
+      const networkLikeError =
+        !error?.response ||
+        error?.message === 'Network Error' ||
+        error?.code === 'ECONNABORTED' ||
+        error?.code === 'ERR_NETWORK';
+
+      console.error('Login error:', {
+        message: error?.message,
+        code: error?.code,
+        status,
+        apiUrl: API_URL,
+        backendMessage,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
-      if (error.response?.status === 401) {
+      if (status === 401) {
         showError(loginCopy.toasts.invalidCredentials);
-      } else if (error.response?.data?.message) {
-        showError(error.response.data.message);
-      } else if (error.message === 'Network Error') {
+      } else if (networkLikeError || (typeof status === 'number' && status >= 500)) {
+        showError(loginCopy.toasts.network);
+      } else if (backendMessage) {
+        showError(backendMessage);
+      } else if (typeof status === 'number' && status >= 400) {
+        showError(loginCopy.toasts.generic);
+      } else if (error?.message === 'timeout of 30000ms exceeded') {
         showError(loginCopy.toasts.network);
       } else {
         showError(loginCopy.toasts.generic);
