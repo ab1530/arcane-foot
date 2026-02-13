@@ -77,7 +77,7 @@ SENTRY_ENVIRONMENT=staging  # ou "production" selon l'environnement
 NODE_ENV=development
 API_PORT=3000
 FRONTEND_URL=https://staging.arcane.com
-ALLOWED_ORIGINS=https://staging.arcane.com
+CORS_ALLOWED_ORIGINS=https://staging.arcane.com
 ```
 
 **Pour PRODUCTION:**
@@ -85,7 +85,7 @@ ALLOWED_ORIGINS=https://staging.arcane.com
 NODE_ENV=production
 API_PORT=3000
 FRONTEND_URL=https://arcane.com
-ALLOWED_ORIGINS=https://arcane.com,https://www.arcane.com
+CORS_ALLOWED_ORIGINS=https://arcane.com,https://www.arcane.com
 ```
 
 ---
@@ -132,7 +132,7 @@ Railway va automatiquement:
 - [ ] Toutes les variables obligatoires sont configurées
 - [ ] La clé privée Firebase est correctement formatée (avec \n)
 - [ ] SENTRY_ENVIRONMENT correspond à l'environnement Railway (staging/production)
-- [ ] FRONTEND_URL et ALLOWED_ORIGINS sont corrects
+- [ ] FRONTEND_URL et CORS_ALLOWED_ORIGINS sont corrects
 - [ ] DATABASE_URL pointe vers la bonne base de données (postgres.railway.internal)
 - [ ] Le service Railway est bien lié à la branche `develop`
 

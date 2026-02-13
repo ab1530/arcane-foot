@@ -9,13 +9,18 @@ import { logger } from "./logger";
 import { CreateHardwareSessionPayload, HardwareSession } from "@/types/hardware";
 import { CreateOfferPayload } from "@/types/marketplace";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+const API_BASE_URL = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 interface ApiConfig {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   headers?: Record<string, string>;
   body?: any;
   token?: string;
+}
+
+function resolveApiBaseUrl(value?: string) {
+  const normalized = (value ?? "").trim().replace(/\/+$/, "");
+  return normalized || "http://localhost:5001";
 }
 
 class ApiClient {
