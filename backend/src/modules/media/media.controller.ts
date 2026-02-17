@@ -68,16 +68,19 @@ export class MediaController {
   }
 
   @Get('player/:playerId')
+  @UseGuards(JwtAuthGuard)
   getPlayerMedia(@Param('playerId') playerId: string) {
     return this.mediaService.getPlayerMedia(playerId);
   }
 
   @Get('match/:matchId')
+  @UseGuards(JwtAuthGuard)
   getMatchMedia(@Param('matchId') matchId: string) {
     return this.mediaService.getMatchMedia(matchId);
   }
 
   @Get('report/:reportId')
+  @UseGuards(JwtAuthGuard)
   getReportMedia(@Param('reportId') reportId: string) {
     return this.mediaService.getReportMedia(reportId);
   }

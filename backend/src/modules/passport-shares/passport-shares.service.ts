@@ -35,19 +35,56 @@ export class PassportSharesService {
   }
 
   private getPublicWebUrl(): string {
-    const raw =
-      process.env.PUBLIC_WEB_URL ||
-      process.env.FRONTEND_URL ||
-      'http://localhost:3000';
+    const raw = process.env.PUBLIC_WEB_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 
     // Keep it predictable for concatenation
     const cleaned = raw.trim().replace(/\/+$/, '');
     if (!process.env.PUBLIC_WEB_URL) {
-      this.logger.warn(
-        `[PUBLIC_WEB_URL] missing, using fallback for share links: ${cleaned}`,
-      );
+      this.logger.warn(`[PUBLIC_WEB_URL] missing, using fallback for share links: ${cleaned}`);
     }
     return cleaned;
+  }
+
+  private buildShareUrl(token: string, baseUrl?: string): string {
+    const base = baseUrl ?? this.getPublicWebUrl();
+    return `${base}/shortlist/${token}`;
+  }
+
+  private normalizeNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  private normalizeDateString(value: unknown): string | null {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value.toISOString();
+    }
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    }
+    return null;
+  }
+
+  private computeAge(value: unknown): number | null {
+    const dateValue = this.normalizeDateString(value);
+    if (!dateValue) return null;
+
+    const birthDate = new Date(dateValue);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+
+    return age >= 0 ? age : null;
   }
 
   private async ensurePassport(playerId: string) {
@@ -60,8 +97,7 @@ export class PassportSharesService {
     try {
       return await this.passportService.createPassport(playerId);
     } catch (e: any) {
-      const message =
-        e?.response?.message || e?.message || e?.toString?.() || '';
+      const message = e?.response?.message || e?.message || e?.toString?.() || '';
       if (String(message).includes('Player already has a passport')) {
         const refetched = await this.prisma.player_passports.findUnique({
           where: { playerId },
@@ -78,8 +114,18 @@ export class PassportSharesService {
     playerIds: string[];
     title?: string;
     clubName?: string;
+    sourceFeature?: 'CLUB_NEEDS';
+    sourceRequestId?: string;
+    sourceRequestLineNumber?: number;
   }) {
-    const { createdById, title, clubName } = params;
+    const {
+      createdById,
+      title,
+      clubName,
+      sourceFeature,
+      sourceRequestId,
+      sourceRequestLineNumber,
+    } = params;
     const uniquePlayerIds = Array.from(new Set(params.playerIds ?? []));
 
     if (uniquePlayerIds.length < 1) {
@@ -108,11 +154,14 @@ export class PassportSharesService {
         position: player?.position ?? passportData?.position ?? null,
         nationality: player?.nationality ?? passportData?.nationality ?? null,
         clubName: club?.name ?? passportData?.club?.name ?? null,
-        avatarUrl:
-          passportData?.avatar ??
-          user?.avatar ??
-          player?.photoUrl ??
-          null,
+        avatarUrl: passportData?.avatar ?? user?.avatar ?? player?.photoUrl ?? null,
+        age: this.computeAge(player?.dateOfBirth ?? passportData?.dateOfBirth),
+        marketValue: this.normalizeNumber(player?.marketValue ?? passportData?.marketValue),
+        contractUntil: this.normalizeDateString(
+          player?.contractUntil ?? passportData?.contractUntil,
+        ),
+        preferredFoot: player?.preferredFoot ?? passportData?.preferredFoot ?? null,
+        averageRating: this.normalizeNumber(passportData?.averageRating),
       };
     });
 
@@ -125,6 +174,9 @@ export class PassportSharesService {
           createdById,
           title,
           clubName,
+          sourceFeature,
+          sourceRequestId,
+          sourceRequestLineNumber,
           items: items as any,
         },
         select: {
@@ -133,6 +185,9 @@ export class PassportSharesService {
           createdById: true,
           title: true,
           clubName: true,
+          sourceFeature: true,
+          sourceRequestId: true,
+          sourceRequestLineNumber: true,
           items: true,
           revokedAt: true,
           createdAt: true,
@@ -141,9 +196,74 @@ export class PassportSharesService {
       })
       .catch((e) => this.handleMissingTable(e));
 
-    const baseUrl = this.getPublicWebUrl();
-    const shareUrl = `${baseUrl}/shortlist/${token}`;
+    const shareUrl = this.buildShareUrl(token);
     return { token, shareUrl, shareSet };
+  }
+
+  async listShareSets(params?: {
+    sourceRequestId?: string;
+    sourceRequestLineNumber?: number;
+    includeRevoked?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = Math.max(1, params?.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params?.limit ?? 20));
+    const includeRevoked = params?.includeRevoked === true;
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (params?.sourceRequestId) {
+      where.sourceRequestId = params.sourceRequestId;
+    }
+    if (params?.sourceRequestLineNumber != null) {
+      where.sourceRequestLineNumber = params.sourceRequestLineNumber;
+    }
+    if (!includeRevoked) {
+      where.revokedAt = null;
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.passport_share_sets
+        .findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            token: true,
+            createdById: true,
+            title: true,
+            clubName: true,
+            sourceFeature: true,
+            sourceRequestId: true,
+            sourceRequestLineNumber: true,
+            items: true,
+            revokedAt: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        })
+        .catch((e) => this.handleMissingTable(e)),
+      this.prisma.passport_share_sets.count({ where }).catch((e) => this.handleMissingTable(e)),
+    ]);
+
+    const baseUrl = this.getPublicWebUrl();
+    const data = items.map((item: any) => ({
+      ...item,
+      shareUrl: this.buildShareUrl(item.token, baseUrl),
+    }));
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async getShareSetByToken(token: string) {

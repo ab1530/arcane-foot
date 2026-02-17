@@ -6,21 +6,24 @@
 import { analytics } from "./analytics";
 import { handleSubscriptionError } from "./api-interceptor";
 import { logger } from "./logger";
+import { buildApiUrl, resolveApiBase } from "./api-base";
 import { CreateHardwareSessionPayload, HardwareSession } from "@/types/hardware";
 import { CreateOfferPayload } from "@/types/marketplace";
+import type {
+  PlayerMediaItem,
+  PlayerProfileAuditTrail,
+  PlayerProfileView,
+  ProfileContentStatus,
+  ProfileSectionKey,
+} from "@/types/player-profile";
 
-const API_BASE_URL = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+const API_BASE_URL = resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
 
 interface ApiConfig {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   headers?: Record<string, string>;
   body?: any;
   token?: string;
-}
-
-function resolveApiBaseUrl(value?: string) {
-  const normalized = (value ?? "").trim().replace(/\/+$/, "");
-  return normalized || "http://localhost:5001";
 }
 
 class ApiClient {
@@ -71,7 +74,7 @@ class ApiClient {
         requestId,
       });
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, requestConfig);
+      const response = await fetch(buildApiUrl(endpoint, this.baseUrl), requestConfig);
       const duration = Date.now() - startTime;
 
       // Track API call performance
@@ -274,6 +277,103 @@ class ApiClient {
 
   async getPlayer(id: string) {
     return this.request<{ player: any }>(`/api/players/${id}`);
+  }
+
+  async getPlayerMedia(playerId: string): Promise<PlayerMediaItem[]> {
+    return this.request<PlayerMediaItem[]>(`/api/media/player/${playerId}`);
+  }
+
+  async getPlayerProfileView(
+    playerId: string,
+    params?: { includeUnpublished?: boolean },
+  ): Promise<PlayerProfileView> {
+    const queryParams = new URLSearchParams();
+    if (params?.includeUnpublished) {
+      queryParams.append("includeUnpublished", "true");
+    }
+
+    const query = queryParams.toString();
+    return this.request<PlayerProfileView>(
+      `/api/player-profiles/${playerId}${query ? `?${query}` : ""}`
+    );
+  }
+
+  async getPlayerProfileAudit(playerId: string): Promise<PlayerProfileAuditTrail> {
+    return this.request<PlayerProfileAuditTrail>(`/api/player-profiles/${playerId}/audit`);
+  }
+
+  async updatePlayerProfileMeta(
+    playerId: string,
+    payload: {
+      mainPosition?: string;
+      otherPositions?: string[];
+      agentName?: string;
+      pronunciation?: string;
+      outfitter?: string;
+      socialLinks?: Record<string, string | null>;
+      externalMarketUrl?: string | null;
+    }
+  ) {
+    return this.request(`/api/player-profiles/${playerId}/meta`, {
+      method: "PATCH",
+      body: payload,
+    });
+  }
+
+  async createPlayerProfileSectionItem(
+    playerId: string,
+    section: ProfileSectionKey,
+    payload: Record<string, any>,
+  ) {
+    return this.request(`/api/player-profiles/${playerId}/${section}`, {
+      method: "POST",
+      body: payload,
+    });
+  }
+
+  async updatePlayerProfileSectionItem(
+    playerId: string,
+    section: ProfileSectionKey,
+    itemId: string,
+    payload: Record<string, any>,
+  ) {
+    return this.request(`/api/player-profiles/${playerId}/${section}/${itemId}`, {
+      method: "PATCH",
+      body: payload,
+    });
+  }
+
+  async deletePlayerProfileSectionItem(
+    playerId: string,
+    section: ProfileSectionKey,
+    itemId: string,
+  ) {
+    return this.request(`/api/player-profiles/${playerId}/${section}/${itemId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async updatePlayerProfileSectionStatus(
+    playerId: string,
+    section: ProfileSectionKey,
+    itemId: string,
+    status: ProfileContentStatus,
+  ) {
+    return this.request(`/api/player-profiles/${playerId}/${section}/${itemId}/status`, {
+      method: "PATCH",
+      body: { status },
+    });
+  }
+
+  async bulkUpsertPlayerProfiles(
+    payload: { players: Array<Record<string, any>> },
+    internalSyncKey: string,
+  ) {
+    return this.request(`/api/internal/player-profiles/bulk-upsert`, {
+      method: "POST",
+      headers: { "x-internal-sync-key": internalSyncKey },
+      body: payload,
+    });
   }
 
   async createPlayer(data: any) {

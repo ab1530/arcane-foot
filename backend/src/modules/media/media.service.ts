@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaType, UserRole } from '@prisma/client';
@@ -8,11 +14,48 @@ import { randomUUID } from 'crypto';
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
+  private readonly signedUrlTtlSec = 3600;
 
   constructor(
     private supabaseService: SupabaseService,
     private prisma: PrismaService,
   ) {}
+
+  private async enrichWithPlayback<T extends { id: string; url: string }>(items: T[]) {
+    return Promise.all(
+      items.map(async (item) => {
+        try {
+          const playbackUrl = await this.supabaseService.createSignedUrl(
+            item.url,
+            this.signedUrlTtlSec,
+          );
+          return {
+            ...item,
+            playbackUrl,
+            playbackExpiresAt: new Date(Date.now() + this.signedUrlTtlSec * 1000).toISOString(),
+          };
+        } catch (error) {
+          const normalizedPath = (() => {
+            try {
+              return this.supabaseService.extractStoragePath(item.url);
+            } catch {
+              return item.url;
+            }
+          })();
+
+          this.logger.warn(
+            `Unable to create playback URL for media ${item.id} (path: ${normalizedPath}): ${(error as Error)?.message ?? 'unknown error'}`,
+          );
+
+          return {
+            ...item,
+            playbackUrl: undefined,
+            playbackExpiresAt: undefined,
+          };
+        }
+      }),
+    );
+  }
 
   /**
    * Upload a file
@@ -233,10 +276,11 @@ export class MediaService {
       throw new NotFoundException(`Player with ID ${playerId} not found`);
     }
 
-    return this.prisma.media.findMany({
+    const media = await this.prisma.media.findMany({
       where: { playerId },
       orderBy: { uploadedAt: 'desc' },
     });
+    return this.enrichWithPlayback(media);
   }
 
   /**
@@ -248,10 +292,11 @@ export class MediaService {
       throw new NotFoundException(`Match with ID ${matchId} not found`);
     }
 
-    return this.prisma.media.findMany({
+    const media = await this.prisma.media.findMany({
       where: { matchId },
       orderBy: { uploadedAt: 'desc' },
     });
+    return this.enrichWithPlayback(media);
   }
 
   /**
@@ -263,10 +308,11 @@ export class MediaService {
       throw new NotFoundException(`Report with ID ${reportId} not found`);
     }
 
-    return this.prisma.media.findMany({
+    const media = await this.prisma.media.findMany({
       where: { reportId },
       orderBy: { uploadedAt: 'desc' },
     });
+    return this.enrichWithPlayback(media);
   }
 
   /**
@@ -298,7 +344,16 @@ export class MediaService {
     try {
       await this.supabaseService.deleteFile(media.url);
     } catch (error) {
-      this.logger.error('Error deleting file from Supabase:', error);
+      const normalizedPath = (() => {
+        try {
+          return this.supabaseService.extractStoragePath(media.url);
+        } catch {
+          return media.url;
+        }
+      })();
+      this.logger.error(
+        `Error deleting file from Supabase (path: ${normalizedPath}): ${(error as Error)?.message ?? 'unknown error'}`,
+      );
       // Continue even if Supabase deletion fails
     }
 

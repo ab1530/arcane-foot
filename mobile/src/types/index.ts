@@ -127,6 +127,7 @@ export * from './playstyle-dna';
 
 // Passport types
 export * from './passport';
+export * from './player-profile';
 
 // Notification types
 export * from './notifications';

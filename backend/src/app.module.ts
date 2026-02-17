@@ -43,6 +43,7 @@ import { MarketValueModule } from './modules/market-value/market-value.module';
 import { HardwareModule } from './modules/hardware/hardware.module';
 import { ClubNeedsModule } from './modules/club-needs/club-needs.module';
 import { PassportSharesModule } from './modules/passport-shares/passport-shares.module';
+import { PlayerProfileModule } from './modules/player-profile/player-profile.module';
 import { UsersController } from './modules/users/users.controller';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
@@ -102,6 +103,7 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     HardwareModule,
     ClubNeedsModule,
     PassportSharesModule,
+    PlayerProfileModule,
     LoggerModule,
   ],
   providers: [

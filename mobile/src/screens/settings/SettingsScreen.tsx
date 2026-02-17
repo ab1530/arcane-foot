@@ -186,10 +186,12 @@ export const SettingsScreen = ({ navigation }: any) => {
   ];
 
   const ThemeSelector = () => {
+    const themeOptions = t.sections?.appearance?.theme?.options;
+
     const themes: { mode: ThemeMode; label: string; icon: string }[] = [
-      { mode: 'light', label: t.sections.appearance.theme.options.light, icon: 'sunny' },
-      { mode: 'dark', label: t.sections.appearance.theme.options.dark, icon: 'moon' },
-      { mode: 'system', label: t.sections.appearance.theme.options.system, icon: 'phone-portrait' },
+      { mode: 'light', label: themeOptions?.light ?? (language === 'fr' ? 'Clair' : 'Light'), icon: 'sunny' },
+      { mode: 'dark', label: themeOptions?.dark ?? (language === 'fr' ? 'Sombre' : 'Dark'), icon: 'moon' },
+      { mode: 'system', label: themeOptions?.system ?? (language === 'fr' ? 'Système' : 'System'), icon: 'phone-portrait' },
     ];
 
     return (

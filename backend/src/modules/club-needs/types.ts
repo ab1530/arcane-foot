@@ -41,3 +41,14 @@ export type ClubNeedMatchResult = {
   errors: string[];
 };
 
+export type ClubNeedLineState = {
+  lineNumber: number;
+  clubName: string;
+  isCompleted: boolean;
+  completedAt: string | null;
+  completedById: string | null;
+  reopenedAt: string | null;
+  reopenedById: string | null;
+};
+
+export type ClubNeedRequestProgress = 'ACTIVE' | 'PARTIAL' | 'COMPLETED';

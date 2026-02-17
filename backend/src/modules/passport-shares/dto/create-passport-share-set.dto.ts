@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class CreatePassportShareSetDto {
   @ApiProperty({
@@ -21,5 +32,30 @@ export class CreatePassportShareSetDto {
   @IsOptional()
   @IsString()
   clubName?: string;
-}
 
+  @ApiPropertyOptional({
+    description: 'Optional source feature used to create this share.',
+    enum: ['CLUB_NEEDS'],
+  })
+  @IsOptional()
+  @IsIn(['CLUB_NEEDS'])
+  sourceFeature?: 'CLUB_NEEDS';
+
+  @ApiPropertyOptional({
+    description: 'Optional source request id (e.g. club needs request id).',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  sourceRequestId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional source request line number (1-based).',
+    minimum: 1,
+    maximum: 1000,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  sourceRequestLineNumber?: number;
+}

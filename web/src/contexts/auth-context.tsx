@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { logger } from "@/lib/logger";
+import { buildApiUrl, resolveApiBase } from "@/lib/api-base";
 
 type AccountType = "player" | "agent" | "club";
 
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          const response = await fetch(`${API_URL}/api/auth/me`, {
+          const response = await fetch(buildApiUrl("/auth/me", API_URL), {
             headers: {
               "Authorization": `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -146,15 +147,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const API_URL = getApiBaseUrl();
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
 
     let response: Response;
     try {
-      response = await fetch(`${API_URL}/api/auth/login`, {
+      response = await fetch(buildApiUrl("/auth/login", API_URL), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
       });
     } catch (error) {
       logger.error("Login request failed before reaching backend", error as Error, {
@@ -177,6 +180,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("INVALID_CREDENTIALS");
       }
 
+      if (response.status === 404) {
+        throw new Error("API_ROUTE_NOT_FOUND");
+      }
+
       throw new Error(`LOGIN_HTTP_${response.status}:${backendMessage}`);
     }
 
@@ -195,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (data: SignupData) => {
     const API_URL = getApiBaseUrl();
 
-    const response = await fetch(`${API_URL}/api/auth/signup`, {
+    const response = await fetch(buildApiUrl("/auth/signup", API_URL), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -347,7 +354,5 @@ function delay(ms: number) {
 }
 
 function getApiBaseUrl() {
-  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001";
-  const normalized = raw.trim().replace(/\/+$/, "");
-  return normalized || "http://localhost:5001";
+  return resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
 }

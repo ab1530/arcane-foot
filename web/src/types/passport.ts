@@ -23,6 +23,61 @@ export interface PassportData {
   totalReports?: number;
 }
 
+export type ProfileStatValue = string | number | boolean | null;
+
+export interface ProfileStatItem {
+  key: string;
+  value: ProfileStatValue;
+}
+
+export interface ProfileMediaHighlight {
+  id: string;
+  type: string;
+  url: string;
+  thumbnailUrl: string | null;
+  filename: string | null;
+  duration: number | null;
+  uploadedAt: string | null;
+}
+
+export interface PublicProfileView {
+  identity: {
+    playerId: string;
+    firstName: string | null;
+    lastName: string | null;
+    fullName: string;
+    position: string | null;
+    nationality: string | null;
+    club: { name: string; logo?: string | null } | null;
+    avatarUrl: string | null;
+  };
+  market: {
+    marketValue: number | null;
+    contractUntil: string | null;
+    externalMarketUrl: string | null;
+  };
+  physical: {
+    age: number | null;
+    height: number | null;
+    weight: number | null;
+    preferredFoot: string | null;
+  };
+  scouting: {
+    averageRating: number | null;
+    totalReports: number;
+    lastReportAt: string | null;
+    recommendation: string | null;
+    strengthsTop: string[];
+    weaknessesTop: string[];
+  };
+  stats: {
+    snapshot: Record<string, ProfileStatValue>;
+    keyStats: ProfileStatItem[];
+  };
+  mediaHighlights: ProfileMediaHighlight[];
+  lastUpdatedAt: string;
+}
+
 export interface Passport {
   id: string;
   playerId: string;
@@ -31,9 +86,15 @@ export interface Passport {
   verifiedAt?: string;
   expiresAt?: string;
   passportData: PassportData;
+  profileView?: PublicProfileView;
+  publicProfile?: PublicProfileView;
   qrCodeUrl: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PublicPassportTokenResponse extends Passport {
+  publicProfile: PublicProfileView;
 }
 
 export interface CreatePassportDto {

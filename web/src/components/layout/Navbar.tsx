@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type MouseEvent } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -103,6 +103,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [showAIComingSoon, setShowAIComingSoon] = useState(false);
   const { subscription, getTierName } = useSubscription();
   const { favoritePlayerIds } = useFavorites();
   const { logout, isAuthenticated } = useAuth();
@@ -122,6 +123,16 @@ export default function Navbar() {
   const filteredNav = navigationItems.filter(
     (item) => !item.requireAuth || isAuthenticated
   );
+
+  const isAIHref = (href: string) => href === "/ai" || href.startsWith("/ai/");
+
+  const handleAIAccessClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!isAIHref(href)) return;
+    event.preventDefault();
+    setOpenDropdown(null);
+    setIsOpen(false);
+    setShowAIComingSoon(true);
+  };
 
   return (
     <nav
@@ -199,6 +210,7 @@ export default function Navbar() {
                               <Link
                                 key={child.href}
                                 href={child.href}
+                                onClick={(event) => handleAIAccessClick(event, child.href)}
                                 className={`flex items-center gap-3 px-4 py-3 transition-all ${
                                   isChildActive
                                     ? "bg-arcane-accent/20 text-arcane-accent"
@@ -221,6 +233,7 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={(event) => handleAIAccessClick(event, item.href)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                     isActive
                       ? "bg-arcane-accent/20 text-arcane-accent"
@@ -345,7 +358,12 @@ export default function Navbar() {
                   <div key={item.name}>
                     <Link
                       href={item.href}
-                      onClick={() => setIsOpen(false)}
+                      onClick={(event) => {
+                        handleAIAccessClick(event, item.href);
+                        if (!event.defaultPrevented) {
+                          setIsOpen(false);
+                        }
+                      }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                         isActive
                           ? "bg-arcane-accent/20 text-arcane-accent"
@@ -373,7 +391,12 @@ export default function Navbar() {
                             <Link
                               key={child.href}
                               href={child.href}
-                              onClick={() => setIsOpen(false)}
+                              onClick={(event) => {
+                                handleAIAccessClick(event, child.href);
+                                if (!event.defaultPrevented) {
+                                  setIsOpen(false);
+                                }
+                              }}
                               className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-arcane-grey hover:text-white hover:bg-arcane-darkBorder/50 transition-all"
                             >
                               <ChildIcon className="h-4 w-4" />
@@ -445,6 +468,45 @@ export default function Navbar() {
                 )}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Coming Soon Popup */}
+      <AnimatePresence>
+        {showAIComingSoon && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowAIComingSoon(false)}
+          >
+            <motion.div
+              initial={{ y: 18, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 12, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-md rounded-2xl border border-arcane-darkBorder bg-arcane-dark/95 p-6 shadow-2xl"
+            >
+              <div className="inline-flex items-center gap-2 rounded-full border border-arcane-accent/30 bg-arcane-accent/10 px-3 py-1 text-xs font-bold text-arcane-accent">
+                <Sparkles className="h-3.5 w-3.5" />
+                Fonctionnalité prochaine
+              </div>
+              <h3 className="mt-4 text-xl font-black text-white">Hub AI en attente</h3>
+              <p className="mt-2 text-sm text-arcane-grey">
+                Cette fonctionnalité sera disponible dans une prochaine version. Merci pour votre patience.
+              </p>
+              <div className="mt-6 flex justify-end">
+                <Button
+                  onClick={() => setShowAIComingSoon(false)}
+                  className="bg-arcane-accent text-arcane-dark hover:bg-arcane-accent/80"
+                >
+                  Compris
+                </Button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

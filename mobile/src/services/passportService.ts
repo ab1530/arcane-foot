@@ -5,7 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
-import { logger, logError } from '../utils/logger';
+import { logger, logError, logWarn } from '../utils/logger';
 import { isAdminRole } from '../lib/roles';
 import {
   Passport,
@@ -77,7 +77,12 @@ class PassportService {
 
       return passport;
     } catch (error) {
-      logError('Failed to get passport by player', error);
+      const status = (error as any)?.response?.status;
+      if (status === 404) {
+        logWarn('Passport not found for player (auto-create flow may follow)', { playerId, status });
+      } else {
+        logError('Failed to get passport by player', error);
+      }
       throw error;
     }
   }
@@ -185,8 +190,12 @@ class PassportService {
   /**
    * Generate public passport URL for sharing
    */
-  generatePublicUrl(token: string, baseUrl: string = 'https://arcane-football.com'): string {
-    return `${baseUrl}/passport/${token}`;
+  generatePublicUrl(token: string, baseUrl?: string): string {
+    const configuredBaseUrl =
+      baseUrl ?? process.env.EXPO_PUBLIC_PUBLIC_WEB_URL ?? 'https://arcane-steel.vercel.app';
+    const normalizedBaseUrl = String(configuredBaseUrl).trim().replace(/\/+$/, '');
+    const safeBaseUrl = normalizedBaseUrl || 'https://arcane-steel.vercel.app';
+    return `${safeBaseUrl}/passport/${token}`;
   }
 
   /**

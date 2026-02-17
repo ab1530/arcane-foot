@@ -106,7 +106,7 @@ describe('PassportService', () => {
           clubs: true,
           scouting_reports: {
             where: { status: 'APPROVED' },
-            take: 5,
+            take: 20,
             orderBy: { createdAt: 'desc' },
           },
         },
@@ -291,14 +291,21 @@ describe('PassportService', () => {
         where: { playerId: 'player-123' },
         include: {
           players: {
-            include: {
+            include: expect.objectContaining({
               users: true,
               clubs: true,
-            },
+              scouting_reports: expect.any(Object),
+              media: expect.any(Object),
+            }),
           },
         },
       });
-      expect(result).toEqual(mockPassport);
+      expect(result).toEqual(
+        expect.objectContaining({
+          ...mockPassport,
+          profileView: expect.any(Object),
+        }),
+      );
     });
 
     it('should throw NotFoundException if passport does not exist', async () => {
@@ -322,7 +329,12 @@ describe('PassportService', () => {
           where: { userId: 'user-123' },
         }),
       );
-      expect(result).toEqual(mockPassport);
+      expect(result).toEqual(
+        expect.objectContaining({
+          ...mockPassport,
+          profileView: expect.any(Object),
+        }),
+      );
     });
 
     it('should throw NotFoundException when user has no player profile', async () => {
@@ -344,14 +356,21 @@ describe('PassportService', () => {
         where: { publicToken: 'token-12345' },
         include: {
           players: {
-            include: {
+            include: expect.objectContaining({
               users: true,
               clubs: true,
-            },
+              scouting_reports: expect.any(Object),
+              media: expect.any(Object),
+            }),
           },
         },
       });
-      expect(result).toEqual(mockPassport);
+      expect(result).toEqual(
+        expect.objectContaining({
+          ...mockPassport,
+          publicProfile: expect.any(Object),
+        }),
+      );
     });
 
     it('should throw NotFoundException if passport with token does not exist', async () => {
@@ -487,6 +506,7 @@ describe('PassportService', () => {
     beforeEach(() => {
       jest.resetModules();
       process.env = { ...originalEnv };
+      process.env.PUBLIC_WEB_URL = undefined;
     });
 
     afterEach(() => {
@@ -497,6 +517,7 @@ describe('PassportService', () => {
       const mockQRCodeDataUrl = 'data:image/png;base64,mockQRCode';
       (QRCode.toDataURL as jest.Mock).mockResolvedValue(mockQRCodeDataUrl);
       process.env.FRONTEND_URL = undefined;
+      process.env.PUBLIC_WEB_URL = undefined;
 
       const result = await service.generateQRCode('token-12345');
 
@@ -515,6 +536,7 @@ describe('PassportService', () => {
       const mockQRCodeDataUrl = 'data:image/png;base64,mockQRCode';
       (QRCode.toDataURL as jest.Mock).mockResolvedValue(mockQRCodeDataUrl);
       process.env.FRONTEND_URL = 'https://appfoot.com';
+      process.env.PUBLIC_WEB_URL = undefined;
 
       const result = await service.generateQRCode('token-12345');
 

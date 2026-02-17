@@ -5,7 +5,24 @@ export type AppStackParamList = {
   Dashboard: undefined;
   Analytics: undefined;
   Market: undefined;
-  ClubNeeds: undefined;
+  ClubNeeds:
+    | {
+        addToShare?: {
+          requestId?: string;
+          lineNumber: number;
+          player: {
+            playerId: string;
+            firstName?: string | null;
+            lastName?: string | null;
+            position?: string | null;
+            nationality?: string | null;
+            marketValue?: number | null;
+            club?: { id?: string; name?: string; logo?: string | null } | null;
+            photoUrl?: string | null;
+          };
+        };
+      }
+    | undefined;
   Camps: undefined;
   AI: undefined;
   ArcaneGPT: undefined;
@@ -43,7 +60,14 @@ export type AppStackParamList = {
   Contact: undefined;
   Services: undefined;
   Passport: undefined;
-  PassportPreview: { playerId: string };
+  PassportPreview: {
+    playerId: string;
+    source?: {
+      requestId?: string;
+      lineNumber?: number;
+      clubName?: string;
+    };
+  };
   VoiceToReport: undefined;
   Settings: undefined;
   ScoutingReports: undefined;

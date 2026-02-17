@@ -7,5 +7,9 @@ export type PassportShareItem = {
   nationality?: string | null;
   clubName?: string | null;
   avatarUrl?: string | null;
+  age?: number | null;
+  marketValue?: number | null;
+  contractUntil?: string | null;
+  preferredFoot?: string | null;
+  averageRating?: number | null;
 };
-

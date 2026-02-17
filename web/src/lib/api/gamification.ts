@@ -160,12 +160,8 @@ interface ClaimDailyChallengeResponse {
   pointsAwarded: number;
 }
 
-const API_BASE_URL_ENV = process.env.NEXT_PUBLIC_API_URL || '';
-const API_PREFIX = /\/api\/?$/i.test(API_BASE_URL_ENV) ? '' : '/api';
-
 const withApiPrefix = (path: string) => {
-  const normalized = path.startsWith('/') ? path : `/${path}`;
-  return `${API_PREFIX}${normalized}`;
+  return path.startsWith('/') ? path : `/${path}`;
 };
 
 const getStoredUserId = (): string | null => {

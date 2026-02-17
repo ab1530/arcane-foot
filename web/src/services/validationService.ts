@@ -11,8 +11,9 @@ import {
   VerificationStatus,
   FilterOptions,
 } from '@/app/admin/player-validation/types';
+import { buildApiUrl, resolveApiBase } from '@/lib/api-base';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const API_BASE_URL = resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
 
 class ValidationService {
   private getAuthToken(): string | null {
@@ -32,7 +33,7 @@ class ValidationService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(buildApiUrl(endpoint, API_BASE_URL), {
       ...options,
       headers,
     });

@@ -302,6 +302,10 @@ function getLoginErrorMessage(error: unknown, defaultMessage: string) {
     return defaultMessage;
   }
 
+  if (error.message === "API_ROUTE_NOT_FOUND" || error.message.startsWith("LOGIN_HTTP_404")) {
+    return "API configuration issue. Please contact support.";
+  }
+
   if (error.message === "NETWORK_ERROR" || error.message.startsWith("LOGIN_HTTP_5")) {
     return "Connexion au serveur impossible. Vérifiez votre réseau et réessayez.";
   }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
+import { buildApiUrl } from "@/lib/api-base";
 import { toast } from "sonner";
 import MainLayout from "@/components/layout/MainLayout";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -287,7 +288,7 @@ export default function ReportDetailPage() {
 
       const token = localStorage.getItem("arcane_auth_token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/scouting-reports/${reportId}/pdf`,
+        buildApiUrl(`/scouting-reports/${reportId}/pdf`, process.env.NEXT_PUBLIC_API_URL),
         {
           method: "GET",
           headers: {

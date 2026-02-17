@@ -1,18 +1,11 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PassportSharesService } from './passport-shares.service';
 import { CreatePassportShareSetDto } from './dto/create-passport-share-set.dto';
+import { ListPassportShareSetsDto } from './dto/list-passport-share-sets.dto';
 
 @ApiTags('Passport Shares')
 @Controller('passport-shares')
@@ -32,6 +25,25 @@ export class PassportSharesController {
       playerIds: dto.playerIds,
       title: dto.title,
       clubName: dto.clubName,
+      sourceFeature: dto.sourceFeature,
+      sourceRequestId: dto.sourceRequestId,
+      sourceRequestLineNumber: dto.sourceRequestLineNumber,
+    });
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List share sets (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Paginated share set list' })
+  async list(@Query() query: ListPassportShareSetsDto) {
+    return this.passportSharesService.listShareSets({
+      sourceRequestId: query.sourceRequestId,
+      sourceRequestLineNumber: query.sourceRequestLineNumber,
+      includeRevoked: query.includeRevoked,
+      page: query.page,
+      limit: query.limit,
     });
   }
 
@@ -52,4 +64,3 @@ export class PassportSharesController {
     return this.passportSharesService.revoke(token);
   }
 }
-

@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model achievements {
@@ -158,32 +159,38 @@ model club_requests {
 }
 
 model club_need_requests {
-  id          String   @id @default(uuid())
-  createdById String
-  rawText     String
-  parsed      Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       users    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  createdById     String
+  rawText         String
+  parsed          Json
+  matchesSnapshot Json?
+  lineStates      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  users           users    @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([createdById])
   @@index([createdAt])
 }
 
 model passport_share_sets {
-  id          String   @id @default(uuid())
-  token       String   @unique
-  createdById String
-  title       String?
-  clubName    String?
-  items       Json
-  revokedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       users    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  id                      String    @id @default(uuid())
+  token                   String    @unique
+  createdById             String
+  title                   String?
+  clubName                String?
+  sourceFeature           String?
+  sourceRequestId         String?
+  sourceRequestLineNumber Int?
+  items                   Json
+  revokedAt               DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  users                   users     @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([createdById])
   @@index([createdAt])
+  @@index([sourceRequestId, sourceRequestLineNumber, createdAt])
 }
 
 model clubs {
@@ -559,56 +566,64 @@ model player_passports {
 }
 
 model players {
-  id                      String                    @id
-  userId                  String?                   @unique
-  clubId                  String?
-  position                String
-  preferredFoot           String?
-  jerseyNumber            Int?
-  height                  Float?
-  weight                  Float?
-  dateOfBirth             DateTime?
-  nationality             String
-  status                  PlayerStatus              @default(PROSPECT)
-  marketValue             Float?
-  contractUntil           DateTime?
-  biography               String?
-  statsJson               Json?
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime
-  isPublic                Boolean                   @default(true)
-  parentEmail             String?
-  parentName              String?
-  parentPhone             String?
-  playerType              PlayerType                @default(PUBLIC)
-  externalId              String?                   @unique
-  externalSource          String?
-  photoUrl                String?
-  verificationStatus      VerificationStatus        @default(PENDING)
-  verifiedAt              DateTime?
-  verifiedById            String?
-  lastSyncAt              DateTime?
-  conversionNotes         String?
-  rejectionReason         String?
-  firstName               String?
-  lastName                String?
-  birthYear               Int?
-  observedClubName        String?
-  importSource            String?
-  auto_generated_reports  auto_generated_reports[]
-  camp_participations     camp_participations[]
-  club_requests           club_requests[]
-  hardware_sessions       HardwareSession[]
-  kanban_cards            kanban_cards[]
-  media                   media[]
-  performance_predictions performance_predictions[]
-  player_passports        player_passports?
-  player_valuations       player_valuations[]
-  player_views            player_views[]
-  clubs                   clubs?                    @relation(fields: [clubId], references: [id])
-  users                   users?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prediction_accuracy_log prediction_accuracy_log[]
-  scouting_reports        scouting_reports[]
+  id                              String                            @id
+  userId                          String?                           @unique
+  clubId                          String?
+  position                        String
+  preferredFoot                   String?
+  jerseyNumber                    Int?
+  height                          Float?
+  weight                          Float?
+  dateOfBirth                     DateTime?
+  nationality                     String
+  status                          PlayerStatus                      @default(PROSPECT)
+  marketValue                     Float?
+  contractUntil                   DateTime?
+  biography                       String?
+  statsJson                       Json?
+  createdAt                       DateTime                          @default(now())
+  updatedAt                       DateTime
+  isPublic                        Boolean                           @default(true)
+  parentEmail                     String?
+  parentName                      String?
+  parentPhone                     String?
+  playerType                      PlayerType                        @default(PUBLIC)
+  externalId                      String?                           @unique
+  externalSource                  String?
+  photoUrl                        String?
+  verificationStatus              VerificationStatus                @default(PENDING)
+  verifiedAt                      DateTime?
+  verifiedById                    String?
+  lastSyncAt                      DateTime?
+  conversionNotes                 String?
+  rejectionReason                 String?
+  firstName                       String?
+  lastName                        String?
+  birthYear                       Int?
+  observedClubName                String?
+  importSource                    String?
+  auto_generated_reports          auto_generated_reports[]
+  camp_participations             camp_participations[]
+  club_requests                   club_requests[]
+  hardware_sessions               HardwareSession[]
+  kanban_cards                    kanban_cards[]
+  media                           media[]
+  performance_predictions         performance_predictions[]
+  player_passports                player_passports?
+  player_profile_meta             player_profile_meta?
+  player_profile_performance_rows player_profile_performance_rows[]
+  player_transfer_events          player_transfer_events[]
+  player_career_entries           player_career_entries[]
+  player_achievements_entries     player_achievements_entries[]
+  player_national_team_entries    player_national_team_entries[]
+  player_news_entries             player_news_entries[]
+  player_rumour_entries           player_rumour_entries[]
+  player_valuations               player_valuations[]
+  player_views                    player_views[]
+  clubs                           clubs?                            @relation(fields: [clubId], references: [id])
+  users                           users?                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prediction_accuracy_log         prediction_accuracy_log[]
+  scouting_reports                scouting_reports[]
 
   @@index([clubId])
   @@index([externalId])
@@ -829,20 +844,20 @@ model user_stats {
 }
 
 model users {
-  id                                                      String                   @id
-  email                                                   String                   @unique
+  id                                                      String                            @id
+  email                                                   String                            @unique
   passwordHash                                            String?
   firstName                                               String
   lastName                                                String
   phone                                                   String?
   avatar                                                  String?
-  role                                                    UserRole                 @default(PUBLIC)
-  emailVerified                                           Boolean                  @default(false)
-  isActive                                                Boolean                  @default(true)
-  googleId                                                String?                  @unique
-  appleId                                                 String?                  @unique
+  role                                                    UserRole                          @default(PUBLIC)
+  emailVerified                                           Boolean                           @default(false)
+  isActive                                                Boolean                           @default(true)
+  googleId                                                String?                           @unique
+  appleId                                                 String?                           @unique
   lastLoginAt                                             DateTime?
-  createdAt                                               DateTime                 @default(now())
+  createdAt                                               DateTime                          @default(now())
   updatedAt                                               DateTime
   auto_generated_reports                                  auto_generated_reports[]
   clubs                                                   clubs?
@@ -852,20 +867,41 @@ model users {
   event_assignments                                       event_assignments[]
   events                                                  events[]
   leaderboards                                            leaderboards[]
-  match_assignments_match_assignments_assignedByIdTousers match_assignments[]      @relation("match_assignments_assignedByIdTousers")
-  match_assignments_match_assignments_scoutIdTousers      match_assignments[]      @relation("match_assignments_scoutIdTousers")
-  matches_matches_createdByIdTousers                      matches[]                @relation("matches_createdByIdTousers")
-  matches_matches_scoutIdTousers                          matches[]                @relation("matches_scoutIdTousers")
+  match_assignments_match_assignments_assignedByIdTousers match_assignments[]               @relation("match_assignments_assignedByIdTousers")
+  match_assignments_match_assignments_scoutIdTousers      match_assignments[]               @relation("match_assignments_scoutIdTousers")
+  matches_matches_createdByIdTousers                      matches[]                         @relation("matches_createdByIdTousers")
+  matches_matches_scoutIdTousers                          matches[]                         @relation("matches_scoutIdTousers")
   notifications                                           notifications[]
   onboarding_steps                                        onboarding_steps[]
   player_views                                            player_views[]
   players                                                 players?
   passport_share_sets                                     passport_share_sets[]
+  pp_performance_rows_created                             player_profile_performance_rows[] @relation("pp_performance_createdBy")
+  pp_performance_rows_updated                             player_profile_performance_rows[] @relation("pp_performance_updatedBy")
+  pp_performance_rows_verified                            player_profile_performance_rows[] @relation("pp_performance_verifiedBy")
+  pp_transfer_events_created                              player_transfer_events[]          @relation("pp_transfers_createdBy")
+  pp_transfer_events_updated                              player_transfer_events[]          @relation("pp_transfers_updatedBy")
+  pp_transfer_events_verified                             player_transfer_events[]          @relation("pp_transfers_verifiedBy")
+  pp_career_entries_created                               player_career_entries[]           @relation("pp_career_createdBy")
+  pp_career_entries_updated                               player_career_entries[]           @relation("pp_career_updatedBy")
+  pp_career_entries_verified                              player_career_entries[]           @relation("pp_career_verifiedBy")
+  pp_achievements_entries_created                         player_achievements_entries[]     @relation("pp_achievements_createdBy")
+  pp_achievements_entries_updated                         player_achievements_entries[]     @relation("pp_achievements_updatedBy")
+  pp_achievements_entries_verified                        player_achievements_entries[]     @relation("pp_achievements_verifiedBy")
+  pp_national_entries_created                             player_national_team_entries[]    @relation("pp_national_createdBy")
+  pp_national_entries_updated                             player_national_team_entries[]    @relation("pp_national_updatedBy")
+  pp_national_entries_verified                            player_national_team_entries[]    @relation("pp_national_verifiedBy")
+  pp_news_entries_created                                 player_news_entries[]             @relation("pp_news_createdBy")
+  pp_news_entries_updated                                 player_news_entries[]             @relation("pp_news_updatedBy")
+  pp_news_entries_verified                                player_news_entries[]             @relation("pp_news_verifiedBy")
+  pp_rumour_entries_created                               player_rumour_entries[]           @relation("pp_rumours_createdBy")
+  pp_rumour_entries_updated                               player_rumour_entries[]           @relation("pp_rumours_updatedBy")
+  pp_rumour_entries_verified                              player_rumour_entries[]           @relation("pp_rumours_verifiedBy")
   scout_listings                                          scout_listings?
   scouting_reports                                        scouting_reports[]
   subscriptions                                           subscriptions?
-  tasks_tasks_assigneeIdTousers                           tasks[]                  @relation("tasks_assigneeIdTousers")
-  tasks_tasks_creatorIdTousers                            tasks[]                  @relation("tasks_creatorIdTousers")
+  tasks_tasks_assigneeIdTousers                           tasks[]                           @relation("tasks_assigneeIdTousers")
+  tasks_tasks_creatorIdTousers                            tasks[]                           @relation("tasks_creatorIdTousers")
   user_daily_challenges                                   user_daily_challenges[]
   user_onboarding                                         user_onboarding?
   user_stats                                              user_stats?
@@ -1229,6 +1265,251 @@ model prediction_accuracy_log {
   @@index([calculatedAt])
 }
 
+model player_profile_meta {
+  id                String    @id @default(uuid())
+  playerId          String    @unique
+  mainPosition      String?
+  otherPositions    Json?
+  agentName         String?
+  pronunciation     String?
+  outfitter         String?
+  socialLinks       Json?
+  externalMarketUrl String?
+  lastUpdatedAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  players           players   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+}
+
+model player_profile_performance_rows {
+  id                                                        String               @id @default(uuid())
+  playerId                                                  String
+  season                                                    String?
+  competitionName                                           String
+  competitionLogoUrl                                        String?
+  possibleGames                                             Int?
+  appearances                                               Int?
+  goals                                                     Int?
+  assists                                                   Int?
+  yellowCards                                               Int?
+  secondYellowCards                                         Int?
+  redCards                                                  Int?
+  startingXIPercent                                         Float?
+  minutesPercent                                            Float?
+  goalParticipationPercent                                  Float?
+  contentStatus                                             ProfileContentStatus @default(DRAFT)
+  sourceName                                                String
+  sourceUrl                                                 String?
+  sourceDate                                                DateTime?
+  verifiedById                                              String?
+  verifiedAt                                                DateTime?
+  publishedAt                                               DateTime?
+  createdById                                               String
+  updatedById                                               String
+  createdAt                                                 DateTime             @default(now())
+  updatedAt                                                 DateTime             @updatedAt
+  players                                                   players              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_profile_performance_rows_createdByIdTousers  users                @relation("pp_performance_createdBy", fields: [createdById], references: [id])
+  users_player_profile_performance_rows_updatedByIdTousers  users                @relation("pp_performance_updatedBy", fields: [updatedById], references: [id])
+  users_player_profile_performance_rows_verifiedByIdTousers users?               @relation("pp_performance_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([season])
+}
+
+model player_transfer_events {
+  id                                               String               @id @default(uuid())
+  playerId                                         String
+  season                                           String?
+  transferDate                                     DateTime?
+  fromClubName                                     String?
+  toClubName                                       String
+  marketValueAtTime                                Float?
+  feeAmount                                        Float?
+  feeCurrency                                      String               @default("EUR")
+  transferType                                     String?
+  notes                                            String?
+  contentStatus                                    ProfileContentStatus @default(DRAFT)
+  sourceName                                       String
+  sourceUrl                                        String?
+  sourceDate                                       DateTime?
+  verifiedById                                     String?
+  verifiedAt                                       DateTime?
+  publishedAt                                      DateTime?
+  createdById                                      String
+  updatedById                                      String
+  createdAt                                        DateTime             @default(now())
+  updatedAt                                        DateTime             @updatedAt
+  players                                          players              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_transfer_events_createdByIdTousers  users                @relation("pp_transfers_createdBy", fields: [createdById], references: [id])
+  users_player_transfer_events_updatedByIdTousers  users                @relation("pp_transfers_updatedBy", fields: [updatedById], references: [id])
+  users_player_transfer_events_verifiedByIdTousers users?               @relation("pp_transfers_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([transferDate])
+}
+
+model player_career_entries {
+  id                                              String               @id @default(uuid())
+  playerId                                        String
+  startDate                                       DateTime?
+  endDate                                         DateTime?
+  clubName                                        String
+  teamLevel                                       ProfileTeamLevel
+  isLoan                                          Boolean              @default(false)
+  contentStatus                                   ProfileContentStatus @default(DRAFT)
+  sourceName                                      String
+  sourceUrl                                       String?
+  sourceDate                                      DateTime?
+  verifiedById                                    String?
+  verifiedAt                                      DateTime?
+  publishedAt                                     DateTime?
+  createdById                                     String
+  updatedById                                     String
+  createdAt                                       DateTime             @default(now())
+  updatedAt                                       DateTime             @updatedAt
+  players                                         players              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_career_entries_createdByIdTousers  users                @relation("pp_career_createdBy", fields: [createdById], references: [id])
+  users_player_career_entries_updatedByIdTousers  users                @relation("pp_career_updatedBy", fields: [updatedById], references: [id])
+  users_player_career_entries_verifiedByIdTousers users?               @relation("pp_career_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([startDate])
+}
+
+model player_achievements_entries {
+  id                                                    String               @id @default(uuid())
+  playerId                                              String
+  title                                                 String
+  competition                                           String?
+  season                                                String?
+  count                                                 Int                  @default(1)
+  description                                           String?
+  contentStatus                                         ProfileContentStatus @default(DRAFT)
+  sourceName                                            String
+  sourceUrl                                             String?
+  sourceDate                                            DateTime?
+  verifiedById                                          String?
+  verifiedAt                                            DateTime?
+  publishedAt                                           DateTime?
+  createdById                                           String
+  updatedById                                           String
+  createdAt                                             DateTime             @default(now())
+  updatedAt                                             DateTime             @updatedAt
+  players                                               players              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_achievements_entries_createdByIdTousers  users                @relation("pp_achievements_createdBy", fields: [createdById], references: [id])
+  users_player_achievements_entries_updatedByIdTousers  users                @relation("pp_achievements_updatedBy", fields: [updatedById], references: [id])
+  users_player_achievements_entries_verifiedByIdTousers users?               @relation("pp_achievements_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([season])
+}
+
+model player_national_team_entries {
+  id                                                     String                   @id @default(uuid())
+  playerId                                               String
+  country                                                String
+  teamLevel                                              ProfileNationalTeamLevel
+  caps                                                   Int?
+  goals                                                  Int?
+  fromDate                                               DateTime?
+  toDate                                                 DateTime?
+  isCurrent                                              Boolean                  @default(false)
+  contentStatus                                          ProfileContentStatus     @default(DRAFT)
+  sourceName                                             String
+  sourceUrl                                              String?
+  sourceDate                                             DateTime?
+  verifiedById                                           String?
+  verifiedAt                                             DateTime?
+  publishedAt                                            DateTime?
+  createdById                                            String
+  updatedById                                            String
+  createdAt                                              DateTime                 @default(now())
+  updatedAt                                              DateTime                 @updatedAt
+  players                                                players                  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_national_team_entries_createdByIdTousers  users                    @relation("pp_national_createdBy", fields: [createdById], references: [id])
+  users_player_national_team_entries_updatedByIdTousers  users                    @relation("pp_national_updatedBy", fields: [updatedById], references: [id])
+  users_player_national_team_entries_verifiedByIdTousers users?                   @relation("pp_national_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([fromDate])
+}
+
+model player_news_entries {
+  id                                            String               @id @default(uuid())
+  playerId                                      String
+  headline                                      String
+  summary                                       String?
+  publishedAtSource                             DateTime?
+  sourceName                                    String
+  sourceUrl                                     String?
+  contentStatus                                 ProfileContentStatus @default(DRAFT)
+  verifiedById                                  String?
+  verifiedAt                                    DateTime?
+  publishedAt                                   DateTime?
+  createdById                                   String
+  updatedById                                   String
+  createdAt                                     DateTime             @default(now())
+  updatedAt                                     DateTime             @updatedAt
+  players                                       players              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_news_entries_createdByIdTousers  users                @relation("pp_news_createdBy", fields: [createdById], references: [id])
+  users_player_news_entries_updatedByIdTousers  users                @relation("pp_news_updatedBy", fields: [updatedById], references: [id])
+  users_player_news_entries_verifiedByIdTousers users?               @relation("pp_news_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([publishedAtSource])
+}
+
+model player_rumour_entries {
+  id                                              String               @id @default(uuid())
+  playerId                                        String
+  headline                                        String
+  summary                                         String?
+  destinationClub                                 String?
+  probabilityPercent                              Int?
+  sourceName                                      String
+  sourceUrl                                       String?
+  sourceDate                                      DateTime?
+  contentStatus                                   ProfileContentStatus @default(DRAFT)
+  verifiedById                                    String?
+  verifiedAt                                      DateTime?
+  publishedAt                                     DateTime?
+  createdById                                     String
+  updatedById                                     String
+  createdAt                                       DateTime             @default(now())
+  updatedAt                                       DateTime             @updatedAt
+  players                                         players              @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users_player_rumour_entries_createdByIdTousers  users                @relation("pp_rumours_createdBy", fields: [createdById], references: [id])
+  users_player_rumour_entries_updatedByIdTousers  users                @relation("pp_rumours_updatedBy", fields: [updatedById], references: [id])
+  users_player_rumour_entries_verifiedByIdTousers users?               @relation("pp_rumours_verifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([playerId, contentStatus, createdAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([verifiedById])
+  @@index([sourceDate])
+}
+
 model report_embeddings {
   id               String           @id
   reportId         String           @unique
@@ -1238,6 +1519,26 @@ model report_embeddings {
   scouting_reports scouting_reports @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
+}
+
+enum ProfileContentStatus {
+  DRAFT
+  VERIFIED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ProfileTeamLevel {
+  YOUTH
+  SENIOR
+  NATIONAL
+}
+
+enum ProfileNationalTeamLevel {
+  U17
+  U19
+  U21
+  A
 }
 
 enum AchievementCategory {

@@ -27,7 +27,10 @@
           }
         },
         "NSBluetoothAlwaysUsageDescription": "Arcane a besoin de Bluetooth pour se connecter à votre tracker GPS.",
-        "NSBluetoothPeripheralUsageDescription": "Arcane utilise le Bluetooth pour synchroniser vos données GPS."
+        "NSBluetoothPeripheralUsageDescription": "Arcane utilise le Bluetooth pour synchroniser vos données GPS.",
+        "NSPhotoLibraryUsageDescription": "Arcane a besoin d'accéder à votre galerie pour sélectionner des highlights vidéo.",
+        "NSPhotoLibraryAddUsageDescription": "Arcane a besoin d'accéder à votre galerie pour gérer vos highlights vidéo.",
+        "NSCameraUsageDescription": "Arcane a besoin d'accéder à la caméra pour enregistrer des highlights vidéo."
       },
       "bundleIdentifier": "com.arcane.football",
       "googleServicesFile": "./GoogleService-Info.plist"
@@ -37,6 +40,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "READ_MEDIA_VIDEO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json",
@@ -55,6 +63,14 @@
           "icon": "./assets/notification-icon.png",
           "color": "#E4FF3B",
           "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Arcane a besoin d'accéder à votre galerie pour sélectionner des highlights vidéo.",
+          "cameraPermission": "Arcane a besoin d'accéder à la caméra pour enregistrer des highlights vidéo.",
+          "microphonePermission": "Arcane a besoin d'accéder au micro pour enregistrer le son des highlights vidéo."
         }
       ],
       "./plugins/withQCBand"

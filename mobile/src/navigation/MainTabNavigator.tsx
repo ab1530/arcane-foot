@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Text,
   Pressable,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -395,6 +396,20 @@ export default function MainTabNavigator() {
             key={tab.name}
             name={tab.name}
             component={tab.component}
+            listeners={
+              tab.name === 'AIHub'
+                ? {
+                    tabPress: (event) => {
+                      event.preventDefault();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      Alert.alert(
+                        'Fonctionnalité prochaine',
+                        'Le Hub AI sera disponible dans une prochaine version.',
+                      );
+                    },
+                  }
+                : undefined
+            }
             options={{
               title: tab.title,
               headerShown: tab.headerShown ?? true,

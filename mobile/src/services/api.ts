@@ -3,6 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL, API_TIMEOUT, STORAGE_KEYS } from '../constants/config';
 import type { AuthResponse, Player, Club, Match, PaginatedResponse } from '../types';
 import type { CreateHardwareSessionPayload, HardwareSession } from '../types/hardware';
+import type {
+  PlayerProfileAuditTrail,
+  PlayerProfileView,
+  ProfileContentStatus,
+} from '../types/player-profile';
 import { logBridge, logAPI, logError } from '../logging/expoLogBridge';
 
 const generateRequestId = () =>
@@ -505,8 +510,14 @@ class ApiClient {
     return data;
   }
 
-  async listClubNeedRequests(page: number = 1, limit: number = 20): Promise<any> {
-    const { data } = await this.client.get('/club-needs', { params: { page, limit } });
+  async listClubNeedRequests(
+    page: number = 1,
+    limit: number = 20,
+    month?: string,
+  ): Promise<any> {
+    const { data } = await this.client.get('/club-needs', {
+      params: { page, limit, month },
+    });
     return data;
   }
 
@@ -515,9 +526,39 @@ class ApiClient {
     return data;
   }
 
+  async updateClubNeedLineStatus(
+    requestId: string,
+    lineNumber: number,
+    isCompleted: boolean,
+  ): Promise<any> {
+    const { data } = await this.client.patch(
+      `/club-needs/${requestId}/lines/${lineNumber}/status`,
+      { isCompleted },
+    );
+    return data;
+  }
+
   // Passport share sets (Admin-only create, public read on web)
-  async createPassportShareSet(payload: { playerIds: string[]; title?: string; clubName?: string }): Promise<any> {
+  async createPassportShareSet(payload: {
+    playerIds: string[];
+    title?: string;
+    clubName?: string;
+    sourceFeature?: 'CLUB_NEEDS';
+    sourceRequestId?: string;
+    sourceRequestLineNumber?: number;
+  }): Promise<any> {
     const { data } = await this.client.post('/passport-shares', payload);
+    return data;
+  }
+
+  async listPassportShareSets(params?: {
+    sourceRequestId?: string;
+    sourceRequestLineNumber?: number;
+    includeRevoked?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
+    const { data } = await this.client.get('/passport-shares', { params });
     return data;
   }
 
@@ -605,6 +646,93 @@ class ApiClient {
 
   async getPlayerStats(id: string): Promise<any> {
     const { data } = await this.client.get(`/players/${id}/stats`);
+    return data;
+  }
+
+  async getPlayerProfileView(
+    playerId: string,
+    params?: { includeUnpublished?: boolean },
+  ): Promise<PlayerProfileView> {
+    return this.getRaw<PlayerProfileView>(`/player-profiles/${playerId}`, {
+      params,
+    });
+  }
+
+  async getPlayerProfileAudit(playerId: string): Promise<PlayerProfileAuditTrail> {
+    return this.getRaw<PlayerProfileAuditTrail>(`/player-profiles/${playerId}/audit`);
+  }
+
+  async updatePlayerProfileMeta(playerId: string, payload: {
+    mainPosition?: string;
+    otherPositions?: string[];
+    agentName?: string;
+    pronunciation?: string;
+    outfitter?: string;
+    socialLinks?: Record<string, string | null>;
+    externalMarketUrl?: string | null;
+  }): Promise<any> {
+    const { data } = await this.client.patch(`/player-profiles/${playerId}/meta`, payload);
+    return data;
+  }
+
+  async createPlayerProfileSectionItem(
+    playerId: string,
+    section: 'performance-rows' | 'transfers' | 'career' | 'achievements' | 'national-team' | 'news' | 'rumours',
+    payload: Record<string, any>,
+  ): Promise<any> {
+    const { data } = await this.client.post(`/player-profiles/${playerId}/${section}`, payload);
+    return data;
+  }
+
+  async updatePlayerProfileSectionItem(
+    playerId: string,
+    section: 'performance-rows' | 'transfers' | 'career' | 'achievements' | 'national-team' | 'news' | 'rumours',
+    itemId: string,
+    payload: Record<string, any>,
+  ): Promise<any> {
+    const { data } = await this.client.patch(
+      `/player-profiles/${playerId}/${section}/${itemId}`,
+      payload,
+    );
+    return data;
+  }
+
+  async deletePlayerProfileSectionItem(
+    playerId: string,
+    section: 'performance-rows' | 'transfers' | 'career' | 'achievements' | 'national-team' | 'news' | 'rumours',
+    itemId: string,
+  ): Promise<any> {
+    const { data } = await this.client.delete(`/player-profiles/${playerId}/${section}/${itemId}`);
+    return data;
+  }
+
+  async updatePlayerProfileSectionStatus(
+    playerId: string,
+    section:
+      | 'performance-rows'
+      | 'transfers'
+      | 'career'
+      | 'achievements'
+      | 'national-team'
+      | 'news'
+      | 'rumours',
+    itemId: string,
+    status: ProfileContentStatus,
+  ): Promise<any> {
+    const { data } = await this.client.patch(
+      `/player-profiles/${playerId}/${section}/${itemId}/status`,
+      { status },
+    );
+    return data;
+  }
+
+  async bulkUpsertPlayerProfiles(
+    payload: { players: Array<Record<string, any>> },
+    internalSyncKey: string,
+  ): Promise<any> {
+    const { data } = await this.client.post('/internal/player-profiles/bulk-upsert', payload, {
+      headers: { 'x-internal-sync-key': internalSyncKey },
+    });
     return data;
   }
 
