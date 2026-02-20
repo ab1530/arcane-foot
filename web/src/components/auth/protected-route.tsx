@@ -4,16 +4,26 @@ import { motion } from "framer-motion";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import { Shield } from "lucide-react";
 import { ProtectedPage } from "@/components/guards/ProtectedPage";
+import type { UserRole } from "@/lib/roles";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
+  unauthorizedRedirectTo?: string;
+  allowedRoles?: readonly UserRole[];
 }
 
-export function ProtectedRoute({ children, redirectTo = "/login" }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  redirectTo = "/login",
+  unauthorizedRedirectTo,
+  allowedRoles,
+}: ProtectedRouteProps) {
   return (
     <ProtectedPage
       redirectTo={redirectTo}
+      unauthorizedRedirectTo={unauthorizedRedirectTo}
+      allowedRoles={allowedRoles}
       loadingFallback={
         <main className="min-h-screen overflow-hidden relative flex items-center justify-center">
           <AnimatedBackground />

@@ -97,8 +97,23 @@ export function parseCompressedGpsChunk(
   fileStartTimeMsUtc: number,
   previousState?: GpsDecodeState,
 ): { points: GpsPoint[]; state: GpsDecodeState } {
-  if (!value || value.length === 0 || value[0] !== 0x43) {
-    return { points: [], state: previousState ?? { timeMsUtc: fileStartTimeMsUtc, latRaw: 0, lonRaw: 0 } };
+  if (!value || value.length === 0) {
+    return {
+      points: [],
+      state: previousState ?? { timeMsUtc: fileStartTimeMsUtc, latRaw: 0, lonRaw: 0 },
+    };
+  }
+
+  const prefix = value[0];
+  const isHeaderPacket = prefix === 0x43 && !previousState;
+  const isContinuationPacket =
+    prefix === 0x44 || prefix === 0x45 || (prefix === 0x43 && !!previousState);
+
+  if (!isHeaderPacket && !isContinuationPacket) {
+    return {
+      points: [],
+      state: previousState ?? { timeMsUtc: fileStartTimeMsUtc, latRaw: 0, lonRaw: 0 },
+    };
   }
 
   const dv = new DataView(value.buffer, value.byteOffset, value.byteLength);
@@ -113,6 +128,12 @@ export function parseCompressedGpsChunk(
     ({ timeMsUtc, latRaw, lonRaw } = previousState);
     startIndex = 1;
   } else {
+    if (!isHeaderPacket) {
+      return {
+        points: [],
+        state: { timeMsUtc: fileStartTimeMsUtc, latRaw: 0, lonRaw: 0 },
+      };
+    }
     if (value.length < 11) {
       return { points: [], state: { timeMsUtc: fileStartTimeMsUtc, latRaw: 0, lonRaw: 0 } };
     }
@@ -173,10 +194,16 @@ export function decodeCompressedGpsStream(
     }
 
     const prefix = chunk[0];
-    if (prefix === 0x43) {
+    if (prefix === 0x43 || prefix === 0x44 || prefix === 0x45) {
+      if ((prefix === 0x44 || prefix === 0x45) && !state) {
+        // Invalid sequence: continuation before header.
+        continue;
+      }
       const { points, state: nextState } = parseCompressedGpsChunk(chunk, fileStartTimeMsUtc, state);
       allPoints.push(...points);
-      state = nextState;
+      if (points.length > 0 || state) {
+        state = nextState;
+      }
     } else if (prefix === 0x48) {
       break; // end of transfer
     } else {

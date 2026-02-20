@@ -463,8 +463,8 @@ describe('SmartScoutController', () => {
       expect(roles).toContain('ANALYST');
       expect(roles).toContain('ADMIN');
       expect(roles).toContain('SUPER_ADMIN');
-      expect(roles).toContain('AGENT');
       expect(roles).toContain('CLUB_CONTACT');
+      expect(roles.length).toBe(5);
     });
 
     it('should require admin roles for indexReport', () => {

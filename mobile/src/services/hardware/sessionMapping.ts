@@ -1,5 +1,10 @@
 import { DeviceFile, GpsPoint } from './bleProtocol';
-import { CreateHardwareSessionPayload } from '../api';
+import type {
+  CreateHardwareSessionPayload,
+  HardwareSessionType,
+  MotionTrajectoryData,
+  ThermalTrajectoryMap,
+} from '../../types/hardware';
 
 interface TrajectoryMetrics {
   totalDistanceM: number;
@@ -9,6 +14,10 @@ interface TrajectoryMetrics {
 }
 
 const EARTH_RADIUS_M = 6371000; // meters
+const FIELD_WIDTH_M = 105;
+const FIELD_HEIGHT_M = 68;
+const HEATMAP_GRID_COLS = 25;
+const HEATMAP_GRID_ROWS = 25;
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -24,15 +33,16 @@ interface DerivedMetrics extends TrajectoryMetrics {
   reductionStepsCount: number;
   caloriesBurned: number;
   offenseDefenseRatio: number | null;
-  heatmap: { cellSizeM: number; cells: { x: number; y: number; count: number }[] };
+  heatmap: ThermalTrajectoryMap;
+  projectedPoints: MotionTrajectoryData['points'];
   normalized: { loadScore: number; intensityScore: number; totalDistanceM: number; maxSpeedKmh: number; avgSpeedKmh: number; durationSeconds: number };
   sampleCount: number;
 }
 
-const downsamplePoints = (pts: GpsPoint[], maxPoints = 2000): GpsPoint[] => {
+const downsamplePoints = <T>(pts: T[], maxPoints = 2000): T[] => {
   if (!pts || pts.length <= maxPoints) return pts;
   const stride = Math.ceil(pts.length / maxPoints);
-  const sampled: GpsPoint[] = [];
+  const sampled: T[] = [];
   for (let i = 0; i < pts.length; i += stride) {
     sampled.push(pts[i]);
   }
@@ -73,7 +83,18 @@ export function computeDerivedMetrics(points: GpsPoint[]): DerivedMetrics {
       reductionStepsCount: 0,
       caloriesBurned: 0,
       offenseDefenseRatio: null,
-      heatmap: { cellSizeM: 20, cells: [] },
+      heatmap: {
+        fieldWidthM: FIELD_WIDTH_M,
+        fieldHeightM: FIELD_HEIGHT_M,
+        gridCols: HEATMAP_GRID_COLS,
+        gridRows: HEATMAP_GRID_ROWS,
+        cellWidthM: FIELD_WIDTH_M / HEATMAP_GRID_COLS,
+        cellHeightM: FIELD_HEIGHT_M / HEATMAP_GRID_ROWS,
+        maxCount: 0,
+        cells: [],
+        cellSizeM: FIELD_WIDTH_M / HEATMAP_GRID_COLS,
+      },
+      projectedPoints: [],
       normalized: {
         loadScore: 0,
         intensityScore: 0,
@@ -100,8 +121,6 @@ export function computeDerivedMetrics(points: GpsPoint[]): DerivedMetrics {
   let maxAccel = 0;
   let minAccel = 0;
 
-  const heatmapCells = new Map<string, { x: number; y: number; count: number }>();
-  const cellSizeM = 20;
   const origin = points[0];
 
   let firstHalfDistance = 0;
@@ -148,18 +167,6 @@ export function computeDerivedMetrics(points: GpsPoint[]): DerivedMetrics {
       inSprint = true;
     } else if (!isSprint && inSprint) {
       inSprint = false;
-    }
-
-    const dLatM = (curr.latitudeDeg - origin.latitudeDeg) * 111_111;
-    const dLonM = (curr.longitudeDeg - origin.longitudeDeg) * 111_111 * Math.cos(toRadians(origin.latitudeDeg));
-    const cellX = Math.floor(dLonM / cellSizeM);
-    const cellY = Math.floor(dLatM / cellSizeM);
-    const key = `${cellX},${cellY}`;
-    const existing = heatmapCells.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      heatmapCells.set(key, { x: cellX, y: cellY, count: 1 });
     }
   }
 
@@ -213,6 +220,57 @@ export function computeDerivedMetrics(points: GpsPoint[]): DerivedMetrics {
     100,
   );
 
+  const localPoints = points.map((point) => {
+    const yM = (point.latitudeDeg - origin.latitudeDeg) * 111_111;
+    const xM =
+      (point.longitudeDeg - origin.longitudeDeg) *
+      111_111 *
+      Math.cos(toRadians(origin.latitudeDeg));
+    return {
+      t: point.timeMsUtc,
+      lat: point.latitudeDeg,
+      lon: point.longitudeDeg,
+      xM,
+      yM,
+    };
+  });
+
+  const minX = Math.min(...localPoints.map((point) => point.xM));
+  const maxX = Math.max(...localPoints.map((point) => point.xM));
+  const minY = Math.min(...localPoints.map((point) => point.yM));
+  const maxY = Math.max(...localPoints.map((point) => point.yM));
+  const xRange = Math.max(maxX - minX, 1);
+  const yRange = Math.max(maxY - minY, 1);
+
+  const projectedPoints: MotionTrajectoryData['points'] = localPoints.map((point) => ({
+    t: point.t,
+    lat: point.lat,
+    lon: point.lon,
+    x: clamp(((point.xM - minX) / xRange) * FIELD_WIDTH_M, 0, FIELD_WIDTH_M),
+    y: clamp(((point.yM - minY) / yRange) * FIELD_HEIGHT_M, 0, FIELD_HEIGHT_M),
+  }));
+
+  const heatmapCells = new Map<string, { x: number; y: number; count: number }>();
+  const cellWidthM = FIELD_WIDTH_M / HEATMAP_GRID_COLS;
+  const cellHeightM = FIELD_HEIGHT_M / HEATMAP_GRID_ROWS;
+
+  for (const point of projectedPoints) {
+    const x = point.x ?? 0;
+    const y = point.y ?? 0;
+    const cellX = clamp(Math.floor(x / cellWidthM), 0, HEATMAP_GRID_COLS - 1);
+    const cellY = clamp(Math.floor(y / cellHeightM), 0, HEATMAP_GRID_ROWS - 1);
+    const key = `${cellX},${cellY}`;
+    const current = heatmapCells.get(key);
+    if (current) {
+      current.count += 1;
+    } else {
+      heatmapCells.set(key, { x: cellX, y: cellY, count: 1 });
+    }
+  }
+
+  const cells = Array.from(heatmapCells.values());
+  const maxCount = Math.max(...cells.map((cell) => cell.count), 0);
+
   return {
     totalDistanceM,
     maxSpeedKmh,
@@ -229,9 +287,20 @@ export function computeDerivedMetrics(points: GpsPoint[]): DerivedMetrics {
     caloriesBurned,
     offenseDefenseRatio,
     heatmap: {
-      cellSizeM,
-      cells: Array.from(heatmapCells.values()),
+      fieldWidthM: FIELD_WIDTH_M,
+      fieldHeightM: FIELD_HEIGHT_M,
+      gridCols: HEATMAP_GRID_COLS,
+      gridRows: HEATMAP_GRID_ROWS,
+      cellWidthM,
+      cellHeightM,
+      maxCount,
+      cells: cells.map((cell) => ({
+        ...cell,
+        intensity: maxCount > 0 ? cell.count / maxCount : 0,
+      })),
+      cellSizeM: (cellWidthM + cellHeightM) / 2,
     },
+    projectedPoints,
     normalized: {
       loadScore,
       intensityScore,
@@ -263,11 +332,22 @@ export function mapDeviceFileToHardwareSessionDto(
   points: GpsPoint[],
   playerId?: string | null,
   options?: {
+    sessionType?: HardwareSessionType;
+    matchContext?: {
+      matchId?: string;
+      matchLabel?: string;
+    };
     sourceOverride?: string;
     deviceIdOverride?: string;
     simulation?: boolean;
     derivedFromGps?: boolean;
     maxSerializedPoints?: number;
+    labMeta?: {
+      presetMinutes: 20 | 45 | 90;
+      hz: 10;
+      profile: 'winger';
+      mode: 'off' | 'protocol';
+    };
   },
 ): CreateHardwareSessionPayload {
   const metrics = computeDerivedMetrics(points);
@@ -278,20 +358,18 @@ export function mapDeviceFileToHardwareSessionDto(
 
   const trajectory = {
     points: downsamplePoints(
-      points,
+      metrics.projectedPoints,
       options?.maxSerializedPoints ?? (options?.simulation ? 1200 : undefined),
-    ).map((p) => ({
-      t: p.timeMsUtc,
-      lat: p.latitudeDeg,
-      lon: p.longitudeDeg,
-    })),
+    ),
+    fieldWidthM: FIELD_WIDTH_M,
+    fieldHeightM: FIELD_HEIGHT_M,
   };
 
   return {
     ...(playerId ? { playerId } : {}),
     deviceId: options?.deviceIdOverride ?? `actionmark-${file.id}`,
     source: options?.sourceOverride ?? 'ACTION_MARK',
-    type: 'training',
+    type: options?.sessionType ?? 'training',
     startedAt,
     endedAt,
     metrics: {
@@ -319,6 +397,8 @@ export function mapDeviceFileToHardwareSessionDto(
         endTimeMsUtc: file.endTimeMsUtc,
         derivedFromGps: options?.derivedFromGps ?? true,
         simulation: options?.simulation ?? undefined,
+        matchContext: options?.matchContext ?? undefined,
+        labMeta: options?.labMeta ?? undefined,
       },
       normalizedMetrics: {
         totalDistanceM: metrics.totalDistanceM,

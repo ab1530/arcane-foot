@@ -1,6 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../cache/redis.service';
+import { ClubRequestStatus, Prisma, ReportStatus, TaskStatus, UserRole } from '@prisma/client';
+import { isCategoryARole, isCategoryBRole } from '../../common/roles/role.constants';
+
+type MobileHomeScope = 'SUPER_ADMIN' | 'ADMIN' | 'AGENT' | 'SCOUT';
+
+type MobileHomeCard = {
+  id: 'reports' | 'playersScouted' | 'calendar' | 'agentRequests' | 'transfermarkt' | 'scouts';
+  label: string;
+  value: number;
+  delta: number;
+  period: 'week' | 'month';
+  statusColor: 'yellow' | 'blue' | 'green' | 'indigo';
+};
+
+type MobileHomeQuickAction = {
+  id: 'newReport' | 'globalSearch' | 'analytics' | 'agentRequests' | 'calendar';
+  label: string;
+  target: 'CreateReport' | 'GlobalSearch' | 'Analytics' | 'AgentRequests' | 'Calendar';
+  icon: 'add' | 'search' | 'analytics' | 'clipboard-outline' | 'calendar';
+  variant: 'primary' | 'secondary';
+};
 
 @Injectable()
 export class AnalyticsService {
@@ -95,25 +116,64 @@ export class AnalyticsService {
       return cached;
     }
 
+    const now = new Date();
+
     let result: any = {
       userId,
       role,
     };
 
-    if (role === 'SCOUT' || role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    if (role === 'SCOUT' || role === 'AGENT' || isCategoryARole(role as UserRole)) {
+      const hasScopedAssignments = !isCategoryARole(role as UserRole);
+
       // Scout dashboard: reports stats
-      const [totalReports, reportsLast7Days, reportsLast30Days] = await Promise.all([
-        this.prisma.scouting_reports.count({ where: { scoutId: userId } }),
-        this.prisma.scouting_reports.count({
+      const [totalReports, reportsLast7Days, reportsLast30Days, playersScoutedRows] =
+        await Promise.all([
+          this.prisma.scouting_reports.count({ where: { scoutId: userId } }),
+          this.prisma.scouting_reports.count({
+            where: {
+              scoutId: userId,
+              createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+            },
+          }),
+          this.prisma.scouting_reports.count({
+            where: {
+              scoutId: userId,
+              createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+            },
+          }),
+          this.prisma.scouting_reports.groupBy({
+            by: ['playerId'],
+            where: { scoutId: userId },
+            _count: { playerId: true },
+          }),
+        ]);
+
+      const [matchAssignmentsCount, eventAssignmentsCount, openDemandRequests] = await Promise.all([
+        this.prisma.match_assignments.count({
           where: {
-            scoutId: userId,
-            createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+            ...(hasScopedAssignments ? { scoutId: userId } : {}),
+            status: {
+              notIn: ['COMPLETED', 'CANCELLED'],
+            },
+            matches: {
+              scheduledAt: { gte: now },
+            },
           },
         }),
-        this.prisma.scouting_reports.count({
+        this.prisma.event_assignments.count({
           where: {
-            scoutId: userId,
-            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+            ...(hasScopedAssignments ? { userId } : {}),
+            events: {
+              startDate: { gte: now },
+            },
+          },
+        }),
+        this.prisma.club_requests.count({
+          where: {
+            status: {
+              in: [ClubRequestStatus.PENDING, ClubRequestStatus.NEGOTIATING],
+            },
           },
         }),
       ]);
@@ -123,6 +183,9 @@ export class AnalyticsService {
         totalReports,
         reportsLast7Days,
         reportsLast30Days,
+        playersScouted: playersScoutedRows.length,
+        matchesAttended: matchAssignmentsCount + eventAssignmentsCount,
+        openDemandRequests,
         totalPlayers: await this.prisma.players.count(),
         totalClubs: await this.prisma.clubs.count(),
       };
@@ -153,7 +216,7 @@ export class AnalyticsService {
       }
     }
 
-    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    if (isCategoryARole(role as UserRole)) {
       // Admin dashboard: platform overview
       const platformStats: any = await this.getPlatformOverview();
       result = {
@@ -165,6 +228,333 @@ export class AnalyticsService {
 
     // Cache for 2 minutes (120 seconds)
     await this.redisService.set(cacheKey, result, 120);
+    return result;
+  }
+
+  private resolveMobileHomeScope(actorRole: string, requestedScope?: string): MobileHomeScope {
+    const fallbackScope: MobileHomeScope =
+      actorRole === 'SUPER_ADMIN' ||
+      actorRole === 'ADMIN' ||
+      actorRole === 'AGENT' ||
+      actorRole === 'SCOUT'
+        ? (actorRole as MobileHomeScope)
+        : 'SCOUT';
+
+    if (!requestedScope) {
+      return fallbackScope;
+    }
+
+    const normalizedScope = requestedScope.toUpperCase() as MobileHomeScope;
+    const isValidScope =
+      normalizedScope === 'SUPER_ADMIN' ||
+      normalizedScope === 'ADMIN' ||
+      normalizedScope === 'AGENT' ||
+      normalizedScope === 'SCOUT';
+
+    if (!isValidScope) {
+      return fallbackScope;
+    }
+
+    if (!isCategoryARole(actorRole as UserRole)) {
+      return fallbackScope;
+    }
+
+    return normalizedScope;
+  }
+
+  private buildMobileHomeQuickActions(scope: MobileHomeScope): MobileHomeQuickAction[] {
+    if (scope === 'SUPER_ADMIN' || scope === 'ADMIN') {
+      return [
+        {
+          id: 'newReport',
+          label: 'Nouveau rapport',
+          target: 'CreateReport',
+          icon: 'add',
+          variant: 'primary',
+        },
+        {
+          id: 'globalSearch',
+          label: 'Recherche globale',
+          target: 'GlobalSearch',
+          icon: 'search',
+          variant: 'secondary',
+        },
+        {
+          id: 'analytics',
+          label: 'Voir les analytics',
+          target: 'Analytics',
+          icon: 'analytics',
+          variant: 'secondary',
+        },
+      ];
+    }
+
+    if (scope === 'AGENT') {
+      return [
+        {
+          id: 'newReport',
+          label: 'Nouveau rapport',
+          target: 'CreateReport',
+          icon: 'add',
+          variant: 'primary',
+        },
+        {
+          id: 'globalSearch',
+          label: 'Recherche globale',
+          target: 'GlobalSearch',
+          icon: 'search',
+          variant: 'secondary',
+        },
+        {
+          id: 'agentRequests',
+          label: 'Demandes agent',
+          target: 'AgentRequests',
+          icon: 'clipboard-outline',
+          variant: 'secondary',
+        },
+      ];
+    }
+
+    return [
+      {
+        id: 'newReport',
+        label: 'Nouveau rapport',
+        target: 'CreateReport',
+        icon: 'add',
+        variant: 'primary',
+      },
+      {
+        id: 'globalSearch',
+        label: 'Recherche globale',
+        target: 'GlobalSearch',
+        icon: 'search',
+        variant: 'secondary',
+      },
+      {
+        id: 'calendar',
+        label: 'Ouvrir calendrier',
+        target: 'Calendar',
+        icon: 'calendar',
+        variant: 'secondary',
+      },
+    ];
+  }
+
+  private buildAgentRequestVisibilityWhere(
+    scope: MobileHomeScope,
+    userId: string,
+  ): Prisma.tasksWhereInput {
+    if (isCategoryARole(scope as UserRole)) {
+      return {};
+    }
+
+    if (isCategoryBRole(scope as UserRole)) {
+      return {
+        OR: [
+          { creatorId: userId },
+          {
+            users_tasks_creatorIdTousers: {
+              role: {
+                notIn: ['SUPER_ADMIN', 'ADMIN'],
+              },
+            },
+          },
+        ],
+      };
+    }
+
+    return { creatorId: userId };
+  }
+
+  async getMobileHomeDashboard(userId: string, role: string, requestedScope?: string) {
+    const scope = this.resolveMobileHomeScope(role, requestedScope);
+    const cacheKey = `analytics:mobile-home:${userId}:${scope}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const isCategoryA = isCategoryARole(scope as UserRole);
+    const hasScopedAssignments = !isCategoryA;
+
+    const reportWhere = hasScopedAssignments ? { scoutId: userId } : {};
+
+    const [
+      totalReports,
+      reportsLast7Days,
+      reportsLast30Days,
+      scopedPlayersScoutedRows,
+      totalPlayers,
+      matchAssignmentsCount,
+      eventAssignmentsCount,
+      pendingAgentRequests,
+      pendingClubRequests,
+      reportsToReview,
+      totalScouts,
+    ] = await Promise.all([
+      this.prisma.scouting_reports.count({
+        where: reportWhere,
+      }),
+      this.prisma.scouting_reports.count({
+        where: {
+          ...reportWhere,
+          createdAt: { gte: sevenDaysAgo },
+        },
+      }),
+      this.prisma.scouting_reports.count({
+        where: {
+          ...reportWhere,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      }),
+      hasScopedAssignments
+        ? this.prisma.scouting_reports.groupBy({
+            by: ['playerId'],
+            where: {
+              scoutId: userId,
+            },
+            _count: { playerId: true },
+          })
+        : Promise.resolve([]),
+      this.prisma.players.count(),
+      this.prisma.match_assignments.count({
+        where: {
+          ...(hasScopedAssignments ? { scoutId: userId } : {}),
+          status: {
+            notIn: ['COMPLETED', 'CANCELLED'],
+          },
+          matches: {
+            scheduledAt: { gte: now },
+          },
+        },
+      }),
+      this.prisma.event_assignments.count({
+        where: {
+          ...(hasScopedAssignments ? { userId } : {}),
+          events: {
+            startDate: { gte: now },
+          },
+        },
+      }),
+      this.prisma.tasks.count({
+        where: {
+          description: {
+            startsWith: '{"kind":"AGENT_REQUEST"',
+          },
+          status: { in: [TaskStatus.TODO, TaskStatus.IN_PROGRESS] },
+          ...this.buildAgentRequestVisibilityWhere(scope, userId),
+        },
+      }),
+      this.prisma.club_requests.count({
+        where: {
+          status: {
+            in: [ClubRequestStatus.PENDING, ClubRequestStatus.NEGOTIATING],
+          },
+        },
+      }),
+      this.prisma.scouting_reports.count({
+        where: { status: ReportStatus.SUBMITTED },
+      }),
+      this.prisma.users.count({
+        where: {
+          role: 'SCOUT',
+        },
+      }),
+    ]);
+
+    const playersScouted = hasScopedAssignments ? scopedPlayersScoutedRows.length : totalPlayers;
+    const calendarCount = matchAssignmentsCount + eventAssignmentsCount;
+
+    const cards: MobileHomeCard[] = isCategoryA
+      ? [
+          {
+            id: 'calendar',
+            label: 'Calendrier',
+            value: calendarCount,
+            delta: Math.max(0, eventAssignmentsCount),
+            period: 'week',
+            statusColor: 'yellow',
+          },
+          {
+            id: 'transfermarkt',
+            label: 'Transfermarkt',
+            value: pendingClubRequests,
+            delta: Math.max(0, reportsLast30Days - reportsLast7Days),
+            period: 'month',
+            statusColor: 'blue',
+          },
+          {
+            id: 'playersScouted',
+            label: 'Joueurs',
+            value: totalPlayers,
+            delta: Math.max(0, reportsLast7Days),
+            period: 'week',
+            statusColor: 'green',
+          },
+          {
+            id: 'scouts',
+            label: 'Scouts',
+            value: totalScouts,
+            delta: Math.max(0, reportsLast7Days),
+            period: 'week',
+            statusColor: 'indigo',
+          },
+        ]
+      : [
+          {
+            id: 'reports',
+            label: 'Rapports',
+            value: totalReports,
+            delta: Math.max(0, reportsLast7Days),
+            period: 'week',
+            statusColor: 'yellow',
+          },
+          {
+            id: 'playersScouted',
+            label: 'Joueurs scoutés',
+            value: playersScouted,
+            delta: Math.max(0, reportsLast30Days - reportsLast7Days),
+            period: 'month',
+            statusColor: 'blue',
+          },
+          {
+            id: 'calendar',
+            label: 'Calendrier',
+            value: calendarCount,
+            delta: Math.max(0, eventAssignmentsCount),
+            period: 'week',
+            statusColor: 'green',
+          },
+          {
+            id: 'agentRequests',
+            label: 'Demandes agent',
+            value: pendingAgentRequests,
+            delta: Math.max(0, reportsToReview),
+            period: 'week',
+            statusColor: 'indigo',
+          },
+        ];
+
+    const result = {
+      scope,
+      cards,
+      quickActions: this.buildMobileHomeQuickActions(scope),
+      pending: {
+        agentRequests: pendingAgentRequests,
+        clubRequests: pendingClubRequests,
+        reportsToReview,
+      },
+      meta: {
+        totalPlayers,
+        totalScouts,
+      },
+      generatedAt: new Date().toISOString(),
+    };
+
+    await this.redisService.set(cacheKey, result, 60);
     return result;
   }
 
@@ -896,7 +1286,9 @@ export class AnalyticsService {
    * If this analytics-only computation fails, we degrade to an empty list
    * instead of impacting auth/runtime flows.
    */
-  private async getMostBlockedFeatures(startDate: Date): Promise<Array<{ feature: string; count: number }>> {
+  private async getMostBlockedFeatures(
+    startDate: Date,
+  ): Promise<Array<{ feature: string; count: number }>> {
     try {
       const blockedEvents = await this.prisma.rbac_events.findMany({
         where: {

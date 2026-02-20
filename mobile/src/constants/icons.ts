@@ -227,6 +227,8 @@ export const ICONS = {
   cloudOutline: 'cloud-outline',
   cloudDone: 'cloud-done',
   cloudDoneOutline: 'cloud-done-outline',
+  newspaper: 'newspaper',
+  newspaperOutline: 'newspaper-outline',
   link: 'link',
   linkOutline: 'link-outline',
 

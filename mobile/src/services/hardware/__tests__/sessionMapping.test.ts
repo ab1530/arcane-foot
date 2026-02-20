@@ -64,13 +64,40 @@ describe('sessionMapping - mapDeviceFileToHardwareSessionDto', () => {
       { timeMsUtc: 2000, latitudeDeg: 0.001, longitudeDeg: 0.001 },
     ];
 
-    const payload = mapDeviceFileToHardwareSessionDto(file, points, 'player-123');
+    const payload = mapDeviceFileToHardwareSessionDto(file, points, 'player-123', {
+      sessionType: 'match',
+      matchContext: { matchId: 'match-42', matchLabel: 'Friendly #42' },
+      sourceOverride: 'ACTION_MARK_LAB',
+      labMeta: {
+        presetMinutes: 90,
+        hz: 10,
+        profile: 'winger',
+        mode: 'protocol',
+      },
+    });
 
     expect(payload.playerId).toBe('player-123');
     expect(payload.deviceId).toBe('actionmark-7');
+    expect(payload.source).toBe('ACTION_MARK_LAB');
+    expect(payload.type).toBe('match');
     expect(payload.metrics?.movementDistanceM).toBeGreaterThan(0);
     expect(payload.metrics?.motionTrajectoryData).toBeDefined();
     expect(payload.metrics?.rawMetrics?.deviceFileId).toBe(7);
+    expect(payload.metrics?.rawMetrics?.matchContext).toEqual({
+      matchId: 'match-42',
+      matchLabel: 'Friendly #42',
+    });
+    expect(payload.metrics?.rawMetrics?.labMeta).toEqual({
+      presetMinutes: 90,
+      hz: 10,
+      profile: 'winger',
+      mode: 'protocol',
+    });
+    expect(payload.metrics?.thermalTrajectoryMap?.gridCols).toBe(25);
+    expect(payload.metrics?.thermalTrajectoryMap?.gridRows).toBe(25);
+    expect(payload.metrics?.thermalTrajectoryMap?.fieldWidthM).toBe(105);
+    expect(payload.metrics?.thermalTrajectoryMap?.fieldHeightM).toBe(68);
+    expect(payload.metrics?.thermalTrajectoryMap?.cells.length).toBeGreaterThan(0);
     expect(payload.metrics?.normalizedMetrics?.totalDistanceM).toBeCloseTo(
       payload.metrics?.movementDistanceM || 0,
     );

@@ -29,9 +29,11 @@ import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { AIScreen } from '../screens/ai/AIScreen';
 import MarketplaceScreen from '../screens/marketplace/MarketplaceScreen';
 import CoachingHubScreen from '../screens/coaching/CoachingHubScreen';
+import { PlayerSpaceScreen } from '../screens/players/PlayerSpaceScreen';
 import { PassportScreen } from '../screens/passport/PassportScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import CampsListScreen from '../screens/camps/CampsListScreen';
+import { NewsScreen } from '../screens/news/NewsScreen';
 import { GlobalSearch } from '../components/search/GlobalSearch';
 import { NotificationsCenter } from '../components/notifications/NotificationsCenter';
 import { Icon, TabIcon } from '../components/ui';
@@ -104,20 +106,26 @@ const TAB_DEFINITIONS: Record<TabName, TabDefinition> = {
     icon: 'personCircle',
     featureFlag: 'profileTab',
   },
+  News: {
+    name: 'News',
+    component: NewsScreen,
+    title: 'News',
+    icon: 'newspaper',
+  },
 };
 
 type RoleTabMap = Record<UserRole | 'DEFAULT', TabName[]>;
 
 const ROLE_TABS: RoleTabMap = {
-  SUPER_ADMIN: ['Home', 'AIHub', 'Marketplace', 'Profile'],
-  ADMIN: ['Home', 'AIHub', 'Marketplace', 'Profile'],
-  AGENT: ['Home', 'Marketplace', 'Profile'],
-  SCOUT: ['Home', 'AIHub', 'Profile'],
-  ANALYST: ['Home', 'AIHub', 'Profile'],
-  PLAYER: ['Home', 'Camps', 'Coaching', 'Passport', 'Profile'],
-  CLUB_CONTACT: ['Home', 'Marketplace', 'Profile'],
-  PUBLIC: ['Home', 'Profile'],
-  DEFAULT: ['Home', 'Profile'],
+  SUPER_ADMIN: ['Home', 'AIHub', 'Marketplace', 'News', 'Profile'],
+  ADMIN: ['Home', 'AIHub', 'Marketplace', 'News', 'Profile'],
+  AGENT: ['Home', 'Marketplace', 'News', 'Profile'],
+  SCOUT: ['Home', 'AIHub', 'News', 'Profile'],
+  ANALYST: ['Home', 'AIHub', 'News', 'Profile'],
+  PLAYER: ['Home', 'Camps', 'Coaching', 'Passport', 'News', 'Profile'],
+  CLUB_CONTACT: ['Home', 'Marketplace', 'News', 'Profile'],
+  PUBLIC: ['Home', 'News', 'Profile'],
+  DEFAULT: ['Home', 'News', 'Profile'],
 };
 
 // Animated Tab Button Component with enhanced effects
@@ -289,7 +297,21 @@ export default function MainTabNavigator() {
 
   const availableTabs = useMemo(() => {
     return requestedTabs
-      .map((tabName) => TAB_DEFINITIONS[tabName])
+      .map((tabName) => {
+        const tabDefinition = TAB_DEFINITIONS[tabName];
+        if (!tabDefinition) {
+          return null;
+        }
+        if (tabDefinition.name === 'Home' && role === 'PLAYER') {
+          return {
+            ...tabDefinition,
+            component: PlayerSpaceScreen,
+            title: 'Espace',
+            icon: 'stats',
+          };
+        }
+        return tabDefinition;
+      })
       .filter((tabDef) => {
         if (!tabDef) return false;
         if (tabDef.featureFlag && !isFeatureEnabled(tabDef.featureFlag)) {

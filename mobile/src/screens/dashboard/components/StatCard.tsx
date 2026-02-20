@@ -177,11 +177,11 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     backgroundColor: tokens.colors.arcane.charcoal,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: tokens.colors.arcane.slate + '60',
     overflow: 'hidden',
-    minHeight: 140,
+    minHeight: 164,
     ...tokens.shadows.md,
   },
   glowBackground: {
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   content: {
-    padding: 16,
+    padding: 18,
     flex: 1,
     justifyContent: 'space-between',
   },
@@ -204,9 +204,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     borderRadius: 6,
   },
 });

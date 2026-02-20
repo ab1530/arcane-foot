@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 export class ListClubNeedRequestsDto {
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
@@ -22,4 +22,20 @@ export class ListClubNeedRequestsDto {
   @IsOptional()
   @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'month must follow YYYY-MM format' })
   month?: string;
+
+  @ApiPropertyOptional({
+    description: 'League filter for demandes cards',
+    enum: ['LIGUE_1', 'BUNDESLIGA', 'SERIE_A', 'LALIGA'],
+  })
+  @IsOptional()
+  @IsIn(['LIGUE_1', 'BUNDESLIGA', 'SERIE_A', 'LALIGA'])
+  league?: 'LIGUE_1' | 'BUNDESLIGA' | 'SERIE_A' | 'LALIGA';
+
+  @ApiPropertyOptional({
+    description: 'Progress status filter',
+    enum: ['ACTIVE', 'PARTIAL', 'COMPLETED'],
+  })
+  @IsOptional()
+  @IsIn(['ACTIVE', 'PARTIAL', 'COMPLETED'])
+  status?: 'ACTIVE' | 'PARTIAL' | 'COMPLETED';
 }

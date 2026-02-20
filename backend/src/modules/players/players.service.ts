@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { MatchStatus, ProfileContentStatus, ReportStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheManagerService } from '../../common/interceptors/cache.interceptor';
 import { CreatePlayerDto } from './dto/create-player.dto';
@@ -9,6 +15,7 @@ import {
   ScoutQuickImportResult,
   ScoutQuickImportRow,
 } from './dto/scout-quick-import.dto';
+import { SubmitPlayerWeeklyUpdateDto } from './dto/submit-player-weekly-update.dto';
 import { randomUUID } from 'crypto';
 
 type ParsedScoutLine = {
@@ -33,6 +40,89 @@ const POSITION_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
   { value: 'Winger', keywords: ['ailier', 'winger', 'ail', 'lw', 'rw'] },
   { value: 'Forward', keywords: ['attaquant', 'avant-centre', 'striker', 'forward', 'cf'] },
 ];
+
+type PlayerSpaceWeeklyUpdate = {
+  weekStartDate: string;
+  submittedAt: string;
+  updatedBy: string;
+  minutesPlayed: number;
+  goals: number;
+  assists: number;
+  matchesPlayed: number;
+  matchesNotPlayed: number;
+  isInjured: boolean;
+  healthStatus: 'NORMAL' | 'FATIGUE' | 'INJURY';
+  remarks?: string | null;
+};
+
+type PlayerSpacePayload = {
+  playerId: string;
+  player: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    fullName: string;
+    position: string;
+    nationality: string;
+    clubId?: string | null;
+    clubName?: string | null;
+    photoUrl?: string | null;
+  };
+  snapshot: {
+    matchesPlayed: number;
+    matchesNotPlayed: number;
+    goals: number;
+    assists: number;
+    minutesPlayed: number;
+    isInjured: boolean;
+    injuryStatus: string | null;
+  };
+  performanceTrend: Array<{
+    period: string;
+    rating: number | null;
+    minutes: number | null;
+  }>;
+  upcomingCalendar: Array<{
+    id: string;
+    scheduledAt: string;
+    opponent: string;
+    opponentLogo: string | null;
+    isHome: boolean;
+    status: string | null;
+    competition: string | null;
+  }>;
+  health: {
+    status: string;
+    lastDeviceSync: string | null;
+    syncSource: string | null;
+  };
+  weekly: {
+    latest: PlayerSpaceWeeklyUpdate | null;
+    totalUpdates: number;
+  };
+  news: Array<{
+    id: string;
+    headline: string;
+    summary: string | null;
+    sourceName: string;
+    publishedAt: string | null;
+  }>;
+  generatedAt: string;
+};
+
+type PlayerSpaceStoredWeeklyUpdate = {
+  weekStartDate: string;
+  submittedAt: string;
+  updatedBy: string;
+  minutesPlayed: number;
+  goals: number;
+  assists: number;
+  matchesPlayed: number;
+  matchesNotPlayed: number;
+  isInjured: boolean;
+  healthStatus: 'NORMAL' | 'FATIGUE' | 'INJURY';
+  remarks?: string | null;
+};
 
 @Injectable()
 export class PlayersService {
@@ -236,6 +326,504 @@ export class PlayersService {
       club: player?.clubs ?? null,
     };
   }
+
+  private toJsonRecord(value: unknown): Record<string, unknown> {
+    if (value === null || value === undefined) {
+      return {};
+    }
+
+    if (Array.isArray(value)) {
+      return {};
+    }
+
+    return typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  }
+
+  private toJsonArray(value: unknown): any[] {
+    return Array.isArray(value) ? value : [];
+  }
+
+  private toDateOnly(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDate(value: unknown): Date | null {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+  }
+
+  private toDateTime(value: unknown): string | null {
+    const parsed = this.parseDate(value);
+    return parsed ? parsed.toISOString() : null;
+  }
+
+  private toSafeString(value: unknown, fallback = ''): string {
+    if (typeof value !== 'string') {
+      return fallback;
+    }
+    return value.trim();
+  }
+
+  private toSafeNumber(value: unknown, fallback = 0): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return Math.round(value);
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
+    }
+
+    return fallback;
+  }
+
+  private toSafeBoolean(value: unknown, fallback = false): boolean {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'number') {
+      return value === 1;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    }
+
+    return fallback;
+  }
+
+  private normalizeHealthStatus(
+    value: unknown,
+    fallback: PlayerSpaceStoredWeeklyUpdate['healthStatus'] = 'NORMAL',
+  ): PlayerSpaceStoredWeeklyUpdate['healthStatus'] {
+    if (value === 'INJURY' || value === 'FATIGUE' || value === 'NORMAL') {
+      return value;
+    }
+
+    return fallback;
+  }
+
+  private startOfWeek(date: Date): string {
+    const value = new Date(date);
+    value.setHours(0, 0, 0, 0);
+    const day = value.getDay();
+    const distanceToMonday = (day + 6) % 7;
+    value.setDate(value.getDate() - distanceToMonday);
+    return this.toDateOnly(value);
+  }
+
+  private normalizeWeeklyUpdate(value: any): PlayerSpaceStoredWeeklyUpdate | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const parsedSubmittedAt = this.toDateTime(value.submittedAt);
+
+    return {
+      weekStartDate: this.toSafeString(value.weekStartDate, this.startOfWeek(new Date())),
+      submittedAt: this.toSafeString(parsedSubmittedAt, new Date().toISOString()),
+      updatedBy: this.toSafeString(value.updatedBy, 'player'),
+      minutesPlayed: this.toSafeNumber(value.minutesPlayed),
+      goals: this.toSafeNumber(value.goals),
+      assists: this.toSafeNumber(value.assists),
+      matchesPlayed: this.toSafeNumber(value.matchesPlayed),
+      matchesNotPlayed: this.toSafeNumber(value.matchesNotPlayed),
+      isInjured: this.toSafeBoolean(value.isInjured),
+      healthStatus: this.normalizeHealthStatus(value.healthStatus),
+      remarks: this.toSafeString(value.remarks, '').length > 0 ? this.toSafeString(value.remarks) : null,
+    };
+  }
+
+  private getPlayerSnapshot(
+    player: any,
+    weeklyUpdates: PlayerSpaceStoredWeeklyUpdate[],
+  ): PlayerSpacePayload['snapshot'] {
+    const stats = this.toJsonRecord(player?.statsJson);
+    const latestWeekly = weeklyUpdates[0] ?? null;
+
+    const snapshot = {
+      matchesPlayed: this.toSafeNumber(
+        stats.matchesPlayed ?? latestWeekly?.matchesPlayed,
+        0,
+      ),
+      matchesNotPlayed: this.toSafeNumber(
+        stats.matchesNotPlayed ?? latestWeekly?.matchesNotPlayed,
+        0,
+      ),
+      goals: this.toSafeNumber(stats.goals ?? latestWeekly?.goals, 0),
+      assists: this.toSafeNumber(stats.assists ?? latestWeekly?.assists, 0),
+      minutesPlayed: this.toSafeNumber(stats.minutesPlayed ?? latestWeekly?.minutesPlayed, 0),
+      isInjured:
+        player?.status === 'INJURED' ||
+        this.toSafeBoolean(stats.isInjured, latestWeekly?.isInjured ?? false),
+      injuryStatus: this.toSafeString(
+        stats.injuryStatus || latestWeekly?.healthStatus || null,
+        player?.status === 'INJURED' ? 'INJURY' : '',
+      ) || null,
+    };
+
+    return snapshot;
+  }
+
+  private getPlayerSpaceHealth(
+    player: any,
+    weeklyUpdates: PlayerSpaceStoredWeeklyUpdate[],
+    latestSession: any,
+  ): PlayerSpacePayload['health'] {
+    const latestWeekly = weeklyUpdates[0] ?? null;
+    const snapshot = this.getPlayerSnapshot(player, weeklyUpdates);
+    let status = 'En attente de sync';
+
+    if (snapshot.isInjured) {
+      status = 'Blessé';
+    } else if (latestSession) {
+      status = 'Connecté';
+    } else if (player?.lastSyncAt) {
+      status = 'Inactif';
+    }
+
+    return {
+      status,
+      lastDeviceSync: this.toDateTime(latestSession?.endedAt ?? player?.lastSyncAt),
+      syncSource:
+        latestWeekly?.healthStatus === 'INJURY'
+          ? 'auto'
+          : this.toSafeString(latestSession?.source ?? null),
+    };
+  }
+
+  private mapPerformanceTrend(entries: any[]): PlayerSpacePayload['performanceTrend'] {
+    const formatter = new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+    });
+
+    const mapped = entries.map((entry) => {
+      const matchDate = this.parseDate(entry?.matches?.scheduledAt ?? entry.createdAt);
+      const period = matchDate ? formatter.format(matchDate) : 'N/A';
+      const rating =
+        typeof entry?.overallRating === 'number' && Number.isFinite(entry.overallRating)
+          ? entry.overallRating
+          : null;
+      const minutes =
+        typeof entry?.playerMinutesPlayed === 'number' &&
+        Number.isFinite(entry.playerMinutesPlayed)
+          ? entry.playerMinutesPlayed
+          : null;
+      return {
+        period,
+        rating,
+        minutes,
+      };
+    });
+
+    return mapped.reverse();
+  }
+
+  private getPlayerSpaceCalendar(
+    player: any,
+    matches: any[],
+  ): PlayerSpacePayload['upcomingCalendar'] {
+    if (!Array.isArray(matches) || !player?.clubId) {
+      return [];
+    }
+
+    return matches.map((match) => {
+      const isHome = match.homeClubId === player.clubId;
+      const opponentClub = isHome ? match.clubs_matches_awayClubIdToclubs : match.clubs_matches_homeClubIdToclubs;
+      return {
+        id: match.id,
+        scheduledAt: this.toDateTime(match.scheduledAt) || '',
+        opponent: this.toSafeString(opponentClub?.name, '—'),
+        opponentLogo: opponentClub?.logo ?? null,
+        isHome,
+        status: this.toSafeString(match.status, ''),
+        competition: this.toSafeString(
+          match?.competitions?.name ?? match?.competition?.name ?? null,
+          '—',
+        ),
+      };
+    });
+  }
+
+  private mapNewsItems(items: any[]): PlayerSpacePayload['news'] {
+    return (items || []).map((item) => ({
+      id: item?.id,
+      headline: this.toSafeString(item?.headline, ''),
+      summary: item?.summary ? this.toSafeString(item.summary) : null,
+      sourceName: this.toSafeString(item?.sourceName, 'Arcane'),
+      publishedAt: this.toDateTime(item?.publishedAtSource) || this.toDateTime(item?.createdAt),
+    }));
+  }
+
+  private async resolvePlayerForSpace(userId: string, playerIdHint?: string | null) {
+    if (playerIdHint) {
+      const playerById = await this.prisma.players.findUnique({
+        where: { id: playerIdHint },
+        include: {
+          clubs: {
+            select: {
+              id: true,
+              name: true,
+              logo: true,
+            },
+          },
+          users: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
+
+      if (!playerById) {
+        throw new NotFoundException(`Player with ID ${playerIdHint} not found`);
+      }
+
+      if (playerById.userId && playerById.userId !== userId) {
+        throw new ForbiddenException("You are not authorized to access this player's space");
+      }
+
+      return playerById;
+    }
+
+    const player = await this.prisma.players.findUnique({
+      where: { userId },
+      include: {
+        clubs: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        users: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('Player not found for this account');
+    }
+
+    return player;
+  }
+
+  private normalizeIncomingWeeklyUpdate(
+    dto: SubmitPlayerWeeklyUpdateDto,
+    playerId: string,
+    latestUpdate: PlayerSpaceStoredWeeklyUpdate | null,
+  ): PlayerSpaceStoredWeeklyUpdate {
+    const fallback = this.startOfWeek(new Date());
+    const weekStartDate = this.parseDate(dto.weekStartDate)
+      ? this.startOfWeek(this.parseDate(dto.weekStartDate)!)
+      : fallback;
+    const now = new Date().toISOString();
+
+    return {
+      weekStartDate,
+      submittedAt: now,
+      updatedBy: playerId,
+      minutesPlayed: dto.minutesPlayed,
+      goals: dto.goals,
+      assists: dto.assists,
+      matchesPlayed: dto.matchesPlayed,
+      matchesNotPlayed: dto.matchesNotPlayed,
+      isInjured: dto.isInjured,
+      healthStatus: this.normalizeHealthStatus(dto.healthStatus ?? latestUpdate?.healthStatus),
+      remarks: this.toSafeString(dto.remarks, '').length > 0 ? dto.remarks : null,
+    };
+  }
+
+  async getMyPlayerSpace(userId: string, playerIdHint?: string | null): Promise<PlayerSpacePayload> {
+    const player = await this.resolvePlayerForSpace(userId, playerIdHint);
+    const rawStats = this.toJsonRecord(player.statsJson);
+    const weeklyUpdates = this.toJsonArray(rawStats.weeklyUpdates)
+      .map((entry) => this.normalizeWeeklyUpdate(entry))
+      .filter((entry): entry is PlayerSpaceStoredWeeklyUpdate => entry !== null)
+      .sort((left, right) => {
+        const rightDate = this.toDateTime(right.submittedAt);
+        const leftDate = this.toDateTime(left.submittedAt);
+        if (!rightDate && !leftDate) return 0;
+        if (!rightDate) return 1;
+        if (!leftDate) return -1;
+        return rightDate > leftDate ? 1 : rightDate < leftDate ? -1 : 0;
+      });
+
+    const [recentReports, upcomingMatches, latestSession, newsItems] = await Promise.all([
+      this.prisma.scouting_reports.findMany({
+        where: { playerId: player.id, status: ReportStatus.APPROVED },
+        include: {
+          matches: {
+            select: {
+              scheduledAt: true,
+              competitions: {
+                select: { name: true },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      player.clubId
+        ? this.prisma.matches.findMany({
+            where: {
+              OR: [{ homeClubId: player.clubId }, { awayClubId: player.clubId }],
+              scheduledAt: { gte: new Date() },
+              status: {
+                in: [MatchStatus.SCHEDULED, MatchStatus.LIVE],
+              },
+            },
+            include: {
+              clubs_matches_homeClubIdToclubs: {
+                select: { id: true, name: true, logo: true },
+              },
+              clubs_matches_awayClubIdToclubs: {
+                select: { id: true, name: true, logo: true },
+              },
+              competitions: {
+                select: { name: true },
+              },
+            },
+            orderBy: { scheduledAt: 'asc' },
+            take: 10,
+          })
+        : Promise.resolve([]),
+      this.prisma.hardwareSession.findFirst({
+        where: { playerId: player.id },
+        orderBy: { endedAt: 'desc' },
+        select: { endedAt: true, source: true },
+      }),
+      this.prisma.player_news_entries.findMany({
+        where: {
+          playerId: player.id,
+          contentStatus: ProfileContentStatus.PUBLISHED,
+        },
+        orderBy: { publishedAtSource: 'desc' },
+        take: 6,
+        select: {
+          id: true,
+          headline: true,
+          summary: true,
+          publishedAtSource: true,
+          sourceName: true,
+          sourceUrl: true,
+        },
+      }),
+    ]);
+
+    const weekly = {
+      latest: weeklyUpdates[0] ?? null,
+      totalUpdates: weeklyUpdates.length,
+    };
+
+    const fullName = `${this.toSafeString(player?.users?.firstName, player.firstName)} ${this.toSafeString(
+      player?.users?.lastName,
+      player.lastName,
+    )}`.trim();
+
+    return {
+      playerId: player.id,
+      player: {
+        id: player.id,
+        firstName: this.toSafeString(player?.users?.firstName, player.firstName),
+        lastName: this.toSafeString(player?.users?.lastName, player.lastName),
+        fullName: fullName || 'Joueur',
+        position: this.toSafeString(player.position),
+        nationality: this.toSafeString(player.nationality),
+        clubId: player.clubId ?? null,
+        clubName: this.toSafeString(player.clubs?.name) || null,
+        photoUrl: this.toSafeString(player.photoUrl) || null,
+      },
+      snapshot: this.getPlayerSnapshot(player, weeklyUpdates),
+      performanceTrend: this.mapPerformanceTrend(recentReports),
+      upcomingCalendar: this.getPlayerSpaceCalendar(player, upcomingMatches),
+      health: this.getPlayerSpaceHealth(player, weeklyUpdates, latestSession),
+      weekly,
+      news: this.mapNewsItems(newsItems),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async submitMyPlayerWeeklyUpdate(
+    userId: string,
+    playerIdHint: string | undefined,
+    dto: SubmitPlayerWeeklyUpdateDto,
+  ) {
+    const player = await this.resolvePlayerForSpace(userId, playerIdHint);
+    const rawStats = this.toJsonRecord(player.statsJson);
+    const existingWeekly = this.toJsonArray(rawStats.weeklyUpdates).map((entry) =>
+      this.normalizeWeeklyUpdate(entry),
+    );
+    const latestExisting = existingWeekly
+      .filter((entry): entry is PlayerSpaceStoredWeeklyUpdate => entry !== null)
+      .sort((left, right) => {
+        const rightDate = this.toDateTime(right.submittedAt);
+        const leftDate = this.toDateTime(left.submittedAt);
+        if (!rightDate && !leftDate) return 0;
+        if (!rightDate) return 1;
+        if (!leftDate) return -1;
+        return rightDate < leftDate ? -1 : rightDate > leftDate ? 1 : 0;
+      })[0] ?? null;
+    const incoming = this.normalizeIncomingWeeklyUpdate(dto, player.id, latestExisting);
+    const updatesMap = new Map<string, PlayerSpaceStoredWeeklyUpdate>();
+
+    for (const item of existingWeekly) {
+      if (item && item.weekStartDate) {
+        updatesMap.set(item.weekStartDate, item);
+      }
+    }
+    updatesMap.set(incoming.weekStartDate, incoming);
+
+    const nextWeeklyUpdates = Array.from(updatesMap.values())
+      .sort((left, right) => {
+        if (left.weekStartDate < right.weekStartDate) return 1;
+        if (left.weekStartDate > right.weekStartDate) return -1;
+        return 0;
+      })
+      .slice(0, 26);
+
+    await this.prisma.players.update({
+      where: { id: player.id },
+      data: {
+        updatedAt: new Date(),
+        statsJson: {
+          ...rawStats,
+          matchesPlayed: incoming.matchesPlayed,
+          matchesNotPlayed: incoming.matchesNotPlayed,
+          goals: incoming.goals,
+          assists: incoming.assists,
+          minutesPlayed: incoming.minutesPlayed,
+          isInjured: incoming.isInjured,
+          injuryStatus: incoming.healthStatus,
+          weeklyUpdates: nextWeeklyUpdates,
+          lastWeeklyUpdateAt: incoming.submittedAt,
+        },
+      },
+    });
+
+    return this.getMyPlayerSpace(userId, player.id);
+  }
+
 
   /**
    * Create a new player

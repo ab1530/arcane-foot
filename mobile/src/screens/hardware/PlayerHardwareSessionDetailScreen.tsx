@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import { Card } from '../../design/components/Card';
 import { theme } from '../../design/theme';
 import type { AppStackParamList } from '../../types/navigation';
 import type { HardwareSession } from '../../types/hardware';
+import { MatchHeatmap } from '../../components/hardware/MatchHeatmap';
 
 const formatDate = (date: string) =>
   new Date(date).toLocaleString('fr-FR', {
@@ -112,6 +114,7 @@ export const PlayerHardwareSessionDetailScreen: React.FC = () => {
   }, [handleDelete]);
 
   const metrics = session?.metrics;
+  const heatmapWidth = Math.min(Dimensions.get('window').width - 48, 460);
 
   const chartRatios = useMemo(() => {
     const distanceRatio = Math.min(1, (metrics?.movementDistanceM ?? 0) / 12000);
@@ -138,6 +141,7 @@ export const PlayerHardwareSessionDetailScreen: React.FC = () => {
       </View>
     );
   }
+  const isLabSession = session.source === 'ACTION_MARK_LAB';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.darkBg }} edges={['top', 'bottom']}>
@@ -149,7 +153,15 @@ export const PlayerHardwareSessionDetailScreen: React.FC = () => {
           <View style={styles.headerContent}>
             <View>
               <Text style={styles.title}>Détails de la séance</Text>
-              <Text style={styles.subtitle}>{formatDate(session.startedAt)}</Text>
+              <View style={styles.subtitleRow}>
+                <Text style={styles.subtitle}>{formatDate(session.startedAt)}</Text>
+                {isLabSession && (
+                  <View style={styles.labBadge}>
+                    <Text style={styles.labBadgeText}>LAB</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.sourceText}>Source: {session.source}</Text>
             </View>
             <TouchableOpacity
               style={styles.deleteButton}
@@ -227,6 +239,18 @@ export const PlayerHardwareSessionDetailScreen: React.FC = () => {
           ))}
         </Card>
 
+        <Card variant="glass" size="lg" contentStyle={styles.chartCard}>
+          <Text style={styles.cardTitle}>Heatmap terrain</Text>
+          <Text style={styles.cardSubtitle}>
+            Occupation spatiale de la séance (densité GPS)
+          </Text>
+          <MatchHeatmap
+            thermalTrajectoryMap={metrics?.thermalTrajectoryMap}
+            width={heatmapWidth}
+            showLegend
+          />
+        </Card>
+
         <Card variant="glass" size="lg" contentStyle={styles.metricsCard}>
           <Text style={styles.cardTitle}>Données détaillées</Text>
           <View style={styles.metricGrid}>
@@ -257,14 +281,6 @@ export const PlayerHardwareSessionDetailScreen: React.FC = () => {
           </View>
         )}
 
-        {metrics?.thermalTrajectoryMap?.cells && (
-          <View style={styles.normalized}>
-            <Text style={styles.metricLabel}>Heatmap</Text>
-            <Text style={styles.metricValue}>
-              Zones couvertes: {metrics.thermalTrajectoryMap.cells.length}
-            </Text>
-          </View>
-        )}
       </Card>
     </ScrollView>
   </SafeAreaView>
@@ -318,6 +334,27 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     subtitle: {
       fontSize: theme.typography.sizes.caption,
       color: colors.textSecondary,
+    },
+    subtitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sourceText: {
+      marginTop: 2,
+      fontSize: theme.typography.sizes.caption,
+      color: colors.textSecondary,
+    },
+    labBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: colors.accent,
+    },
+    labBadgeText: {
+      color: colors.darkBg,
+      fontFamily: theme.typography.fonts.bold,
+      fontSize: 10,
     },
     deleteButton: {
       width: 40,

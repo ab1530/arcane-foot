@@ -7,7 +7,16 @@ import api from '../../../services/api';
 
 jest.mock('../../../services/api', () => ({
   __esModule: true,
+  extractPayloadItems: (payload: any) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+  },
   default: {
+    getMarket: jest.fn(),
+    getMarketRequest: jest.fn(),
+    getClubs: jest.fn(),
     createClubNeedRequest: jest.fn(),
     listClubNeedRequests: jest.fn(),
     getClubNeedRequest: jest.fn(),
@@ -37,6 +46,9 @@ describe('ClubNeedsScreen', () => {
 
   const shareSpy = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as any);
 
+  const mockGetMarket = (api as any).getMarket as jest.Mock;
+  const mockGetMarketRequest = (api as any).getMarketRequest as jest.Mock;
+  const mockGetClubs = (api as any).getClubs as jest.Mock;
   const mockCreateClubNeedRequest = (api as any).createClubNeedRequest as jest.Mock;
   const mockListClubNeedRequests = (api as any).listClubNeedRequests as jest.Mock;
   const mockGetClubNeedRequest = (api as any).getClubNeedRequest as jest.Mock;
@@ -101,7 +113,42 @@ describe('ClubNeedsScreen', () => {
     },
   ];
 
+  const openAdvancedMode = (getByTestId: (id: string) => any) => {
+    fireEvent.press(getByTestId('club-needs-mode-advanced'));
+  };
+
   const setupDefaultApiMocks = () => {
+    mockGetMarket.mockResolvedValue({
+      data: [
+        {
+          id: 'market-1',
+          requestType: 'TRANSFER',
+          status: 'PENDING',
+          offerAmount: 8000000,
+          createdAt: '2026-02-16T16:51:00.000Z',
+          clubs: {
+            id: 'club-psg',
+            name: 'Paris Saint-Germain',
+            logo: null,
+            country: 'France',
+          },
+        },
+      ],
+      meta: { total: 1, page: 1, totalPages: 1, limit: 120 },
+    });
+    mockGetMarketRequest.mockResolvedValue({
+      id: 'market-1',
+      status: 'PENDING',
+      requestType: 'TRANSFER',
+      offerAmount: 8000000,
+    });
+    mockGetClubs.mockResolvedValue({
+      data: [
+        { id: 'club-psg', name: 'Paris Saint-Germain', country: 'France', logo: null },
+        { id: 'club-mallorca', name: 'Mallorca', country: 'Spain', logo: null },
+      ],
+      meta: { total: 2, page: 1, totalPages: 1, limit: 250 },
+    });
     mockCreateClubNeedRequest.mockResolvedValue({
       request: makeRequest(false),
       matches: makeMatches(),
@@ -177,6 +224,7 @@ describe('ClubNeedsScreen', () => {
       <ClubNeedsScreen navigation={navigation} route={route} />,
     );
 
+    openAdvancedMode(getByTestId);
     fireEvent.press(getByTestId('club-needs-generate'));
 
     await waitFor(() => {
@@ -189,6 +237,7 @@ describe('ClubNeedsScreen', () => {
       <ClubNeedsScreen navigation={navigation} route={route} />,
     );
 
+    openAdvancedMode(getByTestId);
     fireEvent.press(getByTestId('club-needs-generate'));
 
     await waitFor(() => {
@@ -229,6 +278,7 @@ describe('ClubNeedsScreen', () => {
       <ClubNeedsScreen navigation={navigation} route={route} />,
     );
 
+    openAdvancedMode(getByTestId);
     fireEvent.press(getByTestId('club-needs-generate'));
 
     await waitFor(() => {
@@ -275,6 +325,7 @@ describe('ClubNeedsScreen', () => {
   it('reloads history when selecting a month filter', async () => {
     const { getByTestId } = render(<ClubNeedsScreen navigation={navigation} route={route} />);
 
+    openAdvancedMode(getByTestId);
     fireEvent.press(getByTestId('club-needs-toggle-history'));
 
     await waitFor(() => {
@@ -296,6 +347,7 @@ describe('ClubNeedsScreen', () => {
       <ClubNeedsScreen navigation={navigation} route={route} />,
     );
 
+    openAdvancedMode(getByTestId);
     fireEvent.press(getByTestId('club-needs-generate'));
 
     await waitFor(() => {
@@ -319,6 +371,7 @@ describe('ClubNeedsScreen', () => {
       <ClubNeedsScreen navigation={navigation} route={route} />,
     );
 
+    openAdvancedMode(getByTestId);
     fireEvent.press(getByTestId('club-needs-toggle-history'));
 
     await waitFor(() => {
@@ -336,6 +389,26 @@ describe('ClubNeedsScreen', () => {
 
     await waitFor(() => {
       expect(mockUpdateClubNeedLineStatus).toHaveBeenCalledWith(baseRequestId, 1, false);
+    });
+  });
+
+  it('affiche le mode Demandes avec ligues + actions puis passe en mode Avancé', async () => {
+    const { getByTestId, getAllByText } = render(
+      <ClubNeedsScreen navigation={navigation} route={route} />,
+    );
+
+    await waitFor(() => {
+      expect(getAllByText('Demandes Clubs').length).toBeGreaterThan(0);
+      expect(getByTestId('club-needs-league-ligue_1')).toBeTruthy();
+      expect(getByTestId('club-needs-league-bundesliga')).toBeTruthy();
+      expect(getAllByText('Nouvelle demande').length).toBeGreaterThan(0);
+      expect(getAllByText('Voir demande').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.press(getByTestId('club-needs-mode-advanced'));
+
+    await waitFor(() => {
+      expect(getByTestId('club-needs-generate')).toBeTruthy();
     });
   });
 });

@@ -22,7 +22,7 @@ import { Card } from '../../design/components/Card';
 import { theme } from '../../design/theme';
 import type { AppStackParamList } from '../../types/navigation';
 import type { HardwareSession } from '../../types/hardware';
-import { buildSimulatedHardwareSessionPayload } from '../../services/hardware/simulation';
+import { MatchHeatmap } from '../../components/hardware/MatchHeatmap';
 
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -58,6 +58,7 @@ export const PlayerHardwareSessionsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'match' | 'training'>('all');
 
   const loadSessions = useCallback(async () => {
     if (!targetPlayerId) {
@@ -119,47 +120,42 @@ export const PlayerHardwareSessionsScreen: React.FC = () => {
     [deleteSession],
   );
 
-  const simulateSession = useCallback(async () => {
-    if (!targetPlayerId) {
-      showError('Impossible de simuler sans profil joueur');
-      return;
-    }
-
-    try {
-      setRefreshing(true);
-      const payload = buildSimulatedHardwareSessionPayload(targetPlayerId);
-      await api.createHardwareSession(payload);
-
-      showSuccess('Séance GPS simulée créée');
-      await loadSessions();
-    } catch (error) {
-      console.error('Failed to simulate hardware session', error);
-      showError('Impossible de simuler une nouvelle séance');
-    } finally {
-      setRefreshing(false);
-    }
-  }, [targetPlayerId, loadSessions]);
+  const handleStartLabFlow = useCallback(() => {
+    navigation.navigate('ConnectGpsTracker', {
+      prefillLabMode: true,
+      prefillLabPresetMinutes: 90,
+      preselectedSessionType: 'match',
+    });
+  }, [navigation]);
 
   const handleConnectGps = useCallback(() => {
     navigation.navigate('ConnectGpsTracker');
   }, [navigation]);
 
+  const filteredSessions = useMemo(() => {
+    if (typeFilter === 'all') {
+      return sessions;
+    }
+    return sessions.filter((session) => session.type === typeFilter);
+  }, [sessions, typeFilter]);
+
   const summary = useMemo(() => {
-    if (sessions.length === 0) {
+    if (filteredSessions.length === 0) {
       return { totalDistance: 0, sprintDistance: 0, maxSpeed: 0, avgDuration: 0 };
     }
 
-    const totalDistance = sessions.reduce(
+    const totalDistance = filteredSessions.reduce(
       (acc, session) => acc + (session.metrics?.movementDistanceM ?? 0),
       0,
     );
-    const sprintDistance = sessions.reduce(
+    const sprintDistance = filteredSessions.reduce(
       (acc, session) => acc + (session.metrics?.sprintDistanceM ?? 0),
       0,
     );
-    const maxSpeed = Math.max(...sessions.map((s) => s.metrics?.maxSpeedKmh ?? 0));
+    const maxSpeed = Math.max(...filteredSessions.map((s) => s.metrics?.maxSpeedKmh ?? 0));
     const avgDuration =
-      sessions.reduce((acc, session) => acc + getDurationMinutes(session), 0) / sessions.length;
+      filteredSessions.reduce((acc, session) => acc + getDurationMinutes(session), 0) /
+      filteredSessions.length;
 
     return {
       totalDistance,
@@ -167,7 +163,7 @@ export const PlayerHardwareSessionsScreen: React.FC = () => {
       maxSpeed,
       avgDuration,
     };
-  }, [sessions]);
+  }, [filteredSessions]);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const headerTitle = targetPlayerName ? `Séances GPS · ${targetPlayerName}` : 'Mes séances GPS';
@@ -199,9 +195,9 @@ export const PlayerHardwareSessionsScreen: React.FC = () => {
 
         {isOwnProfile && (
           <>
-            <TouchableOpacity style={styles.simulateButton} onPress={simulateSession}>
+            <TouchableOpacity style={styles.simulateButton} onPress={handleStartLabFlow}>
               <Ionicons name="flash" size={18} color={colors.darkBg} style={{ marginRight: 8 }} />
-              <Text style={styles.simulateText}>Simuler une nouvelle séance GPS</Text>
+              <Text style={styles.simulateText}>Importer séance LAB (WINGER)</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -221,16 +217,45 @@ export const PlayerHardwareSessionsScreen: React.FC = () => {
             <ActivityIndicator size="large" color={colors.accent} />
             <Text style={styles.loaderText}>Chargement des séances...</Text>
           </View>
-        ) : sessions.length === 0 ? (
+        ) : filteredSessions.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="map-outline" size={36} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>Aucune séance pour l’instant</Text>
+            <Text style={styles.emptyTitle}>Aucune séance pour ce filtre</Text>
             <Text style={styles.emptySubtitle}>
-              Lancez une simulation pour tester le pipeline d’ingestion.
+              Connecte le tracker puis génère une séance LAB pour tester le pipeline d’ingestion.
             </Text>
           </View>
         ) : (
           <>
+            <View style={styles.filterRow}>
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'match', label: 'Match' },
+                { key: 'training', label: 'Training' },
+              ] as const).map((item) => {
+                const selected = typeFilter === item.key;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[
+                      styles.filterChip,
+                      selected && styles.filterChipActive,
+                    ]}
+                    onPress={() => setTypeFilter(item.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        selected && styles.filterChipTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <View style={styles.statsGrid}>
               <Card variant="glass" size="md" contentStyle={styles.statCard}>
                 <View>
@@ -267,68 +292,85 @@ export const PlayerHardwareSessionsScreen: React.FC = () => {
             </View>
 
             <View style={styles.sessionsList}>
-              {sessions
+              {[...filteredSessions]
                 .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
-                .map((session) => (
-                  <Card
-                    key={session.id}
-                    variant="glass"
-                    glowOnPress
-                    onPress={() =>
-                      navigation.navigate('HardwareSessionDetail', { sessionId: session.id })
-                    }
-                    contentStyle={styles.sessionCard}
-                  >
-                    <View style={styles.sessionHeader}>
-                      <View>
-                        <Text style={styles.sessionTitle}>{formatDate(session.startedAt)}</Text>
-                        <Text style={styles.sessionSubtitle}>
-                          {session.type} · {session.deviceId}
-                        </Text>
-                      </View>
-                      <View style={styles.sessionHeaderActions}>
-                      <View style={styles.sessionBadge}>
-                        <Text style={styles.sessionBadgeText}>
-                          {formatMinutes(session.metrics?.totalTimeMin ?? getDurationMinutes(session))} min
-                        </Text>
-                      </View>
-                        {isOwnProfile && (
-                          <TouchableOpacity
-                            style={styles.deleteButton}
-                            onPress={() => confirmDeleteSession(session.id)}
-                            disabled={deletingSessionId === session.id}
-                          >
-                            {deletingSessionId === session.id ? (
-                              <ActivityIndicator size="small" color={colors.textSecondary} />
-                            ) : (
-                              <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+                .map((session) => {
+                  const isLabSession = session.source === 'ACTION_MARK_LAB';
+                  return (
+                    <Card
+                      key={session.id}
+                      variant="glass"
+                      glowOnPress
+                      onPress={() =>
+                        navigation.navigate('HardwareSessionDetail', { sessionId: session.id })
+                      }
+                      contentStyle={styles.sessionCard}
+                    >
+                      <View style={styles.sessionHeader}>
+                        <View>
+                          <Text style={styles.sessionTitle}>{formatDate(session.startedAt)}</Text>
+                          <View style={styles.sessionSubtitleRow}>
+                            <Text style={styles.sessionSubtitle}>
+                              {session.type} · {session.deviceId}
+                            </Text>
+                            {isLabSession && (
+                              <View style={styles.labBadge}>
+                                <Text style={styles.labBadgeText}>LAB</Text>
+                              </View>
                             )}
-                          </TouchableOpacity>
-                        )}
+                          </View>
+                        </View>
+                        <View style={styles.sessionHeaderActions}>
+                          <View style={styles.sessionBadge}>
+                            <Text style={styles.sessionBadgeText}>
+                              {formatMinutes(session.metrics?.totalTimeMin ?? getDurationMinutes(session))} min
+                            </Text>
+                          </View>
+                          {isOwnProfile && (
+                            <TouchableOpacity
+                              style={styles.deleteButton}
+                              onPress={() => confirmDeleteSession(session.id)}
+                              disabled={deletingSessionId === session.id}
+                            >
+                              {deletingSessionId === session.id ? (
+                                <ActivityIndicator size="small" color={colors.textSecondary} />
+                              ) : (
+                                <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
-                    </View>
-                  <View style={styles.sessionMetrics}>
-                    <View style={styles.metricItem}>
-                      <Text style={styles.metricLabel}>Distance</Text>
-                      <Text style={styles.metricValue}>
-                        {formatKm(session.metrics?.movementDistanceM)} km
-                      </Text>
-                    </View>
-                    <View style={styles.metricItem}>
-                      <Text style={styles.metricLabel}>Vitesse max</Text>
-                      <Text style={styles.metricValue}>{formatKmh(session.metrics?.maxSpeedKmh)} km/h</Text>
-                    </View>
-                    <View style={styles.metricItem}>
-                      <Text style={styles.metricLabel}>Sprints</Text>
-                      <Text style={styles.metricValue}>
-                          {session.metrics?.sprintDistanceM !== undefined || session.metrics?.sprintCount !== undefined
-                            ? `${formatKm(session.metrics?.sprintDistanceM)} km · ${session.metrics?.sprintCount ?? '—'}`
-                            : '—'}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              ))}
+                      <View style={styles.sessionMetrics}>
+                        <View style={styles.metricItem}>
+                          <Text style={styles.metricLabel}>Distance</Text>
+                          <Text style={styles.metricValue}>
+                            {formatKm(session.metrics?.movementDistanceM)} km
+                          </Text>
+                        </View>
+                        <View style={styles.metricItem}>
+                          <Text style={styles.metricLabel}>Vitesse max</Text>
+                          <Text style={styles.metricValue}>{formatKmh(session.metrics?.maxSpeedKmh)} km/h</Text>
+                        </View>
+                        <View style={styles.metricItem}>
+                          <Text style={styles.metricLabel}>Sprints</Text>
+                          <Text style={styles.metricValue}>
+                            {session.metrics?.sprintDistanceM !== undefined || session.metrics?.sprintCount !== undefined
+                              ? `${formatKm(session.metrics?.sprintDistanceM)} km · ${session.metrics?.sprintCount ?? '—'}`
+                              : '—'}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.heatmapPreviewWrap}>
+                        <MatchHeatmap
+                          thermalTrajectoryMap={session.metrics?.thermalTrajectoryMap}
+                          width={138}
+                          showLegend={false}
+                        />
+                      </View>
+                    </Card>
+                  );
+                })}
             </View>
           </>
         )}
@@ -414,6 +456,32 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       gap: 12,
       marginBottom: 12,
     },
+    filterRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 12,
+      flexWrap: 'wrap',
+    },
+    filterChip: {
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      borderRadius: 999,
+      backgroundColor: colors.glass,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    filterChipActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent,
+    },
+    filterChipText: {
+      color: colors.textPrimary,
+      fontSize: theme.typography.sizes.caption,
+      fontFamily: theme.typography.fonts.bold,
+    },
+    filterChipTextActive: {
+      color: colors.darkBg,
+    },
     statCard: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -456,8 +524,25 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontSize: theme.typography.sizes.h4,
       fontFamily: theme.typography.fonts.bold,
     },
+    sessionSubtitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 2,
+    },
     sessionSubtitle: {
       color: colors.textSecondary,
+    },
+    labBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: colors.accent,
+    },
+    labBadgeText: {
+      color: colors.darkBg,
+      fontSize: 10,
+      fontFamily: theme.typography.fonts.bold,
     },
     sessionBadge: {
       paddingHorizontal: 10,
@@ -498,5 +583,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.textPrimary,
       fontSize: theme.typography.sizes.h5,
       fontFamily: theme.typography.fonts.bold,
+    },
+    heatmapPreviewWrap: {
+      marginTop: 8,
+      alignItems: 'flex-start',
     },
   });

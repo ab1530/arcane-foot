@@ -18,6 +18,52 @@ export const USER_ROLES = [
 
 export type UserRole = (typeof USER_ROLES)[number];
 
+export type RoleCategory = 'A' | 'B' | 'OTHER';
+
+export const CATEGORY_A_ROLES: readonly UserRole[] = ['SUPER_ADMIN', 'ADMIN'] as const;
+export const CATEGORY_B_ROLES: readonly UserRole[] = ['AGENT'] as const;
+
+export const ROLE_DASHBOARD_ROUTE: Record<UserRole, string> = {
+  SUPER_ADMIN: '/admin',
+  ADMIN: '/admin',
+  AGENT: '/players',
+  SCOUT: '/scout',
+  ANALYST: '/analytics',
+  PLAYER: '/players',
+  CLUB_CONTACT: '/clubs',
+  PUBLIC: '/',
+};
+
+export const ROLE_CATEGORY: Record<UserRole, RoleCategory> = {
+  SUPER_ADMIN: 'A',
+  ADMIN: 'A',
+  AGENT: 'B',
+  SCOUT: 'OTHER',
+  ANALYST: 'OTHER',
+  PLAYER: 'OTHER',
+  CLUB_CONTACT: 'OTHER',
+  PUBLIC: 'OTHER',
+};
+
+export const isCategoryARole = (role: UserRole) => ROLE_CATEGORY[role] === 'A';
+
+export const isCategoryBRole = (role: UserRole) => ROLE_CATEGORY[role] === 'B';
+
+export const isCategoryAOrBRole = (role: UserRole) =>
+  isCategoryARole(role) || isCategoryBRole(role);
+
+export const getRoleCategoryLabel = (role: UserRole, locale: 'en' | 'fr' = 'fr') => {
+  if (locale === 'en') {
+    if (isCategoryARole(role)) return 'Category A';
+    if (isCategoryBRole(role)) return 'Category B';
+    return 'Other';
+  }
+
+  if (isCategoryARole(role)) return 'Catégorie A';
+  if (isCategoryBRole(role)) return 'Catégorie B';
+  return 'Autre';
+};
+
 export interface RoleCapability {
   label: string;
   description: string;

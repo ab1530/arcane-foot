@@ -44,7 +44,30 @@ export class ClubNeedsController {
   async list(@Query() query: ListClubNeedRequestsDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    return this.clubNeedsService.listRequests({ page, limit, month: query.month });
+    return this.clubNeedsService.listRequests({
+      page,
+      limit,
+      month: query.month,
+      league: query.league,
+      status: query.status,
+    });
+  }
+
+  @Get('requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'List club needs requests with UI filters (Admin only)' })
+  @ApiResponse({ status: 200, description: 'List of requests with coverage' })
+  async listRequestsAlias(@Query() query: ListClubNeedRequestsDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    return this.clubNeedsService.listRequests({
+      page,
+      limit,
+      month: query.month,
+      league: query.league,
+      status: query.status,
+    });
   }
 
   @Get(':id')

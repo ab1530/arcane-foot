@@ -1,7 +1,24 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL, API_TIMEOUT, STORAGE_KEYS } from '../constants/config';
-import type { AuthResponse, Player, Club, Match, PaginatedResponse } from '../types';
+import type {
+  AuthResponse,
+  Player,
+  Club,
+  Match,
+  PaginatedResponse,
+  PlayerSpacePayload,
+  PlayerSpaceSubmitPayload,
+  AgentRequestListResponse,
+  AgentRequestItem,
+  AgentRequestCreatePayload,
+  AgentRequestUpdateStatusPayload,
+  AgentRequestMarketProfileRulesResponse,
+  AgentRequestMarketProfileRule,
+  MobileHomeDashboardResponse,
+  NewsFeedItem,
+  NewsFeedResponse,
+} from '../types';
 import type { CreateHardwareSessionPayload, HardwareSession } from '../types/hardware';
 import type {
   PlayerProfileAuditTrail,
@@ -17,6 +34,28 @@ const generateRequestId = () =>
 const QUIET_ENDPOINTS = ['/auth/me'];
 const shouldLogSuccess = (url?: string) =>
   url ? !QUIET_ENDPOINTS.some((endpoint) => url.includes(endpoint)) : false;
+
+export const extractPayloadItems = <T = any>(payload: any): T[] => {
+  if (Array.isArray(payload)) return payload as T[];
+  if (Array.isArray(payload?.items)) return payload.items as T[];
+  if (Array.isArray(payload?.data)) return payload.data as T[];
+  if (Array.isArray(payload?.results)) return payload.results as T[];
+  return [];
+};
+
+export const pickDateValue = (
+  payload: Record<string, any> | null | undefined,
+  keys: string[] = ['scheduledAt', 'startDate', 'date', 'createdAt'],
+): string | null => {
+  if (!payload) return null;
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+};
 
 class ApiClient {
   private client: AxiosInstance;
@@ -239,6 +278,98 @@ class ApiClient {
       items,
       meta,
     };
+  }
+
+  private parseNumber(value: unknown, fallback = 0): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    return fallback;
+  }
+
+  private parseBoolean(value: unknown, fallback = false): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return ['true', '1', 'yes', 'on'].includes(normalized);
+    }
+    return fallback;
+  }
+
+  private toSafeString(value: unknown, fallback = ''): string {
+    if (typeof value === 'string') return value.trim();
+    return fallback;
+  }
+
+  private async resolveCurrentPlayerId(): Promise<string | null> {
+    try {
+      const currentUser = await this.getCurrentUser();
+      return currentUser?.playerId ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  public buildPlayerSpacePayloadFromPlayer(player: Player): PlayerSpacePayload {
+    const rawStats = player.statsJson as Record<string, any>;
+    const safeStats = rawStats && typeof rawStats === 'object' ? rawStats : {};
+    const firstName = this.toSafeString(player.firstName);
+    const lastName = this.toSafeString(player.lastName);
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Joueur';
+    const clubName = this.toSafeString((player.club as any)?.name);
+    const isInjured = this.parseBoolean(safeStats.isInjured, false);
+
+    return {
+      playerId: player.id,
+      player: {
+        id: player.id,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        fullName,
+        position: this.toSafeString(player.position) || '—',
+        nationality: this.toSafeString(player.nationality) || '—',
+        clubId: this.toSafeString((player.club as any)?.id, null),
+        clubName: clubName || null,
+        photoUrl: this.toSafeString((player as any).photoUrl, null),
+      },
+      snapshot: {
+        matchesPlayed: this.parseNumber((safeStats as any).matchesPlayed, 0),
+        matchesNotPlayed: this.parseNumber((safeStats as any).matchesNotPlayed, 0),
+        goals: this.parseNumber((safeStats as any).goals, 0),
+        assists: this.parseNumber((safeStats as any).assists, 0),
+        minutesPlayed: this.parseNumber((safeStats as any).minutesPlayed, 0),
+        isInjured,
+        injuryStatus: safeStats.injuryStatus ? String(safeStats.injuryStatus) : null,
+      },
+      performanceTrend: [],
+      upcomingCalendar: [],
+      health: {
+        status: isInjured ? 'Blessé' : 'Disponible',
+        lastDeviceSync: this.toSafeString((safeStats as any).lastWeeklyUpdateAt, null),
+        syncSource: this.toSafeString((player as any).syncSource, null),
+      },
+      weekly: {
+        latest: null,
+        totalUpdates: 0,
+      },
+      news: [],
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Compatibility helper for older API versions that do not expose dedicated player-space routes.
+   */
+  public async getPlayerSpaceFromProfile(playerId: string): Promise<PlayerSpacePayload> {
+    const player = await this.getPlayer(playerId);
+    return this.buildPlayerSpacePayloadFromPlayer(player);
   }
 
   async request<T = any>(config: AxiosRequestConfig): Promise<T> {
@@ -504,6 +635,51 @@ class ApiClient {
     return data;
   }
 
+  // Agent requests / demandes à l'agent
+  async listAgentRequests(params?: {
+    status?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+    myOnly?: boolean;
+  }): Promise<AgentRequestListResponse> {
+    const { data } = await this.client.get<AgentRequestListResponse>('/agent-requests', { params });
+    return this.normalizePaginated<AgentRequestItem>(data);
+  }
+
+  async createAgentRequest(payload: AgentRequestCreatePayload): Promise<AgentRequestItem> {
+    const { data } = await this.client.post<AgentRequestItem>('/agent-requests', payload);
+    return data;
+  }
+
+  async getAgentRequest(id: string): Promise<AgentRequestItem> {
+    const { data } = await this.client.get<AgentRequestItem>(`/agent-requests/${id}`);
+    return data;
+  }
+
+  async updateAgentRequestStatus(
+    id: string,
+    payload: AgentRequestUpdateStatusPayload,
+  ): Promise<AgentRequestItem> {
+    const { data } = await this.client.patch<AgentRequestItem>(`/agent-requests/${id}/status`, payload);
+    return data;
+  }
+
+  async getMarketProfileRules(): Promise<AgentRequestMarketProfileRulesResponse> {
+    const { data } = await this.client.get<AgentRequestMarketProfileRulesResponse>('/agent-requests/market-rules');
+    return data;
+  }
+
+  async updateMarketProfileRules(
+    rules: AgentRequestMarketProfileRule[],
+  ): Promise<AgentRequestMarketProfileRulesResponse> {
+    const { data } = await this.client.post<AgentRequestMarketProfileRulesResponse>(
+      '/agent-requests/market-rules',
+      rules,
+    );
+    return data;
+  }
+
   // Club Needs (Admin-only)
   async createClubNeedRequest(rawText: string, topN: number = 5): Promise<any> {
     const { data } = await this.client.post('/club-needs', { rawText, topN });
@@ -511,14 +687,42 @@ class ApiClient {
   }
 
   async listClubNeedRequests(
-    page: number = 1,
+    pageOrParams:
+      | number
+      | {
+          page?: number;
+          limit?: number;
+          month?: string;
+          league?: 'LIGUE_1' | 'BUNDESLIGA' | 'SERIE_A' | 'LALIGA';
+          status?: 'ACTIVE' | 'PARTIAL' | 'COMPLETED';
+        } = 1,
     limit: number = 20,
     month?: string,
   ): Promise<any> {
-    const { data } = await this.client.get('/club-needs', {
-      params: { page, limit, month },
-    });
-    return data;
+    const params =
+      typeof pageOrParams === 'number'
+        ? { page: pageOrParams, limit, month }
+        : {
+            page: pageOrParams.page ?? 1,
+            limit: pageOrParams.limit ?? 20,
+            month: pageOrParams.month,
+            league: pageOrParams.league,
+            status: pageOrParams.status,
+          };
+    try {
+      const { data } = await this.client.get('/club-needs/requests', {
+        params,
+      });
+      return data;
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+        throw error;
+      }
+      const { data } = await this.client.get('/club-needs', {
+        params,
+      });
+      return data;
+    }
   }
 
   async getClubNeedRequest(id: string, topN: number = 5): Promise<any> {
@@ -612,7 +816,16 @@ class ApiClient {
   // Dashboard stats
   // Dashboard / analytics (mock-friendly)
   async getDashboardStats(): Promise<any> {
-    const { data } = await this.client.get('/analytics/overview');
+    const { data } = await this.client.get('/analytics/dashboard');
+    return data;
+  }
+
+  async getDashboardMobileHome(params?: {
+    scope?: 'SUPER_ADMIN' | 'ADMIN' | 'AGENT' | 'SCOUT';
+  }): Promise<MobileHomeDashboardResponse> {
+    const { data } = await this.client.get<MobileHomeDashboardResponse>('/dashboard/mobile-home', {
+      params,
+    });
     return data;
   }
 
@@ -660,6 +873,71 @@ class ApiClient {
 
   async getPlayerProfileAudit(playerId: string): Promise<PlayerProfileAuditTrail> {
     return this.getRaw<PlayerProfileAuditTrail>(`/player-profiles/${playerId}/audit`);
+  }
+
+  async getMyPlayerSpace(playerIdHint?: string | null): Promise<PlayerSpacePayload> {
+    const endpoints = [
+      '/players/me/space',
+      '/players/space/me',
+      '/players/me/dashboard',
+      '/players/dashboard/me',
+    ];
+    let lastError: any = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        const { data } = await this.client.get<PlayerSpacePayload>(endpoint);
+        return data;
+      } catch (error) {
+        lastError = error;
+        if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+          throw error;
+        }
+      }
+    }
+
+    let playerId = playerIdHint ?? null;
+    if (!playerId) {
+      playerId = await this.resolveCurrentPlayerId();
+    } else {
+      const resolvedPlayerId = await this.resolveCurrentPlayerId();
+      if (resolvedPlayerId && resolvedPlayerId !== playerId) {
+        playerId = resolvedPlayerId;
+      }
+    }
+
+    if (!playerId) {
+      throw lastError;
+    }
+
+    const player = await this.getPlayer(playerId);
+    return this.buildPlayerSpacePayloadFromPlayer(player);
+  }
+
+  async submitMyPlayerWeeklyUpdate(
+    payload: PlayerSpaceSubmitPayload,
+  ): Promise<PlayerSpacePayload> {
+    const endpoints = [
+      '/players/me/space/weekly-update',
+      '/players/space/me/weekly-update',
+      '/players/me/dashboard/weekly-update',
+      '/players/dashboard/me/weekly-update',
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const { data } = await this.client.post<PlayerSpacePayload>(endpoint, payload);
+        return data;
+      } catch (error) {
+        if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error(
+      "La route de mise à jour hebdomadaire n'est pas encore disponible sur le serveur.",
+    );
   }
 
   async updatePlayerProfileMeta(playerId: string, payload: {
@@ -803,6 +1081,19 @@ class ApiClient {
     return this.normalizePaginated<Match>(data);
   }
 
+  async getMyAssignedMatches(params?: {
+    status?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Match>> {
+    const data = await this.getRaw<PaginatedResponse<Match>>('/matches/my-assignments', {
+      params,
+    });
+    return this.normalizePaginated<Match>(data);
+  }
+
   async getMatch(id: string): Promise<Match> {
     return this.getRaw<Match>(`/matches/${id}`);
   }
@@ -898,6 +1189,212 @@ class ApiClient {
   }
 
   // Notifications endpoints
+  private normalizeNewsLimit(input?: number): number {
+    if (!Number.isInteger(input) || !input) return 20;
+    return Math.min(50, Math.max(5, input));
+  }
+
+  private normalizeNewsCategory(value: unknown): NewsFeedItem['category'] {
+    if (value === 'clubs' || value === 'players' || value === 'market' || value === 'notifications') {
+      return value;
+    }
+    return 'notifications';
+  }
+
+  private normalizeNewsFeedPayload(
+    payload: unknown,
+    categories: NewsFeedItem['category'][],
+    limit: number,
+  ): NewsFeedResponse {
+    const generatedAt =
+      typeof (payload as any)?.generatedAt === 'string'
+        ? (payload as any).generatedAt
+        : new Date().toISOString();
+
+    const items = extractPayloadItems<Record<string, any>>(payload)
+      .map((item, index): NewsFeedItem => {
+        const title =
+          typeof item.title === 'string' && item.title.trim().length > 0
+            ? item.title
+            : typeof item.headline === 'string' && item.headline.trim().length > 0
+              ? item.headline
+              : 'Actualité';
+        const summary =
+          typeof item.summary === 'string' && item.summary.trim().length > 0
+            ? item.summary
+            : typeof item.body === 'string' && item.body.trim().length > 0
+              ? item.body
+              : null;
+        const source =
+          typeof item.source === 'string' && item.source.trim().length > 0
+            ? item.source
+            : typeof item.type === 'string' && item.type.trim().length > 0
+              ? item.type
+              : 'Arcane';
+        const timestampCandidate =
+          (typeof item.timestamp === 'string' && item.timestamp) ||
+          (typeof item.createdAt === 'string' && item.createdAt) ||
+          (typeof item.updatedAt === 'string' && item.updatedAt);
+        return {
+          id:
+            typeof item.id === 'string' && item.id.trim().length > 0
+              ? item.id
+              : `news-${index}`,
+          category: this.normalizeNewsCategory(item.category),
+          title,
+          summary,
+          source,
+          details:
+            typeof item.details === 'string' && item.details.trim().length > 0
+              ? item.details
+              : summary,
+          timestamp: timestampCandidate || generatedAt,
+          link:
+            typeof item.link === 'string' && item.link.trim().length > 0
+              ? item.link
+              : null,
+        };
+      })
+      .filter((item) => categories.includes(item.category))
+      .slice(0, limit);
+
+    const include = {
+      players: items.filter((item) => item.category === 'players').length,
+      clubs: items.filter((item) => item.category === 'clubs').length,
+      market: items.filter((item) => item.category === 'market').length,
+      notifications: items.filter((item) => item.category === 'notifications').length,
+    };
+
+    return {
+      data: items,
+      generatedAt,
+      meta: {
+        limit,
+        total: items.length,
+        categories,
+        include,
+      },
+    };
+  }
+
+  private buildNotificationsFallbackNewsFeed(
+    payload: unknown,
+    categories: NewsFeedItem['category'][],
+    limit: number,
+  ): NewsFeedResponse {
+    if (!categories.includes('notifications')) {
+      return {
+        data: [],
+        generatedAt: new Date().toISOString(),
+        meta: {
+          limit,
+          total: 0,
+          categories,
+          include: {
+            players: 0,
+            clubs: 0,
+            market: 0,
+            notifications: 0,
+          },
+        },
+      };
+    }
+
+    const generatedAt = new Date().toISOString();
+    const items = extractPayloadItems<Record<string, any>>(payload)
+      .map((item, index): NewsFeedItem => {
+        const title =
+          typeof item.title === 'string' && item.title.trim().length > 0
+            ? item.title
+            : 'Notification';
+        const summary =
+          typeof item.body === 'string' && item.body.trim().length > 0
+            ? item.body
+            : typeof item.summary === 'string' && item.summary.trim().length > 0
+              ? item.summary
+              : null;
+        const source =
+          typeof item.type === 'string' && item.type.trim().length > 0
+            ? item.type
+            : 'Notifications';
+        const timestamp =
+          (typeof item.createdAt === 'string' && item.createdAt) ||
+          (typeof item.timestamp === 'string' && item.timestamp) ||
+          generatedAt;
+
+        return {
+          id:
+            typeof item.id === 'string' && item.id.trim().length > 0
+              ? `notifications-${item.id}`
+              : `notifications-${index}`,
+          category: 'notifications',
+          title,
+          summary,
+          source,
+          details: summary,
+          timestamp,
+          link: '/notifications',
+        };
+      })
+      .slice(0, limit);
+
+    return {
+      data: items,
+      generatedAt,
+      meta: {
+        limit,
+        total: items.length,
+        categories,
+        include: {
+          players: 0,
+          clubs: 0,
+          market: 0,
+          notifications: items.length,
+        },
+      },
+    };
+  }
+
+  async getNewsFeed(params?: {
+    limit?: number;
+    categories?: NewsFeedItem['category'][];
+  }): Promise<NewsFeedResponse> {
+    const categories = params?.categories?.length
+      ? params.categories
+      : ['clubs', 'players', 'market', 'notifications'];
+    const limit = this.normalizeNewsLimit(params?.limit);
+    const requestParams = {
+      limit,
+      categories: categories.join(','),
+    };
+
+    try {
+      const { data } = await this.client.get('/news/feed', { params: requestParams });
+      return this.normalizeNewsFeedPayload(data, categories, limit);
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+        throw error;
+      }
+    }
+
+    try {
+      const { data } = await this.client.get('/news', { params: requestParams });
+      return this.normalizeNewsFeedPayload(data, categories, limit);
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+        throw error;
+      }
+    }
+
+    try {
+      const { data } = await this.client.get('/notifications/me');
+      return this.buildNotificationsFallbackNewsFeed(data, categories, limit);
+    } catch (error) {
+      logError('News fallback failed, returning empty feed', error as Error);
+      return this.buildNotificationsFallbackNewsFeed([], categories, limit);
+    }
+  }
+
   async getNotifications(userId?: string): Promise<any> {
     try {
       // If no userId provided, try to get current user first

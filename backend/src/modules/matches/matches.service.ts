@@ -9,6 +9,51 @@ import { MatchStatus } from '@prisma/client';
 export class MatchesService {
   constructor(private prisma: PrismaService) {}
 
+  private toMobileStatusFromAssignment(
+    assignment?: { status?: string | null; reportSubmitted?: boolean | null } | null,
+  ): 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED' {
+    if (!assignment) {
+      return 'PLANNED';
+    }
+    if (assignment.reportSubmitted) {
+      return 'REPORT_SUBMITTED';
+    }
+
+    const source = String(assignment.status ?? '').toUpperCase();
+    if (source === 'IN_PROGRESS') return 'EN_ROUTE';
+    if (source === 'COMPLETED') return 'REPORT_SUBMITTED';
+    return 'PLANNED';
+  }
+
+  private toMobileStatusFromMatch(match: any): 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED' {
+    const assignments = Array.isArray(match?.match_assignments) ? match.match_assignments : [];
+
+    if (assignments.some((assignment: any) => assignment?.reportSubmitted)) {
+      return 'REPORT_SUBMITTED';
+    }
+
+    if (
+      assignments.some(
+        (assignment: any) => this.toMobileStatusFromAssignment(assignment) === 'REPORT_SUBMITTED',
+      )
+    ) {
+      return 'REPORT_SUBMITTED';
+    }
+
+    if (
+      assignments.some(
+        (assignment: any) => this.toMobileStatusFromAssignment(assignment) === 'EN_ROUTE',
+      )
+    ) {
+      return 'EN_ROUTE';
+    }
+
+    const source = String(match?.status ?? '').toUpperCase();
+    if (source === 'LIVE') return 'EN_ROUTE';
+    if (source === 'COMPLETED') return 'REPORT_SUBMITTED';
+    return 'PLANNED';
+  }
+
   /**
    * Create a new match
    */
@@ -150,9 +195,145 @@ export class MatchesService {
     // Transform matches to have cleaner field names
     const transformedMatches = matches.map((match: any) => ({
       ...match,
+      mobileStatus: this.toMobileStatusFromMatch(match),
       homeClub: match.clubs_matches_homeClubIdToclubs,
       awayClub: match.clubs_matches_awayClubIdToclubs,
       scout: match.users_matches_scoutIdTousers,
+      _count: {
+        scoutingReports: match._count?.scouting_reports || 0,
+      },
+    }));
+
+    return {
+      data: transformedMatches,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Find matches assigned to a specific user (legacy scout assignment + advanced assignments)
+   */
+  async findUserAssignments(
+    userId: string,
+    params: {
+      status?: MatchStatus;
+      from?: string;
+      to?: string;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    const { status, from, to, page = 1, limit = 1000 } = params;
+
+    const where: any = {
+      OR: [{ scoutId: userId }, { match_assignments: { some: { scoutId: userId } } }],
+    };
+
+    if (status) where.status = status;
+    if (from || to) {
+      where.scheduledAt = {};
+      if (from) where.scheduledAt.gte = new Date(from);
+      if (to) where.scheduledAt.lte = new Date(to);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [matches, total] = await Promise.all([
+      this.prisma.matches.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          clubs_matches_homeClubIdToclubs: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logo: true,
+            },
+          },
+          clubs_matches_awayClubIdToclubs: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logo: true,
+            },
+          },
+          users_matches_scoutIdTousers: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          match_assignments: {
+            include: {
+              users_match_assignments_scoutIdTousers: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                  role: true,
+                },
+              },
+              users_match_assignments_assignedByIdTousers: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              scouting_reports: true,
+            },
+          },
+        },
+        orderBy: { scheduledAt: 'desc' },
+      }),
+      this.prisma.matches.count({ where }),
+    ]);
+
+    const transformedMatches = matches.map((match: any) => ({
+      ...match,
+      mobileStatus: this.toMobileStatusFromMatch(match),
+      homeClub: match.clubs_matches_homeClubIdToclubs,
+      awayClub: match.clubs_matches_awayClubIdToclubs,
+      scout: match.users_matches_scoutIdTousers,
+      assignments: (match.match_assignments ?? []).map((assignment: any) => ({
+        id: assignment.id,
+        scoutId: assignment.scoutId,
+        status: assignment.status,
+        mobileStatus: this.toMobileStatusFromAssignment(assignment),
+        role: assignment.role,
+        reportSubmitted: assignment.reportSubmitted,
+        scout: assignment.users_match_assignments_scoutIdTousers
+          ? {
+              firstName: assignment.users_match_assignments_scoutIdTousers.firstName,
+              lastName: assignment.users_match_assignments_scoutIdTousers.lastName,
+              avatar: assignment.users_match_assignments_scoutIdTousers.avatar,
+              role: assignment.users_match_assignments_scoutIdTousers.role,
+            }
+          : null,
+        assignedBy: assignment.users_match_assignments_assignedByIdTousers
+          ? {
+              id: assignment.users_match_assignments_assignedByIdTousers.id,
+              firstName: assignment.users_match_assignments_assignedByIdTousers.firstName,
+              lastName: assignment.users_match_assignments_assignedByIdTousers.lastName,
+              role: assignment.users_match_assignments_assignedByIdTousers.role,
+            }
+          : null,
+      })),
       _count: {
         scoutingReports: match._count?.scouting_reports || 0,
       },
@@ -225,6 +406,7 @@ export class MatchesService {
     // Transform to have cleaner field names
     return {
       ...match,
+      mobileStatus: this.toMobileStatusFromMatch(match),
       homeClub: match.clubs_matches_homeClubIdToclubs,
       awayClub: match.clubs_matches_awayClubIdToclubs,
       scout: match.users_matches_scoutIdTousers,
@@ -381,6 +563,7 @@ export class MatchesService {
     // Transform matches to have cleaner field names
     return matches.map((match: any) => ({
       ...match,
+      mobileStatus: this.toMobileStatusFromMatch(match),
       homeClub: match.clubs_matches_homeClubIdToclubs,
       awayClub: match.clubs_matches_awayClubIdToclubs,
       scout: match.users_matches_scoutIdTousers,
@@ -414,6 +597,7 @@ export class MatchesService {
     // Transform matches to have cleaner field names
     return matches.map((match: any) => ({
       ...match,
+      mobileStatus: this.toMobileStatusFromMatch(match),
       homeClub: match.clubs_matches_homeClubIdToclubs,
       awayClub: match.clubs_matches_awayClubIdToclubs,
     }));

@@ -20,6 +20,8 @@ describe('PlayersController', () => {
     remove: jest.fn(),
     getStats: jest.fn(),
     getReports: jest.fn(),
+    getMyPlayerSpace: jest.fn(),
+    submitMyPlayerWeeklyUpdate: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -730,6 +732,120 @@ describe('PlayersController', () => {
 
       expect(result).toBeDefined();
       expect(service.getReports).toHaveBeenCalled();
+    });
+  });
+
+  describe('player space', () => {
+    const mockPayload = {
+      playerId: 'player-123',
+      player: {
+        id: 'player-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
+        position: 'Attaquant',
+        nationality: 'FR',
+      },
+      snapshot: {
+        matchesPlayed: 2,
+        matchesNotPlayed: 1,
+        goals: 3,
+        assists: 1,
+        minutesPlayed: 320,
+        isInjured: false,
+        injuryStatus: null,
+      },
+      performanceTrend: [],
+      upcomingCalendar: [],
+      health: {
+        status: 'Connecté',
+        lastDeviceSync: '2026-02-20T10:00:00.000Z',
+        syncSource: 'Tracker',
+      },
+      weekly: { latest: null, totalUpdates: 0 },
+      news: [],
+      generatedAt: '2026-02-20T10:00:00.000Z',
+    };
+
+    it('should return player space dashboard for connected player', async () => {
+      service.getMyPlayerSpace.mockResolvedValue(mockPayload as any);
+      const req = { user: { id: 'user-123', playerId: 'player-123' } };
+
+      const result = await controller.getMyPlayerSpace(req as any);
+
+      expect(service.getMyPlayerSpace).toHaveBeenCalledWith('user-123', 'player-123');
+      expect(result).toEqual(mockPayload);
+    });
+
+    it('should require JWT authentication', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [PlayersController],
+        providers: [
+          {
+            provide: PlayersService,
+            useValue: mockPlayersService,
+          },
+        ],
+      }).compile();
+
+      const testController = module.get<PlayersController>(PlayersController);
+      const guards = Reflect.getMetadata('__guards__', testController.getMyPlayerSpace);
+
+      expect(guards).toBeDefined();
+    });
+
+    it('should submit weekly update', async () => {
+      const payload = {
+        minutesPlayed: 480,
+        goals: 1,
+        assists: 2,
+        matchesPlayed: 3,
+        matchesNotPlayed: 1,
+        isInjured: false,
+      };
+      const updatedPayload = {
+        ...mockPayload,
+        weekly: {
+          latest: {
+            weekStartDate: '2026-02-15',
+            submittedAt: '2026-02-20T10:00:00.000Z',
+            updatedBy: 'player-123',
+            minutesPlayed: 480,
+            goals: 1,
+            assists: 2,
+            matchesPlayed: 3,
+            matchesNotPlayed: 1,
+            isInjured: false,
+            healthStatus: 'NORMAL',
+            remarks: null,
+          },
+          totalUpdates: 1,
+        },
+      };
+      service.submitMyPlayerWeeklyUpdate.mockResolvedValue(updatedPayload as any);
+      const req = { user: { id: 'user-123', playerId: 'player-123' } };
+
+      const result = await controller.submitWeeklyUpdate(req as any, payload as any);
+
+      expect(service.submitMyPlayerWeeklyUpdate).toHaveBeenCalledWith('user-123', 'player-123', payload);
+      expect(result).toEqual(updatedPayload);
+    });
+
+    it('should require JWT authentication on weekly update', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [PlayersController],
+        providers: [
+          {
+            provide: PlayersService,
+            useValue: mockPlayersService,
+          },
+        ],
+      }).compile();
+
+      const testController = module.get<PlayersController>(PlayersController);
+      const guards = Reflect.getMetadata('__guards__', testController.submitWeeklyUpdate);
+
+      expect(guards).toBeDefined();
     });
   });
 

@@ -17,11 +17,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import api from '../../services/api';
+import api, { extractPayloadItems } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../design/theme';
 import { GlassCard, Icon } from '../../components/ui';
 import { logError } from '../../utils/logger';
 import { showError, showInfo, showSuccess } from '../../services/toast';
+import type {
+  ClubNeedDemandCard,
+  ClubNeedLeagueChip,
+  ClubNeedLeagueFilter,
+  ClubNeedsViewMode,
+} from '../../types/club-needs';
 
 type ParsedAge = { min?: number; max?: number };
 type PreferredFoot = 'Left' | 'Right' | 'Both';
@@ -135,6 +141,25 @@ const HISTORY_PAGE_LIMIT = 20;
 const SEARCH_PAGE_LIMIT = 20;
 const ALL_CLUB_FILTER = '__ALL__';
 const ALL_MONTH_FILTER = '__ALL_MONTH__';
+
+const DEMAND_LEAGUE_CHIPS: ClubNeedLeagueChip[] = [
+  { key: 'ALL', label: 'Toutes', countries: [], accentColor: colors.text.secondary },
+  { key: 'LIGUE_1', label: 'Ligue 1', countries: ['france'], accentColor: '#E9FF4A' },
+  { key: 'BUNDESLIGA', label: 'Bundesliga', countries: ['germany', 'allemagne'], accentColor: '#FF5C75' },
+  { key: 'SERIE_A', label: 'Serie A', countries: ['italy', 'italie'], accentColor: '#34D3B6' },
+  { key: 'LALIGA', label: 'LaLiga', countries: ['spain', 'espagne'], accentColor: '#5A82FF' },
+];
+
+const STATUS_COLOR_BY_LABEL: Record<string, string> = {
+  ACTIVE: '#22C55E',
+  PARTIAL: '#F59E0B',
+  COMPLETED: '#64748B',
+  PENDING: '#F59E0B',
+  NEGOTIATING: '#4F46E5',
+  ACCEPTED: '#22C55E',
+  REJECTED: '#EF4444',
+  CANCELLED: '#EF4444',
+};
 
 const getLineKey = (requestId: string | null | undefined, lineNumber: number) =>
   `${requestId ?? 'draft'}:${lineNumber}`;
@@ -354,11 +379,78 @@ const formatMonthLabel = (monthValue: string) => {
   return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 };
 
+const inferLeagueFilter = (
+  clubName: string,
+  country?: string | null,
+): ClubNeedLeagueFilter => {
+  const countryValue = String(country ?? '').trim().toLowerCase();
+  if (countryValue) {
+    const fromCountry = DEMAND_LEAGUE_CHIPS.find(
+      (chip) => chip.key !== 'ALL' && chip.countries.includes(countryValue),
+    );
+    if (fromCountry) return fromCountry.key;
+  }
+
+  const normalizedName = clubName.toLowerCase();
+  if (
+    normalizedName.includes('paris') ||
+    normalizedName.includes('lyon') ||
+    normalizedName.includes('marseille') ||
+    normalizedName.includes('monaco')
+  ) {
+    return 'LIGUE_1';
+  }
+  if (
+    normalizedName.includes('bayern') ||
+    normalizedName.includes('dortmund') ||
+    normalizedName.includes('leverkusen') ||
+    normalizedName.includes('stuttgart')
+  ) {
+    return 'BUNDESLIGA';
+  }
+  if (
+    normalizedName.includes('milan') ||
+    normalizedName.includes('juventus') ||
+    normalizedName.includes('inter') ||
+    normalizedName.includes('napoli') ||
+    normalizedName.includes('roma')
+  ) {
+    return 'SERIE_A';
+  }
+  if (
+    normalizedName.includes('barcelona') ||
+    normalizedName.includes('madrid') ||
+    normalizedName.includes('atletico') ||
+    normalizedName.includes('betis') ||
+    normalizedName.includes('girona')
+  ) {
+    return 'LALIGA';
+  }
+  return 'LIGUE_1';
+};
+
+const formatDemandDateLabel = (dateIso?: string | null) => {
+  if (!dateIso) return 'Date inconnue';
+  const date = new Date(dateIso);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+  return `Demande du ${date.toLocaleDateString('fr-FR')}`;
+};
+
 export default function ClubNeedsScreen({ navigation, route }: any) {
   const [rawText, setRawText] = useState(EXAMPLE);
   const [loading, setLoading] = useState(false);
   const [matches, setMatches] = useState<ClubNeedMatchResult[] | null>(null);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ClubNeedsViewMode>('REQUESTS');
+  const [leagueFilter, setLeagueFilter] = useState<ClubNeedLeagueFilter>('ALL');
+  const [demandCardsLoading, setDemandCardsLoading] = useState(false);
+  const [demandCards, setDemandCards] = useState<ClubNeedDemandCard[]>([]);
+  const [demandsCoverage, setDemandsCoverage] = useState({
+    clubsCovered: 0,
+    clubsTotal: 0,
+    sharesCount: 0,
+    completedCount: 0,
+  });
 
   const [history, setHistory] = useState<ClubNeedRequestListItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -412,13 +504,18 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
     return matches.filter((match) => !completed.has(match.lineNumber));
   }, [activeLineStates, matches]);
 
-  const formatAge = (age?: ParsedAge) => {
+  const filteredDemandCards = useMemo(() => {
+    if (leagueFilter === 'ALL') return demandCards;
+    return demandCards.filter((card) => card.league === leagueFilter);
+  }, [demandCards, leagueFilter]);
+
+  const formatAge = useCallback((age?: ParsedAge) => {
     if (!age) return null;
     if (age.min != null && age.max != null) return `${age.min}-${age.max}`;
     if (age.max != null) return `U${age.max}`;
     if (age.min != null) return `${age.min}+`;
     return null;
-  };
+  }, []);
 
   const formatValue = (value: number | null) => {
     if (value == null) return '—';
@@ -445,6 +542,200 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
 
     return chunks.length ? chunks.join(' • ') : 'Critères non disponibles';
   };
+
+  const buildCriteriaLinesFromParsedLine = (line?: ParsedRequestLine, marketEntry?: any) => {
+    if (!line) return ['Critères non disponibles'];
+
+    const age = formatAge(line.age);
+    const positions = Array.isArray(line.positions) ? line.positions.filter(Boolean) : [];
+
+    const criteriaLines = [
+      positions.length ? positions.join(' • ') : null,
+      [age ? `Âge ${age}` : null, line.preferredFoot ? `Pied ${line.preferredFoot}` : null]
+        .filter(Boolean)
+        .join(' • ') || null,
+      marketEntry?.offerAmount
+        ? `Offre ${formatValue(Number(marketEntry.offerAmount))}`
+        : marketEntry?.requestType
+        ? `Type ${String(marketEntry.requestType).toUpperCase()}`
+        : null,
+    ].filter(Boolean) as string[];
+
+    return criteriaLines.length > 0 ? criteriaLines : ['Critères non disponibles'];
+  };
+
+  const buildCriteriaLinesFromMarketEntry = (entry: any) => {
+    const lines = [
+      entry?.requestType ? `Type ${String(entry.requestType).toUpperCase()}` : null,
+      entry?.message ? String(entry.message) : null,
+      entry?.offerAmount ? `Offre ${formatValue(Number(entry.offerAmount))}` : null,
+    ].filter(Boolean) as string[];
+    return lines.length > 0 ? lines.slice(0, 3) : ['Critères non disponibles'];
+  };
+
+  const fetchDemandCards = useCallback(async () => {
+    setDemandCardsLoading(true);
+    try {
+      const [needsPayload, marketPayload, clubsPayload] = await Promise.all([
+        (api as any).listClubNeedRequests?.({
+          page: 1,
+          limit: 40,
+          league: leagueFilter === 'ALL' ? undefined : leagueFilter,
+        }).catch((error: any) => {
+          logError('Failed to load club needs requests', error);
+          return { data: [] };
+        }),
+        (api as any).getMarket?.({ limit: 120 }).catch((error: any) => {
+          logError('Failed to load market requests', error);
+          return [];
+        }),
+        (api as any).getClubs?.({ page: 1, limit: 250 }).catch((error: any) => {
+          logError('Failed to load clubs for league filters', error);
+          return { data: [], items: [] };
+        }),
+      ]);
+
+      const needRequests = extractPayloadItems<ClubNeedRequestListItem>(needsPayload);
+      const marketRequests = extractPayloadItems<any>(marketPayload);
+      const clubs = extractPayloadItems<any>(clubsPayload);
+
+      setDemandsCoverage({
+        clubsCovered: Number(needsPayload?.coverage?.clubsCovered ?? 0),
+        clubsTotal: Number(needsPayload?.coverage?.clubsTotal ?? 0),
+        sharesCount: Number(needsPayload?.coverage?.sharesCount ?? 0),
+        completedCount: Number(needsPayload?.coverage?.completedCount ?? 0),
+      });
+
+      const countryByClubName = new Map<string, string>();
+
+      clubs.forEach((club) => {
+        const name = String(club?.name ?? '').trim().toLowerCase();
+        if (!name) return;
+        if (typeof club?.country === 'string') {
+          countryByClubName.set(name, club.country);
+        }
+      });
+
+      marketRequests.forEach((item) => {
+        const clubName = String(item?.clubs?.name ?? item?.club?.name ?? '').trim().toLowerCase();
+        if (!clubName) return;
+        const country = item?.clubs?.country ?? item?.club?.country;
+        if (typeof country === 'string') {
+          countryByClubName.set(clubName, country);
+        }
+      });
+
+      const marketByClubName = new Map<string, any[]>();
+      marketRequests.forEach((item) => {
+        const clubName = String(item?.clubs?.name ?? item?.club?.name ?? '').trim().toLowerCase();
+        if (!clubName) return;
+        const existing = marketByClubName.get(clubName) ?? [];
+        existing.push(item);
+        marketByClubName.set(clubName, existing);
+      });
+
+      const cards: ClubNeedDemandCard[] = [];
+      const includedMarketIds = new Set<string>();
+
+      needRequests.forEach((request) => {
+        const parsedLines = getParsedLines(request);
+        const lineStates = normalizeLineStates(request.parsed, request.lineStates);
+
+        parsedLines.forEach((line, index) => {
+          const lineNumber =
+            Number.isInteger(line?.lineNumber) && Number(line.lineNumber) > 0
+              ? Number(line.lineNumber)
+              : index + 1;
+          const clubName = String(line?.clubName ?? '').trim() || `Ligne ${lineNumber}`;
+          const clubNameKey = clubName.toLowerCase();
+          const linkedMarketEntries = marketByClubName.get(clubNameKey) ?? [];
+          const firstMarketEntry = linkedMarketEntries[0];
+          if (firstMarketEntry?.id) {
+            includedMarketIds.add(String(firstMarketEntry.id));
+          }
+
+          const lineState = lineStates.find((state) => state.lineNumber === lineNumber);
+          const requestProgress = String(request.requestProgress ?? 'ACTIVE').toUpperCase();
+          const marketStatus = String(firstMarketEntry?.status ?? '').toUpperCase();
+          const statusLabel = lineState?.isCompleted
+            ? 'Terminée'
+            : requestProgress === 'PARTIAL'
+            ? 'Partielle'
+            : requestProgress === 'COMPLETED'
+            ? 'Terminée'
+            : marketStatus || 'ACTIVE';
+          const statusColor = STATUS_COLOR_BY_LABEL[statusLabel] ?? STATUS_COLOR_BY_LABEL[requestProgress] ?? colors.brand.primary;
+
+          const linesTotal = Number(request.linesTotal ?? parsedLines.length ?? 0);
+          const linesCompleted = Number(request.linesCompleted ?? 0);
+          const sharesCount = linkedMarketEntries.length;
+
+          const league = inferLeagueFilter(clubName, countryByClubName.get(clubNameKey));
+
+          cards.push({
+            id: `${request.id}-${lineNumber}`,
+            requestId: request.id,
+            lineNumber,
+            sortDate: new Date(firstMarketEntry?.createdAt ?? request.createdAt).getTime() || 0,
+            league,
+            clubName,
+            clubLogo: firstMarketEntry?.clubs?.logo ?? firstMarketEntry?.club?.logo ?? null,
+            requestDateLabel: formatDemandDateLabel(firstMarketEntry?.createdAt ?? request.createdAt),
+            criteriaLines: buildCriteriaLinesFromParsedLine(line, firstMarketEntry),
+            progressLabel: `${sharesCount} club(s) • ${sharesCount} partage(s)`,
+            completionLabel: `${linesCompleted}/${Math.max(linesTotal, 1)} terminé`,
+            statusLabel,
+            statusColor,
+          });
+        });
+      });
+
+      marketRequests.forEach((entry) => {
+        const entryId = String(entry?.id ?? '');
+        if (!entryId || includedMarketIds.has(entryId)) return;
+
+        const clubName =
+          String(entry?.clubs?.name ?? entry?.club?.name ?? '').trim() || 'Club sans nom';
+        const clubNameKey = clubName.toLowerCase();
+        const league = inferLeagueFilter(clubName, countryByClubName.get(clubNameKey));
+        const marketStatus = String(entry?.status ?? 'PENDING').toUpperCase();
+        const statusColor = STATUS_COLOR_BY_LABEL[marketStatus] ?? colors.brand.primary;
+
+        cards.push({
+          id: `market-${entryId}`,
+          requestId: null,
+          lineNumber: null,
+          sortDate: new Date(entry?.createdAt ?? Date.now()).getTime() || 0,
+          league,
+          clubName,
+          clubLogo: entry?.clubs?.logo ?? entry?.club?.logo ?? null,
+          requestDateLabel: formatDemandDateLabel(entry?.createdAt),
+          criteriaLines: buildCriteriaLinesFromMarketEntry(entry),
+          progressLabel: '1 club • 0 partage',
+          completionLabel: '0/1 terminé',
+          statusLabel: marketStatus,
+          statusColor,
+        });
+      });
+
+      cards.sort((left, right) => {
+        return right.sortDate - left.sortDate;
+      });
+
+      setDemandCards(cards);
+    } catch (error) {
+      logError('Failed to build demandes cards', error);
+      setDemandCards([]);
+      setDemandsCoverage({
+        clubsCovered: 0,
+        clubsTotal: 0,
+        sharesCount: 0,
+        completedCount: 0,
+      });
+    } finally {
+      setDemandCardsLoading(false);
+    }
+  }, [formatAge, leagueFilter]);
 
   const resetLineStateForMatches = useCallback(
     (requestId: string | null, lineMatches: ClubNeedMatchResult[]) => {
@@ -596,6 +887,13 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
     });
   }, [showHistory, historyMonthFilter, loadHistory]);
 
+  useEffect(() => {
+    if (viewMode !== 'REQUESTS') return;
+    fetchDemandCards().catch((error) => {
+      logError('Failed to initialize demandes mode', error);
+    });
+  }, [fetchDemandCards, viewMode]);
+
   const openHistoryItem = async (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLoading(true);
@@ -655,6 +953,48 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
       Alert.alert('Erreur', e?.message ?? 'Impossible de générer la shortlist');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateDemand = (card: ClubNeedDemandCard) => {
+    const draftFromCard = `${card.clubName}, ${card.criteriaLines.join(', ')}`;
+    setRawText((previous) => {
+      const current = previous.trim();
+      if (!current) return draftFromCard;
+      if (current.toLowerCase().includes(card.clubName.toLowerCase())) return previous;
+      return `${draftFromCard}\n${previous}`;
+    });
+    setShowHistory(false);
+    setViewMode('ADVANCED');
+    showInfo('Mode avancé', 'La demande a été préparée dans le parseur.');
+  };
+
+  const handleOpenDemand = async (card: ClubNeedDemandCard) => {
+    if (card.requestId) {
+      setViewMode('ADVANCED');
+      await openHistoryItem(card.requestId);
+      return;
+    }
+
+    const marketId = card.id.startsWith('market-') ? card.id.replace('market-', '') : null;
+    if (!marketId) {
+      Alert.alert('Demande', 'Aucun détail disponible pour cette demande.');
+      return;
+    }
+
+    try {
+      const detail = await (api as any).getMarketRequest(marketId);
+      const status = String(detail?.status ?? 'PENDING').toUpperCase();
+      const type = String(detail?.requestType ?? 'N/A');
+      const offer =
+        typeof detail?.offerAmount === 'number' ? formatValue(detail.offerAmount) : 'Non renseignée';
+      Alert.alert(
+        card.clubName,
+        `Type: ${type}\nStatut: ${status}\nOffre: ${offer}`,
+      );
+    } catch (error: any) {
+      logError('Failed to open market request detail', error);
+      Alert.alert('Erreur', error?.message ?? 'Impossible de charger cette demande.');
     }
   };
 
@@ -1152,22 +1492,183 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
     showSuccess('Joueur ajouté', 'Le joueur a été ajouté au groupe de partage.');
   }, [activeRequestId, matches, navigation, route?.params?.addToShare]);
 
+  const renderDemandesMode = () => {
+    return (
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.requestsHeader}>
+          <Text style={styles.requestsTitle}>Demandes Clubs</Text>
+          <Text style={styles.requestsSubtitle}>
+            Consultez et gérez les demandes de transferts par ligue.
+          </Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.leagueChipRow}
+        >
+          {DEMAND_LEAGUE_CHIPS.map((chip) => {
+            const isActive = chip.key === leagueFilter;
+            return (
+              <TouchableOpacity
+                key={chip.key}
+                testID={`club-needs-league-${chip.key.toLowerCase()}`}
+                style={[
+                  styles.leagueChip,
+                  isActive && styles.leagueChipActive,
+                  isActive && { borderColor: chip.accentColor },
+                ]}
+                onPress={() => setLeagueFilter(chip.key)}
+              >
+                <Text style={[styles.leagueChipText, isActive && { color: chip.accentColor }]}>
+                  {chip.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.coverageRow}>
+          <Text style={styles.coverageText}>
+            {demandsCoverage.clubsCovered}/{Math.max(demandsCoverage.clubsTotal, 1)} clubs couverts
+          </Text>
+          <Text style={styles.coverageText}>
+            {demandsCoverage.sharesCount} partage(s) • {demandsCoverage.completedCount} demande(s) terminée(s)
+          </Text>
+        </View>
+
+        {demandCardsLoading ? (
+          <View style={styles.requestsLoadingBox}>
+            <ActivityIndicator color={colors.brand.primary} />
+          </View>
+        ) : filteredDemandCards.length === 0 ? (
+          <GlassCard variant="elevated" style={styles.card}>
+            <Text style={styles.empty}>Aucune demande sur cette ligue pour le moment.</Text>
+          </GlassCard>
+        ) : (
+          <View style={styles.requestsList}>
+            {filteredDemandCards.map((card) => (
+              <GlassCard key={card.id} variant="elevated" style={styles.demandCard}>
+                <View style={styles.demandCardHeader}>
+                  <View style={styles.demandClubBlock}>
+                    <View style={styles.demandLogo}>
+                      {card.clubLogo ? (
+                        <Image source={{ uri: card.clubLogo }} style={styles.demandLogoImage} />
+                      ) : (
+                        <Text style={styles.demandLogoFallback}>
+                          {card.clubName.slice(0, 1).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.demandClubMeta}>
+                      <Text style={styles.demandClubName}>{card.clubName}</Text>
+                      <Text style={styles.demandDate}>{card.requestDateLabel}</Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.demandStatusBadge,
+                      {
+                        borderColor: `${card.statusColor}88`,
+                        backgroundColor: `${card.statusColor}22`,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.demandStatusLabel, { color: card.statusColor }]}>
+                      {card.statusLabel}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.demandCriteriaBlock}>
+                  {card.criteriaLines.slice(0, 3).map((line) => (
+                    <Text key={`${card.id}-${line}`} style={styles.demandCriteriaLine}>
+                      • {line}
+                    </Text>
+                  ))}
+                </View>
+
+                <Text style={styles.demandProgressText}>
+                  {card.progressLabel} • {card.completionLabel}
+                </Text>
+
+                <View style={styles.demandActionsRow}>
+                  <TouchableOpacity
+                    testID={`club-needs-new-request-${card.id}`}
+                    style={styles.demandActionPrimary}
+                    onPress={() => handleCreateDemand(card)}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={styles.demandActionPrimaryText}>Nouvelle demande</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID={`club-needs-view-request-${card.id}`}
+                    style={styles.demandActionSecondary}
+                    onPress={() => handleOpenDemand(card)}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={styles.demandActionSecondaryText}>Voir demande</Text>
+                  </TouchableOpacity>
+                </View>
+              </GlassCard>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Icon name="arrowBack" size="md" color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Besoins clubs</Text>
+        <Text style={styles.title}>Demandes Clubs</Text>
+        {viewMode === 'ADVANCED' ? (
+          <TouchableOpacity
+            testID="club-needs-toggle-history"
+            style={styles.historyBtn}
+            onPress={() => setShowHistory((value) => !value)}
+          >
+            <Icon name="time" size="md" color={colors.text.primary} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            testID="club-needs-refresh-requests"
+            style={styles.historyBtn}
+            onPress={() => fetchDemandCards()}
+          >
+            <Icon name="refresh" size="md" color={colors.text.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.modeSwitch}>
         <TouchableOpacity
-          testID="club-needs-toggle-history"
-          style={styles.historyBtn}
-          onPress={() => setShowHistory((value) => !value)}
+          testID="club-needs-mode-requests"
+          style={[styles.modeSwitchBtn, viewMode === 'REQUESTS' && styles.modeSwitchBtnActive]}
+          onPress={() => setViewMode('REQUESTS')}
         >
-          <Icon name="time" size="md" color={colors.text.primary} />
+          <Text style={[styles.modeSwitchText, viewMode === 'REQUESTS' && styles.modeSwitchTextActive]}>
+            Demandes
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          testID="club-needs-mode-advanced"
+          style={[styles.modeSwitchBtn, viewMode === 'ADVANCED' && styles.modeSwitchBtnActive]}
+          onPress={() => setViewMode('ADVANCED')}
+        >
+          <Text style={[styles.modeSwitchText, viewMode === 'ADVANCED' && styles.modeSwitchTextActive]}>
+            Avancé
+          </Text>
         </TouchableOpacity>
       </View>
 
+      {viewMode === 'REQUESTS' ? (
+        renderDemandesMode()
+      ) : (
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <GlassCard variant="elevated" style={styles.card}>
           <Text style={styles.label}>Coller la liste (1 ligne = 1 club)</Text>
@@ -1689,146 +2190,151 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
           </View>
         ) : null}
       </ScrollView>
+      )}
 
-      <Modal
-        visible={monthFilterModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMonthFilterModalVisible(false)}
-      >
-        <View style={styles.monthModalOverlay}>
-          <View style={styles.monthModalCard}>
-            <View style={styles.monthModalHeader}>
-              <Text style={styles.monthModalTitle}>Filtrer par mois</Text>
-              <TouchableOpacity onPress={() => setMonthFilterModalVisible(false)}>
-                <Icon name="close" size="md" color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={historyMonthOptions}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => {
-                const isSelected = historyMonthFilter === item;
-                return (
-                  <TouchableOpacity
-                    testID={`club-needs-month-option-${item}`}
-                    style={[styles.monthOptionRow, isSelected && styles.monthOptionRowActive]}
-                    onPress={() => {
-                      setHistoryMonthFilter(item);
-                      setMonthFilterModalVisible(false);
-                    }}
-                  >
-                    <Text style={[styles.monthOptionText, isSelected && styles.monthOptionTextActive]}>
-                      {item === ALL_MONTH_FILTER ? 'Tous les mois' : formatMonthLabel(item)}
-                    </Text>
-                    {isSelected ? (
-                      <Icon name="checkmark" size="sm" color={colors.brand.primary} />
-                    ) : null}
+      {viewMode === 'ADVANCED' ? (
+        <>
+          <Modal
+            visible={monthFilterModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setMonthFilterModalVisible(false)}
+          >
+            <View style={styles.monthModalOverlay}>
+              <View style={styles.monthModalCard}>
+                <View style={styles.monthModalHeader}>
+                  <Text style={styles.monthModalTitle}>Filtrer par mois</Text>
+                  <TouchableOpacity onPress={() => setMonthFilterModalVisible(false)}>
+                    <Icon name="close" size="md" color={colors.text.secondary} />
                   </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
+                </View>
 
-      <Modal visible={addPlayersVisible} transparent animationType="slide" onRequestClose={closeAddPlayersModal}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ajouter des joueurs au partage</Text>
-              <TouchableOpacity onPress={closeAddPlayersModal}>
-                <Icon name="close" size="md" color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalSearchRow}>
-              <Icon name="search" size="sm" color={colors.text.secondary} />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Recherche joueur, club, poste..."
-                placeholderTextColor={colors.text.secondary}
-                value={addPlayersQuery}
-                onChangeText={setAddPlayersQuery}
-              />
-            </View>
-
-            {addPlayersLoading ? (
-              <View style={styles.modalLoader}>
-                <ActivityIndicator color={colors.brand.primary} />
-              </View>
-            ) : (
-              <FlatList
-                data={addPlayersResults}
-                keyExtractor={(item) => item.playerId}
-                contentContainerStyle={styles.modalList}
-                renderItem={({ item }) => {
-                  const selected = Boolean(addPlayersSelectedIds[item.playerId]);
-                  return (
-                    <TouchableOpacity
-                      testID={`club-needs-search-player-${item.playerId}`}
-                      style={[styles.modalPlayerRow, selected && styles.modalPlayerRowSelected]}
-                      onPress={() => toggleSearchPlayerSelection(item.playerId)}
-                    >
-                      <View style={styles.modalPlayerAvatar}>
-                        {item.photoUrl ? (
-                          <Image source={{ uri: item.photoUrl }} style={styles.modalPlayerAvatarImage} />
-                        ) : (
-                          <Text style={styles.modalPlayerAvatarText}>
-                            {formatPlayerName(item).slice(0, 1).toUpperCase()}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.modalPlayerName}>{formatPlayerName(item)}</Text>
-                        <Text style={styles.modalPlayerMeta}>
-                          {item.position} • {item.club?.name ?? 'Free agent'}
+                <FlatList
+                  data={historyMonthOptions}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item }) => {
+                    const isSelected = historyMonthFilter === item;
+                    return (
+                      <TouchableOpacity
+                        testID={`club-needs-month-option-${item}`}
+                        style={[styles.monthOptionRow, isSelected && styles.monthOptionRowActive]}
+                        onPress={() => {
+                          setHistoryMonthFilter(item);
+                          setMonthFilterModalVisible(false);
+                        }}
+                      >
+                        <Text style={[styles.monthOptionText, isSelected && styles.monthOptionTextActive]}>
+                          {item === ALL_MONTH_FILTER ? 'Tous les mois' : formatMonthLabel(item)}
                         </Text>
-                      </View>
-                      <Ionicons
-                        name={selected ? 'checkbox' : 'square-outline'}
-                        size={22}
-                        color={selected ? colors.brand.primary : colors.text.secondary}
-                      />
-                    </TouchableOpacity>
-                  );
-                }}
-                ListEmptyComponent={
-                  <Text style={styles.empty}>Aucun joueur trouvé pour cette recherche.</Text>
-                }
-              />
-            )}
-
-            {addPlayersHasMore ? (
-              <TouchableOpacity
-                style={[styles.modalLoadMoreBtn, addPlayersLoadingMore && styles.btnDisabled]}
-                onPress={() => fetchPlayersForModal(false)}
-                disabled={addPlayersLoadingMore}
-              >
-                {addPlayersLoadingMore ? (
-                  <ActivityIndicator size="small" color={colors.brand.primary} />
-                ) : (
-                  <Text style={styles.modalLoadMoreText}>Charger plus de joueurs</Text>
-                )}
-              </TouchableOpacity>
-            ) : null}
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={closeAddPlayersModal}>
-                <Text style={styles.modalCancelBtnText}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                testID="club-needs-confirm-add"
-                style={styles.modalConfirmBtn}
-                onPress={confirmAddPlayers}
-              >
-                <Text style={styles.modalConfirmBtnText}>Ajouter à la sélection</Text>
-              </TouchableOpacity>
+                        {isSelected ? (
+                          <Icon name="checkmark" size="sm" color={colors.brand.primary} />
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
+          </Modal>
+
+          <Modal visible={addPlayersVisible} transparent animationType="slide" onRequestClose={closeAddPlayersModal}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Ajouter des joueurs au partage</Text>
+                  <TouchableOpacity onPress={closeAddPlayersModal}>
+                    <Icon name="close" size="md" color={colors.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.modalSearchRow}>
+                  <Icon name="search" size="sm" color={colors.text.secondary} />
+                  <TextInput
+                    style={styles.modalSearchInput}
+                    placeholder="Recherche joueur, club, poste..."
+                    placeholderTextColor={colors.text.secondary}
+                    value={addPlayersQuery}
+                    onChangeText={setAddPlayersQuery}
+                  />
+                </View>
+
+                {addPlayersLoading ? (
+                  <View style={styles.modalLoader}>
+                    <ActivityIndicator color={colors.brand.primary} />
+                  </View>
+                ) : (
+                  <FlatList
+                    data={addPlayersResults}
+                    keyExtractor={(item) => item.playerId}
+                    contentContainerStyle={styles.modalList}
+                    renderItem={({ item }) => {
+                      const selected = Boolean(addPlayersSelectedIds[item.playerId]);
+                      return (
+                        <TouchableOpacity
+                          testID={`club-needs-search-player-${item.playerId}`}
+                          style={[styles.modalPlayerRow, selected && styles.modalPlayerRowSelected]}
+                          onPress={() => toggleSearchPlayerSelection(item.playerId)}
+                        >
+                          <View style={styles.modalPlayerAvatar}>
+                            {item.photoUrl ? (
+                              <Image source={{ uri: item.photoUrl }} style={styles.modalPlayerAvatarImage} />
+                            ) : (
+                              <Text style={styles.modalPlayerAvatarText}>
+                                {formatPlayerName(item).slice(0, 1).toUpperCase()}
+                              </Text>
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.modalPlayerName}>{formatPlayerName(item)}</Text>
+                            <Text style={styles.modalPlayerMeta}>
+                              {item.position} • {item.club?.name ?? 'Free agent'}
+                            </Text>
+                          </View>
+                          <Ionicons
+                            name={selected ? 'checkbox' : 'square-outline'}
+                            size={22}
+                            color={selected ? colors.brand.primary : colors.text.secondary}
+                          />
+                        </TouchableOpacity>
+                      );
+                    }}
+                    ListEmptyComponent={
+                      <Text style={styles.empty}>Aucun joueur trouvé pour cette recherche.</Text>
+                    }
+                  />
+                )}
+
+                {addPlayersHasMore ? (
+                  <TouchableOpacity
+                    style={[styles.modalLoadMoreBtn, addPlayersLoadingMore && styles.btnDisabled]}
+                    onPress={() => fetchPlayersForModal(false)}
+                    disabled={addPlayersLoadingMore}
+                  >
+                    {addPlayersLoadingMore ? (
+                      <ActivityIndicator size="small" color={colors.brand.primary} />
+                    ) : (
+                      <Text style={styles.modalLoadMoreText}>Charger plus de joueurs</Text>
+                    )}
+                  </TouchableOpacity>
+                ) : null}
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.modalCancelBtn} onPress={closeAddPlayersModal}>
+                    <Text style={styles.modalCancelBtnText}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID="club-needs-confirm-add"
+                    style={styles.modalConfirmBtn}
+                    onPress={confirmAddPlayers}
+                  >
+                    <Text style={styles.modalConfirmBtnText}>Ajouter à la sélection</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1864,10 +2370,192 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.lg,
     fontWeight: '800',
   },
+  modeSwitch: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: 4,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  modeSwitchBtn: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeSwitchBtnActive: {
+    backgroundColor: colors.brand.primary,
+  },
+  modeSwitchText: {
+    color: colors.text.secondary,
+    fontWeight: '800',
+    fontSize: typography.sizes.sm,
+  },
+  modeSwitchTextActive: {
+    color: colors.background.primary,
+  },
   content: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
     gap: spacing.lg,
+  },
+  requestsHeader: {
+    gap: spacing.xs,
+  },
+  requestsTitle: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.h3,
+    fontWeight: '900',
+  },
+  requestsSubtitle: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.sm,
+    lineHeight: 20,
+  },
+  leagueChipRow: {
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  leagueChip: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  leagueChipActive: {
+    backgroundColor: colors.surface.elevated,
+  },
+  leagueChipText: {
+    color: colors.text.secondary,
+    fontWeight: '800',
+    fontSize: typography.sizes.sm,
+  },
+  coverageRow: {
+    paddingHorizontal: 4,
+    gap: 4,
+  },
+  coverageText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+  },
+  requestsLoadingBox: {
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface.glass,
+  },
+  requestsList: {
+    gap: spacing.md,
+  },
+  demandCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  demandCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  demandClubBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  demandLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: colors.surface.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  demandLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  demandLogoFallback: {
+    color: colors.text.primary,
+    fontWeight: '900',
+  },
+  demandClubMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  demandClubName: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.base,
+    fontWeight: '900',
+  },
+  demandDate: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+  },
+  demandStatusBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  demandStatusLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '900',
+  },
+  demandCriteriaBlock: {
+    gap: 3,
+  },
+  demandCriteriaLine: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.sm,
+  },
+  demandProgressText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+  },
+  demandActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  demandActionPrimary: {
+    flex: 1,
+    borderRadius: radius.lg,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E9FF4A',
+  },
+  demandActionPrimaryText: {
+    color: colors.background.primary,
+    fontWeight: '900',
+    fontSize: typography.sizes.xs,
+  },
+  demandActionSecondary: {
+    flex: 1,
+    borderRadius: radius.lg,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface.glass,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+  },
+  demandActionSecondaryText: {
+    color: '#E9FF4A',
+    fontWeight: '900',
+    fontSize: typography.sizes.xs,
   },
   card: {
     padding: spacing.lg,

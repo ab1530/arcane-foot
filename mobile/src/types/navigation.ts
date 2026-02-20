@@ -1,4 +1,7 @@
 import type { CalendarMatch } from './calendar';
+import type { HardwareSessionType } from './hardware';
+
+export type LabPresetMinutes = 20 | 45 | 90;
 
 export type AppStackParamList = {
   MainTabs: undefined;
@@ -35,6 +38,7 @@ export type AppStackParamList = {
   MarketValueDetail: { playerId: string };
   Players: undefined;
   ScoutQuickImport: undefined;
+  AgentRequests: undefined;
   PlayerDetail: { playerId: string };
   PlayerPassport: { playerId: string; player?: any };
   PlayerHighlights: { playerId: string; mode?: 'owner' | 'adminView' };
@@ -43,8 +47,20 @@ export type AppStackParamList = {
   CreateReport: { playerId?: string };
   HardwareSessions: { playerId?: string; playerName?: string } | undefined;
   HardwareSessionDetail: { sessionId: string };
-  ConnectGpsTracker: undefined;
-  ImportGpsSession: { deviceId: string; deviceName?: string };
+  ConnectGpsTracker:
+    | {
+        prefillLabMode?: boolean;
+        prefillLabPresetMinutes?: LabPresetMinutes;
+        preselectedSessionType?: HardwareSessionType;
+      }
+    | undefined;
+  ImportGpsSession: {
+    deviceId: string;
+    deviceName?: string;
+    initialMode?: 'device' | 'lab';
+    initialLabPresetMinutes?: LabPresetMinutes;
+    preselectedSessionType?: HardwareSessionType;
+  };
   QCBand: undefined;
   CampDetail: { campId: string };
   MyCamps: undefined;
@@ -89,4 +105,5 @@ export type MainTabParamList = {
   Coaching: undefined;
   Passport: undefined;
   Profile: undefined;
+  News: undefined;
 };

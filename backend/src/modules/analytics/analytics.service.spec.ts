@@ -16,6 +16,7 @@ describe('AnalyticsService', () => {
     players: {
       count: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       groupBy: jest.fn(),
     },
     clubs: {
@@ -24,6 +25,12 @@ describe('AnalyticsService', () => {
       groupBy: jest.fn(),
     },
     matches: {
+      count: jest.fn(),
+    },
+    match_assignments: {
+      count: jest.fn(),
+    },
+    event_assignments: {
       count: jest.fn(),
     },
     scouting_reports: {
@@ -43,6 +50,9 @@ describe('AnalyticsService', () => {
       count: jest.fn(),
       findMany: jest.fn(),
       groupBy: jest.fn(),
+    },
+    tasks: {
+      count: jest.fn(),
     },
     rbac_events: {
       count: jest.fn(),
@@ -90,11 +100,258 @@ describe('AnalyticsService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
     redisService = module.get<RedisService>(RedisService);
 
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('getUserDashboard', () => {
+    const userId = 'user-123';
+
+    beforeEach(() => {
+      mockPrismaService.scouting_reports.count.mockResolvedValue(0);
+      mockPrismaService.scouting_reports.groupBy.mockResolvedValue([]);
+      mockPrismaService.match_assignments.count.mockResolvedValue(0);
+      mockPrismaService.event_assignments.count.mockResolvedValue(0);
+      mockPrismaService.club_requests.count.mockResolvedValue(0);
+      mockPrismaService.players.count.mockResolvedValue(0);
+      mockPrismaService.clubs.count.mockResolvedValue(0);
+      mockPrismaService.users.count.mockResolvedValue(0);
+      mockPrismaService.matches.count.mockResolvedValue(0);
+      mockPrismaService.events.count.mockResolvedValue(0);
+      mockPrismaService.kanban_boards.count.mockResolvedValue(0);
+    });
+
+    it('should return scouting dashboard metrics for Scout', async () => {
+      mockPrismaService.scouting_reports.count
+        .mockResolvedValueOnce(21)
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(16)
+        .mockResolvedValueOnce(7)
+        .mockResolvedValueOnce(11)
+        .mockResolvedValueOnce(12);
+      mockPrismaService.scouting_reports.groupBy.mockResolvedValue([
+        { playerId: 'p1', _count: { playerId: 2 } },
+        { playerId: 'p2', _count: { playerId: 3 } },
+        { playerId: 'p3', _count: { playerId: 1 } },
+      ]);
+      mockPrismaService.match_assignments.count.mockResolvedValue(4);
+      mockPrismaService.event_assignments.count.mockResolvedValue(3);
+      mockPrismaService.club_requests.count.mockResolvedValue(9);
+      mockPrismaService.players.count.mockResolvedValue(150);
+      mockPrismaService.clubs.count.mockResolvedValue(22);
+
+      const result = (await service.getUserDashboard(userId, 'SCOUT')) as any;
+
+      expect(result).toMatchObject({
+        userId,
+        role: 'SCOUT',
+        totalReports: 21,
+        reportsLast7Days: 10,
+        reportsLast30Days: 16,
+        playersScouted: 3,
+        matchesAttended: 7,
+        openDemandRequests: 9,
+        totalPlayers: 150,
+        totalClubs: 22,
+      });
+
+      expect(mockPrismaService.scouting_reports.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          by: ['playerId'],
+          where: { scoutId: userId },
+        }),
+      );
+      expect(mockPrismaService.match_assignments.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            scoutId: userId,
+            status: {
+              notIn: ['COMPLETED', 'CANCELLED'],
+            },
+            matches: expect.any(Object),
+          }),
+        }),
+      );
+      expect(mockPrismaService.event_assignments.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            events: expect.any(Object),
+          }),
+        }),
+      );
+      expect(mockPrismaService.club_requests.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: {
+              in: ['PENDING', 'NEGOTIATING'],
+            },
+          },
+        }),
+      );
+    });
+
+    it('should return player-specific metrics for PLAYER', async () => {
+      mockPrismaService.players.findUnique.mockResolvedValue({
+        _count: { scouting_reports: 5, media: 8 },
+        marketValue: 1500000,
+        position: 'FORWARD',
+      });
+
+      const result = (await service.getUserDashboard(userId, 'PLAYER')) as any;
+
+      expect(result).toMatchObject({
+        userId,
+        role: 'PLAYER',
+        reportsAboutMe: 5,
+        mediaCount: 8,
+        marketValue: 1500000,
+        position: 'FORWARD',
+      });
+      expect(mockPrismaService.scouting_reports.count).not.toHaveBeenCalled();
+      expect(mockPrismaService.club_requests.count).toHaveBeenCalledTimes(0);
+      expect(mockPrismaService.match_assignments.count).toHaveBeenCalledTimes(0);
+    });
+
+    it('should include platform overview for Category A roles', async () => {
+      mockPrismaService.scouting_reports.count
+        .mockResolvedValueOnce(4)
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(100)
+        .mockResolvedValueOnce(40)
+        .mockResolvedValueOnce(20)
+        .mockResolvedValueOnce(0);
+      mockPrismaService.scouting_reports.groupBy.mockResolvedValue([
+        { playerId: 'p1', _count: { playerId: 1 } },
+      ]);
+      mockPrismaService.match_assignments.count.mockResolvedValue(2);
+      mockPrismaService.event_assignments.count.mockResolvedValue(3);
+      mockPrismaService.club_requests.count
+        .mockResolvedValueOnce(6)
+        .mockResolvedValueOnce(60)
+        .mockResolvedValueOnce(9);
+      mockPrismaService.users.count.mockResolvedValue(1);
+      mockPrismaService.players.count.mockResolvedValue(60);
+      mockPrismaService.clubs.count.mockResolvedValue(4);
+      mockPrismaService.matches.count.mockResolvedValue(8);
+      mockPrismaService.events.count.mockResolvedValue(5);
+      mockPrismaService.kanban_boards.count.mockResolvedValue(1);
+
+      const result = (await service.getUserDashboard(userId, 'ADMIN')) as any;
+
+      expect(result.role).toBe('ADMIN');
+      expect(result.totalUsers).toBe(1);
+      expect(result.totalPlayers).toBe(60);
+      expect(result.recentActivity).toMatchObject({
+        newUsersLast7Days: 1,
+        newPlayersLast7Days: 60,
+      });
+      expect(result.openDemandRequests).toBe(6);
+      expect(result.totalReports).toBe(4);
+      expect(result.matchesAttended).toBe(5);
+      expect(result).toMatchObject({
+        recentActivity: {
+          newUsersLast7Days: 1,
+          newPlayersLast7Days: 60,
+          newScoutingReportsLast7Days: 40,
+          newClubRequestsLast7Days: 9,
+        },
+      });
+    });
+  });
+
+  describe('getMobileHomeDashboard', () => {
+    const userId = 'user-mobile-1';
+
+    beforeEach(() => {
+      mockPrismaService.scouting_reports.count.mockResolvedValue(0);
+      mockPrismaService.scouting_reports.groupBy.mockResolvedValue([]);
+      mockPrismaService.players.count.mockResolvedValue(0);
+      mockPrismaService.match_assignments.count.mockResolvedValue(0);
+      mockPrismaService.event_assignments.count.mockResolvedValue(0);
+      mockPrismaService.tasks.count.mockResolvedValue(0);
+      mockPrismaService.club_requests.count.mockResolvedValue(0);
+      mockPrismaService.users.count.mockResolvedValue(0);
+    });
+
+    it('should return scoped AGENT payload for non-category-A users', async () => {
+      mockPrismaService.scouting_reports.count
+        .mockResolvedValueOnce(8) // totalReports
+        .mockResolvedValueOnce(3) // reportsLast7Days
+        .mockResolvedValueOnce(5) // reportsLast30Days
+        .mockResolvedValueOnce(7); // reportsToReview
+      mockPrismaService.scouting_reports.groupBy.mockResolvedValue([
+        { playerId: 'player-1', _count: { playerId: 2 } },
+        { playerId: 'player-2', _count: { playerId: 1 } },
+      ]);
+      mockPrismaService.players.count.mockResolvedValue(42);
+      mockPrismaService.match_assignments.count.mockResolvedValue(2);
+      mockPrismaService.event_assignments.count.mockResolvedValue(1);
+      mockPrismaService.tasks.count.mockResolvedValue(4);
+      mockPrismaService.club_requests.count.mockResolvedValue(6);
+      mockPrismaService.users.count.mockResolvedValue(12);
+
+      const result = (await service.getMobileHomeDashboard(userId, 'AGENT', 'ADMIN')) as any;
+
+      expect(result.scope).toBe('AGENT');
+      expect(result.cards).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'reports', value: 8 }),
+          expect.objectContaining({ id: 'playersScouted', value: 2 }),
+          expect.objectContaining({ id: 'calendar', value: 3 }),
+          expect.objectContaining({ id: 'agentRequests', value: 4 }),
+        ]),
+      );
+      expect(result.pending).toEqual({
+        agentRequests: 4,
+        clubRequests: 6,
+        reportsToReview: 7,
+      });
+      expect(mockPrismaService.tasks.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              { creatorId: userId },
+              expect.objectContaining({
+                users_tasks_creatorIdTousers: expect.objectContaining({
+                  role: expect.objectContaining({
+                    notIn: ['SUPER_ADMIN', 'ADMIN'],
+                  }),
+                }),
+              }),
+            ]),
+          }),
+        }),
+      );
+    });
+
+    it('should allow category A user to request AGENT scope', async () => {
+      mockPrismaService.scouting_reports.count
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(2);
+      mockPrismaService.scouting_reports.groupBy.mockResolvedValue([]);
+      mockPrismaService.players.count.mockResolvedValue(24);
+      mockPrismaService.match_assignments.count.mockResolvedValue(5);
+      mockPrismaService.event_assignments.count.mockResolvedValue(2);
+      mockPrismaService.tasks.count.mockResolvedValue(3);
+      mockPrismaService.club_requests.count.mockResolvedValue(9);
+      mockPrismaService.users.count.mockResolvedValue(5);
+
+      const result = (await service.getMobileHomeDashboard(userId, 'SUPER_ADMIN', 'AGENT')) as any;
+
+      expect(result.scope).toBe('AGENT');
+      expect(result.meta).toMatchObject({
+        totalPlayers: 24,
+        totalScouts: 5,
+      });
+      expect(result.quickActions).toHaveLength(3);
+    });
   });
 
   describe('getPlatformOverview', () => {
@@ -1027,7 +1284,9 @@ describe('AnalyticsService', () => {
 
     it('should fallback to empty blocked features when blocked-features query fails', async () => {
       mockPrismaService.rbac_events.count.mockResolvedValue(100);
-      mockPrismaService.rbac_events.findMany.mockRejectedValue(new Error('prisma panic simulation'));
+      mockPrismaService.rbac_events.findMany.mockRejectedValue(
+        new Error('prisma panic simulation'),
+      );
       mockPrismaService.upgrade_modals.findMany.mockResolvedValue([]);
       mockPrismaService.subscription_conversions.findMany.mockResolvedValue([]);
       mockPrismaService.subscription_conversions.groupBy.mockResolvedValue([]);

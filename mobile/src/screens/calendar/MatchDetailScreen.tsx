@@ -16,6 +16,7 @@ import { Icon } from '../../components/ui';
 import type { IconName } from '../../constants/icons';
 import type { AppStackParamList } from '../../types/navigation';
 import type { CalendarMatch } from '../../types/calendar';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 type MatchDetailRouteProp = RouteProp<AppStackParamList, 'MatchDetail'>;
 
@@ -39,7 +40,13 @@ const DetailRow = ({
   </View>
 );
 
-const AssignmentRow = ({ assignment }: { assignment: NonNullable<CalendarMatch['assignments']>[number] }) => {
+const AssignmentRow = ({
+  assignment,
+  subtitle,
+}: {
+  assignment: NonNullable<CalendarMatch['assignments']>[number];
+  subtitle: string;
+}) => {
   const initials = `${assignment.scout?.firstName?.[0] ?? ''}${assignment.scout?.lastName?.[0] ?? ''}`.toUpperCase() || 'SC';
 
   return (
@@ -51,23 +58,23 @@ const AssignmentRow = ({ assignment }: { assignment: NonNullable<CalendarMatch['
         <Text style={styles.assignmentName}>
           {assignment.scout?.firstName} {assignment.scout?.lastName}
         </Text>
-        <Text style={styles.assignmentMeta}>Scout assigné</Text>
+        <Text style={styles.assignmentMeta}>{subtitle}</Text>
       </View>
       <Icon name="chevronForward" size={16} color={colors.text.secondary} />
     </View>
   );
 };
 
-const formatDate = (value: string) =>
-  new Date(value).toLocaleDateString('fr-FR', {
+const formatDate = (value: string, locale: string) =>
+  new Date(value).toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
 
-const formatTime = (value: string) =>
-  new Date(value).toLocaleTimeString('fr-FR', {
+const formatTime = (value: string, locale: string) =>
+  new Date(value).toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -85,43 +92,52 @@ const renderLargeBadge = (logo?: string | null) => {
 };
 
 export const MatchDetailScreen = () => {
+  const { dictionary, language } = useLocalization();
+  const copy = dictionary.calendarCenter ?? {};
   const { params } = useRoute<MatchDetailRouteProp>();
   const match = params?.match as CalendarMatch | undefined;
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
 
   if (!match) {
     return (
       <SafeAreaView style={styles.container}>
-        <ScreenHeader title="Match" />
+        <ScreenHeader title={copy.detailTitle ?? 'Match'} />
         <View style={styles.fallbackContainer}>
           <Icon name="alert" size={48} color={colors.text.secondary} />
-          <Text style={styles.fallbackText}>Aucune donnée de match disponible.</Text>
+          <Text style={styles.fallbackText}>{copy.detailEmptyTitle ?? 'Aucune donnée de match disponible.'}</Text>
           <Text style={styles.fallbackSubtext}>
-            Veuillez revenir en arrière et sélectionner une rencontre.
+            {copy.detailEmptyBody ?? 'Veuillez revenir en arrière et sélectionner une rencontre.'}
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const dateLabel = formatDate(match.date);
-  const timeLabel = formatTime(match.date);
+  const dateLabel = formatDate(match.date, locale);
+  const timeLabel = formatTime(match.date, locale);
   const venueLabel = match.venue
     ? `${match.venue.name}${match.venue.city ? ` • ${match.venue.city}` : ''}`
     : 'À confirmer';
-  const statusLabel = (match.status ?? 'SCHEDULED').replace(/_/g, ' ');
+  const statusKey = String(match.status ?? 'PLANNED').toUpperCase();
+  const statusLabel =
+    copy.statusLabels?.[statusKey] ?? statusKey.replace(/_/g, ' ');
   const assignments = match.assignments ?? [];
 
   const detailRows: Array<{ icon: IconName; label: string; value: string }> = [
-    { icon: 'calendar', label: 'Date', value: dateLabel },
-    { icon: 'time', label: 'Heure', value: timeLabel },
-    { icon: 'trophy', label: 'Compétition', value: match.competition?.name ?? 'À confirmer' },
-    { icon: 'location', label: 'Stade', value: venueLabel },
-    { icon: 'shield', label: 'Statut', value: statusLabel },
+    { icon: 'calendar', label: copy.detailDateLabel ?? 'Date', value: dateLabel },
+    { icon: 'time', label: copy.detailTimeLabel ?? 'Heure', value: timeLabel },
+    {
+      icon: 'trophy',
+      label: copy.detailCompetitionLabel ?? 'Compétition',
+      value: match.competition?.name ?? copy.detailTbd ?? 'À confirmer',
+    },
+    { icon: 'location', label: copy.detailVenueLabel ?? 'Stade', value: venueLabel },
+    { icon: 'shield', label: copy.detailStatusLabel ?? 'Statut', value: statusLabel },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Détails du match" />
+      <ScreenHeader title={copy.detailTitle ?? 'Détails du match'} />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <LinearGradient
           colors={['#1E1B4B', '#0F172A']}
@@ -129,7 +145,7 @@ export const MatchDetailScreen = () => {
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
         >
-          <Text style={styles.heroEyebrow}>Rencontre programmée</Text>
+          <Text style={styles.heroEyebrow}>{copy.detailEyebrow ?? 'Rencontre programmée'}</Text>
 
           {match.competition && (
             <View style={styles.leagueChip}>
@@ -170,25 +186,31 @@ export const MatchDetailScreen = () => {
         </LinearGradient>
 
         <GlassCard variant="elevated" style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Informations</Text>
+          <Text style={styles.sectionTitle}>{copy.detailInfoSection ?? 'Informations'}</Text>
           {detailRows.map((row) => (
             <DetailRow key={row.label} icon={row.icon} label={row.label} value={row.value} />
           ))}
         </GlassCard>
 
         <GlassCard variant="elevated" style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Scouts assignés</Text>
+          <Text style={styles.sectionTitle}>{copy.detailAssignmentsSection ?? 'Scouts assignés'}</Text>
           {assignments.length === 0 && (
-            <Text style={styles.emptyState}>Aucun scout n'est assigné pour ce match.</Text>
+            <Text style={styles.emptyState}>
+              {copy.detailNoAssignments ?? "Aucun scout n'est assigné pour ce match."}
+            </Text>
           )}
           {assignments.map((assignment) => (
-            <AssignmentRow key={assignment.scoutId} assignment={assignment} />
+            <AssignmentRow
+              key={assignment.scoutId}
+              assignment={assignment}
+              subtitle={copy.detailAssignedScout ?? 'Scout assigné'}
+            />
           ))}
         </GlassCard>
 
         {match.notes && (
           <GlassCard variant="elevated" style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>Notes</Text>
+            <Text style={styles.sectionTitle}>{copy.detailNotesSection ?? 'Notes'}</Text>
             <Text style={styles.notesText}>{match.notes}</Text>
           </GlassCard>
         )}

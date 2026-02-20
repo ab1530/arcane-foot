@@ -90,7 +90,7 @@ export class SmartScoutController {
   }
 
   @Get('insights/:playerId')
-  @Roles('SCOUT', 'ANALYST', 'ADMIN', 'SUPER_ADMIN', 'AGENT', 'CLUB_CONTACT')
+  @Roles('SCOUT', 'ANALYST', 'ADMIN', 'SUPER_ADMIN', 'CLUB_CONTACT')
   @MinTier(SubscriptionTier.GOLD)
   @ApiOperation({
     summary: 'Generate AI insights for player (GOLD+)',

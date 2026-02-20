@@ -128,6 +128,8 @@ export * from './playstyle-dna';
 // Passport types
 export * from './passport';
 export * from './player-profile';
+export * from './player-space';
+export * from './agent-requests';
 
 // Notification types
 export * from './notifications';
@@ -137,3 +139,5 @@ export * from './gamification';
 
 // Hardware / GPS types
 export * from './hardware';
+export * from './news';
+export * from './dashboard';

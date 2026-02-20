@@ -41,46 +41,41 @@ import api from '../../services/api';
 import { logError } from '../../utils/logger';
 import { StatCard, QuickActionCard, ActivityItem } from './components';
 import type { HardwareSession } from '../../types/hardware';
-import type { Player } from '../../types';
-import { DEFAULT_ROLE } from '../../lib/roles';
+import type { MobileHomeDashboardResponse, Player } from '../../types';
+import { DEFAULT_ROLE, isCategoryARole } from '../../lib/roles';
 import type { UserRole } from '../../lib/roles';
 import { isFeatureEnabled } from '../../constants/features';
 import { qcBand, formatBatteryPercent, formatDistanceKm } from '../../services/wearables/qcBand';
 
-const STAT_CARD_META = [
-  {
-    key: 'reports',
-    icon: 'document-text',
-    color: tokens.colors.yellow.DEFAULT,
-    target: 'Reports',
-    trendValue: '+12%',
-    valueGetter: (stats: DashboardStats) => stats.totalReports,
-  },
-  {
-    key: 'players',
-    icon: 'people',
-    color: tokens.colors.feature.scouting,
-    target: 'Players',
-    trendValue: '+8',
-    valueGetter: (stats: DashboardStats) => stats.playersScouted,
-  },
-  {
-    key: 'matches',
-    icon: 'football',
-    color: tokens.colors.semantic.success,
-    target: 'Calendar',
-    trendValue: '+5',
-    valueGetter: (stats: DashboardStats) => stats.matchesAttended,
-  },
-  {
-    key: 'xp',
-    icon: 'trophy',
-    color: tokens.colors.feature.gamification,
-    target: undefined,
-    trendValue: '+250',
-    valueGetter: (stats: DashboardStats) => stats.totalXP.toLocaleString(),
-  },
-];
+type DashboardCardMetricKey =
+  | 'reports'
+  | 'players'
+  | 'calendar'
+  | 'transfermarkt'
+  | 'scouts'
+  | 'agentRequests';
+
+type DashboardCardDescriptor = {
+  key: DashboardCardMetricKey;
+  title: string;
+  value: string | number;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  target?: string;
+  trendValue: string;
+  trendLabel: string;
+};
+
+const NON_PLAYER_CARD_MATRIX: Record<UserRole, DashboardCardMetricKey[]> = {
+  SUPER_ADMIN: ['calendar', 'transfermarkt', 'players', 'scouts'],
+  ADMIN: ['calendar', 'transfermarkt', 'players', 'scouts'],
+  SCOUT: ['reports', 'players', 'calendar', 'agentRequests'],
+  AGENT: ['reports', 'players', 'calendar', 'agentRequests'],
+  ANALYST: ['reports', 'players', 'calendar', 'agentRequests'],
+  CLUB_CONTACT: ['reports', 'players', 'calendar', 'agentRequests'],
+  PLAYER: ['reports', 'players', 'calendar', 'agentRequests'],
+  PUBLIC: ['reports', 'players', 'calendar', 'agentRequests'],
+};
 
 // ============================================================================
 // TYPES
@@ -90,6 +85,7 @@ interface DashboardStats {
   totalReports: number;
   playersScouted: number;
   matchesAttended: number;
+  openDemandRequests: number;
   totalXP: number;
 }
 
@@ -165,6 +161,15 @@ const formatSpeed = (speedKmh: number) => `${speedKmh.toFixed(1)} km/h`;
 const formatLastSync = (value?: string | null) =>
   value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
 
+const resolveCollectionTotal = (payload: any): number | null => {
+  if (!payload) return null;
+  if (typeof payload?.meta?.total === 'number') return payload.meta.total;
+  if (Array.isArray(payload)) return payload.length;
+  if (Array.isArray(payload?.data)) return payload.data.length;
+  if (Array.isArray(payload?.items)) return payload.items.length;
+  return null;
+};
+
 const withTimeout = async <T,>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -196,7 +201,7 @@ export const DashboardScreen = ({ navigation }: any) => {
   const playerCopy = dashboardCopy.player;
   const effectiveRole = (activeRole ?? user?.role ?? DEFAULT_ROLE) as UserRole;
   const isPlayerRole = effectiveRole === 'PLAYER';
-  const isAdminRole = effectiveRole === 'ADMIN' || effectiveRole === 'SUPER_ADMIN';
+  const isAdminRole = isCategoryARole(effectiveRole);
   const showLevelBar = false; // Demo: remove gamification "level/XP" bar from dashboard
   const showDailyChallenge = false; // Demo: remove "defi du jour"
   const playerDashboardV2Enabled = isFeatureEnabled('playerDashboardV2');
@@ -204,12 +209,16 @@ export const DashboardScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [clubNeedsCount, setClubNeedsCount] = useState<number | null>(null);
+  const [marketRequestsCount, setMarketRequestsCount] = useState<number | null>(null);
+  const [scoutsCount, setScoutsCount] = useState<number | null>(null);
+  const [mobileHome, setMobileHome] = useState<MobileHomeDashboardResponse | null>(null);
 
   // State
   const [stats, setStats] = useState<DashboardStats>({
     totalReports: 0,
     playersScouted: 0,
     matchesAttended: 0,
+    openDemandRequests: 0,
     totalXP: 0,
   });
 
@@ -325,6 +334,7 @@ export const DashboardScreen = ({ navigation }: any) => {
   const fetchDashboardData = async () => {
     try {
       if (isPlayerRole) {
+        setMobileHome(null);
         const currentPlayerId = user?.playerId;
         if (!currentPlayerId) {
           setPlayerSessions([]);
@@ -362,7 +372,20 @@ export const DashboardScreen = ({ navigation }: any) => {
         return;
       }
 
-      const [overviewData, playersData, reportsData, clubNeedsData] = await Promise.all([
+      const mobileScope =
+        effectiveRole === 'SUPER_ADMIN' ||
+        effectiveRole === 'ADMIN' ||
+        effectiveRole === 'AGENT' ||
+        effectiveRole === 'SCOUT'
+          ? effectiveRole
+          : undefined;
+
+      const [mobileHomeData, overviewData, playersData, reportsData, marketData, scoutsData, clubNeedsData] =
+        await Promise.all([
+        api.getDashboardMobileHome(mobileScope ? { scope: mobileScope } : undefined).catch(error => {
+          handleApiFailure(error, 'getDashboardMobileHome');
+          return null;
+        }),
         api.getDashboardStats().catch(error => {
           handleApiFailure(error, 'getDashboardStats');
           return null;
@@ -375,6 +398,14 @@ export const DashboardScreen = ({ navigation }: any) => {
           handleApiFailure(error, 'getReports');
           return { items: [], data: [] };
         }),
+        (api as any).getMarket?.({ limit: 1 }).catch((error: any) => {
+          handleApiFailure(error, 'getMarket');
+          return null;
+        }),
+        (api as any).getUsers?.({ role: 'SCOUT', page: 1, limit: 1 }).catch((error: any) => {
+          handleApiFailure(error, 'getUsers');
+          return null;
+        }),
         isAdminRole
           ? (api as any).listClubNeedRequests(1, 1).catch((error: any) => {
               handleApiFailure(error, 'listClubNeedRequests');
@@ -385,18 +416,34 @@ export const DashboardScreen = ({ navigation }: any) => {
 
       const players = playersData?.items ?? playersData?.data ?? [];
       const reports = reportsData?.items ?? reportsData?.data ?? [];
+      setMobileHome(mobileHomeData);
 
-      if (isAdminRole) {
-        const total = (clubNeedsData as any)?.meta?.total;
-        setClubNeedsCount(typeof total === 'number' ? total : null);
-      } else {
-        setClubNeedsCount(null);
-      }
+      const cardsById = new Map((mobileHomeData?.cards ?? []).map((card) => [card.id, card]));
+      const reportsCard = cardsById.get('reports');
+      const playersCard = cardsById.get('playersScouted');
+      const calendarCard = cardsById.get('calendar');
+      const requestsCard = cardsById.get('agentRequests');
+
+      setMarketRequestsCount(
+        mobileHomeData?.pending?.clubRequests ?? resolveCollectionTotal(marketData),
+      );
+      setScoutsCount(
+        mobileHomeData?.meta?.totalScouts ?? resolveCollectionTotal(scoutsData),
+      );
+      setClubNeedsCount(
+        isAdminRole
+          ? mobileHomeData?.pending?.clubRequests ?? resolveCollectionTotal(clubNeedsData)
+          : null,
+      );
 
       setStats({
-        totalReports: overviewData?.totalReports ?? reports.length,
-        playersScouted: overviewData?.totalPlayers ?? players.length,
-        matchesAttended: overviewData?.matchesAttended ?? Math.floor(reports.length * 0.8),
+        totalReports: reportsCard?.value ?? overviewData?.totalReports ?? reports.length,
+        playersScouted:
+          playersCard?.value ?? overviewData?.playersScouted ?? overviewData?.totalPlayers ?? players.length,
+        matchesAttended:
+          calendarCard?.value ?? overviewData?.matchesAttended ?? Math.floor(reports.length * 0.8),
+        openDemandRequests:
+          requestsCard?.value ?? mobileHomeData?.pending?.agentRequests ?? overviewData?.openDemandRequests ?? 0,
         totalXP: overviewData?.totalXP ?? reports.length * 100 + players.length * 50,
       });
 
@@ -416,7 +463,15 @@ export const DashboardScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [isPlayerRole, user?.playerId, braceletCardEnabled, bootstrapBraceletCard, resetBraceletMetrics]);
+  }, [
+    isPlayerRole,
+    isAdminRole,
+    effectiveRole,
+    user?.playerId,
+    braceletCardEnabled,
+    bootstrapBraceletCard,
+    resetBraceletMetrics,
+  ]);
 
   useEffect(() => {
     if (!isPlayerRole || !braceletCardEnabled || Platform.OS !== 'ios') {
@@ -494,33 +549,167 @@ export const DashboardScreen = ({ navigation }: any) => {
   };
 
   const quickActions = useMemo(() => {
+    if (!isPlayerRole && Array.isArray(mobileHome?.quickActions) && mobileHome.quickActions.length > 0) {
+      return mobileHome.quickActions.map((action) => ({
+        label: action.label,
+        icon: action.icon,
+        target: action.target,
+        variant: action.variant,
+      }));
+    }
+
     const base = Array.isArray(dashboardCopy.quickActions?.items)
       ? [...dashboardCopy.quickActions.items]
       : [];
 
-    // Demo: keep "Besoins clubs" out of Quick Actions (it's promoted to a stat card instead).
-    return base.filter((a: any) => a?.target !== 'ClubNeeds');
-  }, [dashboardCopy.quickActions?.items]);
+    const filtered = base.filter((a: any) => a?.target !== 'ClubNeeds');
+    if (isPlayerRole) {
+      return filtered.slice(0, 3);
+    }
+    return filtered.slice(0, 3);
+  }, [dashboardCopy.quickActions?.items, isPlayerRole, mobileHome?.quickActions]);
 
-  const statCards = useMemo(() => {
-    // Remove XP/gamification card for demo; replace with Club Needs for admins.
-    const base = STAT_CARD_META.filter((m) => m.key !== 'xp');
-    if (!isAdminRole) return base;
+  const statCards = useMemo<DashboardCardDescriptor[]>(() => {
+    if (isPlayerRole) return [];
 
-    return [
-      ...base,
-      {
-        key: 'clubNeeds',
-        icon: 'clipboard-outline' as const,
-        color: tokens.colors.feature.scouting,
-        target: 'ClubNeeds',
-        trendValue: clubNeedsCount != null ? `+${clubNeedsCount}` : '+0',
-        trendLabel: 'demandes',
-        title: 'BESOINS CLUBS',
-        valueGetter: () => (clubNeedsCount ?? 0) as any,
+    if (Array.isArray(mobileHome?.cards) && mobileHome.cards.length > 0) {
+      const iconByCardId: Record<string, keyof typeof Ionicons.glyphMap> = {
+        reports: 'document-text',
+        playersScouted: 'people',
+        calendar: 'calendar',
+        agentRequests: 'clipboard-outline',
+        transfermarkt: 'briefcase',
+        scouts: 'person-add',
+      };
+      const colorByStatus: Record<string, string> = {
+        yellow: tokens.colors.yellow.DEFAULT,
+        blue: tokens.colors.brand.primary,
+        green: tokens.colors.semantic.success,
+        indigo: '#5A82FF',
+      };
+      const targetByCardId: Record<string, string> = {
+        reports: 'Reports',
+        playersScouted: 'Players',
+        calendar: 'Calendar',
+        agentRequests: 'AgentRequests',
+        transfermarkt: 'Market',
+        scouts: 'GlobalSearch',
+      };
+
+      return mobileHome.cards.map((card) => ({
+        key:
+          card.id === 'playersScouted'
+            ? 'players'
+            : card.id === 'agentRequests'
+            ? 'agentRequests'
+            : (card.id as DashboardCardMetricKey),
+        title: card.label,
+        value: card.value,
+        icon: iconByCardId[card.id] ?? 'analytics',
+        color: colorByStatus[card.statusColor] ?? tokens.colors.brand.primary,
+        target: targetByCardId[card.id],
+        trendValue: `+${card.delta}`,
+        trendLabel: card.period === 'month' ? 'ce mois-ci' : 'cette semaine',
+      }));
+    }
+
+    const roleCards =
+      NON_PLAYER_CARD_MATRIX[effectiveRole] ?? NON_PLAYER_CARD_MATRIX.SCOUT;
+
+    const roleLabels = dashboardCopy?.stats?.roleCards ?? {};
+    const trendCards = Array.isArray(dashboardCopy?.stats?.cards)
+      ? dashboardCopy.stats.cards
+      : [];
+    const trendLabelByKey = trendCards.reduce<Record<string, string>>((acc, item: any) => {
+      if (item?.key) {
+        acc[item.key] = item?.trendLabel ?? '';
+      }
+      return acc;
+    }, {});
+
+    const cardMap: Record<DashboardCardMetricKey, DashboardCardDescriptor> = {
+      reports: {
+        key: 'reports',
+        title: roleLabels?.reports ?? 'Reports',
+        value: stats.totalReports,
+        icon: 'document-text',
+        color: tokens.colors.yellow.DEFAULT,
+        target: 'Reports',
+        trendValue: '+12%',
+        trendLabel: trendLabelByKey.reports || '',
       },
-    ];
-  }, [clubNeedsCount, isAdminRole]);
+      players: {
+        key: 'players',
+        title: roleLabels?.players ?? 'Players scouted',
+        value: stats.playersScouted,
+        icon: 'people',
+        color: tokens.colors.brand.primary,
+        target: 'Players',
+        trendValue: '+8',
+        trendLabel: trendLabelByKey.players || '',
+      },
+      calendar: {
+        key: 'calendar',
+        title: roleLabels?.calendar ?? 'Calendar',
+        value: stats.matchesAttended,
+        icon: 'calendar',
+        color: tokens.colors.semantic.success,
+        target: 'Calendar',
+        trendValue: '+5',
+        trendLabel: trendLabelByKey.matches || trendLabelByKey.calendar || '',
+      },
+      transfermarkt: {
+        key: 'transfermarkt',
+        title: roleLabels?.transfermarkt ?? 'Transfermarkt',
+        value: marketRequestsCount ?? 0,
+        icon: 'briefcase',
+        color: '#4F7BFF',
+        target: 'Market',
+        trendValue: `+${marketRequestsCount ?? 0}`,
+        trendLabel: trendLabelByKey.transfermarkt || trendLabelByKey.players || '',
+      },
+      scouts: {
+        key: 'scouts',
+        title: roleLabels?.scouts ?? 'Scouts',
+        value: scoutsCount ?? 0,
+        icon: 'person-add',
+        color: '#5BE5A8',
+        target: 'GlobalSearch',
+        trendValue: `+${scoutsCount ?? 0}`,
+        trendLabel: trendLabelByKey.scouts || trendLabelByKey.matches || '',
+      },
+      agentRequests: {
+        key: 'agentRequests',
+        title: roleLabels?.agentRequests ?? 'Demandes agent',
+        value: isAdminRole
+          ? clubNeedsCount ?? 0
+          : stats.openDemandRequests ?? marketRequestsCount ?? 0,
+        icon: 'clipboard-outline',
+        color: '#5A82FF',
+        target: 'AgentRequests',
+        trendValue: `+${
+          isAdminRole ? clubNeedsCount ?? 0 : stats.openDemandRequests ?? marketRequestsCount ?? 0
+        }`,
+        trendLabel: trendLabelByKey.agentRequests || trendLabelByKey.players || '',
+      },
+    };
+
+    return roleCards.map((key) => cardMap[key]);
+  }, [
+    clubNeedsCount,
+    dashboardCopy?.stats?.cards,
+    dashboardCopy?.stats?.roleCards,
+    effectiveRole,
+    isAdminRole,
+    isPlayerRole,
+    marketRequestsCount,
+    scoutsCount,
+    stats.matchesAttended,
+    stats.playersScouted,
+    stats.totalReports,
+    stats.openDemandRequests,
+    mobileHome?.cards,
+  ]);
 
   // ============================================================================
   // RENDER
@@ -1115,24 +1304,19 @@ export const DashboardScreen = ({ navigation }: any) => {
         {/* ================================================================ */}
         {/* STAT CARDS GRID (2x2) */}
         {/* ================================================================ */}
-          <View style={styles.section}>
+        <View style={styles.section}>
           <View style={styles.statsGrid}>
-            {statCards.map(meta => {
-              const copy = dashboardCopy.stats.cards.find(card => card.key === meta.key);
-              const title = copy?.title || (meta as any).title || '';
-              const trend =
-                meta.trendValue
-                  ? {
-                      direction: 'up' as const,
-                      value: meta.trendValue,
-                      label: copy?.trendLabel || '',
-                    }
-                  : undefined;
+            {statCards.map((meta) => {
+              const trend = {
+                direction: 'up' as const,
+                value: meta.trendValue,
+                label: meta.trendLabel,
+              };
               return (
                 <View style={styles.statCardWrapper} key={meta.key}>
                   <StatCard
-                    title={title}
-                    value={meta.valueGetter(stats)}
+                    title={meta.title}
+                    value={meta.value}
                     icon={meta.icon}
                     trend={trend}
                     color={meta.color}
@@ -1160,7 +1344,11 @@ export const DashboardScreen = ({ navigation }: any) => {
                 key={action.label}
                 icon={action.icon as any}
                 label={action.label}
-                onPress={() => handleNavigate(action.target)}
+                onPress={() => {
+                  if (action?.target) {
+                    handleNavigate(action.target);
+                  }
+                }}
                 variant={(action.variant as any) ?? 'secondary'}
                 testID={`quick-action-${action.target?.toLowerCase()}`}
               />

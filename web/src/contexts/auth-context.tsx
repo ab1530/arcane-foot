@@ -3,6 +3,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { logger } from "@/lib/logger";
 import { buildApiUrl, resolveApiBase } from "@/lib/api-base";
+import {
+  DEFAULT_ROLE,
+  type UserRole,
+  USER_ROLES,
+} from "@/lib/roles";
 
 type AccountType = "player" | "agent" | "club";
 
@@ -10,6 +15,7 @@ interface User {
   id: string;
   email: string;
   fullName: string;
+  role: UserRole;
   accountType: AccountType;
   avatar?: string;
 }
@@ -138,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logger.setContext({
         userId: user.id,
         email: user.email,
+        role: user.role,
         accountType: user.accountType,
       });
     } else {
@@ -273,19 +280,21 @@ export function useAuth() {
 }
 
 function mapRoleToAccountType(role?: string): AccountType {
-  switch (role) {
-    case "PLAYER":
-      return "player";
-    case "AGENT":
-      return "agent";
+  const normalizedRole = normalizeRole(role);
+
+  switch (normalizedRole) {
+    case "SUPER_ADMIN":
+    case "ADMIN":
     case "CLUB_CONTACT":
       return "club";
+    case "AGENT":
+      return "agent";
     default:
       return "player";
   }
 }
 
-function mapAccountTypeToRole(accountType: AccountType): string {
+function mapAccountTypeToRole(accountType: AccountType): UserRole {
   switch (accountType) {
     case "player":
       return "PLAYER";
@@ -294,8 +303,15 @@ function mapAccountTypeToRole(accountType: AccountType): string {
     case "club":
       return "CLUB_CONTACT";
     default:
-      return "PUBLIC";
+      return DEFAULT_ROLE;
   }
+}
+
+function normalizeRole(role?: string | null): UserRole {
+  const normalized = String(role ?? "").trim().toUpperCase();
+  return USER_ROLES.includes(normalized as UserRole)
+    ? (normalized as UserRole)
+    : DEFAULT_ROLE;
 }
 
 function splitFullName(fullName: string) {
@@ -306,11 +322,14 @@ function splitFullName(fullName: string) {
 }
 
 function transformBackendUser(user: any): User {
+  const role = normalizeRole(user?.role);
+
   return {
     id: user.id,
     email: user.email,
+    role,
     fullName: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-    accountType: mapRoleToAccountType(user.role),
+    accountType: mapRoleToAccountType(role),
     avatar: user.avatar,
   };
 }
@@ -342,11 +361,38 @@ function clearAuthStorage() {
 function safeParseUser(userStr: string | null): User | null {
   if (!userStr) return null;
   try {
-    return JSON.parse(userStr);
+    const parsed = JSON.parse(userStr);
+    return normalizeStoredUser(parsed);
   } catch (error) {
     console.warn("Failed to parse cached user", error);
     return null;
   }
+}
+
+function normalizeStoredUser(value: unknown): User | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const raw = value as Record<string, any>;
+  const role = normalizeRole(raw.role as string | undefined);
+  const fullName =
+    typeof raw.fullName === "string" && raw.fullName.trim().length > 0
+      ? raw.fullName.trim()
+      : `${raw.firstName ?? ""} ${raw.lastName ?? ""}`.trim() || "Utilisateur";
+
+  if (!raw.id || !raw.email) {
+    return null;
+  }
+
+  return {
+    id: String(raw.id),
+    email: String(raw.email).trim().toLowerCase(),
+    role,
+    fullName,
+    accountType: mapRoleToAccountType(role),
+    avatar: typeof raw.avatar === "string" ? raw.avatar : undefined,
+  };
 }
 
 function delay(ms: number) {

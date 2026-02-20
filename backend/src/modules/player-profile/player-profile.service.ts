@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import {
   ProfileContentStatus,
@@ -13,6 +14,7 @@ import {
 import { randomUUID } from 'crypto';
 import { CacheManagerService } from '../../common/interceptors/cache.interceptor';
 import { PrismaService } from '../prisma/prisma.service';
+import { isCategoryARole } from '../../common/roles/role.constants';
 import {
   BulkUpsertPlayerProfileDto,
   CreateAchievementEntryDto,
@@ -71,7 +73,7 @@ export class PlayerProfileService {
   ) {}
 
   private isAdmin(role?: string): boolean {
-    return role === 'ADMIN' || role === 'SUPER_ADMIN';
+    return role ? isCategoryARole(role as UserRole) : false;
   }
 
   private assertIncludeUnpublishedPermission(role?: string, includeUnpublished?: boolean) {

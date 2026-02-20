@@ -150,6 +150,7 @@ describe('MatchesService', () => {
         clubs_matches_homeClubIdToclubs: { name: 'PSG' },
         clubs_matches_awayClubIdToclubs: { name: 'OM' },
         users_matches_scoutIdTousers: null,
+        mobileStatus: 'PLANNED',
         homeClub: { name: 'PSG' },
         awayClub: { name: 'OM' },
         scout: null,
@@ -160,6 +161,7 @@ describe('MatchesService', () => {
         clubs_matches_homeClubIdToclubs: { name: 'Lyon' },
         clubs_matches_awayClubIdToclubs: { name: 'PSG' },
         users_matches_scoutIdTousers: null,
+        mobileStatus: 'PLANNED',
         homeClub: { name: 'Lyon' },
         awayClub: { name: 'PSG' },
         scout: null,
@@ -244,6 +246,192 @@ describe('MatchesService', () => {
     });
   });
 
+  describe('findUserAssignments', () => {
+    const mockAssignedMatches = [
+      {
+        id: 'match-1',
+        scheduledAt: new Date('2026-06-13T12:00:00Z'),
+        clubs_matches_homeClubIdToclubs: {
+          id: 'club-home-1',
+          name: 'FC Home',
+          shortName: 'FH',
+          logo: null,
+        },
+        clubs_matches_awayClubIdToclubs: {
+          id: 'club-away-1',
+          name: 'FC Away',
+          shortName: 'FA',
+          logo: null,
+        },
+        users_matches_scoutIdTousers: {
+          id: 'legacy-scout',
+          firstName: 'Legacy',
+          lastName: 'Scout',
+        },
+        match_assignments: [
+          {
+            id: 'assignment-1',
+            scoutId: 'scout-1',
+            status: 'IN_PROGRESS',
+            role: 'SCOUT',
+            reportSubmitted: true,
+            users_match_assignments_scoutIdTousers: {
+              id: 'scout-1',
+              firstName: 'Jane',
+              lastName: 'Doe',
+              avatar: 'avatar.jpg',
+              role: 'SCOUT',
+            },
+            users_match_assignments_assignedByIdTousers: {
+              id: 'admin-1',
+              firstName: 'Admin',
+              lastName: 'Lead',
+              role: 'ADMIN',
+            },
+          },
+        ],
+        _count: { scouting_reports: 3 },
+      },
+    ];
+
+    const expectedAssignments = [
+      {
+        id: 'match-1',
+        scheduledAt: new Date('2026-06-13T12:00:00Z'),
+        clubs_matches_homeClubIdToclubs: {
+          id: 'club-home-1',
+          name: 'FC Home',
+          shortName: 'FH',
+          logo: null,
+        },
+        clubs_matches_awayClubIdToclubs: {
+          id: 'club-away-1',
+          name: 'FC Away',
+          shortName: 'FA',
+          logo: null,
+        },
+        users_matches_scoutIdTousers: {
+          id: 'legacy-scout',
+          firstName: 'Legacy',
+          lastName: 'Scout',
+        },
+        match_assignments: [
+          {
+            id: 'assignment-1',
+            scoutId: 'scout-1',
+            status: 'IN_PROGRESS',
+            role: 'SCOUT',
+            reportSubmitted: true,
+            users_match_assignments_scoutIdTousers: {
+              id: 'scout-1',
+              firstName: 'Jane',
+              lastName: 'Doe',
+              avatar: 'avatar.jpg',
+              role: 'SCOUT',
+            },
+            users_match_assignments_assignedByIdTousers: {
+              id: 'admin-1',
+              firstName: 'Admin',
+              lastName: 'Lead',
+              role: 'ADMIN',
+            },
+          },
+        ],
+        _count: { scouting_reports: 3 },
+      },
+    ];
+
+    it('should return assignments for user with transformed assignment payload', async () => {
+      mockPrismaService.matches.findMany.mockResolvedValue(mockAssignedMatches);
+      mockPrismaService.matches.count.mockResolvedValue(1);
+
+      const result = await service.findUserAssignments('legacy-scout', {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { scoutId: 'legacy-scout' },
+              { match_assignments: { some: { scoutId: 'legacy-scout' } } },
+            ],
+          }),
+          skip: 0,
+          take: 20,
+          include: expect.objectContaining({
+            match_assignments: expect.any(Object),
+          }),
+        }),
+      );
+
+      expect(result).toEqual({
+        data: expectedAssignments.map((match) => ({
+          ...match,
+          mobileStatus: 'REPORT_SUBMITTED',
+          homeClub: match.clubs_matches_homeClubIdToclubs,
+          awayClub: match.clubs_matches_awayClubIdToclubs,
+          scout: match.users_matches_scoutIdTousers,
+          assignments: [
+            {
+              id: 'assignment-1',
+              scoutId: 'scout-1',
+              status: 'IN_PROGRESS',
+              mobileStatus: 'REPORT_SUBMITTED',
+              role: 'SCOUT',
+              reportSubmitted: true,
+              scout: {
+                firstName: 'Jane',
+                lastName: 'Doe',
+                avatar: 'avatar.jpg',
+                role: 'SCOUT',
+              },
+              assignedBy: {
+                id: 'admin-1',
+                firstName: 'Admin',
+                lastName: 'Lead',
+                role: 'ADMIN',
+              },
+            },
+          ],
+          _count: {
+            scoutingReports: 3,
+          },
+        })),
+        meta: {
+          total: 1,
+          page: 1,
+          limit: 20,
+          totalPages: 1,
+        },
+      });
+    });
+
+    it('should pass date filters to assignment query', async () => {
+      mockPrismaService.matches.findMany.mockResolvedValue(mockAssignedMatches);
+      mockPrismaService.matches.count.mockResolvedValue(1);
+
+      await service.findUserAssignments('legacy-scout', {
+        from: '2026-06-01',
+        to: '2026-06-30',
+        page: 1,
+        limit: 20,
+      });
+
+      expect(prismaService.matches.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            scheduledAt: {
+              gte: new Date('2026-06-01'),
+              lte: new Date('2026-06-30'),
+            },
+          }),
+        }),
+      );
+    });
+  });
+
   describe('findOne', () => {
     const mockMatch = {
       id: 'match-123',
@@ -262,6 +450,7 @@ describe('MatchesService', () => {
       users_matches_scoutIdTousers: { firstName: 'John', lastName: 'Doe' },
       scouting_reports: [],
       media: [],
+      mobileStatus: 'PLANNED',
       homeClub: { name: 'PSG' },
       awayClub: { name: 'OM' },
       scout: { firstName: 'John', lastName: 'Doe' },
@@ -508,7 +697,15 @@ describe('MatchesService', () => {
         include: expect.any(Object),
         orderBy: { scheduledAt: 'asc' },
       });
-      expect(result).toEqual(mockUpcomingMatches);
+      expect(result).toEqual(
+        mockUpcomingMatches.map((match) => ({
+          ...match,
+          mobileStatus: 'PLANNED',
+          homeClub: undefined,
+          awayClub: undefined,
+          scout: undefined,
+        })),
+      );
     });
 
     it('should use default limit of 10', async () => {
@@ -540,6 +737,7 @@ describe('MatchesService', () => {
         status: MatchStatus.LIVE,
         clubs_matches_homeClubIdToclubs: { name: 'PSG' },
         clubs_matches_awayClubIdToclubs: { name: 'OM' },
+        mobileStatus: 'EN_ROUTE',
         homeClub: { name: 'PSG' },
         awayClub: { name: 'OM' },
       },

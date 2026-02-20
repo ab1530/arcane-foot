@@ -7,6 +7,7 @@ describe('AnalyticsController', () => {
   let analyticsService: AnalyticsService;
 
   const mockAnalyticsService = {
+    getUserDashboard: jest.fn(),
     getPlatformOverview: jest.fn(),
     getPlayersAnalytics: jest.fn(),
     getClubsAnalytics: jest.fn(),
@@ -38,6 +39,33 @@ describe('AnalyticsController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('getUserDashboard', () => {
+    it('should return user dashboard stats for current user', async () => {
+      const mockUser = {
+        id: 'user-123',
+        role: 'SCOUT',
+      };
+      const mockDashboard = {
+        userId: 'user-123',
+        role: 'SCOUT',
+        totalReports: 14,
+        reportsLast7Days: 4,
+        reportsLast30Days: 8,
+        playersScouted: 5,
+        matchesAttended: 12,
+        openDemandRequests: 9,
+      };
+
+      mockAnalyticsService.getUserDashboard.mockResolvedValue(mockDashboard);
+
+      const result = await controller.getUserDashboard({ user: mockUser } as any);
+
+      expect(result).toEqual(mockDashboard);
+      expect(mockAnalyticsService.getUserDashboard).toHaveBeenCalledTimes(1);
+      expect(mockAnalyticsService.getUserDashboard).toHaveBeenCalledWith('user-123', 'SCOUT');
+    });
   });
 
   describe('getPlatformOverview', () => {

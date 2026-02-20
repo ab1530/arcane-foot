@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { scanForActionTracerDevices, connectToActionTracer } from '../../services/ble/actionTracerBle';
 import type { AppStackParamList } from '../../types/navigation';
 import { theme } from '../../design/theme';
@@ -10,12 +11,17 @@ import { showError, showSuccess } from '../../services/toast';
 import { logBridge } from '../../logging/expoLogBridge';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
+type Route = RouteProp<AppStackParamList, 'ConnectGpsTracker'>;
 
 export const ConnectGpsTrackerScreen: React.FC = () => {
   const navigation = useNavigation<Navigation>();
+  const route = useRoute<Route>();
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
   const [devices, setDevices] = useState<{ id: string; name?: string }[]>([]);
+  const prefillLabMode = route.params?.prefillLabMode ?? false;
+  const prefillLabPresetMinutes = route.params?.prefillLabPresetMinutes ?? 90;
+  const preselectedSessionType = route.params?.preselectedSessionType;
 
   const handleScan = async () => {
     try {
@@ -38,7 +44,13 @@ export const ConnectGpsTrackerScreen: React.FC = () => {
       await connectToActionTracer(deviceId);
       logBridge.info(`[GPS][ACTION_TRACER] connect UI success ${deviceId}`, 'DATA');
       showSuccess('GPS connecté');
-      navigation.navigate('ImportGpsSession', { deviceId, deviceName });
+      navigation.navigate('ImportGpsSession', {
+        deviceId,
+        deviceName,
+        initialMode: prefillLabMode ? 'lab' : 'device',
+        initialLabPresetMinutes: prefillLabPresetMinutes,
+        preselectedSessionType,
+      });
     } catch (err: any) {
       logBridge.error(`[GPS][ACTION_TRACER] connect UI error ${err?.message ?? err}`, 'DATA');
       showError(err?.message ?? 'Connexion impossible');

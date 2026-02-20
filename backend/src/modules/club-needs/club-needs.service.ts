@@ -22,6 +22,16 @@ type ClubNeedRequestRow = {
   updatedAt: Date;
 };
 
+type ClubNeedLeagueFilter = 'LIGUE_1' | 'BUNDESLIGA' | 'SERIE_A' | 'LALIGA';
+type ClubNeedProgressFilter = 'ACTIVE' | 'PARTIAL' | 'COMPLETED';
+
+const LEAGUE_KEYWORDS: Record<ClubNeedLeagueFilter, string[]> = {
+  LIGUE_1: ['ligue 1', 'france'],
+  BUNDESLIGA: ['bundesliga', 'allemagne', 'germany'],
+  SERIE_A: ['serie a', 'italie', 'italy'],
+  LALIGA: ['laliga', 'la liga', 'espagne', 'spain'],
+};
+
 @Injectable()
 export class ClubNeedsService {
   constructor(private prisma: PrismaService) {}
@@ -154,6 +164,132 @@ export class ClubNeedsService {
     return { gte: start, lt: end };
   }
 
+  private inferLeagueFromCountry(country?: string | null): ClubNeedLeagueFilter | null {
+    const normalized = String(country ?? '').trim().toLowerCase();
+    if (!normalized) return null;
+
+    if (normalized.includes('france')) return 'LIGUE_1';
+    if (normalized.includes('germany') || normalized.includes('allemagne')) return 'BUNDESLIGA';
+    if (normalized.includes('italy') || normalized.includes('italie')) return 'SERIE_A';
+    if (normalized.includes('spain') || normalized.includes('espagne')) return 'LALIGA';
+    return null;
+  }
+
+  private inferLeagueFromText(value: string): ClubNeedLeagueFilter | null {
+    const source = value.trim().toLowerCase();
+    if (!source) return null;
+
+    const matched = (Object.entries(LEAGUE_KEYWORDS) as Array<[ClubNeedLeagueFilter, string[]]>)
+      .find(([, keywords]) => keywords.some((keyword) => source.includes(keyword)));
+    return matched ? matched[0] : null;
+  }
+
+  private buildCoverageSummary(
+    requests: any[],
+    sharesCount: number,
+  ) {
+    const clubsTotal = requests.reduce((acc, request) => acc + Number(request.linesTotal ?? 0), 0);
+    const clubsCovered = requests.reduce((acc, request) => acc + Number(request.linesCompleted ?? 0), 0);
+    const completedCount = requests.filter((request) => request.requestProgress === 'COMPLETED').length;
+
+    return {
+      clubsCovered,
+      clubsTotal,
+      sharesCount,
+      completedCount,
+    };
+  }
+
+  private async countSharesForRequests(requestIds: string[]): Promise<number> {
+    if (!Array.isArray(requestIds) || requestIds.length === 0) {
+      return 0;
+    }
+
+    try {
+      const total = await this.prisma.passport_share_sets.count({
+        where: {
+          sourceRequestId: {
+            in: requestIds,
+          },
+          revokedAt: null,
+        },
+      });
+      return Number(total ?? 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  private async buildRequestLeagueHints(
+    requests: ClubNeedRequestRow[],
+  ): Promise<Map<string, ClubNeedLeagueFilter | null>> {
+    const hints = new Map<string, ClubNeedLeagueFilter | null>();
+    if (!Array.isArray(requests) || requests.length === 0) {
+      return hints;
+    }
+
+    const clubNames = new Set<string>();
+
+    for (const request of requests) {
+      const parsed = this.normalizeParsedLines(request.parsed);
+      for (const line of parsed) {
+        const clubName = String(line.clubName ?? '').trim();
+        if (clubName) {
+          clubNames.add(clubName);
+        }
+      }
+    }
+
+    let countryByClubName = new Map<string, string | null>();
+    if (clubNames.size > 0) {
+      try {
+        const clubs = await this.prisma.clubs.findMany({
+          where: {
+            name: {
+              in: Array.from(clubNames),
+            },
+          },
+          select: {
+            name: true,
+            country: true,
+          },
+        });
+        countryByClubName = new Map(
+          clubs.map((club) => [String(club.name).trim().toLowerCase(), club.country ?? null]),
+        );
+      } catch {
+        countryByClubName = new Map<string, string | null>();
+      }
+    }
+
+    for (const request of requests) {
+      const parsed = this.normalizeParsedLines(request.parsed);
+      const leagues = new Set<ClubNeedLeagueFilter>();
+
+      const rawLeague = this.inferLeagueFromText(request.rawText ?? '');
+      if (rawLeague) {
+        leagues.add(rawLeague);
+      }
+
+      for (const line of parsed) {
+        const leagueFromClubName = this.inferLeagueFromText(line.clubName ?? '');
+        if (leagueFromClubName) {
+          leagues.add(leagueFromClubName);
+        }
+
+        const country = countryByClubName.get(String(line.clubName ?? '').trim().toLowerCase());
+        const leagueFromCountry = this.inferLeagueFromCountry(country);
+        if (leagueFromCountry) {
+          leagues.add(leagueFromCountry);
+        }
+      }
+
+      hints.set(request.id, leagues.values().next().value ?? null);
+    }
+
+    return hints;
+  }
+
   async createRequest(createdById: string, rawText: string, topN: number) {
     const parsed = parseClubNeedsRawText(rawText);
     const matches = await this.computeMatches(parsed, topN);
@@ -183,39 +319,103 @@ export class ClubNeedsService {
     return { request: this.enrichRequestRow(request as ClubNeedRequestRow), matches };
   }
 
-  async listRequests(params: { page: number; limit: number; month?: string }) {
-    const { page, limit, month } = params;
+  async listRequests(params: {
+    page: number;
+    limit: number;
+    month?: string;
+    league?: ClubNeedLeagueFilter;
+    status?: ClubNeedProgressFilter;
+  }) {
+    const { page, limit, month, league, status } = params;
     const skip = (page - 1) * limit;
     const createdAt = this.buildMonthWhere(month);
     const where = createdAt ? { createdAt } : undefined;
+    const hasUiFilters = Boolean(league || status);
 
-    const [items, total] = await Promise.all([
-      this.prisma.club_need_requests.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          createdById: true,
-          rawText: true,
-          parsed: true,
-          lineStates: true,
-          createdAt: true,
-          updatedAt: true,
+    if (!hasUiFilters) {
+      const [items, total] = await Promise.all([
+        this.prisma.club_need_requests.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            createdById: true,
+            rawText: true,
+            parsed: true,
+            lineStates: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.club_need_requests.count({ where }),
+      ]);
+
+      const normalized = items.map((item) =>
+        this.enrichRequestRow({ ...(item as any), matchesSnapshot: null }),
+      );
+      const sharesCount = await this.countSharesForRequests(normalized.map((item) => item.id));
+
+      return {
+        data: normalized,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
         },
-      }),
-      this.prisma.club_need_requests.count({ where }),
-    ]);
+        coverage: this.buildCoverageSummary(normalized, sharesCount),
+      };
+    }
+
+    const allItems = await this.prisma.club_need_requests.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        createdById: true,
+        rawText: true,
+        parsed: true,
+        lineStates: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    const requestRows = allItems.map(
+      (item) => ({ ...(item as any), matchesSnapshot: null }) as ClubNeedRequestRow,
+    );
+    const leagueHints = await this.buildRequestLeagueHints(requestRows);
+
+    const normalized = requestRows.map((row) => this.enrichRequestRow(row));
+    const filtered = normalized.filter((request) => {
+      if (status && request.requestProgress !== status) {
+        return false;
+      }
+
+      if (league) {
+        const requestLeague = leagueHints.get(request.id) ?? null;
+        if (requestLeague !== league) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    const paginated = filtered.slice(skip, skip + limit);
+    const sharesCount = await this.countSharesForRequests(paginated.map((item) => item.id));
 
     return {
-      data: items.map((item) => this.enrichRequestRow({ ...(item as any), matchesSnapshot: null })),
+      data: paginated,
       meta: {
-        total,
+        total: filtered.length,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
       },
+      coverage: this.buildCoverageSummary(paginated, sharesCount),
     };
   }
 

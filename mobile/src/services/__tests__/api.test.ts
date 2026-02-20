@@ -4,6 +4,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { STORAGE_KEYS } from '../../constants/config';
 
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: {
+    expoConfig: null,
+    manifest2: null,
+    manifest: null,
+  },
+}));
+
 jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: '/tmp',
   readAsStringAsync: jest.fn(),
@@ -192,6 +201,418 @@ describe('ApiClient', () => {
       expect(result.items).toEqual(mockPlayers);
       expect(result.meta.total).toBe(2);
       expect(result.meta.totalPages).toBe(1);
+    });
+
+    it('should get player space dashboard', async () => {
+      const mockPayload = {
+        playerId: 'player-1',
+        player: {
+          id: 'player-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          fullName: 'John Doe',
+          position: 'Attaquant',
+          nationality: 'FR',
+        },
+        snapshot: {
+          matchesPlayed: 4,
+          matchesNotPlayed: 1,
+          goals: 2,
+          assists: 1,
+          minutesPlayed: 360,
+          isInjured: false,
+          injuryStatus: null,
+        },
+        performanceTrend: [],
+        upcomingCalendar: [],
+        health: { status: 'Connecté', lastDeviceSync: '2026-02-20T18:00:00.000Z', syncSource: 'Tracker' },
+        weekly: { latest: null, totalUpdates: 0 },
+        news: [],
+        generatedAt: '2026-02-20T18:00:00.000Z',
+      };
+
+      mock.onGet('/players/me/space').reply(200, mockPayload);
+
+      const result = await api.getMyPlayerSpace();
+
+      expect(result).toEqual(mockPayload);
+      expect(mock.history.get).toHaveLength(1);
+      expect(mock.history.get[0].url).toBe('/players/me/space');
+    });
+
+    it('should fallback to player profile when player space endpoint returns 404', async () => {
+      const fallbackPlayer = {
+        id: 'player-1',
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
+        position: 'Attaquant',
+        nationality: 'FR',
+        club: { id: 'club-1', name: 'FC Alpha' },
+        photoUrl: 'https://example.com/photo.jpg',
+        statsJson: {
+          matchesPlayed: 4,
+          matchesNotPlayed: 1,
+          goals: 2,
+          assists: 1,
+          minutesPlayed: 360,
+          isInjured: false,
+          injuryStatus: 'NORMAL',
+          lastWeeklyUpdateAt: '2026-02-20T18:00:00.000Z',
+        },
+      };
+
+      mock.onGet('/players/me/space').reply(404, { message: 'Cannot GET /api/players/me/space' });
+      mock.onGet('/players/space/me').reply(404, { message: 'Cannot GET /api/players/space/me' });
+      mock.onGet('/auth/me').reply(200, { playerId: 'player-1' });
+      mock.onGet('/players/player-1').reply(200, fallbackPlayer);
+
+      const result = await api.getMyPlayerSpace();
+
+      expect(result.playerId).toBe('player-1');
+      expect(result.player.position).toBe('Attaquant');
+      expect(result.snapshot.matchesPlayed).toBe(4);
+      expect(result.health.status).toBe('Disponible');
+      expect(mock.history.get.map((entry) => entry.url)).toEqual([
+        '/players/me/space',
+        '/players/space/me',
+        '/players/me/dashboard',
+        '/players/dashboard/me',
+        '/auth/me',
+        '/players/player-1',
+      ]);
+    });
+
+    it('should try compatibility dashboard aliases when standard space endpoints return 404', async () => {
+      const legacyPayload = {
+        playerId: 'player-1',
+        player: {
+          id: 'player-1',
+          firstName: 'Léo',
+          lastName: 'Mercier',
+          fullName: 'Léo Mercier',
+          position: 'Milieu',
+          nationality: 'FR',
+          clubId: null,
+          clubName: null,
+          photoUrl: null,
+        },
+        snapshot: {
+          matchesPlayed: 6,
+          matchesNotPlayed: 0,
+          goals: 2,
+          assists: 4,
+          minutesPlayed: 540,
+          isInjured: false,
+          injuryStatus: null,
+        },
+        performanceTrend: [],
+        upcomingCalendar: [],
+        health: {
+          status: 'Disponible',
+          lastDeviceSync: '2026-02-20T20:00:00.000Z',
+          syncSource: 'Tracker',
+        },
+        weekly: { latest: null, totalUpdates: 0 },
+        news: [],
+        generatedAt: '2026-02-20T20:00:00.000Z',
+      };
+
+      mock.onGet('/players/me/space').reply(404, { message: 'Cannot GET /api/players/me/space' });
+      mock.onGet('/players/space/me').reply(404, { message: 'Cannot GET /api/players/space/me' });
+      mock
+        .onGet('/players/me/dashboard')
+        .reply(200, legacyPayload);
+
+      const result = await api.getMyPlayerSpace('player-1');
+
+      expect(result.playerId).toBe('player-1');
+      expect(result.player.fullName).toBe('Léo Mercier');
+      expect(mock.history.get.map((entry) => entry.url)).toEqual([
+        '/players/me/space',
+        '/players/space/me',
+        '/players/me/dashboard',
+      ]);
+    });
+
+    it('should refresh player id from current user when hinted id is stale and space endpoints return 404', async () => {
+      const fallbackPlayer = {
+        id: 'player-2',
+        firstName: 'Mila',
+        lastName: 'K.',
+        fullName: 'Mila K.',
+        position: 'Milieu',
+        nationality: 'ES',
+        club: { id: 'club-2', name: 'FC Beta' },
+        photoUrl: 'https://example.com/mila.png',
+        statsJson: {
+          matchesPlayed: 2,
+          matchesNotPlayed: 0,
+          goals: 1,
+          assists: 3,
+          minutesPlayed: 220,
+          isInjured: false,
+          injuryStatus: null,
+        },
+      };
+
+      mock.onGet('/players/me/space').reply(404, { message: 'Cannot GET /api/players/me/space' });
+      mock.onGet('/players/space/me').reply(404, { message: 'Cannot GET /api/players/space/me' });
+      mock.onGet('/auth/me').reply(200, { playerId: 'player-2' });
+      mock.onGet('/players/player-2').reply(200, fallbackPlayer);
+
+      const result = await api.getMyPlayerSpace('player-1');
+
+      expect(result.playerId).toBe('player-2');
+      expect(result.player.fullName).toBe('Mila K.');
+      expect(mock.history.get.map((entry) => entry.url)).toEqual([
+        '/players/me/space',
+        '/players/space/me',
+        '/players/me/dashboard',
+        '/players/dashboard/me',
+        '/auth/me',
+        '/players/player-2',
+      ]);
+    });
+
+    it('should submit player weekly update', async () => {
+      const payload = {
+        minutesPlayed: 480,
+        goals: 1,
+        assists: 2,
+        matchesPlayed: 3,
+        matchesNotPlayed: 1,
+        isInjured: false,
+        healthStatus: 'NORMAL',
+      };
+      const mockResponse = {
+        playerId: 'player-1',
+        player: {
+          id: 'player-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          fullName: 'John Doe',
+          position: 'Attaquant',
+          nationality: 'FR',
+        },
+        snapshot: {
+          matchesPlayed: 3,
+          matchesNotPlayed: 1,
+          goals: 1,
+          assists: 2,
+          minutesPlayed: 480,
+          isInjured: false,
+          injuryStatus: 'NORMAL',
+        },
+        performanceTrend: [],
+        upcomingCalendar: [],
+        health: { status: 'Connecté', lastDeviceSync: null, syncSource: null },
+        weekly: {
+          latest: {
+            weekStartDate: '2026-02-15',
+            submittedAt: '2026-02-20T18:00:00.000Z',
+            updatedBy: 'player-1',
+            minutesPlayed: 480,
+            goals: 1,
+            assists: 2,
+            matchesPlayed: 3,
+            matchesNotPlayed: 1,
+            isInjured: false,
+            healthStatus: 'NORMAL',
+            remarks: null,
+          },
+          totalUpdates: 1,
+        },
+        news: [],
+        generatedAt: '2026-02-20T18:00:00.000Z',
+      };
+
+      mock.onPost('/players/me/space/weekly-update').reply(200, mockResponse);
+
+      const result = await api.submitMyPlayerWeeklyUpdate(payload as any);
+
+      expect(result).toEqual(mockResponse);
+      expect(JSON.parse(mock.history.post[0].data)).toMatchObject(payload);
+    });
+
+    it('should fallback weekly update to dashboard alias when primary endpoint returns 404', async () => {
+      const payload = {
+        minutesPlayed: 360,
+        goals: 0,
+        assists: 0,
+        matchesPlayed: 2,
+        matchesNotPlayed: 1,
+        isInjured: false,
+      };
+      const mockResponse = {
+        playerId: 'player-1',
+        player: {
+          id: 'player-1',
+          firstName: 'Nina',
+          lastName: 'Durand',
+          fullName: 'Nina Durand',
+          position: 'Ailier',
+          nationality: 'FR',
+        },
+        snapshot: {
+          matchesPlayed: 2,
+          matchesNotPlayed: 1,
+          goals: 0,
+          assists: 0,
+          minutesPlayed: 360,
+          isInjured: false,
+          injuryStatus: null,
+        },
+        performanceTrend: [],
+        upcomingCalendar: [],
+        health: { status: 'Disponible', lastDeviceSync: null, syncSource: null },
+        weekly: {
+          latest: {
+            weekStartDate: '2026-02-15',
+            submittedAt: '2026-02-20T20:00:00.000Z',
+            updatedBy: 'player-1',
+            minutesPlayed: 360,
+            goals: 0,
+            assists: 0,
+            matchesPlayed: 2,
+            matchesNotPlayed: 1,
+            isInjured: false,
+            healthStatus: 'NORMAL',
+            remarks: null,
+          },
+          totalUpdates: 1,
+        },
+        news: [],
+        generatedAt: '2026-02-20T20:00:00.000Z',
+      };
+
+      mock.onPost('/players/me/space/weekly-update').reply(404, { message: 'Cannot GET /api/players/me/space/weekly-update' });
+      mock.onPost('/players/space/me/weekly-update').reply(404, { message: 'Cannot GET /api/players/space/me/weekly-update' });
+      mock.onPost('/players/me/dashboard/weekly-update').reply(200, mockResponse);
+
+      const result = await api.submitMyPlayerWeeklyUpdate(payload as any);
+
+      expect(result).toEqual(mockResponse);
+      expect(JSON.parse(mock.history.post[0].data)).toMatchObject(payload);
+      expect(mock.history.post.map((entry) => entry.url)).toEqual([
+        '/players/me/space/weekly-update',
+        '/players/space/me/weekly-update',
+        '/players/me/dashboard/weekly-update',
+      ]);
+    });
+  });
+
+  describe('News API', () => {
+    it('should get news feed', async () => {
+      const mockResponse = {
+        data: [
+          {
+            id: 'news-1',
+            category: 'clubs',
+            title: 'Update club',
+            summary: 'Un point important',
+            source: 'Clubs',
+            details: 'Les dernières infos',
+            timestamp: '2026-02-20T10:00:00.000Z',
+            link: '/clubs/club-1',
+          },
+        ],
+        generatedAt: '2026-02-20T12:00:00.000Z',
+        meta: {
+          limit: 10,
+          total: 1,
+          categories: ['clubs', 'players', 'market', 'notifications'],
+          include: {
+            players: 0,
+            clubs: 1,
+            market: 0,
+            notifications: 0,
+          },
+        },
+      };
+
+      mock.onGet('/news/feed').reply(200, mockResponse);
+
+      const result = await api.getNewsFeed({
+        limit: 10,
+        categories: ['clubs', 'market'],
+      });
+
+      expect(result.data).toEqual(mockResponse.data);
+      expect(result.meta.categories).toEqual(['clubs', 'market']);
+      expect(result.meta.include.clubs).toBe(1);
+      expect(mock.history.get[0].url).toBe('/news/feed');
+      expect(mock.history.get[0].params).toMatchObject({
+        limit: 10,
+        categories: 'clubs,market',
+      });
+    });
+
+    it('should fallback to /news when /news/feed is unavailable', async () => {
+      const mockResponse = {
+        data: [
+          {
+            id: 'legacy-1',
+            category: 'market',
+            title: 'Legacy market item',
+            summary: 'Legacy summary',
+            source: 'Legacy',
+            details: 'Legacy details',
+            timestamp: '2026-02-20T12:00:00.000Z',
+            link: '/legacy/1',
+          },
+        ],
+        generatedAt: '2026-02-20T12:00:00.000Z',
+      };
+
+      mock.onGet('/news/feed').reply(404, { message: 'Not Found' });
+      mock.onGet('/news').reply(200, mockResponse);
+
+      const result = await api.getNewsFeed({
+        limit: 10,
+        categories: ['market'],
+      });
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe('legacy-1');
+      expect(mock.history.get.map((entry) => entry.url)).toEqual(['/news/feed', '/news']);
+      expect(mock.history.get[1].params).toMatchObject({
+        limit: 10,
+        categories: 'market',
+      });
+    });
+
+    it('should fallback to notifications when news endpoints are unavailable', async () => {
+      mock.onGet('/news/feed').reply(404, { message: 'Not Found' });
+      mock.onGet('/news').reply(404, { message: 'Not Found' });
+      mock.onGet('/notifications/me').reply(200, [
+        {
+          id: 'notif-1',
+          title: 'Alerte médicale',
+          body: 'Le suivi santé doit être complété',
+          type: 'HEALTH',
+          createdAt: '2026-02-20T12:00:00.000Z',
+        },
+      ]);
+
+      const result = await api.getNewsFeed({
+        limit: 10,
+        categories: ['notifications'],
+      });
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]).toMatchObject({
+        id: 'notifications-notif-1',
+        category: 'notifications',
+        title: 'Alerte médicale',
+        source: 'HEALTH',
+      });
+      expect(result.meta.include.notifications).toBe(1);
+      expect(mock.history.get.map((entry) => entry.url)).toEqual([
+        '/news/feed',
+        '/news',
+        '/notifications/me',
+      ]);
     });
   });
 
@@ -503,6 +924,20 @@ describe('ApiClient', () => {
       expect(mock.history.get[0].params).toEqual(params);
     });
 
+    it('should get my assigned matches with filters', async () => {
+      const params = {
+        status: 'ASSIGNED',
+        from: '2026-02-01',
+        to: '2026-02-28',
+      };
+
+      mock.onGet('/matches/my-assignments').reply(200, { data: [], meta: {} });
+
+      await api.getMyAssignedMatches(params);
+
+      expect(mock.history.get[0].params).toEqual(params);
+    });
+
     it('should get upcoming matches', async () => {
       const mockMatches = [
         { id: 'm1', date: '2024-12-01' },
@@ -529,6 +964,132 @@ describe('ApiClient', () => {
   });
 
   describe('Other Endpoints', () => {
+    it('should list agent requests', async () => {
+      const mockPayload = {
+        data: [
+          {
+            id: 'req-1',
+            title: 'Équipement chaussures',
+            category: 'EQUIPMENT',
+            status: 'CREATED',
+            priority: 'MEDIUM',
+            playerId: null,
+            dueAt: null,
+            details: 'Baskets',
+            content: {
+              equipment: 'Baskets',
+              medicalDetails: null,
+              preferredFoot: null,
+            },
+            createdAt: '2026-02-20T20:00:00.000Z',
+            updatedAt: '2026-02-20T20:00:00.000Z',
+            creator: { id: 'user-1', firstName: 'Ana', lastName: 'Test' },
+            assignee: null,
+          },
+        ],
+        meta: {
+          total: 1,
+          page: 1,
+          limit: 20,
+          totalPages: 1,
+        },
+      };
+
+      mock.onGet('/agent-requests').reply(200, mockPayload);
+
+      const result = await api.listAgentRequests();
+
+      expect(result.meta.total).toBe(1);
+      expect(result.data[0].id).toBe('req-1');
+    });
+
+    it('should create an agent request', async () => {
+      const payload = {
+        title: 'Nouvelle demande',
+        category: 'EQUIPMENT',
+      };
+      const created = {
+        id: 'req-2',
+        title: 'Nouvelle demande',
+        category: 'EQUIPMENT',
+        status: 'CREATED',
+        priority: 'MEDIUM',
+        playerId: null,
+        dueAt: null,
+        details: 'Baskets légères',
+        content: { equipment: 'Baskets légères', medicalDetails: null, preferredFoot: null },
+        createdAt: '2026-02-20T20:01:00.000Z',
+        updatedAt: '2026-02-20T20:01:00.000Z',
+        creator: { id: 'user-1', firstName: 'Ana', lastName: 'Test' },
+        assignee: null,
+      };
+
+      mock.onPost('/agent-requests').reply(201, created);
+
+      const result = await api.createAgentRequest(payload as any);
+
+      expect(result.id).toBe('req-2');
+      expect(mock.history.post[0].url).toBe('/agent-requests');
+      expect(JSON.parse(mock.history.post[0].data)).toMatchObject(payload);
+    });
+
+    it('should update an agent request status', async () => {
+      const updated = {
+        id: 'req-1',
+        title: 'Équipement chaussures',
+        category: 'EQUIPMENT',
+        status: 'IN_PROGRESS',
+        priority: 'MEDIUM',
+        playerId: null,
+        dueAt: null,
+        details: 'Baskets',
+        content: {
+          equipment: 'Baskets',
+          medicalDetails: null,
+          preferredFoot: null,
+        },
+        createdAt: '2026-02-20T20:00:00.000Z',
+        updatedAt: '2026-02-20T20:03:00.000Z',
+        creator: { id: 'user-1', firstName: 'Ana', lastName: 'Test' },
+        assignee: null,
+      };
+
+      mock.onPatch('/agent-requests/req-1/status').reply(200, updated);
+
+      const result = await api.updateAgentRequestStatus('req-1', {
+        status: 'IN_PROGRESS',
+      });
+
+      expect(result.status).toBe('IN_PROGRESS');
+      expect(mock.history.patch[0].url).toBe('/agent-requests/req-1/status');
+    });
+
+    it('should get and update market profile rules', async () => {
+      const rulesPayload = {
+        rules: [
+          {
+            id: 'italy-forward',
+            label: 'Marché italien',
+            market: 'Italie',
+            positions: ['ATTAQUANT'],
+            minHeightCm: 185,
+            preferredFoot: 'RIGHT',
+            minEndurance: 78,
+            isActive: true,
+          },
+        ],
+      };
+
+      mock.onGet('/agent-requests/market-rules').reply(200, rulesPayload);
+
+      const rules = await api.getMarketProfileRules();
+      expect(rules.rules).toHaveLength(1);
+
+      mock.onPost('/agent-requests/market-rules').reply(200, rulesPayload);
+      const updatedRules = await api.updateMarketProfileRules(rulesPayload.rules);
+      expect(updatedRules.rules[0].market).toBe('Italie');
+    });
+
     it('should get market/club requests', async () => {
       const mockRequests = {
         data: [{ id: 'req1', status: 'PENDING' }],
@@ -619,11 +1180,37 @@ describe('ApiClient', () => {
         totalReports: 320,
       };
 
-      mock.onGet('/analytics/overview').reply(200, mockStats);
+      mock.onGet('/analytics/dashboard').reply(200, mockStats);
 
       const result = await api.getDashboardStats();
 
       expect(result).toEqual(mockStats);
+    });
+
+    it('should get mobile home dashboard aggregate', async () => {
+      const mockPayload = {
+        scope: 'AGENT',
+        cards: [],
+        quickActions: [],
+        pending: {
+          agentRequests: 2,
+          clubRequests: 4,
+          reportsToReview: 1,
+        },
+        meta: {
+          totalPlayers: 120,
+          totalScouts: 14,
+        },
+        generatedAt: '2026-02-20T20:00:00.000Z',
+      };
+
+      mock.onGet('/dashboard/mobile-home').reply(200, mockPayload);
+
+      const result = await api.getDashboardMobileHome({ scope: 'AGENT' });
+
+      expect(result).toEqual(mockPayload);
+      expect(mock.history.get[mock.history.get.length - 1].url).toBe('/dashboard/mobile-home');
+      expect(mock.history.get[mock.history.get.length - 1].params).toEqual({ scope: 'AGENT' });
     });
   });
 

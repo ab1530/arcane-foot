@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor, fireEvent, act } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { DashboardScreen } from '../DashboardScreen';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
@@ -26,11 +26,15 @@ jest.mock('../../../contexts/LocalizationContext', () => {
 jest.mock('../../../services/api', () => ({
   __esModule: true,
   default: {
+    getDashboardMobileHome: jest.fn(),
     getDashboardStats: jest.fn(),
-    getPlayers: jest.fn().mockResolvedValue({ items: [], data: [] }),
-    getReports: jest.fn().mockResolvedValue({ items: [], data: [] }),
-    getPlayer: jest.fn().mockResolvedValue(null),
-    getHardwareSessions: jest.fn().mockResolvedValue([]),
+    getPlayers: jest.fn(),
+    getReports: jest.fn(),
+    getPlayer: jest.fn(),
+    getHardwareSessions: jest.fn(),
+    getMarket: jest.fn(),
+    getUsers: jest.fn(),
+    listClubNeedRequests: jest.fn(),
   },
 }));
 
@@ -49,144 +53,102 @@ jest.mock('../../../services/wearables/qcBand', () => ({
     typeof distanceM === 'number' ? (distanceM / 1000).toFixed(1) : '--',
 }));
 
-const mockNavigation = {
-  navigate: jest.fn(),
-};
-
 describe('DashboardScreen', () => {
   const mockUseAuth = useAuth as jest.Mock;
+  const mockNavigation = { navigate: jest.fn() };
   const mockApi = api as unknown as {
+    getDashboardMobileHome: jest.Mock;
     getDashboardStats: jest.Mock;
     getPlayers: jest.Mock;
     getReports: jest.Mock;
     getPlayer: jest.Mock;
     getHardwareSessions: jest.Mock;
+    getMarket: jest.Mock;
+    getUsers: jest.Mock;
+    listClubNeedRequests: jest.Mock;
   };
-  const dashboardCopy = fr.dashboard;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockNavigation.navigate.mockReset();
     mockUseAuth.mockReturnValue({
       user: { firstName: 'Abdallah', role: 'SCOUT' },
       activeRole: null,
     });
-    mockNavigation.navigate.mockReset();
-    mockApi.getPlayers.mockResolvedValue({ items: [], data: [] });
-    mockApi.getReports.mockResolvedValue({ items: [], data: [] });
-    mockApi.getPlayer.mockResolvedValue(null);
-    mockApi.getHardwareSessions.mockResolvedValue([]);
-  });
 
-  it('affiche le prénom de l’utilisateur et les stats récupérées', async () => {
     mockApi.getDashboardStats.mockResolvedValue({
       totalReports: 12,
       totalPlayers: 48,
       matchesAttended: 5,
+      openDemandRequests: 15,
       totalXP: 3600,
     });
+    mockApi.getDashboardMobileHome.mockResolvedValue(null);
+    mockApi.getPlayers.mockResolvedValue({ items: [], data: [] });
+    mockApi.getReports.mockResolvedValue({ items: [], data: [] });
+    mockApi.getMarket.mockResolvedValue({ meta: { total: 69 }, data: [] });
+    mockApi.getUsers.mockResolvedValue({ meta: { total: 4 }, data: [] });
+    mockApi.listClubNeedRequests.mockResolvedValue({ meta: { total: 2 }, data: [] });
+    mockApi.getPlayer.mockResolvedValue(null);
+    mockApi.getHardwareSessions.mockResolvedValue([]);
+  });
 
+  it('affiche la matrice scout (reports/players/calendar/agent requests)', async () => {
     const { getByText, getByTestId } = render(<DashboardScreen navigation={mockNavigation as any} />);
 
     await waitFor(() => {
       expect(getByText('Abdallah')).toBeTruthy();
       expect(getByTestId('stat-reports-value').props.children).toBe(12);
       expect(getByTestId('stat-players-value').props.children).toBe(48);
-      expect(getByTestId('stat-matches-value').props.children).toBe(5);
+      expect(getByTestId('stat-calendar-value').props.children).toBe(5);
+      expect(getByTestId('stat-agentRequests-value').props.children).toBe(15);
     });
   });
 
-  it('propose des actions rapides vers les écrans clés', async () => {
-    mockApi.getDashboardStats.mockResolvedValue({});
-    const { getByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
-
-    await waitFor(() => expect(mockApi.getDashboardStats).toHaveBeenCalled());
-
-    fireEvent.press(getByText(dashboardCopy.quickActions.items[0].label));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateReport');
-  });
-
-  it('rafraîchit les statistiques via pull-to-refresh', async () => {
-    mockApi.getDashboardStats.mockResolvedValueOnce({
-      totalReports: 5,
-      pendingReports: 1,
-      totalPlayers: 10,
-      upcomingMatches: 2,
+  it('affiche la matrice admin (calendar/transfermarkt/players/scouts)', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { firstName: 'Super', role: 'ADMIN' },
+      activeRole: 'ADMIN',
     });
-
-    const { getByTestId, getByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
-
-    await waitFor(() => {
-      expect(mockApi.getDashboardStats).toHaveBeenCalledTimes(1);
-      expect(getByText('5')).toBeTruthy();
+    mockApi.getDashboardStats.mockResolvedValue({
+      totalReports: 1,
+      totalPlayers: 3,
+      matchesAttended: 4,
+      openDemandRequests: 9,
+      totalXP: 100,
     });
-
-    mockApi.getDashboardStats.mockResolvedValueOnce({
-      totalReports: 9,
-      pendingReports: 4,
-      totalPlayers: 20,
-      upcomingMatches: 3,
-    });
-
-    const scrollView = getByTestId('dashboard-scroll');
-    await act(async () => {
-      await scrollView.props.refreshControl.props.onRefresh();
-    });
-
-    await waitFor(() => expect(mockApi.getDashboardStats).toHaveBeenCalledTimes(2));
-    await waitFor(() => {
-      const totalReportsValue = getByTestId('stat-reports-value');
-      expect(totalReportsValue.props.children).toBe(9);
-    });
-  });
-
-  it('log une erreur et conserve les valeurs par défaut si la récupération échoue', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    mockApi.getDashboardStats.mockRejectedValueOnce(new Error('Network down'));
 
     const { getByTestId } = render(<DashboardScreen navigation={mockNavigation as any} />);
 
-    await waitFor(() => expect(mockApi.getDashboardStats).toHaveBeenCalled());
-    expect(consoleSpy).toHaveBeenCalled();
-    const [message] = consoleSpy.mock.calls.at(-1) || [];
-    expect(message).toContain('Error fetching dashboard data');
-    expect(message).toContain('DashboardScreen');
-
-    const totalReportsValue = getByTestId('stat-reports-value');
-    expect(totalReportsValue.props.children).toBe(0);
-
-    consoleSpy.mockRestore();
+    await waitFor(() => {
+      expect(getByTestId('stat-calendar-value').props.children).toBe(4);
+      expect(getByTestId('stat-transfermarkt-value').props.children).toBe(69);
+      expect(getByTestId('stat-players-value').props.children).toBe(3);
+      expect(getByTestId('stat-scouts-value').props.children).toBe(4);
+    });
   });
 
-  it('navigue vers Players, Calendar et Kanban via les quick actions', async () => {
-    mockApi.getDashboardStats.mockResolvedValue({});
-    const { getByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
-
-    await waitFor(() => expect(mockApi.getDashboardStats).toHaveBeenCalled());
-
-    fireEvent.press(getByText(dashboardCopy.quickActions.items[1].label));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('GlobalSearch');
-
-    fireEvent.press(getByText(dashboardCopy.quickActions.items[2].label));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Analytics');
-
-    fireEvent.press(getByText(dashboardCopy.quickActions.items[3].label));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('AI');
-  });
-
-  it("affiche 'User' quand le prénom est absent", async () => {
-    mockUseAuth.mockReturnValue({ user: {}, activeRole: null });
-    mockApi.getDashboardStats.mockResolvedValue({});
-
+  it('navigue via les 3 quick actions visibles', async () => {
     const { getByText, queryByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
+    const quickActions = fr.dashboard.quickActions.items;
 
-    await waitFor(() => expect(getByText(dashboardCopy.hero.greeting)).toBeTruthy());
-    expect(queryByText('Abdallah')).toBeNull();
-    expect(getByText(dashboardCopy.hero.defaultName)).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText(quickActions[0].label)).toBeTruthy();
+      expect(getByText(quickActions[1].label)).toBeTruthy();
+      expect(getByText(quickActions[2].label)).toBeTruthy();
+      expect(queryByText(quickActions[3].label)).toBeNull();
+    });
 
-    mockUseAuth.mockReturnValue({ user: { firstName: 'Abdallah', role: 'SCOUT' }, activeRole: null });
+    fireEvent.press(getByText(quickActions[0].label));
+    fireEvent.press(getByText(quickActions[1].label));
+    fireEvent.press(getByText(quickActions[2].label));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateReport');
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('GlobalSearch');
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Analytics');
   });
 
-  it('affiche une vue dashboard dédiée au joueur', async () => {
+  it('affiche le dashboard joueur premium avec données hardware', async () => {
     mockUseAuth.mockReturnValue({
       user: { firstName: 'Erling', lastName: 'Haaland', role: 'PLAYER', playerId: 'player-1' },
       activeRole: 'PLAYER',
@@ -205,26 +167,12 @@ describe('DashboardScreen', () => {
       },
     ]);
 
-    const { getByText, queryByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
+    const { getByText, queryByTestId } = render(<DashboardScreen navigation={mockNavigation as any} />);
 
     await waitFor(() => expect(mockApi.getHardwareSessions).toHaveBeenCalledWith('player-1'));
     expect(getByText('Résumé du profil')).toBeTruthy();
     expect(getByText('Performance')).toBeTruthy();
     expect(getByText('Bracelet QC Band')).toBeTruthy();
-    expect(getByText("Séances d'entraînement")).toBeTruthy();
-    expect(queryByText(dashboardCopy.quickActions.items[0].label)).toBeNull();
-  });
-
-  it('n’explose pas pour un joueur sans playerId', async () => {
-    mockUseAuth.mockReturnValue({
-      user: { firstName: 'Test', role: 'PLAYER' },
-      activeRole: 'PLAYER',
-    });
-
-    const { getByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
-
-    await waitFor(() => expect(getByText("Séances d'entraînement")).toBeTruthy());
-    expect(getByText('Aucune session disponible')).toBeTruthy();
-    expect(mockApi.getHardwareSessions).not.toHaveBeenCalled();
+    expect(queryByTestId('stat-reports')).toBeNull();
   });
 });

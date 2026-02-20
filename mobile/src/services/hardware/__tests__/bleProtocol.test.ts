@@ -121,16 +121,22 @@ describe('bleProtocol - compressed GPS chunk parsing', () => {
     expect(first.points).toHaveLength(2); // initial + one delta
     expect(first.points[1].timeMsUtc).toBe(600); // 0 + jump(500) + 100
 
-    // second packet: continuing deltas
-    const packet2 = new Uint8Array([0x43, 0xff, 0x00]); // latDelta=-1 lonDelta=0
+    // second packet: continuing deltas via 0x44
+    const packet2 = new Uint8Array([0x44, 0xff, 0x00]); // latDelta=-1 lonDelta=0
     const second = parseCompressedGpsChunk(packet2, 0, first.state);
     expect(second.points).toHaveLength(1);
     expect(second.points[0].timeMsUtc).toBe(700);
+
+    // third packet: continuing deltas via 0x45
+    const packet3 = new Uint8Array([0x45, 0x01, 0x01]); // +1 +1
+    const third = parseCompressedGpsChunk(packet3, 0, second.state);
+    expect(third.points).toHaveLength(1);
+    expect(third.points[0].timeMsUtc).toBe(800);
   });
 });
 
 describe('bleProtocol - decodeCompressedGpsStream', () => {
-  it('aggregates multiple chunks and stops on 0x48', () => {
+  it('aggregates 0x43 + 0x44 + 0x45 and stops on 0x48', () => {
     const baseChunk = new Uint8Array([
       0x43,
       0x00,
@@ -140,10 +146,32 @@ describe('bleProtocol - decodeCompressedGpsStream', () => {
       0x01,
       0x01,
     ]);
-    const deltaChunk = new Uint8Array([0x43, 0x01, 0xff]); // delta pair only
+    const deltaChunk44 = new Uint8Array([0x44, 0x01, 0xff]);
+    const deltaChunk45 = new Uint8Array([0x45, 0x01, 0x01]);
     const endChunk = new Uint8Array([0x48]);
 
-    const { points } = decodeCompressedGpsStream([baseChunk, deltaChunk, endChunk], 0);
-    expect(points.length).toBe(3); // initial + first delta + second delta
+    const { points } = decodeCompressedGpsStream(
+      [baseChunk, deltaChunk44, deltaChunk45, endChunk],
+      0,
+    );
+    expect(points.length).toBe(4); // initial + first delta + second + third
+  });
+
+  it('ignores invalid continuation packets before header', () => {
+    const orphanContinuation = new Uint8Array([0x44, 0x01, 0x01]);
+    const header = new Uint8Array([
+      0x43,
+      0x00,
+      0x00,
+      ...toBytesLE(6_000_000, 4),
+      ...toBytesLE(12_000_000, 4),
+    ]);
+    const endChunk = new Uint8Array([0x48]);
+
+    const { points } = decodeCompressedGpsStream(
+      [orphanContinuation, header, endChunk],
+      0,
+    );
+    expect(points.length).toBe(1);
   });
 });

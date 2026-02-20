@@ -1,6 +1,6 @@
 import { DeviceFile, GpsPoint } from './bleProtocol';
 import { mapDeviceFileToHardwareSessionDto } from './sessionMapping';
-import { CreateHardwareSessionPayload } from '../api';
+import type { CreateHardwareSessionPayload } from '../../types/hardware';
 
 export interface SimulationConfig {
   minDistanceKm?: number;

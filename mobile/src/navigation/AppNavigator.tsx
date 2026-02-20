@@ -44,6 +44,7 @@ import MarketplaceScreen from '../screens/marketplace/MarketplaceScreen';
 import ScoutDetailScreen from '../screens/marketplace/ScoutDetailScreen';
 import { PlayersScreen } from '../screens/players/PlayersScreen';
 import ScoutQuickImportScreen from '../screens/players/ScoutQuickImportScreen';
+import AgentRequestsScreen from '../screens/agent/AgentRequestsScreen';
 import VoiceToReportScreen from '../screens/reports/VoiceToReportScreen';
 import GlobalSearchScreen from '../screens/search/GlobalSearchScreen';
 import LoggingTestScreen from '../screens/debug/LoggingTestScreen';
@@ -306,6 +307,11 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Marketplace"
         component={MarketplaceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AgentRequests"
+        component={AgentRequestsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

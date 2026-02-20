@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../modules/prisma/prisma.service';
+import { isCategoryARole } from '../roles/role.constants';
 
 @Injectable()
 export class OwnershipGuard implements CanActivate {
@@ -17,8 +18,8 @@ export class OwnershipGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Admin bypass
-    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+    // Admin bypass (Catégorie A)
+    if (isCategoryARole(user.role)) {
       return true;
     }
 

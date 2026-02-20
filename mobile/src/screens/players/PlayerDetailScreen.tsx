@@ -22,6 +22,7 @@ import { useLocalization } from '../../contexts/LocalizationContext';
 import api from '../../services/api';
 import { logger } from '../../utils/logger';
 import { trackRecentPlayer } from '../../services/recentPlayers';
+import { DEFAULT_ROLE, isCategoryARole, type UserRole } from '../../lib/roles';
 import type {
   PlayerProfileView,
   ProfileContentStatus,
@@ -289,11 +290,12 @@ const decodeFileName = (filename?: string | null) => {
 
 export const PlayerDetailScreen = ({ route, navigation }: any) => {
   const playerId = route.params?.playerId || route.params?.params?.playerId || route.params?.id;
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { language, dictionary } = useLocalization();
 
   const copy = (dictionary as any)?.players?.profileView;
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const effectiveRole = (activeRole ?? user?.role ?? DEFAULT_ROLE) as UserRole;
+  const isAdmin = isCategoryARole(effectiveRole);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1264,6 +1266,20 @@ export const PlayerDetailScreen = ({ route, navigation }: any) => {
               })()}
             </View>
           )}
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: spacing.md }]}
+            onPress={() =>
+              navigation.navigate('HardwareSessions', {
+                playerId,
+                playerName: profile.identity.fullName,
+              })
+            }
+          >
+            <Text style={styles.primaryBtnText}>
+              {txt(copy?.actions?.openHardwareSessions, 'Voir sessions GPS', 'View GPS sessions')}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View

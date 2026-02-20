@@ -970,6 +970,100 @@ describe('PlayersService', () => {
     });
   });
 
+  describe('player space', () => {
+    const mockPlayerBase = {
+      id: 'player-123',
+      userId: 'user-123',
+      position: 'Forward',
+      firstName: 'John',
+      lastName: 'Doe',
+      nationality: 'FR',
+      users: {
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+      clubs: {
+        id: 'club-123',
+        name: 'PSG',
+        logo: 'psg.png',
+      },
+      statsJson: {
+        weeklyUpdates: { invalid: true },
+        matchesPlayed: 5,
+      },
+    } as any;
+
+    const setupPlayerSpaceDependencies = () => {
+      prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.matches.findMany.mockResolvedValue([]);
+      prisma.hardwareSession.findFirst.mockResolvedValue(null);
+      prisma.player_news_entries.findMany.mockResolvedValue([]);
+    };
+
+    it('should return player space even with invalid weeklyUpdates shape', async () => {
+      prisma.players.findUnique.mockResolvedValue(mockPlayerBase);
+      setupPlayerSpaceDependencies();
+
+      const result = await service.getMyPlayerSpace('user-123');
+
+      expect(result.weekly.totalUpdates).toBe(0);
+      expect(result.playerId).toBe('player-123');
+      expect(result.player.fullName).toBe('John Doe');
+      expect(result.health.status).toBe('En attente de sync');
+    });
+
+    it('should save weekly update when previous weeklyUpdates is invalid', async () => {
+      prisma.players.findUnique
+        .mockResolvedValueOnce(mockPlayerBase)
+        .mockResolvedValue({
+          ...mockPlayerBase,
+          statsJson: {
+            ...mockPlayerBase.statsJson,
+            weeklyUpdates: [
+              {
+                weekStartDate: '2026-02-15',
+                submittedAt: '2026-02-20T09:00:00.000Z',
+                updatedBy: 'player-123',
+                minutesPlayed: 480,
+                goals: 1,
+                assists: 2,
+                matchesPlayed: 3,
+                matchesNotPlayed: 1,
+                isInjured: false,
+                healthStatus: 'NORMAL',
+                remarks: null,
+              },
+            ],
+          },
+        } as any);
+      setupPlayerSpaceDependencies();
+      prisma.players.update.mockResolvedValue({} as any);
+
+      await service.submitMyPlayerWeeklyUpdate('user-123', undefined, {
+        minutesPlayed: 480,
+        goals: 1,
+        assists: 2,
+        matchesPlayed: 3,
+        matchesNotPlayed: 1,
+        isInjured: false,
+      } as any);
+
+      const updatePayload = (prisma.players.update as jest.Mock).mock.calls[0][0];
+      expect(updatePayload.data.statsJson.weeklyUpdates).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            minutesPlayed: 480,
+            goals: 1,
+            assists: 2,
+            matchesPlayed: 3,
+            matchesNotPlayed: 1,
+            isInjured: false,
+          }),
+        ]),
+      );
+    });
+  });
+
   describe('findAll - additional branch coverage', () => {
     it('should handle only minHeight filter', async () => {
       prisma.players.findMany.mockResolvedValue([] as any);

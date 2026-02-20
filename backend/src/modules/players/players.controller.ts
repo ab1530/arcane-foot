@@ -24,6 +24,7 @@ import { UpdatePlayerDto } from './dto/update-player.dto';
 import { FilterPlayersDto } from './dto/filter-players.dto';
 import { RecordPlayerViewDto } from './dto/record-player-view.dto';
 import { ScoutQuickImportDto } from './dto/scout-quick-import.dto';
+import { SubmitPlayerWeeklyUpdateDto } from './dto/submit-player-weekly-update.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -77,6 +78,135 @@ export class PlayersController {
     const parsedLimit = limit ? parseInt(limit, 10) : 12;
     const safeLimit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 12;
     return this.playersService.getRecentViews(req.user.id, safeLimit);
+  }
+
+  @Get('me/space')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get space dashboard for connected player',
+    description: 'Returns snapshot, weekly trends, calendar and health/news data for the current player.',
+  })
+  @ApiResponse({ status: 200, description: 'Player space dashboard retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  getMyPlayerSpace(@Request() req) {
+    return this.playersService.getMyPlayerSpace(req.user.id, req.user.playerId);
+  }
+
+  @Get('space/me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Compatibility route for player space dashboard',
+    description: 'Backward-compatible alias for player space dashboard for connected player.',
+  })
+  @ApiResponse({ status: 200, description: 'Player space dashboard retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  getMyPlayerSpaceCompatibility(@Request() req) {
+    return this.playersService.getMyPlayerSpace(req.user.id, req.user.playerId);
+  }
+
+  @Get('me/dashboard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Compatibility alias for player space dashboard',
+    description:
+      'Additional route for legacy clients expecting a /me/dashboard path for player space.',
+  })
+  @ApiResponse({ status: 200, description: 'Player space dashboard retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  getMyPlayerDashboardAlias(@Request() req) {
+    return this.playersService.getMyPlayerSpace(req.user.id, req.user.playerId);
+  }
+
+  @Get('dashboard/me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Compatibility alias for player space dashboard',
+    description:
+      'Additional route for legacy clients expecting a /dashboard/me path for player space.',
+  })
+  @ApiResponse({ status: 200, description: 'Player space dashboard retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  getPlayerSpaceDashboardAliasReverse(@Request() req) {
+    return this.playersService.getMyPlayerSpace(req.user.id, req.user.playerId);
+  }
+
+  @Post('me/space/weekly-update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Submit weekly update for connected player',
+    description: 'Stores weekly match load, stats and health notes for the player view.',
+  })
+  @ApiResponse({ status: 200, description: 'Weekly update persisted' })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid payload' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  submitWeeklyUpdate(@Request() req, @Body() dto: SubmitPlayerWeeklyUpdateDto) {
+    return this.playersService.submitMyPlayerWeeklyUpdate(req.user.id, req.user.playerId, dto);
+  }
+
+  @Post('space/me/weekly-update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Compatibility route to submit weekly update',
+    description:
+      'Backward-compatible alias for weekly update submission for the current player profile.',
+  })
+  @ApiResponse({ status: 200, description: 'Weekly update persisted' })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid payload' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  submitWeeklyUpdateCompatibility(@Request() req, @Body() dto: SubmitPlayerWeeklyUpdateDto) {
+    return this.playersService.submitMyPlayerWeeklyUpdate(req.user.id, req.user.playerId, dto);
+  }
+
+  @Post('me/dashboard/weekly-update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Compatibility endpoint for weekly update',
+    description:
+      'Legacy alias to submit weekly updates for connected player via /me/dashboard/weekly-update.',
+  })
+  @ApiResponse({ status: 200, description: 'Weekly update persisted' })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid payload' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  submitWeeklyUpdateDashboardCompatibility(@Request() req, @Body() dto: SubmitPlayerWeeklyUpdateDto) {
+    return this.playersService.submitMyPlayerWeeklyUpdate(req.user.id, req.user.playerId, dto);
+  }
+
+  @Post('dashboard/me/weekly-update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PLAYER')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Compatibility endpoint for weekly update',
+    description:
+      'Legacy alias to submit weekly updates for connected player via /dashboard/me/weekly-update.',
+  })
+  @ApiResponse({ status: 200, description: 'Weekly update persisted' })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid payload' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
+  submitWeeklyUpdateReverseDashboardCompatibility(@Request() req, @Body() dto: SubmitPlayerWeeklyUpdateDto) {
+    return this.playersService.submitMyPlayerWeeklyUpdate(req.user.id, req.user.playerId, dto);
   }
 
   @Post('scout-import')

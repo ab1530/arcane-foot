@@ -9,6 +9,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaType, UserRole } from '@prisma/client';
 import { UploadMediaDto } from './dto/upload-media.dto';
+import { isCategoryARole } from '../../common/roles/role.constants';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -67,7 +68,7 @@ export class MediaService {
     if (user && playerId && type === MediaType.VIDEO) {
       const role = user?.role as UserRole | string | undefined;
       const userPlayerId = user?.playerId;
-      const isAdmin = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+      const isAdmin = role ? isCategoryARole(role as UserRole) : false;
       const isOwnerPlayer = role === UserRole.PLAYER && userPlayerId && userPlayerId === playerId;
 
       if (!isAdmin && !isOwnerPlayer) {
@@ -326,7 +327,7 @@ export class MediaService {
 
     if (user) {
       const role = user?.role as UserRole | string | undefined;
-      const isAdmin = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+      const isAdmin = role ? isCategoryARole(role as UserRole) : false;
       if (!isAdmin) {
         // Player can only delete their own player-linked media.
         if (

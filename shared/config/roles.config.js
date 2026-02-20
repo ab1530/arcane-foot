@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_ROLE = exports.rolePriority = exports.isPrivilegedRole = exports.ROLE_CONFIG = exports.USER_ROLES = void 0;
+exports.getRoleCategoryLabel = exports.isCategoryAOrBRole = exports.DEFAULT_ROLE = exports.rolePriority = exports.isCategoryBRole = exports.isCategoryARole = exports.ROLE_CATEGORY = exports.ROLE_DASHBOARD_ROUTE = exports.CATEGORY_B_ROLES = exports.CATEGORY_A_ROLES = exports.isPrivilegedRole = exports.ROLE_CONFIG = exports.USER_ROLES = void 0;
 exports.USER_ROLES = [
     'SUPER_ADMIN',
     'ADMIN',
@@ -11,6 +11,28 @@ exports.USER_ROLES = [
     'CLUB_CONTACT',
     'PUBLIC',
 ];
+exports.ROLE_CATEGORY = {
+    SUPER_ADMIN: 'A',
+    ADMIN: 'A',
+    AGENT: 'B',
+    SCOUT: 'OTHER',
+    ANALYST: 'OTHER',
+    PLAYER: 'OTHER',
+    CLUB_CONTACT: 'OTHER',
+    PUBLIC: 'OTHER',
+};
+exports.CATEGORY_A_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+exports.CATEGORY_B_ROLES = ['AGENT'];
+exports.ROLE_DASHBOARD_ROUTE = {
+    SUPER_ADMIN: '/admin',
+    ADMIN: '/admin',
+    AGENT: '/players',
+    SCOUT: '/scout',
+    ANALYST: '/analytics',
+    PLAYER: '/players',
+    CLUB_CONTACT: '/clubs',
+    PUBLIC: '/',
+};
 exports.ROLE_CONFIG = {
     SUPER_ADMIN: {
         label: 'Super Admin',
@@ -118,6 +140,31 @@ exports.ROLE_CONFIG = {
 };
 const isPrivilegedRole = (role) => exports.ROLE_CONFIG[role].permissions.canAccessAdmin ?? false;
 exports.isPrivilegedRole = isPrivilegedRole;
+const isCategoryARole = (role) => exports.ROLE_CATEGORY[role] === 'A';
+exports.isCategoryARole = isCategoryARole;
+const isCategoryBRole = (role) => exports.ROLE_CATEGORY[role] === 'B';
+exports.isCategoryBRole = isCategoryBRole;
+const isCategoryAOrBRole = (role) => isCategoryARole(role) || isCategoryBRole(role);
+exports.isCategoryAOrBRole = isCategoryAOrBRole;
+const getRoleCategoryLabel = (role, locale = 'fr') => {
+    if (locale === 'en') {
+        if (isCategoryARole(role)) {
+            return 'Category A';
+        }
+        if (isCategoryBRole(role)) {
+            return 'Category B';
+        }
+        return 'Other';
+    }
+    if (isCategoryARole(role)) {
+        return 'Catégorie A';
+    }
+    if (isCategoryBRole(role)) {
+        return 'Catégorie B';
+    }
+    return 'Autre';
+};
+exports.getRoleCategoryLabel = getRoleCategoryLabel;
 const rolePriority = (role) => exports.ROLE_CONFIG[role].priority;
 exports.rolePriority = rolePriority;
 exports.DEFAULT_ROLE = 'PUBLIC';

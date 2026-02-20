@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Request,
   UseGuards,
   Patch,
 } from '@nestjs/common';
@@ -85,6 +86,32 @@ export class MatchesController {
       to,
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,
+    });
+  }
+
+  @Get('my-assignments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get matches assigned to me',
+    description:
+      "Retrieve matches where I'm directly assigned (legacy scout field or assignment table)",
+  })
+  @ApiResponse({ status: 200, description: 'Assigned matches retrieved successfully' })
+  getMyAssignments(
+    @Request() req,
+    @Query('status') status?: MatchStatus,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.matchesService.findUserAssignments(req.user.sub, {
+      status,
+      from,
+      to,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
     });
   }
 

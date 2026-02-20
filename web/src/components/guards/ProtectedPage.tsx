@@ -3,30 +3,47 @@
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import type { UserRole } from "@/lib/roles";
 
 interface ProtectedPageProps {
   children: React.ReactNode;
   redirectTo?: string;
   loadingFallback?: React.ReactNode;
+  allowedRoles?: readonly UserRole[];
+  unauthorizedRedirectTo?: string;
 }
 
 export function ProtectedPage({
   children,
   redirectTo = "/login",
   loadingFallback,
+  allowedRoles,
+  unauthorizedRedirectTo = "/dashboard",
 }: ProtectedPageProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const userRole = user?.role as UserRole | undefined;
+  const hasRoleAccess =
+    !allowedRoles || (userRole ? allowedRoles.includes(userRole) : false);
 
   React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (isLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       const redirectParam = pathname
         ? `?redirect=${encodeURIComponent(pathname)}`
         : "";
       router.replace(`${redirectTo}${redirectParam}`);
+      return;
     }
-  }, [isLoading, isAuthenticated, redirectTo, pathname, router]);
+
+    if (!hasRoleAccess) {
+      router.replace(unauthorizedRedirectTo);
+    }
+  }, [isLoading, isAuthenticated, userRole, hasRoleAccess, redirectTo, unauthorizedRedirectTo, pathname, router]);
 
   if (isLoading) {
     return (
@@ -38,7 +55,7 @@ export function ProtectedPage({
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !hasRoleAccess) {
     return null;
   }
 
