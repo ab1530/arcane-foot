@@ -14,16 +14,33 @@ export interface Event {
   longitude?: number;
   matchId?: string;
   createdById: string;
-  createdBy: {
+  createdBy?: {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
     role: UserRole;
   };
-  assignedUsers: Array<{
+  users?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: UserRole;
+  };
+  assignedUsers?: Array<{
     id: string;
     user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: UserRole;
+    };
+  }>;
+  event_assignments?: Array<{
+    id: string;
+    users?: {
       id: string;
       email: string;
       firstName: string;
@@ -44,6 +61,20 @@ export interface Event {
       logo?: string;
     };
     scheduledAt: string;
+  };
+  matches?: {
+    id: string;
+    clubs_matches_homeClubIdToclubs?: {
+      id: string;
+      name: string;
+      logo?: string;
+    };
+    clubs_matches_awayClubIdToclubs?: {
+      id: string;
+      name: string;
+      logo?: string;
+    };
+    scheduledAt?: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -88,6 +119,11 @@ export const eventsApi = {
   // Obtenir mes événements (assignés)
   getMyEvents: async (params?: QueryEventsDto): Promise<Event[]> => {
     return api.getRaw('/events/my-events', { params });
+  },
+
+  // Obtenir les événements d'équipe (admin/super-admin)
+  getTeamEvents: async (params?: QueryEventsDto): Promise<Event[]> => {
+    return api.getRaw('/events/team-events', { params });
   },
 
   // Obtenir un événement par ID

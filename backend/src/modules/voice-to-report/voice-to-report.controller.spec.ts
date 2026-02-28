@@ -4,6 +4,7 @@ import { VoiceToReportController } from './voice-to-report.controller';
 import { VoiceToReportService } from './voice-to-report.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ScoutCertificationGuard } from '../../common/guards/scout-certification.guard';
 import { ProcessVoiceReportDto, SupportedLanguage } from './dto/process-voice-report.dto';
 import { VoiceReportResponseDto, ExtractedReportData } from './dto/voice-report-response.dto';
 import { RecommendationType } from '@prisma/client';
@@ -87,6 +88,8 @@ describe('VoiceToReportController', () => {
       ],
     })
       .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .overrideGuard(ScoutCertificationGuard)
       .useValue({ canActivate: jest.fn(() => true) })
       .compile();
 

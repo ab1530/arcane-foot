@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { QueryEventDto } from './dto/query-event.dto';
@@ -820,6 +820,28 @@ describe('EventsService', () => {
       const result = await service.findUserEvents('user-without-events', {});
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('findTeamEvents', () => {
+    it('should return team events for SUPER_ADMIN', async () => {
+      prisma.events.findMany.mockResolvedValue([mockEvent] as any);
+
+      const result = await service.findTeamEvents('admin-1', 'SUPER_ADMIN', {});
+
+      expect(result).toEqual([mockEvent]);
+      expect(prisma.events.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
+          orderBy: { startDate: 'asc' },
+        }),
+      );
+    });
+
+    it('should throw ForbiddenException for non-admin roles', async () => {
+      await expect(service.findTeamEvents('scout-1', 'SCOUT', {})).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 

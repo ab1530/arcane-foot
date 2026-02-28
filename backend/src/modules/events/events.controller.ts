@@ -51,7 +51,18 @@ export class EventsController {
   @ApiOperation({ summary: 'Obtenir mes événements (assignés)' })
   @ApiResponse({ status: 200, description: 'Mes événements' })
   findMyEvents(@Request() req, @Query() query: QueryEventDto) {
-    return this.eventsService.findUserEvents(req.user.sub, query);
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    return this.eventsService.findUserEvents(userId, query);
+  }
+
+  @Get('team-events')
+  @ApiOperation({ summary: 'Obtenir les événements équipe (supervision admin)' })
+  @ApiResponse({ status: 200, description: "Événements d'équipe" })
+  @ApiResponse({ status: 403, description: 'Accès réservé admin/super-admin' })
+  findTeamEvents(@Request() req, @Query() query: QueryEventDto) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.eventsService.findTeamEvents(userId, role, query);
   }
 
   @Get(':id')

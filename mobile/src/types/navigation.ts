@@ -1,4 +1,5 @@
 import type { CalendarMatch } from './calendar';
+import type { ExtractedReportData } from './voice-to-report';
 import type { HardwareSessionType } from './hardware';
 
 export type LabPresetMinutes = 20 | 45 | 90;
@@ -39,12 +40,40 @@ export type AppStackParamList = {
   Players: undefined;
   ScoutQuickImport: undefined;
   AgentRequests: undefined;
+  ScoutsDirectory: undefined;
+  ScoutAdminDetail: {
+    scout: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      avatar?: string | null;
+      reportsCount: number;
+      createdAt: string;
+      lastLoginAt: string | null;
+    };
+  };
   PlayerDetail: { playerId: string };
   PlayerPassport: { playerId: string; player?: any };
   PlayerHighlights: { playerId: string; mode?: 'owner' | 'adminView' };
   Matches: undefined;
   Kanban: undefined;
-  CreateReport: { playerId?: string };
+  CreateReport:
+    | {
+        playerId?: string;
+        matchId?: string;
+        playerIds?: string[];
+        assignmentId?: string;
+        prefillData?: ExtractedReportData;
+        fromVoice?: boolean;
+        voicePayload?: {
+          transcription?: string;
+          confidence?: number;
+          audioUrl?: string;
+          warnings?: string[];
+        };
+      }
+    | undefined;
   HardwareSessions: { playerId?: string; playerName?: string } | undefined;
   HardwareSessionDetail: { sessionId: string };
   ConnectGpsTracker:
@@ -69,13 +98,29 @@ export type AppStackParamList = {
   Clubs: undefined;
   Reports: undefined;
   Calendar: undefined;
+  MissionRequests:
+    | {
+        preselectedMatchId?: string;
+        preselectedScoutId?: string;
+        preopenCreateForm?: boolean;
+        preopenScoutMenu?: boolean;
+      }
+    | undefined;
   ReportDetail: { reportId: string };
-  MatchDetail: { match: CalendarMatch };
+  MatchDetail:
+    | {
+        match?: CalendarMatch;
+        matchId?: string;
+        assignmentId?: string;
+        suggestedPlayerIds?: string[];
+      }
+    | undefined;
   Membership: undefined;
   About: undefined;
   Contact: undefined;
   Services: undefined;
   Passport: undefined;
+  ScoutProfile: undefined;
   PassportPreview: {
     playerId: string;
     source?: {
@@ -84,10 +129,15 @@ export type AppStackParamList = {
       clubName?: string;
     };
   };
-  VoiceToReport: undefined;
+  VoiceToReport:
+    | {
+        matchId?: string;
+        playerId?: string;
+        playerIds?: string[];
+        assignmentId?: string;
+      }
+    | undefined;
   Settings: undefined;
-  ScoutingReports: undefined;
-  CreateScoutingReport: undefined;
   PlayerComparison: undefined;
   Marketplace: undefined;
   ScoutDetail: { listingId: string };

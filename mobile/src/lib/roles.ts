@@ -1,4 +1,5 @@
 import type { UserRole } from '@shared/config/roles.config';
+import { isCategoryARole as sharedIsCategoryARole } from '@shared/config/roles.config';
 
 export {
   USER_ROLES,
@@ -20,4 +21,4 @@ export type { UserRole, RoleCategory } from '@shared/config/roles.config';
 export const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN'] as const;
 
 export const isAdminRole = (role?: UserRole | null) =>
-  role ? isCategoryARole(role) : false;
+  role ? sharedIsCategoryARole(role) : false;

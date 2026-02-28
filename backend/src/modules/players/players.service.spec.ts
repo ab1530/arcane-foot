@@ -1013,29 +1013,27 @@ describe('PlayersService', () => {
     });
 
     it('should save weekly update when previous weeklyUpdates is invalid', async () => {
-      prisma.players.findUnique
-        .mockResolvedValueOnce(mockPlayerBase)
-        .mockResolvedValue({
-          ...mockPlayerBase,
-          statsJson: {
-            ...mockPlayerBase.statsJson,
-            weeklyUpdates: [
-              {
-                weekStartDate: '2026-02-15',
-                submittedAt: '2026-02-20T09:00:00.000Z',
-                updatedBy: 'player-123',
-                minutesPlayed: 480,
-                goals: 1,
-                assists: 2,
-                matchesPlayed: 3,
-                matchesNotPlayed: 1,
-                isInjured: false,
-                healthStatus: 'NORMAL',
-                remarks: null,
-              },
-            ],
-          },
-        } as any);
+      prisma.players.findUnique.mockResolvedValueOnce(mockPlayerBase).mockResolvedValue({
+        ...mockPlayerBase,
+        statsJson: {
+          ...mockPlayerBase.statsJson,
+          weeklyUpdates: [
+            {
+              weekStartDate: '2026-02-15',
+              submittedAt: '2026-02-20T09:00:00.000Z',
+              updatedBy: 'player-123',
+              minutesPlayed: 480,
+              goals: 1,
+              assists: 2,
+              matchesPlayed: 3,
+              matchesNotPlayed: 1,
+              isInjured: false,
+              healthStatus: 'NORMAL',
+              remarks: null,
+            },
+          ],
+        },
+      } as any);
       setupPlayerSpaceDependencies();
       prisma.players.update.mockResolvedValue({} as any);
 
@@ -1061,6 +1059,196 @@ describe('PlayersService', () => {
           }),
         ]),
       );
+    });
+
+    it('should create availability event when selectedMatchId is provided', async () => {
+      const playerWithClub = {
+        ...mockPlayerBase,
+        clubId: 'club-123',
+      };
+
+      prisma.players.findUnique
+        .mockResolvedValueOnce(playerWithClub as any)
+        .mockResolvedValue(playerWithClub as any);
+      setupPlayerSpaceDependencies();
+      prisma.matches.findUnique.mockResolvedValue({
+        id: 'match-123',
+        homeClubId: 'club-123',
+        awayClubId: 'club-456',
+        scheduledAt: new Date('2026-02-21T14:00:00.000Z'),
+        venueOld: 'Stade Test',
+        clubs_matches_homeClubIdToclubs: { id: 'club-123', name: 'PSG' },
+        clubs_matches_awayClubIdToclubs: { id: 'club-456', name: 'OM' },
+      } as any);
+      prisma.events.create.mockResolvedValue({ id: 'event-123' } as any);
+      prisma.players.update.mockResolvedValue({} as any);
+
+      await service.submitMyPlayerWeeklyUpdate('user-123', undefined, {
+        minutesPlayed: 90,
+        goals: 1,
+        assists: 0,
+        matchesPlayed: 1,
+        matchesNotPlayed: 0,
+        isInjured: false,
+        selectedMatchId: 'match-123',
+        selectedMatchAvailability: 'PLAYING',
+        selectedMatchTeamScore: 2,
+        selectedMatchOpponentScore: 1,
+        selectedMatchRating: 8,
+        highlightsUploaded: 2,
+        gpsSyncConfirmed: true,
+        trackerSteps: 12000,
+        trackerDistanceM: 8500,
+        trackerSource: 'QCBAND',
+      } as any);
+
+      expect(prisma.events.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            matchId: 'match-123',
+            type: 'MATCH',
+            createdById: 'user-123',
+          }),
+        }),
+      );
+      const updatePayload = (prisma.players.update as jest.Mock).mock.calls[0][0];
+      expect(updatePayload.data.statsJson.selectedMatchId).toBe('match-123');
+      expect(updatePayload.data.statsJson.selectedMatchAvailability).toBe('PLAYING');
+      expect(updatePayload.data.statsJson.selectedMatchTeamScore).toBe(2);
+      expect(updatePayload.data.statsJson.selectedMatchOpponentScore).toBe(1);
+      expect(updatePayload.data.statsJson.selectedMatchRating).toBe(8);
+      expect(updatePayload.data.statsJson.highlightsUploaded).toBe(2);
+      expect(updatePayload.data.statsJson.gpsSyncConfirmed).toBe(true);
+      expect(updatePayload.data.statsJson.trackerSteps).toBe(12000);
+      expect(updatePayload.data.statsJson.trackerDistanceM).toBe(8500);
+      expect(updatePayload.data.statsJson.trackerSource).toBe('QCBAND');
+    });
+
+    it('should fallback to recent matches when no upcoming matches exist', async () => {
+      const playerWithClub = {
+        ...mockPlayerBase,
+        clubId: 'club-123',
+      };
+
+      prisma.players.findUnique.mockResolvedValue(playerWithClub as any);
+      prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.matches.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          id: 'match-recent-1',
+          scheduledAt: new Date('2025-05-26T18:54:11.212Z'),
+          status: 'COMPLETED',
+          homeClubId: 'club-123',
+          awayClubId: 'club-456',
+          clubs_matches_homeClubIdToclubs: { id: 'club-123', name: 'PSG', logo: 'psg.png' },
+          clubs_matches_awayClubIdToclubs: { id: 'club-456', name: 'OM', logo: 'om.png' },
+          competitions: { name: 'Ligue 1' },
+        },
+      ] as any);
+      prisma.hardwareSession.findFirst.mockResolvedValue(null);
+      prisma.player_news_entries.findMany.mockResolvedValue([]);
+
+      const result = await service.getMyPlayerSpace('user-123');
+
+      expect(prisma.matches.findMany).toHaveBeenCalledTimes(2);
+      expect(result.upcomingCalendar).toHaveLength(1);
+      expect(result.upcomingCalendar[0]).toEqual(
+        expect.objectContaining({
+          id: 'match-recent-1',
+          opponent: 'OM',
+          competition: 'Ligue 1',
+        }),
+      );
+    });
+
+    it('should fallback to global upcoming matches when player club has no fixtures', async () => {
+      const playerWithClub = {
+        ...mockPlayerBase,
+        clubId: 'club-123',
+      };
+
+      prisma.players.findUnique.mockResolvedValue(playerWithClub as any);
+      prisma.scouting_reports.findMany.mockResolvedValue([]);
+      prisma.matches.findMany
+        .mockResolvedValueOnce([]) // club upcoming
+        .mockResolvedValueOnce([
+          {
+            id: 'match-global-1',
+            scheduledAt: new Date('2026-03-01T16:00:00.000Z'),
+            status: 'SCHEDULED',
+            homeClubId: 'club-777',
+            awayClubId: 'club-888',
+            clubs_matches_homeClubIdToclubs: {
+              id: 'club-777',
+              name: 'Global FC',
+              logo: 'global.png',
+            },
+            clubs_matches_awayClubIdToclubs: {
+              id: 'club-888',
+              name: 'United FC',
+              logo: 'united.png',
+            },
+            competitions: { name: 'Friendly' },
+          },
+        ] as any);
+      prisma.hardwareSession.findFirst.mockResolvedValue(null);
+      prisma.player_news_entries.findMany.mockResolvedValue([]);
+
+      const result = await service.getMyPlayerSpace('user-123');
+
+      expect(prisma.matches.findMany).toHaveBeenCalledTimes(2);
+      expect(result.upcomingCalendar).toHaveLength(1);
+      expect(result.upcomingCalendar[0]).toEqual(
+        expect.objectContaining({
+          id: 'match-global-1',
+          opponent: 'Global FC vs United FC',
+          competition: 'Friendly',
+        }),
+      );
+    });
+
+    it('should allow selecting an out-of-club match when club fixtures are unavailable', async () => {
+      const playerWithClub = {
+        ...mockPlayerBase,
+        clubId: 'club-123',
+      };
+
+      prisma.players.findUnique
+        .mockResolvedValueOnce(playerWithClub as any)
+        .mockResolvedValue(playerWithClub as any);
+      setupPlayerSpaceDependencies();
+      prisma.matches.findUnique.mockResolvedValue({
+        id: 'match-global-1',
+        homeClubId: 'club-777',
+        awayClubId: 'club-888',
+        scheduledAt: new Date('2026-03-01T16:00:00.000Z'),
+        venueOld: 'Stade Global',
+        clubs_matches_homeClubIdToclubs: { id: 'club-777', name: 'Global FC' },
+        clubs_matches_awayClubIdToclubs: { id: 'club-888', name: 'United FC' },
+      } as any);
+      prisma.matches.count.mockResolvedValue(0);
+      prisma.events.create.mockResolvedValue({ id: 'event-999' } as any);
+      prisma.players.update.mockResolvedValue({} as any);
+
+      await service.submitMyPlayerWeeklyUpdate('user-123', undefined, {
+        minutesPlayed: 90,
+        goals: 0,
+        assists: 0,
+        matchesPlayed: 1,
+        matchesNotPlayed: 0,
+        isInjured: false,
+        selectedMatchId: 'match-global-1',
+        selectedMatchAvailability: 'PLAYING',
+      } as any);
+
+      expect(prisma.matches.count).toHaveBeenCalledWith({
+        where: {
+          OR: [{ homeClubId: 'club-123' }, { awayClubId: 'club-123' }],
+          status: {
+            in: ['SCHEDULED', 'LIVE', 'COMPLETED'],
+          },
+        },
+      });
+      expect(prisma.events.create).toHaveBeenCalled();
     });
   });
 

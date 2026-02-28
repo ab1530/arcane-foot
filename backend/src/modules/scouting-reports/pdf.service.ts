@@ -34,7 +34,12 @@ export class PdfService {
         'Habilete technique avec ballon',
         report.withBallAnalysis || report.strengths,
       );
-      y = this.drawNarrativeSection(doc, y, 'Jeu sans ballon', report.offBallAnalysis || report.weaknesses);
+      y = this.drawNarrativeSection(
+        doc,
+        y,
+        'Jeu sans ballon',
+        report.offBallAnalysis || report.weaknesses,
+      );
       y = this.drawNarrativeSection(
         doc,
         y,
@@ -66,9 +71,7 @@ export class PdfService {
     const width = doc.page.width - this.margin * 2;
     const title = `RAPPORT TYPE ARCANE FOOTBALL - JOUEUR EN TEST`;
 
-    doc
-      .rect(this.margin, this.margin, width, 26)
-      .fill('#000000');
+    doc.rect(this.margin, this.margin, width, 26).fill('#000000');
 
     doc
       .font('Helvetica-Bold')
@@ -98,9 +101,12 @@ export class PdfService {
     const lastName = rest.join(' ');
 
     const dateOfBirth = report.player?.dateOfBirth || report.player?.user?.dateOfBirth;
-    const birthDate = dateOfBirth ? new Date(dateOfBirth).toLocaleDateString('fr-FR') : 'non renseigne';
+    const birthDate = dateOfBirth
+      ? new Date(dateOfBirth).toLocaleDateString('fr-FR')
+      : 'non renseigne';
     const position = report.playerPosition || report.player?.position || 'non renseigne';
-    const dominantFoot = report.observedDominantFoot || report.player?.preferredFoot || 'non renseigne';
+    const dominantFoot =
+      report.observedDominantFoot || report.player?.preferredFoot || 'non renseigne';
     const heightCm = report.observedHeightCm ?? report.player?.height;
     const weightKg = report.observedWeightKg ?? report.player?.weight;
     const clubName =
@@ -122,15 +128,9 @@ export class PdfService {
     const height = lines.length * rowHeight + 14;
     y = this.ensureSpace(doc, y, height + 10);
 
-    doc
-      .rect(x, y, width, height)
-      .fill('#F4F4F4')
-      .stroke('#222222');
+    doc.rect(x, y, width, height).fill('#F4F4F4').stroke('#222222');
 
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .fillColor('#111111');
+    doc.font('Helvetica').fontSize(10).fillColor('#111111');
 
     lines.forEach((line, index) => {
       doc.text(line, x + 10, y + 8 + index * rowHeight, { width: width - 20 });
@@ -157,10 +157,7 @@ export class PdfService {
 
     y = this.ensureSpace(doc, y, blockHeight + 8);
 
-    doc
-      .rect(x, y, width, blockHeight)
-      .fill('#EFEFEF')
-      .stroke('#222222');
+    doc.rect(x, y, width, blockHeight).fill('#EFEFEF').stroke('#222222');
 
     doc
       .font('Helvetica-Bold')
@@ -190,10 +187,7 @@ export class PdfService {
 
     y = this.ensureSpace(doc, y, blockHeight + 12);
 
-    doc
-      .rect(x, y, width, blockHeight)
-      .fill('#EFEFEF')
-      .stroke('#222222');
+    doc.rect(x, y, width, blockHeight).fill('#EFEFEF').stroke('#222222');
 
     doc
       .font('Helvetica-Bold')
@@ -229,10 +223,7 @@ export class PdfService {
 
     y = this.ensureSpace(doc, y, totalHeight + 20);
 
-    doc
-      .rect(x, y, width, totalHeight)
-      .fill('#F6F6F6')
-      .stroke('#222222');
+    doc.rect(x, y, width, totalHeight).fill('#F6F6F6').stroke('#222222');
 
     doc
       .moveTo(x + columnWidth, y)
@@ -284,10 +275,15 @@ export class PdfService {
         .font('Helvetica')
         .fontSize(8)
         .fillColor('#666666')
-        .text(`Rapport Arcane Football - Page ${i + 1}/${pageCount}`, this.margin, doc.page.height - 26, {
-          width: doc.page.width - this.margin * 2,
-          align: 'center',
-        });
+        .text(
+          `Rapport Arcane Football - Page ${i + 1}/${pageCount}`,
+          this.margin,
+          doc.page.height - 26,
+          {
+            width: doc.page.width - this.margin * 2,
+            align: 'center',
+          },
+        );
     }
   }
 
@@ -341,7 +337,11 @@ export class PdfService {
       return ['X', '', ''];
     }
 
-    if (recommendation === 'MONITOR' || recommendation === 'FOLLOW_UP' || recommendation === 'NEEDS_MORE_DATA') {
+    if (
+      recommendation === 'MONITOR' ||
+      recommendation === 'FOLLOW_UP' ||
+      recommendation === 'NEEDS_MORE_DATA'
+    ) {
       return ['', 'X', ''];
     }
 

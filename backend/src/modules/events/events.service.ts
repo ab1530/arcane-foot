@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -8,6 +13,17 @@ import { randomUUID } from 'crypto';
 @Injectable()
 export class EventsService {
   constructor(private prisma: PrismaService) {}
+
+  private normalizeRole(role?: string | null) {
+    return String(role ?? '')
+      .trim()
+      .toUpperCase();
+  }
+
+  private isCategoryARole(role?: string | null) {
+    const normalized = this.normalizeRole(role);
+    return normalized === 'SUPER_ADMIN' || normalized === 'ADMIN';
+  }
 
   async create(createEventDto: CreateEventDto, createdById: string) {
     const { assignedUserIds, ...eventData } = createEventDto;
@@ -291,6 +307,19 @@ export class EventsService {
       ...query,
       assignedUserId: userId,
     });
+  }
+
+  // Vue équipe pour la supervision admin/super-admin
+  async findTeamEvents(userId: string, role: string | null | undefined, query: QueryEventDto) {
+    if (!userId) {
+      throw new BadRequestException("L'identifiant utilisateur est requis");
+    }
+
+    if (!this.isCategoryARole(role)) {
+      throw new ForbiddenException('Only SUPER_ADMIN/ADMIN can access the team events calendar');
+    }
+
+    return this.findAll(query);
   }
 
   // Méthode pour obtenir les événements à venir

@@ -1,7 +1,11 @@
-export type AgentRequestCategory = 'INJURY' | 'MEDICAL' | 'EQUIPMENT' | 'OTHER';
-export type AgentRequestStatus = 'CREATED' | 'IN_PROGRESS' | 'SATISFIED' | 'CANCELLED';
-export type AgentRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type PreferredFoot = 'LEFT' | 'RIGHT' | 'BOTH';
+export type AgentRequestCategory = "INJURY" | "MEDICAL" | "EQUIPMENT" | "OTHER";
+export type AgentRequestStatus =
+  | "CREATED"
+  | "IN_PROGRESS"
+  | "SATISFIED"
+  | "CANCELLED";
+export type AgentRequestPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type PreferredFoot = "LEFT" | "RIGHT" | "BOTH";
 
 export interface AgentRequestUserRef {
   id: string;
@@ -15,6 +19,16 @@ export interface AgentRequestItem {
   category: AgentRequestCategory;
   status: AgentRequestStatus;
   priority: AgentRequestPriority;
+  creatorRole:
+    | "SUPER_ADMIN"
+    | "ADMIN"
+    | "AGENT"
+    | "SCOUT"
+    | "ANALYST"
+    | "PLAYER"
+    | "CLUB_CONTACT"
+    | "PUBLIC"
+    | null;
   playerId: string | null;
   dueAt: string | null;
   details: string | null;
@@ -33,6 +47,7 @@ export interface AgentRequestCreatePayload {
   title: string;
   category: AgentRequestCategory;
   playerId?: string | null;
+  assigneeId?: string | null;
   details?: string;
   equipment?: string;
   medicalDetails?: string;

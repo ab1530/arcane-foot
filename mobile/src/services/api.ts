@@ -16,6 +16,7 @@ import type {
   AgentRequestMarketProfileRulesResponse,
   AgentRequestMarketProfileRule,
   MobileHomeDashboardResponse,
+  DashboardScoutDirectoryResponse,
   NewsFeedItem,
   NewsFeedResponse,
 } from '../types';
@@ -25,6 +26,18 @@ import type {
   PlayerProfileView,
   ProfileContentStatus,
 } from '../types/player-profile';
+import type {
+  CreateTransferRequestInput,
+  CreateTransferSuggestionInput,
+  TransferMarketCountryItem,
+  TransferMarketFilters,
+  TransferMarketLeagueItem,
+  TransferRequest,
+  TransferRequestActivity,
+  TransferSuggestion,
+  TransferSuggestionStatus,
+  UpdateTransferRequestInput,
+} from '../types/transfer-market';
 import { logBridge, logAPI, logError } from '../logging/expoLogBridge';
 
 const generateRequestId = () =>
@@ -57,12 +70,83 @@ export const pickDateValue = (
   return null;
 };
 
+export interface ScoutCalendarMissionItem {
+  assignmentId: string;
+  matchId: string;
+  missionType: 'PRIORITY' | 'VOLUNTARY';
+  status: string;
+  mobileStatus: 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED';
+  reportSubmitted: boolean;
+  country?: string | null;
+  league?: string | null;
+  match: any;
+  scout?: any;
+  assignedBy?: any;
+}
+
+export interface ScoutCalendarDiscoverItem {
+  matchId: string;
+  country?: string | null;
+  league?: string | null;
+  match: any;
+  sharedScouts?: Array<{
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+  }>;
+}
+
+export interface ScoutCalendarResponse {
+  filters: {
+    countries: string[];
+    leagues: string[];
+  };
+  myCalendar: ScoutCalendarMissionItem[];
+  sharedCalendar: ScoutCalendarMissionItem[];
+  discover: ScoutCalendarDiscoverItem[];
+  meta: {
+    totalMy: number;
+    totalShared: number;
+    totalDiscover: number;
+  };
+}
+
+export interface MatchMissionRequest {
+  id: string;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  missionType: 'PRIORITY' | 'VOLUNTARY';
+  note?: string | null;
+  decisionNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt?: string | null;
+  matchId: string;
+  match?: any;
+  requestedBy?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+  } | null;
+  targetScout?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+  } | null;
+  decidedById?: string | null;
+}
+
 class ApiClient {
   private client: AxiosInstance;
   private authToken: string | null = null;
   private refreshPromise: Promise<string | null> | null = null;
   private onAuthInvalid?: () => void | Promise<void>;
   private onTokenRefreshed?: (token: string) => void;
+  private readonly playerCacheTtlMs = 60000;
+  private playerCache = new Map<string, { data: Player; expiresAt: number }>();
+  private inFlightPlayerRequests = new Map<string, Promise<Player>>();
 
   constructor() {
     this.client = axios.create({
@@ -157,6 +241,29 @@ class ApiClient {
   setAuthHandlers(handlers: { onAuthInvalid?: () => void | Promise<void>; onTokenRefreshed?: (token: string) => void }) {
     this.onAuthInvalid = handlers.onAuthInvalid;
     this.onTokenRefreshed = handlers.onTokenRefreshed;
+  }
+
+  private getCachedPlayer(id: string): Player | null {
+    const cached = this.playerCache.get(id);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      this.playerCache.delete(id);
+      return null;
+    }
+    return cached.data;
+  }
+
+  private setCachedPlayer(id: string, data: Player) {
+    this.playerCache.set(id, {
+      data,
+      expiresAt: Date.now() + this.playerCacheTtlMs,
+    });
+  }
+
+  private invalidateCachedPlayer(id?: string | null) {
+    if (!id) return;
+    this.playerCache.delete(id);
+    this.inFlightPlayerRequests.delete(id);
   }
 
   // ============================================================================
@@ -317,7 +424,72 @@ class ApiClient {
     }
   }
 
-  public buildPlayerSpacePayloadFromPlayer(player: Player): PlayerSpacePayload {
+  private mapMatchesToPlayerSpaceCalendar(
+    matches: Match[],
+    player: Player,
+  ): PlayerSpacePayload['upcomingCalendar'] {
+    if (!Array.isArray(matches) || matches.length === 0) {
+      return [];
+    }
+
+    const playerClubId = this.toSafeString(
+      (player.club as any)?.id ?? (player as any)?.clubId ?? '',
+    );
+
+    const mapped = matches
+      .map((match: any) => {
+        const homeClub = match?.homeClub ?? match?.clubs_matches_homeClubIdToclubs ?? null;
+        const awayClub = match?.awayClub ?? match?.clubs_matches_awayClubIdToclubs ?? null;
+        const homeClubId = this.toSafeString(match?.homeClubId ?? homeClub?.id ?? '');
+        const awayClubId = this.toSafeString(match?.awayClubId ?? awayClub?.id ?? '');
+        const isPlayerClubMatch =
+          !!playerClubId && (homeClubId === playerClubId || awayClubId === playerClubId);
+        const isHome = isPlayerClubMatch ? homeClubId === playerClubId : false;
+        const homeName = this.toSafeString(homeClub?.name, 'Club domicile');
+        const awayName = this.toSafeString(awayClub?.name, 'Club extérieur');
+        const opponent = isPlayerClubMatch
+          ? this.toSafeString(isHome ? awayClub?.name : homeClub?.name, '—')
+          : `${homeName} vs ${awayName}`;
+        const competitionRaw = match?.competition;
+        const competition =
+          typeof competitionRaw === 'string'
+            ? competitionRaw
+            : this.toSafeString(competitionRaw?.name, this.toSafeString(match?.competitionOld, '—'));
+        const scheduledAt = pickDateValue(match, ['scheduledAt', 'startDate', 'date', 'createdAt']) || '';
+        if (!this.toSafeString(match?.id, '') || !scheduledAt) {
+          return null;
+        }
+        return {
+          id: String(match.id),
+          scheduledAt,
+          opponent,
+          opponentLogo: isPlayerClubMatch
+            ? this.toSafeString((isHome ? awayClub?.logo : homeClub?.logo) ?? '', null)
+            : null,
+          isHome,
+          status: this.toSafeString(match?.status, ''),
+          competition,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .sort((left, right) => {
+        const leftTime = new Date(left.scheduledAt).getTime();
+        const rightTime = new Date(right.scheduledAt).getTime();
+        if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) return 0;
+        if (Number.isNaN(leftTime)) return 1;
+        if (Number.isNaN(rightTime)) return -1;
+        return leftTime - rightTime;
+      });
+
+    return mapped.slice(0, 10);
+  }
+
+  public buildPlayerSpacePayloadFromPlayer(
+    player: Player,
+    options?: {
+      upcomingCalendar?: PlayerSpacePayload['upcomingCalendar'];
+    },
+  ): PlayerSpacePayload {
     const rawStats = player.statsJson as Record<string, any>;
     const safeStats = rawStats && typeof rawStats === 'object' ? rawStats : {};
     const firstName = this.toSafeString(player.firstName);
@@ -349,7 +521,7 @@ class ApiClient {
         injuryStatus: safeStats.injuryStatus ? String(safeStats.injuryStatus) : null,
       },
       performanceTrend: [],
-      upcomingCalendar: [],
+      upcomingCalendar: options?.upcomingCalendar ?? [],
       health: {
         status: isInjured ? 'Blessé' : 'Disponible',
         lastDeviceSync: this.toSafeString((safeStats as any).lastWeeklyUpdateAt, null),
@@ -369,7 +541,40 @@ class ApiClient {
    */
   public async getPlayerSpaceFromProfile(playerId: string): Promise<PlayerSpacePayload> {
     const player = await this.getPlayer(playerId);
-    return this.buildPlayerSpacePayloadFromPlayer(player);
+    const nowIso = new Date().toISOString();
+    let fallbackMatches: Match[] = [];
+
+    try {
+      const upcoming = await this.getMatches({
+        from: nowIso,
+        status: 'SCHEDULED',
+        limit: 50,
+      });
+      fallbackMatches = extractPayloadItems<Match>(upcoming);
+
+      if (fallbackMatches.length === 0) {
+        const live = await this.getMatches({
+          from: nowIso,
+          status: 'LIVE',
+          limit: 20,
+        });
+        fallbackMatches = extractPayloadItems<Match>(live);
+      }
+
+      if (fallbackMatches.length === 0) {
+        const recent = await this.getMatches({
+          limit: 50,
+          page: 1,
+        });
+        fallbackMatches = extractPayloadItems<Match>(recent);
+      }
+    } catch {
+      fallbackMatches = [];
+    }
+
+    return this.buildPlayerSpacePayloadFromPlayer(player, {
+      upcomingCalendar: this.mapMatchesToPlayerSpaceCalendar(fallbackMatches, player),
+    });
   }
 
   async request<T = any>(config: AxiosRequestConfig): Promise<T> {
@@ -473,6 +678,22 @@ class ApiClient {
 
   async submitReport(id: string): Promise<any> {
     const { data } = await this.client.post(`/scouting-reports/${id}/submit`);
+    return data;
+  }
+
+  async bulkSubmitScoutingReports(payload: {
+    matchId: string;
+    playerIds: string[];
+    assignmentId?: string;
+    template?: Record<string, any>;
+    voice?: {
+      transcription?: string;
+      confidence?: number;
+      audioUrl?: string;
+      warnings?: string[];
+    };
+  }): Promise<any> {
+    const { data } = await this.client.post('/scouting-reports/bulk-submit', payload);
     return data;
   }
 
@@ -635,10 +856,91 @@ class ApiClient {
     return data;
   }
 
+  // Transfer Market V1 (requests-first)
+  async listTransferMarketCountries(): Promise<{ data: TransferMarketCountryItem[] }> {
+    return this.getRaw('/transfer-market/countries');
+  }
+
+  async listTransferMarketLeagues(country?: string): Promise<{ data: TransferMarketLeagueItem[] }> {
+    return this.getRaw('/transfer-market/leagues', {
+      params: country ? { country } : undefined,
+    });
+  }
+
+  async listTransferMarketRequests(
+    filters?: TransferMarketFilters,
+  ): Promise<{ data: TransferRequest[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+    return this.getRaw('/transfer-market/requests', {
+      params: {
+        ...(filters ?? {}),
+        createdByMe:
+          filters?.createdByMe === undefined
+            ? undefined
+            : filters.createdByMe
+            ? 'true'
+            : 'false',
+      },
+    });
+  }
+
+  async createTransferMarketRequest(payload: CreateTransferRequestInput): Promise<TransferRequest> {
+    return this.postRaw('/transfer-market/requests', payload);
+  }
+
+  async getTransferMarketRequest(id: string): Promise<TransferRequest> {
+    return this.getRaw(`/transfer-market/requests/${id}`);
+  }
+
+  async updateTransferMarketRequest(id: string, payload: UpdateTransferRequestInput): Promise<TransferRequest> {
+    return this.patchRaw(`/transfer-market/requests/${id}`, payload);
+  }
+
+  async createTransferMarketSuggestion(
+    requestId: string,
+    payload: CreateTransferSuggestionInput,
+  ): Promise<TransferSuggestion> {
+    return this.postRaw(`/transfer-market/requests/${requestId}/suggestions`, payload);
+  }
+
+  async listTransferMarketSuggestions(
+    requestId: string,
+  ): Promise<{ data: TransferSuggestion[]; meta: { total: number } }> {
+    return this.getRaw(`/transfer-market/requests/${requestId}/suggestions`);
+  }
+
+  async updateTransferMarketSuggestionStatus(
+    suggestionId: string,
+    status: TransferSuggestionStatus,
+  ): Promise<TransferSuggestion> {
+    return this.patchRaw(`/transfer-market/suggestions/${suggestionId}`, { status });
+  }
+
+  async listTransferMarketActivity(
+    requestId: string,
+  ): Promise<{ data: TransferRequestActivity[]; meta: { total: number } }> {
+    return this.getRaw(`/transfer-market/requests/${requestId}/activity`);
+  }
+
+  async createTransferMarketShortlist(
+    requestId: string,
+    payload?: { playerIds?: string[] },
+  ): Promise<{ id: string; token: string; shareUrl: string; requestId: string; playersCount: number }> {
+    return this.postRaw(`/transfer-market/requests/${requestId}/shortlist`, payload ?? {});
+  }
+
+  async exportTransferMarketShortlistCsv(requestId: string): Promise<string> {
+    const { data } = await this.client.get(`/transfer-market/requests/${requestId}/shortlist.csv`, {
+      responseType: 'text',
+      transformResponse: [(value) => value],
+    });
+    return typeof data === 'string' ? data : String(data ?? '');
+  }
+
   // Agent requests / demandes à l'agent
   async listAgentRequests(params?: {
     status?: string;
     category?: string;
+    creatorRole?: string;
     page?: number;
     limit?: number;
     myOnly?: boolean;
@@ -747,7 +1049,7 @@ class ApiClient {
     playerIds: string[];
     title?: string;
     clubName?: string;
-    sourceFeature?: 'CLUB_NEEDS';
+    sourceFeature?: 'CLUB_NEEDS' | 'TRANSFER_MARKET_REQUEST';
     sourceRequestId?: string;
     sourceRequestLineNumber?: number;
   }): Promise<any> {
@@ -829,6 +1131,17 @@ class ApiClient {
     return data;
   }
 
+  async getDashboardScouts(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<DashboardScoutDirectoryResponse> {
+    const { data } = await this.client.get<DashboardScoutDirectoryResponse>('/dashboard/scouts', {
+      params,
+    });
+    return this.normalizePaginated(data);
+  }
+
   // Player endpoints
   async getPlayers(params?: {
     position?: string;
@@ -853,8 +1166,37 @@ class ApiClient {
     return data;
   }
 
-  async getPlayer(id: string): Promise<Player> {
-    return this.getRaw<Player>(`/players/${id}`);
+  async getPlayer(id: string, options?: { forceRefresh?: boolean }): Promise<Player> {
+    const playerId = String(id ?? '').trim();
+    if (!playerId) {
+      throw new Error('Player ID is required');
+    }
+
+    if (!options?.forceRefresh) {
+      const cached = this.getCachedPlayer(playerId);
+      if (cached) {
+        return cached;
+      }
+
+      const pending = this.inFlightPlayerRequests.get(playerId);
+      if (pending) {
+        return pending;
+      }
+    } else {
+      this.invalidateCachedPlayer(playerId);
+    }
+
+    const request = this.getRaw<Player>(`/players/${playerId}`)
+      .then((player) => {
+        this.setCachedPlayer(playerId, player);
+        return player;
+      })
+      .finally(() => {
+        this.inFlightPlayerRequests.delete(playerId);
+      });
+
+    this.inFlightPlayerRequests.set(playerId, request);
+    return request;
   }
 
   async getPlayerStats(id: string): Promise<any> {
@@ -910,8 +1252,7 @@ class ApiClient {
       throw lastError;
     }
 
-    const player = await this.getPlayer(playerId);
-    return this.buildPlayerSpacePayloadFromPlayer(player);
+    return this.getPlayerSpaceFromProfile(playerId);
   }
 
   async submitMyPlayerWeeklyUpdate(
@@ -1041,11 +1382,17 @@ class ApiClient {
 
   async updatePlayer(id: string, playerData: any): Promise<any> {
     const { data } = await this.client.patch(`/players/${id}`, playerData);
+    if (data && typeof data === 'object') {
+      this.setCachedPlayer(id, data as Player);
+    } else {
+      this.invalidateCachedPlayer(id);
+    }
     return data;
   }
 
   async deletePlayer(id: string): Promise<any> {
     const { data } = await this.client.delete(`/players/${id}`);
+    this.invalidateCachedPlayer(id);
     return data;
   }
 
@@ -1092,6 +1439,97 @@ class ApiClient {
       params,
     });
     return this.normalizePaginated<Match>(data);
+  }
+
+  async getScoutCalendar(params?: {
+    country?: string;
+    league?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+  }): Promise<ScoutCalendarResponse> {
+    return this.getRaw<ScoutCalendarResponse>('/matches/scout-calendar', { params });
+  }
+
+  async addMatchToMyCalendar(matchId: string): Promise<{
+    assignmentId: string;
+    matchId: string;
+    scoutId: string;
+    missionType: 'PRIORITY' | 'VOLUNTARY';
+    status: string;
+    mobileStatus: 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED';
+    reportSubmitted: boolean;
+  }> {
+    return this.postRaw(`/matches/${matchId}/my-calendar`);
+  }
+
+  async startAssignmentMission(assignmentId: string): Promise<{
+    assignmentId: string;
+    matchId: string;
+    scoutId: string;
+    missionType: 'PRIORITY' | 'VOLUNTARY';
+    status: string;
+    mobileStatus: 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED';
+    reportSubmitted: boolean;
+  }> {
+    return this.patchRaw(`/match-assignments/${assignmentId}/start`);
+  }
+
+  async createMissionRequest(
+    matchId: string,
+    payload: {
+      targetScoutId?: string;
+      missionType?: 'PRIORITY' | 'VOLUNTARY';
+      note?: string;
+    },
+  ): Promise<MatchMissionRequest> {
+    return this.postRaw(`/matches/${matchId}/mission-requests`, payload);
+  }
+
+  async getMissionRequests(params?: {
+    status?: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  }): Promise<{ data: MatchMissionRequest[]; meta: { total: number } }> {
+    return this.getRaw('/matches/mission-requests', { params });
+  }
+
+  async listMissionRequests(params?: {
+    status?: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  }): Promise<{ data: MatchMissionRequest[]; meta: { total: number } }> {
+    return this.getMissionRequests(params);
+  }
+
+  async getMatchMissionRequests(
+    matchId: string,
+    params?: { status?: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' },
+  ): Promise<{ data: MatchMissionRequest[]; meta: { total: number } }> {
+    return this.getRaw(`/matches/${matchId}/mission-requests`, { params });
+  }
+
+  async approveMissionRequest(
+    requestId: string,
+    payload?: { scoutId?: string; note?: string },
+  ): Promise<any> {
+    return this.patchRaw(`/matches/mission-requests/${requestId}/approve`, payload ?? {});
+  }
+
+  async rejectMissionRequest(requestId: string, payload?: { note?: string }): Promise<MatchMissionRequest> {
+    return this.patchRaw(`/matches/mission-requests/${requestId}/reject`, payload ?? {});
+  }
+
+  async cancelMissionRequest(requestId: string, payload?: { note?: string }): Promise<MatchMissionRequest> {
+    return this.patchRaw(`/matches/mission-requests/${requestId}/cancel`, payload ?? {});
+  }
+
+  async completeAssignmentMission(assignmentId: string): Promise<{
+    assignmentId: string;
+    matchId: string;
+    scoutId: string;
+    missionType: 'PRIORITY' | 'VOLUNTARY';
+    status: string;
+    mobileStatus: 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED';
+    reportSubmitted: boolean;
+  }> {
+    return this.patchRaw(`/match-assignments/${assignmentId}/complete`);
   }
 
   async getMatch(id: string): Promise<Match> {

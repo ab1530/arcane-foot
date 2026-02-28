@@ -35,11 +35,11 @@ export class CreatePassportShareSetDto {
 
   @ApiPropertyOptional({
     description: 'Optional source feature used to create this share.',
-    enum: ['CLUB_NEEDS'],
+    enum: ['CLUB_NEEDS', 'TRANSFER_MARKET_REQUEST'],
   })
   @IsOptional()
-  @IsIn(['CLUB_NEEDS'])
-  sourceFeature?: 'CLUB_NEEDS';
+  @IsIn(['CLUB_NEEDS', 'TRANSFER_MARKET_REQUEST'])
+  sourceFeature?: 'CLUB_NEEDS' | 'TRANSFER_MARKET_REQUEST';
 
   @ApiPropertyOptional({
     description: 'Optional source request id (e.g. club needs request id).',

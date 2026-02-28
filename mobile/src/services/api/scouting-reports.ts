@@ -2,6 +2,7 @@ import api from '../api';
 
 export type ReportStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 export type RecommendationType = 'BUY_NOW' | 'MONITOR' | 'FOLLOW_UP' | 'NOT_INTERESTED' | 'NEEDS_MORE_DATA';
+export type ResolutionMode = 'exact_match' | 'probable_match' | 'created_new';
 
 export interface ScoutingReport {
   id: string;
@@ -27,6 +28,11 @@ export interface ScoutingReport {
   observedHeightCm?: number;
   observedWeightKg?: number;
   observedClubName?: string;
+  observedFirstName?: string;
+  observedLastName?: string;
+  observedNationality?: string;
+  observedPhone?: string;
+  observedEmail?: string;
   sprint10mSec?: number;
   sprint20mSec?: number;
   sprint40mSec?: number;
@@ -81,11 +87,27 @@ export interface ScoutingReport {
   };
   notes?: any[];
   media?: any[];
+  analysis?: {
+    scoutTier?: 'CERTIFIED' | 'AMATEUR';
+    weight?: number;
+    weightedOverallRating?: number | null;
+    identityCompletenessScore?: number | null;
+    resolutionMode?: ResolutionMode | null;
+    missionType?: 'PRIORITY' | 'VOLUNTARY' | null;
+    assignmentId?: string | null;
+    assignedById?: string | null;
+    voice?: {
+      transcription?: string;
+      confidence?: number;
+      audioUrl?: string;
+      warnings?: string[];
+    };
+  };
 }
 
 export interface CreateScoutingReportDto {
   matchId: string;
-  playerId: string;
+  playerId?: string;
   overallRating?: number;
   summary?: string;
   technicalRating?: number;
@@ -104,6 +126,11 @@ export interface CreateScoutingReportDto {
   observedHeightCm?: number;
   observedWeightKg?: number;
   observedClubName?: string;
+  observedFirstName?: string;
+  observedLastName?: string;
+  observedNationality?: string;
+  observedPhone?: string;
+  observedEmail?: string;
   sprint10mSec?: number;
   sprint20mSec?: number;
   sprint40mSec?: number;
@@ -122,6 +149,19 @@ export interface QueryScoutingReportDto {
   matchId?: string;
   status?: ReportStatus;
   recommendation?: RecommendationType;
+}
+
+export interface BulkSubmitScoutingReportsDto {
+  matchId: string;
+  playerIds: string[];
+  assignmentId?: string;
+  template?: Partial<CreateScoutingReportDto>;
+  voice?: {
+    transcription?: string;
+    confidence?: number;
+    audioUrl?: string;
+    warnings?: string[];
+  };
 }
 
 export const scoutingReportsApi = {
@@ -201,6 +241,13 @@ export const scoutingReportsApi = {
    */
   submit: async (id: string): Promise<ScoutingReport> => {
     return api.postRaw(`/scouting-reports/${id}/submit`);
+  },
+
+  bulkSubmit: async (payload: BulkSubmitScoutingReportsDto): Promise<{
+    data: ScoutingReport[];
+    meta: { matchId: string; scoutId: string; created: number };
+  }> => {
+    return api.postRaw('/scouting-reports/bulk-submit', payload);
   },
 
   /**

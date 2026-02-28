@@ -31,7 +31,12 @@ export type NewsFeedResponse = {
 
 const DEFAULT_LIMIT = 20;
 const MAX_PER_SECTION = 40;
-const NEWS_CATEGORIES: ReadonlyArray<NewsFeedCategory> = ['clubs', 'players', 'market', 'notifications'];
+const NEWS_CATEGORIES: ReadonlyArray<NewsFeedCategory> = [
+  'clubs',
+  'players',
+  'market',
+  'notifications',
+];
 
 const toDate = (value: unknown): Date | null => {
   if (value instanceof Date) return value;
@@ -51,13 +56,20 @@ const toIso = (value: unknown): string | null => {
 export class NewsService {
   constructor(private prisma: PrismaService) {}
 
-  async getNewsFeed(userId: string, limit = DEFAULT_LIMIT, categories: NewsFeedCategory[] = [...NEWS_CATEGORIES]) {
+  async getNewsFeed(
+    userId: string,
+    limit = DEFAULT_LIMIT,
+    categories: NewsFeedCategory[] = [...NEWS_CATEGORIES],
+  ) {
     const sanitizedLimit = this.normalizeLimit(limit);
     const requestedCategories = categories.length > 0 ? categories : [...NEWS_CATEGORIES];
 
     const sectionLimit = Math.max(
       1,
-      Math.floor(Math.max(sanitizedLimit, requestedCategories.length) / Math.max(requestedCategories.length, 1)),
+      Math.floor(
+        Math.max(sanitizedLimit, requestedCategories.length) /
+          Math.max(requestedCategories.length, 1),
+      ),
     );
 
     const includes = {
@@ -131,7 +143,8 @@ export class NewsService {
     });
 
     return rows.map((entry) => {
-      const playerName = `${entry.players?.firstName ?? ''} ${entry.players?.lastName ?? ''}`.trim();
+      const playerName =
+        `${entry.players?.firstName ?? ''} ${entry.players?.lastName ?? ''}`.trim();
       return {
         id: `players-${entry.id}`,
         category: 'players',
@@ -139,7 +152,11 @@ export class NewsService {
         summary: entry.summary ?? null,
         source: playerName || 'Actualités joueur',
         details: entry.headline || null,
-        timestamp: toIso(entry.publishedAtSource) || toIso(entry.publishedAt) || toIso(entry.createdAt) || new Date().toISOString(),
+        timestamp:
+          toIso(entry.publishedAtSource) ||
+          toIso(entry.publishedAt) ||
+          toIso(entry.createdAt) ||
+          new Date().toISOString(),
         link: entry.sourceUrl ?? null,
       };
     });
@@ -188,7 +205,9 @@ export class NewsService {
     });
 
     return rows.map((request) => {
-      const playerName = `${request.players?.firstName ?? ''} ${request.players?.lastName ?? ''}`.trim() || 'Joueur inconnu';
+      const playerName =
+        `${request.players?.firstName ?? ''} ${request.players?.lastName ?? ''}`.trim() ||
+        'Joueur inconnu';
       const clubName = request.clubs?.name ?? 'Club inconnu';
       return {
         id: `market-${request.id}`,

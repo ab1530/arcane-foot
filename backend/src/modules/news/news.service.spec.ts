@@ -97,7 +97,12 @@ describe('NewsService', () => {
       },
     ]);
 
-    const result = await service.getNewsFeed('user-1', 10, ['clubs', 'players', 'market', 'notifications']);
+    const result = await service.getNewsFeed('user-1', 10, [
+      'clubs',
+      'players',
+      'market',
+      'notifications',
+    ]);
 
     expect(result.data).toHaveLength(4);
     expect(result.data[0].category).toBe('notifications');

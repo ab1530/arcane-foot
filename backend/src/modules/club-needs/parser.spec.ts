@@ -28,4 +28,3 @@ describe('ClubNeeds parser', () => {
     expect(parsed[0].errors).toContain('No position recognized');
   });
 });
-

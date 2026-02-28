@@ -141,3 +141,4 @@ export * from './gamification';
 export * from './hardware';
 export * from './news';
 export * from './dashboard';
+export * from './transfer-market';

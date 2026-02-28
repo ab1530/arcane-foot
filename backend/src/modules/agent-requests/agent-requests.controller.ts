@@ -1,14 +1,4 @@
-import {
-  Req,
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Req, Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -26,7 +16,7 @@ import { ListAgentRequestsQueryDto } from './dto/list-agent-requests.dto';
 import { UpdateAgentRequestStatusDto } from './dto/update-agent-request-status.dto';
 import { MarketProfileRuleDto } from './dto/market-profile-rule.dto';
 
-@ApiTags('Demandes à l\'agent')
+@ApiTags("Demandes à l'agent")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('agent-requests')
@@ -36,7 +26,7 @@ export class AgentRequestsController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('PLAYER', 'SCOUT', 'AGENT', 'ADMIN', 'SUPER_ADMIN', 'CLUB_CONTACT')
-  @ApiOperation({ summary: 'Créer une demande à l\'agent' })
+  @ApiOperation({ summary: "Créer une demande à l'agent" })
   @ApiResponse({ status: 201, description: 'Demande créée avec succès' })
   @ApiResponse({ status: 400, description: 'Requête invalide' })
   create(@Body() dto: CreateAgentRequestDto, @Req() req: any) {
@@ -50,12 +40,13 @@ export class AgentRequestsController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles('PLAYER', 'SCOUT', 'AGENT', 'ADMIN', 'SUPER_ADMIN', 'CLUB_CONTACT')
-  @ApiOperation({ summary: 'Lister les demandes à l\'agent' })
+  @ApiOperation({ summary: "Lister les demandes à l'agent" })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'category', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'myOnly', required: false })
+  @ApiQuery({ name: 'creatorRole', required: false })
   getList(@Query() query: ListAgentRequestsQueryDto, @Req() req: any) {
     const isAdmin = req?.user?.role === 'ADMIN' || req?.user?.role === 'SUPER_ADMIN';
     const includeMineOnly = req?.user?.role === 'PLAYER' ? true : query.myOnly === 'true';
@@ -67,6 +58,7 @@ export class AgentRequestsController {
       limit: Number(query.limit) || 20,
       includeMineOnly: isAdmin ? false : includeMineOnly,
       actorId: req?.user?.id,
+      creatorRole: query.creatorRole || null,
     });
   }
 
@@ -90,7 +82,7 @@ export class AgentRequestsController {
   @Get(':id')
   @UseGuards(RolesGuard)
   @Roles('PLAYER', 'SCOUT', 'AGENT', 'ADMIN', 'SUPER_ADMIN', 'CLUB_CONTACT')
-  @ApiOperation({ summary: 'Détail d\'une demande' })
+  @ApiOperation({ summary: "Détail d'une demande" })
   @ApiResponse({ status: 200, description: 'Demande récupérée' })
   getOne(@Param('id') id: string, @Req() req: any) {
     return this.agentRequestsService.getRequest(id);

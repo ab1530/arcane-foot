@@ -549,7 +549,10 @@ describe('ScoutingReportsService', () => {
         tacticalRating: 87,
       };
       prisma.scouting_reports.findUnique.mockResolvedValue(mockReportDb as any);
-      prisma.scouting_reports.update.mockResolvedValue({ ...mockReportDb, ...ratingsUpdate } as any);
+      prisma.scouting_reports.update.mockResolvedValue({
+        ...mockReportDb,
+        ...ratingsUpdate,
+      } as any);
 
       await service.update('report-123', ratingsUpdate);
 

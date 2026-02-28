@@ -9,11 +9,6 @@ const SOURCE_FILES = [
   { path: 'native/ios/QCBandModule.h', dest: 'mobile/QCBandModule.h', addToProject: false },
 ];
 
-const toArray = (value) => {
-  if (!value) return [];
-  return Array.isArray(value) ? value.slice() : [value];
-};
-
 const quoteIfNeeded = (value) => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();

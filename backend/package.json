@@ -23,6 +23,7 @@
     "setup-test-users": "ts-node scripts/setup-test-users.ts",
     "cleanup-test-users": "ts-node scripts/setup-test-users.ts --cleanup",
     "sync:club-logos": "ts-node scripts/backfill-club-logos.ts",
+    "seed:calendar:2026": "ts-node scripts/seed-calendar-2026.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

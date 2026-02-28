@@ -41,8 +41,7 @@ async function bootstrap() {
   // Attach a request ID to every request for cross-service tracing
   app.use((req: any, res: any, next: any) => {
     const headerReqId = req.headers['x-request-id'];
-    const requestId =
-      (Array.isArray(headerReqId) ? headerReqId[0] : headerReqId) || randomUUID();
+    const requestId = (Array.isArray(headerReqId) ? headerReqId[0] : headerReqId) || randomUUID();
     req.requestId = requestId;
     res.setHeader('x-request-id', requestId);
     next();
@@ -231,7 +230,9 @@ async function bootstrap() {
   const portRaw = process.env.PORT ?? process.env.API_PORT ?? '3000';
   const port = Number.parseInt(portRaw, 10);
   if (Number.isNaN(port)) {
-    throw new Error(`[BOOT] Invalid port value: "${portRaw}". Set PORT or API_PORT to a valid integer.`);
+    throw new Error(
+      `[BOOT] Invalid port value: "${portRaw}". Set PORT or API_PORT to a valid integer.`,
+    );
   }
   await app.listen(port);
 

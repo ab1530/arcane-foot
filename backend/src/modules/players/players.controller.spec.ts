@@ -20,6 +20,8 @@ describe('PlayersController', () => {
     remove: jest.fn(),
     getStats: jest.fn(),
     getReports: jest.fn(),
+    resolveObservedPlayer: jest.fn(),
+    getDiscoveredTree: jest.fn(),
     getMyPlayerSpace: jest.fn(),
     submitMyPlayerWeeklyUpdate: jest.fn(),
   };
@@ -827,7 +829,11 @@ describe('PlayersController', () => {
 
       const result = await controller.submitWeeklyUpdate(req as any, payload as any);
 
-      expect(service.submitMyPlayerWeeklyUpdate).toHaveBeenCalledWith('user-123', 'player-123', payload);
+      expect(service.submitMyPlayerWeeklyUpdate).toHaveBeenCalledWith(
+        'user-123',
+        'player-123',
+        payload,
+      );
       expect(result).toEqual(updatedPayload);
     });
 

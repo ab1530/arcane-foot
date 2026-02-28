@@ -19,7 +19,13 @@ import { colors, spacing, typography, radius } from '../../design/theme';
 import { Icon } from '../../components/ui';
 import { ScreenHeader } from '../../components/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
-import api, { extractPayloadItems, pickDateValue } from '../../services/api';
+import api, {
+  extractPayloadItems,
+  pickDateValue,
+  type ScoutCalendarDiscoverItem,
+  type ScoutCalendarMissionItem,
+  type ScoutCalendarResponse,
+} from '../../services/api';
 import { eventsApi, type Event as CalendarEvent } from '../../services/api/events';
 import { logger, logError } from '../../utils/logger';
 import type { AppStackParamList } from '../../types/navigation';
@@ -29,6 +35,8 @@ import type {
   CalendarPersonaFilter,
 } from '../../types/calendar';
 import { useLocalization } from '../../contexts/LocalizationContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { isFeatureEnabled } from '../../constants/features';
 
 let MapView: any;
 let Marker: any;
@@ -44,6 +52,8 @@ try {
 const { width } = Dimensions.get('window');
 
 type ViewMode = 'list' | 'week' | 'map';
+type CalendarSectionFilter = 'ALL' | 'MY' | 'SHARED' | 'DISCOVER';
+type CalendarFeedStrategy = 'SCOUT_CALENDAR' | 'GLOBAL_MATCHES' | 'LEGACY_ASSIGNMENTS';
 
 const STATUS_COLORS: Record<CalendarItemStatus, string> = {
   PLANNED: '#E6F54A',
@@ -55,7 +65,28 @@ const STATUS_COLORS: Record<CalendarItemStatus, string> = {
   CANCELLED: '#EF4444',
 };
 
+const PERSONA_COLORS: Record<CalendarPersonaFilter, string> = {
+  ALL: '#94A3B8',
+  AGENTS: '#FB7185',
+  SCOUTS: '#FACC15',
+  PLAYERS: '#86EFAC',
+};
+
 const STATUS_ORDER: CalendarItemStatus[] = ['PLANNED', 'EN_ROUTE', 'REPORT_SUBMITTED'];
+
+const resolveCalendarFeedStrategy = (role?: string | null): CalendarFeedStrategy => {
+  const normalizedRole = String(role ?? '').toUpperCase();
+  if (normalizedRole === 'SCOUT') return 'SCOUT_CALENDAR';
+  if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'AGENT') {
+    return 'GLOBAL_MATCHES';
+  }
+  return 'LEGACY_ASSIGNMENTS';
+};
+
+const isCategoryARole = (role?: string | null) => {
+  const normalizedRole = String(role ?? '').toUpperCase();
+  return normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN';
+};
 
 const normalizeStatus = (value?: string | null): CalendarItemStatus => {
   const source = String(value ?? '').toUpperCase();
@@ -126,22 +157,55 @@ const inferPersonaFromText = (value: string): CalendarPersonaFilter => {
 };
 
 const adaptEventToCalendar = (item: CalendarEvent): CalendarMatch => {
-  const assignedUsers = Array.isArray(item.assignedUsers) ? item.assignedUsers : [];
-  const firstRole = assignedUsers[0]?.user?.role ?? item.type;
+  const rawItem = item as any;
+  const rawMatch = rawItem.match ?? rawItem.matches;
+  const assignedUsers = Array.isArray(rawItem.assignedUsers)
+    ? rawItem.assignedUsers
+    : Array.isArray(rawItem.event_assignments)
+    ? rawItem.event_assignments.map((entry: any) => ({
+        id: entry.id,
+        user: entry.user ?? entry.users,
+      }))
+    : [];
 
+  const createdBy = rawItem.createdBy ?? rawItem.users;
   const assignments = assignedUsers
-    .map((entry) => {
-      if (!entry?.user) return null;
+    .map((entry: any) => {
+      const user = entry?.user;
+      if (!user) return null;
       return {
-        scoutId: entry.user.id,
+        scoutId: user.id,
         scout: {
-          firstName: entry.user.firstName,
-          lastName: entry.user.lastName,
-          role: entry.user.role,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
         },
       };
     })
     .filter(Boolean) as CalendarMatch['assignments'];
+
+  const participants = assignments?.map((entry) => ({
+    id: entry.scoutId,
+    firstName: entry.scout?.firstName,
+    lastName: entry.scout?.lastName,
+    role: entry.scout?.role,
+    avatar: entry.scout?.avatar,
+  })) ?? [];
+
+  const roleSource = [
+    createdBy?.role,
+    ...participants.map((participant) => participant.role),
+  ]
+    .map((value) => String(value ?? '').toUpperCase())
+    .filter(Boolean);
+
+  const persona = roleSource.some((role) => role === 'SCOUT')
+    ? 'SCOUTS'
+    : roleSource.some((role) => role === 'PLAYER')
+    ? 'PLAYERS'
+    : roleSource.some((role) => role === 'AGENT' || role === 'ADMIN' || role === 'SUPER_ADMIN')
+    ? 'AGENTS'
+    : inferPersonaFromText(`${item.type} ${item.title ?? ''}`);
 
   return {
     id: `event-${item.id}`,
@@ -149,22 +213,34 @@ const adaptEventToCalendar = (item: CalendarEvent): CalendarMatch => {
     title: item.title,
     date: item.startDate,
     status: normalizeStatus(item.status),
-    persona: inferPersonaFromText(String(firstRole)),
-    homeClub: item.match?.homeClub
+    persona,
+    homeClub: rawMatch?.homeClub
       ? {
-          id: item.match.homeClub.id,
-          name: item.match.homeClub.name,
-          logo: item.match.homeClub.logo,
+          id: rawMatch.homeClub.id,
+          name: rawMatch.homeClub.name,
+          logo: rawMatch.homeClub.logo,
+        }
+      : rawMatch?.clubs_matches_homeClubIdToclubs
+      ? {
+          id: rawMatch.clubs_matches_homeClubIdToclubs.id,
+          name: rawMatch.clubs_matches_homeClubIdToclubs.name,
+          logo: rawMatch.clubs_matches_homeClubIdToclubs.logo,
         }
       : undefined,
-    awayClub: item.match?.awayClub
+    awayClub: rawMatch?.awayClub
       ? {
-          id: item.match.awayClub.id,
-          name: item.match.awayClub.name,
-          logo: item.match.awayClub.logo,
+          id: rawMatch.awayClub.id,
+          name: rawMatch.awayClub.name,
+          logo: rawMatch.awayClub.logo,
+        }
+      : rawMatch?.clubs_matches_awayClubIdToclubs
+      ? {
+          id: rawMatch.clubs_matches_awayClubIdToclubs.id,
+          name: rawMatch.clubs_matches_awayClubIdToclubs.name,
+          logo: rawMatch.clubs_matches_awayClubIdToclubs.logo,
         }
       : undefined,
-    competition: item.match
+    competition: rawMatch
       ? {
           name: 'Arcane Event',
           logo: undefined,
@@ -177,13 +253,18 @@ const adaptEventToCalendar = (item: CalendarEvent): CalendarMatch => {
       longitude: item.longitude,
     },
     assignments,
-    participants: assignments?.map((entry) => ({
-      id: entry.scoutId,
-      firstName: entry.scout?.firstName,
-      lastName: entry.scout?.lastName,
-      role: entry.scout?.role,
-      avatar: entry.scout?.avatar,
-    })),
+    participants: createdBy
+      ? [
+          {
+            id: createdBy.id,
+            firstName: createdBy.firstName,
+            lastName: createdBy.lastName,
+            role: createdBy.role,
+            avatar: createdBy.avatar,
+          },
+          ...participants,
+        ]
+      : participants,
     notes: item.description,
     locationLabel: item.location,
   };
@@ -237,7 +318,10 @@ const adaptMatchToCalendar = (item: any): CalendarMatch => {
               }
             : undefined,
         }))
-        .filter((assignment) => Boolean(assignment.scoutId || assignment.scout))
+        .filter(
+          (assignment: NonNullable<CalendarMatch['assignments']>[number]) =>
+            Boolean(assignment.scoutId || assignment.scout),
+        )
     : legacyAssignments;
 
   const assignmentDerivedStatus = deriveStatusFromAssignments(assignments);
@@ -305,7 +389,7 @@ const adaptMatchToCalendar = (item: any): CalendarMatch => {
         }
       : undefined,
     assignments,
-    participants: assignments.map((entry) => ({
+    participants: assignments.map((entry: NonNullable<CalendarMatch['assignments']>[number]) => ({
       id: entry.scoutId,
       firstName: entry.scout?.firstName,
       lastName: entry.scout?.lastName,
@@ -314,6 +398,160 @@ const adaptMatchToCalendar = (item: any): CalendarMatch => {
     })),
     notes: item.notes,
     locationLabel: item.venue?.name ?? item.venueOld,
+  };
+};
+
+const adaptScoutMissionToCalendar = (
+  item: ScoutCalendarMissionItem,
+  sectionType: 'MY' | 'SHARED',
+): CalendarMatch => {
+  const match = item.match ?? {};
+  const homeClub = match.homeClub;
+  const awayClub = match.awayClub;
+  const scheduledAt =
+    match.scheduledAt ??
+    match.matchDate ??
+    new Date().toISOString();
+
+  const assignment: CalendarMatch['assignments'] = [
+    {
+      id: item.assignmentId,
+      assignmentId: item.assignmentId,
+      scoutId: item.scout?.id ?? item.scout?.scoutId ?? item.scout?.userId ?? '',
+      missionType: item.missionType,
+      status: item.status,
+      mobileStatus: item.mobileStatus,
+      reportSubmitted: item.reportSubmitted,
+      scout: item.scout
+        ? {
+            firstName: item.scout.firstName,
+            lastName: item.scout.lastName,
+            avatar: item.scout.avatar,
+            role: item.scout.role,
+          }
+        : undefined,
+      assignedBy: item.assignedBy
+        ? {
+            id: item.assignedBy.id,
+            firstName: item.assignedBy.firstName,
+            lastName: item.assignedBy.lastName,
+            role: item.assignedBy.role,
+          }
+        : undefined,
+    },
+  ];
+
+  return {
+    id: item.matchId,
+    assignmentId: item.assignmentId,
+    missionType: item.missionType,
+    sectionType,
+    sourceType: 'MATCH',
+    status: item.mobileStatus ?? normalizeStatus(item.status),
+    date: scheduledAt,
+    country: item.country ?? undefined,
+    league: item.league ?? undefined,
+    persona: 'SCOUTS',
+    assignments: assignment,
+    participants: assignment
+      .filter((entry) => entry.scout)
+      .map((entry) => ({
+        id: entry.scoutId,
+        firstName: entry.scout?.firstName,
+        lastName: entry.scout?.lastName,
+        role: entry.scout?.role,
+        avatar: entry.scout?.avatar,
+      })),
+    homeClub: homeClub
+      ? {
+          id: homeClub.id,
+          name: homeClub.name,
+          logo: homeClub.logo,
+        }
+      : undefined,
+    awayClub: awayClub
+      ? {
+          id: awayClub.id,
+          name: awayClub.name,
+          logo: awayClub.logo,
+        }
+      : undefined,
+    competition: (match.competition?.name || match.competitionOld)
+      ? {
+          id: match.competition?.id,
+          name: match.competition?.name ?? match.competitionOld,
+        }
+      : undefined,
+    venue: match.venue
+      ? {
+          id: match.venue.id,
+          name: match.venue.name ?? 'Stadium',
+          city: match.venue.city,
+          country: match.venue.country,
+          address: match.venue.address,
+          latitude: match.venue.latitude,
+          longitude: match.venue.longitude,
+        }
+      : undefined,
+    locationLabel: match.venue?.name,
+    title:
+      `${homeClub?.name ?? 'Club A'} vs ${awayClub?.name ?? 'Club B'}`,
+  };
+};
+
+const adaptScoutDiscoverToCalendar = (item: ScoutCalendarDiscoverItem): CalendarMatch => {
+  const match = item.match ?? {};
+  const homeClub = match.homeClub;
+  const awayClub = match.awayClub;
+
+  return {
+    id: item.matchId,
+    sectionType: 'DISCOVER',
+    sourceType: 'MATCH',
+    status: match.mobileStatus ?? normalizeStatus(match.status),
+    date: match.scheduledAt ?? match.matchDate ?? new Date().toISOString(),
+    country: item.country ?? undefined,
+    league: item.league ?? undefined,
+    persona: 'SCOUTS',
+    homeClub: homeClub
+      ? {
+          id: homeClub.id,
+          name: homeClub.name,
+          logo: homeClub.logo,
+        }
+      : undefined,
+    awayClub: awayClub
+      ? {
+          id: awayClub.id,
+          name: awayClub.name,
+          logo: awayClub.logo,
+        }
+      : undefined,
+    competition: (match.competition?.name || match.competitionOld)
+      ? {
+          id: match.competition?.id,
+          name: match.competition?.name ?? match.competitionOld,
+        }
+      : undefined,
+    venue: match.venue
+      ? {
+          id: match.venue.id,
+          name: match.venue.name ?? 'Stadium',
+          city: match.venue.city,
+          country: match.venue.country,
+          address: match.venue.address,
+          latitude: match.venue.latitude,
+          longitude: match.venue.longitude,
+        }
+      : undefined,
+    participants: (item.sharedScouts ?? []).map((scout) => ({
+      id: scout.id,
+      firstName: scout.firstName,
+      lastName: scout.lastName,
+      role: scout.role,
+    })),
+    locationLabel: match.venue?.name,
+    title: `${homeClub?.name ?? 'Club A'} vs ${awayClub?.name ?? 'Club B'}`,
   };
 };
 
@@ -348,6 +586,41 @@ const formatSectionDayLabel = (date: Date, language: 'fr' | 'en') => {
   });
 };
 
+const toDayKey = (date: Date) =>
+  [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+
+const getWeekStartDate = (baseDate: Date) => {
+  const startOfWeek = new Date(baseDate);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const day = startOfWeek.getDay();
+  const offsetToMonday = day === 0 ? -6 : 1 - day;
+  startOfWeek.setDate(startOfWeek.getDate() + offsetToMonday);
+  return startOfWeek;
+};
+
+const addDays = (baseDate: Date, days: number) => {
+  const nextDate = new Date(baseDate);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+};
+
+const formatWeekRangeLabel = (weekStart: Date, weekEnd: Date, language: 'fr' | 'en') => {
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+  const startLabel = weekStart.toLocaleDateString(locale, {
+    day: '2-digit',
+    month: 'short',
+  });
+  const endLabel = weekEnd.toLocaleDateString(locale, {
+    day: '2-digit',
+    month: 'short',
+  });
+  return `${startLabel} - ${endLabel}`;
+};
+
 const renderBadge = (logo?: string | null) => {
   if (!logo) {
     return <View style={styles.badgePlaceholder} />;
@@ -359,20 +632,144 @@ const renderBadge = (logo?: string | null) => {
 export const CalendarScreenNew = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { dictionary, language } = useLocalization();
+  const { user, activeRole } = useAuth();
   const copy = dictionary.calendarCenter ?? {};
+  const copyAny = copy as Record<string, any>;
   const mapRef = useRef<any>(null);
+  const missionRequestHubEnabled = isFeatureEnabled('missionRequestHub');
+  const effectiveRole = String(activeRole ?? user?.role ?? '').toUpperCase();
+  const calendarFeedStrategy = useMemo(
+    () => resolveCalendarFeedStrategy(effectiveRole),
+    [effectiveRole],
+  );
+  const canOpenMissionRequestsHub = useMemo(() => {
+    if (!missionRequestHubEnabled) return false;
+    return ['SUPER_ADMIN', 'ADMIN', 'AGENT', 'SCOUT'].includes(effectiveRole);
+  }, [effectiveRole, missionRequestHubEnabled]);
 
   const [matches, setMatches] = useState<CalendarMatch[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [leagues, setLeagues] = useState<string[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState<string>('ALL');
+  const [selectedLeague, setSelectedLeague] = useState<string>('ALL');
+  const [isScoutCalendarMode, setIsScoutCalendarMode] = useState(false);
+  const [addingMatchId, setAddingMatchId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [personaFilter, setPersonaFilter] = useState<CalendarPersonaFilter>('ALL');
+  const [sectionFilter, setSectionFilter] = useState<CalendarSectionFilter>('ALL');
   const [selectedMapMatchId, setSelectedMapMatchId] = useState<string | null>(null);
+  const selectedWeekStart = useMemo(() => getWeekStartDate(selectedDate), [selectedDate]);
+  const selectedWeekEnd = useMemo(() => addDays(selectedWeekStart, 6), [selectedWeekStart]);
+  const selectedWeekEndExclusive = useMemo(() => addDays(selectedWeekStart, 7), [selectedWeekStart]);
+  const selectedWeekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDays(selectedWeekStart, index)),
+    [selectedWeekStart],
+  );
+  const isCurrentWeek = useMemo(
+    () => getWeekStartDate(new Date()).getTime() === selectedWeekStart.getTime(),
+    [selectedWeekStart],
+  );
+  const weekRangeLabel = useMemo(
+    () => formatWeekRangeLabel(selectedWeekStart, selectedWeekEnd, language),
+    [language, selectedWeekEnd, selectedWeekStart],
+  );
 
   const fetchMatches = useCallback(async () => {
     try {
       setLoading(true);
+      if (calendarFeedStrategy === 'SCOUT_CALENDAR') {
+        const [scoutCalendarPayload, eventsPayload] = await Promise.all([
+          api.getScoutCalendar({
+            country: selectedCountry !== 'ALL' ? selectedCountry : undefined,
+            league: selectedLeague !== 'ALL' ? selectedLeague : undefined,
+          }),
+          eventsApi.getMyEvents().catch((error) => {
+            logError('Failed to fetch calendar events in scout mode', error);
+            return [];
+          }),
+        ]);
+        const scoutCalendar = scoutCalendarPayload as ScoutCalendarResponse;
+        const my = (scoutCalendar?.myCalendar ?? []).map((entry) =>
+          adaptScoutMissionToCalendar(entry, 'MY'),
+        );
+        const shared = (scoutCalendar?.sharedCalendar ?? []).map((entry) =>
+          adaptScoutMissionToCalendar(entry, 'SHARED'),
+        );
+        const discover = (scoutCalendar?.discover ?? []).map((entry) =>
+          adaptScoutDiscoverToCalendar(entry),
+        );
+        const events = extractPayloadItems<CalendarEvent>(eventsPayload).map(adaptEventToCalendar);
+        const merged = [...my, ...shared, ...discover, ...events].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
+
+        logger.info('calendar', 'Scout calendar feed adapted', {
+          my: my.length,
+          shared: shared.length,
+          discover: discover.length,
+          events: events.length,
+          total: merged.length,
+        });
+
+        setCountries(scoutCalendar?.filters?.countries ?? []);
+        setLeagues(scoutCalendar?.filters?.leagues ?? []);
+        setIsScoutCalendarMode(true);
+        setMatches(merged);
+        return;
+      }
+
+      if (calendarFeedStrategy === 'GLOBAL_MATCHES') {
+        setIsScoutCalendarMode(false);
+        const useTeamEvents = isCategoryARole(effectiveRole);
+        const eventsPromise = (useTeamEvents ? eventsApi.getTeamEvents() : eventsApi.getMyEvents()).catch((error) => {
+          logError('Failed to fetch calendar events', error);
+          return [];
+        });
+        const upcomingMatchesPayload = await api.getMatches({
+          from: new Date().toISOString(),
+          limit: 200,
+        });
+        let matchesList = extractPayloadItems<any>(upcomingMatchesPayload).map(adaptMatchToCalendar);
+        if (matchesList.length === 0) {
+          logger.info('calendar', 'No upcoming matches for global feed, fallback to latest matches', {
+            role: effectiveRole,
+          });
+          const fallbackMatchesPayload = await api.getMatches({
+            limit: 200,
+          });
+          matchesList = extractPayloadItems<any>(fallbackMatchesPayload).map(adaptMatchToCalendar);
+        }
+        const eventsPayload = await eventsPromise;
+        const events = extractPayloadItems<CalendarEvent>(eventsPayload).map(adaptEventToCalendar);
+        const merged = [...events, ...matchesList].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
+
+        const fallbackCountries = Array.from(
+          new Set(merged.map((entry) => entry.country).filter((value): value is string => Boolean(value))),
+        );
+        const fallbackLeagues = Array.from(
+          new Set(merged.map((entry) => entry.league).filter((value): value is string => Boolean(value))),
+        );
+
+        logger.info('calendar', 'Global calendar feed adapted', {
+          role: effectiveRole,
+          eventScope: useTeamEvents ? 'TEAM' : 'MY',
+          events: events.length,
+          matches: matchesList.length,
+          total: merged.length,
+        });
+
+        setCountries(fallbackCountries.sort((a, b) => a.localeCompare(b)));
+        setLeagues(fallbackLeagues.sort((a, b) => a.localeCompare(b)));
+        setMatches(merged);
+        return;
+      }
+
+      setIsScoutCalendarMode(false);
 
       const [eventsPayload, matchesPayload] = await Promise.all([
         eventsApi.getMyEvents().catch((error) => {
@@ -381,23 +778,40 @@ export const CalendarScreenNew = () => {
         }),
         api.getMyAssignedMatches().catch((error) => {
           logError('Failed to fetch calendar matches', error);
-          return api.getMatches();
+          return api.getMatches({
+            from: new Date().toISOString(),
+            limit: 200,
+          });
         }),
       ]);
 
       const events = extractPayloadItems<CalendarEvent>(eventsPayload).map(adaptEventToCalendar);
-      const matchesList = extractPayloadItems<any>(matchesPayload).map(adaptMatchToCalendar);
-
+      let matchesList = extractPayloadItems<any>(matchesPayload).map(adaptMatchToCalendar);
+      if (matchesList.length === 0) {
+        const fallbackMatchesPayload = await api.getMatches({
+          limit: 200,
+        });
+        matchesList = extractPayloadItems<any>(fallbackMatchesPayload).map(adaptMatchToCalendar);
+      }
       const merged = [...events, ...matchesList].sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
       );
 
-      logger.info('calendar', 'Calendar feed adapted', {
+      const fallbackCountries = Array.from(
+        new Set(merged.map((entry) => entry.country).filter((value): value is string => Boolean(value))),
+      );
+      const fallbackLeagues = Array.from(
+        new Set(merged.map((entry) => entry.league).filter((value): value is string => Boolean(value))),
+      );
+
+      logger.info('calendar', 'Legacy calendar feed adapted', {
         events: events.length,
         matches: matchesList.length,
         total: merged.length,
       });
 
+      setCountries(fallbackCountries.sort((a, b) => a.localeCompare(b)));
+      setLeagues(fallbackLeagues.sort((a, b) => a.localeCompare(b)));
       setMatches(merged);
     } catch (error) {
       logError('Failed to build calendar feed', error);
@@ -406,32 +820,37 @@ export const CalendarScreenNew = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [calendarFeedStrategy, effectiveRole, selectedCountry, selectedLeague]);
 
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
 
+  useEffect(() => {
+    if (!isScoutCalendarMode && sectionFilter !== 'ALL') {
+      setSectionFilter('ALL');
+    }
+  }, [isScoutCalendarMode, sectionFilter]);
+
+  const handleAddToMyCalendar = useCallback(
+    async (matchId: string) => {
+      try {
+        setAddingMatchId(matchId);
+        await api.addMatchToMyCalendar(matchId);
+        await fetchMatches();
+      } catch (error) {
+        logError('Failed to add discover match to my calendar', error);
+      } finally {
+        setAddingMatchId(null);
+      }
+    },
+    [fetchMatches],
+  );
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchMatches();
   }, [fetchMatches]);
-
-  const getWeekDates = useCallback(() => {
-    const week = [];
-    const startOfWeek = new Date(selectedDate);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-
-    for (let i = 0; i < 7; i += 1) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      week.push(date);
-    }
-
-    return week;
-  }, [selectedDate]);
 
   const isSameDate = useCallback((left: Date, right: Date) => {
     return (
@@ -441,10 +860,123 @@ export const CalendarScreenNew = () => {
     );
   }, []);
 
+  const handleShiftWeek = useCallback((direction: -1 | 1) => {
+    setSelectedDate((currentDate) => addDays(currentDate, direction * 7));
+  }, []);
+
+  const handleGoToCurrentWeek = useCallback(() => {
+    setSelectedDate(new Date());
+  }, []);
+
+  const zoneFilteredMatches = useMemo(() => {
+    return matches.filter((item) => {
+      const countryOk =
+        selectedCountry === 'ALL' ||
+        String(item.country ?? item.venue?.country ?? '')
+          .toLowerCase()
+          .trim() === selectedCountry.toLowerCase();
+      const leagueOk =
+        selectedLeague === 'ALL' ||
+        String(item.league ?? item.competition?.name ?? '')
+          .toLowerCase()
+          .trim() === selectedLeague.toLowerCase();
+      return countryOk && leagueOk;
+    });
+  }, [matches, selectedCountry, selectedLeague]);
+
+  const sectionScopedMatches = useMemo(() => {
+    return zoneFilteredMatches.filter((item) => {
+      if (sectionFilter === 'ALL') return true;
+      return item.sectionType === sectionFilter;
+    });
+  }, [zoneFilteredMatches, sectionFilter]);
+
   const filteredMatches = useMemo(() => {
-    if (personaFilter === 'ALL') return matches;
-    return matches.filter((item) => item.persona === personaFilter);
-  }, [matches, personaFilter]);
+    return sectionScopedMatches.filter((item) => {
+      if (personaFilter === 'ALL') return true;
+      return item.persona === personaFilter;
+    });
+  }, [sectionScopedMatches, personaFilter]);
+
+  const weekScopedMatches = useMemo(() => {
+    const weekStartTs = selectedWeekStart.getTime();
+    const weekEndTs = selectedWeekEndExclusive.getTime();
+    return filteredMatches.filter((item) => {
+      const matchTs = new Date(item.date).getTime();
+      return matchTs >= weekStartTs && matchTs < weekEndTs;
+    });
+  }, [filteredMatches, selectedWeekEndExclusive, selectedWeekStart]);
+
+  const weekMatchesByDay = useMemo(() => {
+    const byDay = new Map<string, CalendarMatch[]>();
+    for (const date of selectedWeekDates) {
+      byDay.set(toDayKey(date), []);
+    }
+    for (const item of weekScopedMatches) {
+      const key = toDayKey(new Date(item.date));
+      const bucket = byDay.get(key);
+      if (!bucket) continue;
+      bucket.push(item);
+    }
+    for (const bucket of byDay.values()) {
+      bucket.sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime());
+    }
+    return byDay;
+  }, [selectedWeekDates, weekScopedMatches]);
+
+  const personaCounts = useMemo(() => {
+    const initial: Record<CalendarPersonaFilter, number> = {
+      ALL: sectionScopedMatches.length,
+      AGENTS: 0,
+      SCOUTS: 0,
+      PLAYERS: 0,
+    };
+    for (const item of sectionScopedMatches) {
+      const persona = item.persona ?? 'SCOUTS';
+      initial[persona] += 1;
+    }
+    return initial;
+  }, [sectionScopedMatches]);
+
+  const sectionCounts = useMemo(() => {
+    const initial: Record<CalendarSectionFilter, number> = {
+      ALL: zoneFilteredMatches.length,
+      MY: 0,
+      SHARED: 0,
+      DISCOVER: 0,
+    };
+    for (const item of zoneFilteredMatches) {
+      const section = item.sectionType;
+      if (section === 'MY' || section === 'SHARED' || section === 'DISCOVER') {
+        initial[section] += 1;
+      }
+    }
+    return initial;
+  }, [zoneFilteredMatches]);
+
+  const groupedListByDay = useMemo(() => {
+    const byDay = new Map<string, { date: Date; items: CalendarMatch[] }>();
+    for (const item of weekScopedMatches) {
+      const date = new Date(item.date);
+      const dayKey = toDayKey(date);
+
+      const existing = byDay.get(dayKey);
+      if (existing) {
+        existing.items.push(item);
+      } else {
+        byDay.set(dayKey, { date, items: [item] });
+      }
+    }
+
+    return Array.from(byDay.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map((group) => ({
+        ...group,
+        items: group.items.sort(
+          (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime(),
+        ),
+      }));
+  }, [weekScopedMatches]);
 
   useEffect(() => {
     if (!selectedMapMatchId) return;
@@ -454,12 +986,8 @@ export const CalendarScreenNew = () => {
   }, [filteredMatches, selectedMapMatchId]);
 
   const getMatchesForDate = useCallback(
-    (date: Date) =>
-      filteredMatches.filter((match) => {
-        const matchDate = new Date(match.date);
-        return isSameDate(matchDate, date);
-      }),
-    [filteredMatches, isSameDate],
+    (date: Date) => weekMatchesByDay.get(toDayKey(date)) ?? [],
+    [weekMatchesByDay],
   );
 
   const upcomingMatches = useMemo(
@@ -496,6 +1024,63 @@ export const CalendarScreenNew = () => {
     navigation.navigate('CreateReport', { playerId: undefined });
   }, [navigation, upcomingMatches]);
 
+  const handleOpenMissionRequestsHub = useCallback(() => {
+    navigation.navigate('MissionRequests');
+  }, [navigation]);
+
+  const defaultEmptyTitle =
+    calendarFeedStrategy === 'GLOBAL_MATCHES'
+      ? copyAny.emptyUpcomingTitle ?? 'Aucun match à venir'
+      : copy.emptyTitle ?? 'Aucun rendez-vous planifié';
+  const defaultEmptyBody =
+    calendarFeedStrategy === 'GLOBAL_MATCHES'
+      ? copyAny.emptyUpcomingBody ?? 'Aucun match à venir pour ce filtre.'
+      : copy.emptyBody ?? 'Aucun élément pour ce filtre.';
+
+  const renderWeekNavigator = () => (
+    <View style={styles.weekNavigator} testID="calendar-center-week-navigation">
+      <View style={styles.weekNavigatorRow}>
+        <TouchableOpacity
+          testID="calendar-center-week-prev"
+          style={styles.weekNavigatorButton}
+          onPress={() => handleShiftWeek(-1)}
+        >
+          <Icon name="chevronBack" size={18} color={colors.text.primary} />
+        </TouchableOpacity>
+
+        <View style={styles.weekNavigatorCenter}>
+          <Text style={styles.weekNavigatorLabel}>{weekRangeLabel}</Text>
+          <Text style={styles.weekNavigatorHint}>
+            {isCurrentWeek
+              ? copyAny.weekCurrentHint ?? 'Semaine en cours'
+              : copyAny.weekSelectedHint ?? 'Semaine sélectionnée'}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          testID="calendar-center-week-next"
+          style={styles.weekNavigatorButton}
+          onPress={() => handleShiftWeek(1)}
+        >
+          <Icon name="chevronForward" size={18} color={colors.text.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {!isCurrentWeek ? (
+        <TouchableOpacity
+          testID="calendar-center-week-current"
+          style={styles.weekNavigatorCurrentButton}
+          onPress={handleGoToCurrentWeek}
+        >
+          <Icon name="today" size={14} color={colors.brand.primary} />
+          <Text style={styles.weekNavigatorCurrentText}>
+            {copyAny.weekCurrentCta ?? 'Revenir à cette semaine'}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+
   const renderStatusLegend = () => {
     const labels = copy.statusLabels ?? {};
 
@@ -516,13 +1101,48 @@ export const CalendarScreenNew = () => {
 
   const renderMatchListItem = (match: CalendarMatch, index: number) => {
     const normalizedStatus = normalizeStatus(match.status);
+    const missionLabel =
+      match.missionType === 'PRIORITY'
+        ? copyAny.priorityMissionLabel ?? 'Mission prioritaire'
+        : match.missionType === 'VOLUNTARY'
+        ? copyAny.voluntaryMissionLabel ?? 'Mission volontaire'
+        : null;
+    const sectionLabel =
+      match.sectionType === 'MY'
+        ? copyAny.myMissionLabel ?? 'Mes missions'
+        : match.sectionType === 'SHARED'
+        ? copyAny.sharedMissionLabel ?? 'Calendrier partagé'
+        : match.sectionType === 'DISCOVER'
+        ? copyAny.discoverMissionLabel ?? 'Découverte'
+        : null;
+    const isDiscover = match.sectionType === 'DISCOVER';
+    const isAdding = addingMatchId === match.id;
+    const persona = match.persona ?? 'SCOUTS';
+    const personaColor = PERSONA_COLORS[persona];
+    const personaLabel =
+      persona === 'AGENTS'
+        ? copyAny.agentRoleLabel ?? 'Agent'
+        : persona === 'PLAYERS'
+        ? copyAny.playerRoleLabel ?? 'Joueur'
+        : copyAny.scoutRoleLabel ?? 'Scout';
+    const participantNames = (match.participants ?? [])
+      .map((participant) => `${participant.firstName ?? ''} ${participant.lastName ?? ''}`.trim())
+      .filter((value) => value.length > 0);
+    const participantPreview = participantNames.slice(0, 2).join(', ');
+    const participantOverflow = participantNames.length > 2 ? ` +${participantNames.length - 2}` : '';
 
     return (
       <TouchableOpacity
         key={match.id}
-        style={styles.matchTile}
+        style={[styles.matchTile, { borderColor: `${personaColor}66` }]}
         activeOpacity={0.92}
-        onPress={() => navigation.navigate('MatchDetail', { match })}
+        onPress={() =>
+          navigation.navigate('MatchDetail', {
+            match,
+            matchId: match.id,
+            assignmentId: match.assignmentId,
+          })
+        }
       >
         <View style={styles.matchTileContent}>
           <View style={styles.matchHeaderRow}>
@@ -537,6 +1157,31 @@ export const CalendarScreenNew = () => {
               </Text>
             </View>
           </View>
+
+          {(sectionLabel || missionLabel || personaLabel) && (
+            <View style={styles.badgesRow}>
+              <View style={[styles.roleBadge, { borderColor: `${personaColor}66`, backgroundColor: `${personaColor}24` }]}>
+                <Text style={styles.roleBadgeText}>{personaLabel}</Text>
+              </View>
+              {sectionLabel ? (
+                <View style={styles.sectionBadge}>
+                  <Text style={styles.sectionBadgeText}>{sectionLabel}</Text>
+                </View>
+              ) : null}
+              {missionLabel ? (
+                <View
+                  style={[
+                    styles.missionBadge,
+                    match.missionType === 'PRIORITY'
+                      ? styles.missionBadgePriority
+                      : styles.missionBadgeVoluntary,
+                  ]}
+                >
+                  <Text style={styles.missionBadgeText}>{missionLabel}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
 
           {match.competition?.name ? (
             <View style={styles.competitionRow}>
@@ -567,7 +1212,17 @@ export const CalendarScreenNew = () => {
             </View>
           )}
 
-          {match.assignments && match.assignments.length > 0 && (
+          {participantNames.length > 0 ? (
+            <View style={styles.metaRow}>
+              <Icon name="people" size={16} color={colors.brand.primary} />
+              <Text style={styles.metaText}>
+                {participantPreview}
+                {participantOverflow}
+              </Text>
+            </View>
+          ) : null}
+
+          {participantNames.length === 0 && match.assignments && match.assignments.length > 0 && (
             <View style={styles.metaRow}>
               <Icon name="people" size={16} color={colors.brand.primary} />
               <Text style={styles.metaText}>
@@ -577,6 +1232,25 @@ export const CalendarScreenNew = () => {
                   : copy.assignedSingle ?? 'assigné'}
               </Text>
             </View>
+          )}
+
+          {isDiscover && isScoutCalendarMode && (
+            <TouchableOpacity
+              style={[styles.addToCalendarButton, isAdding && styles.addToCalendarButtonDisabled]}
+              onPress={() => handleAddToMyCalendar(match.id)}
+              disabled={isAdding}
+            >
+              {isAdding ? (
+                <ActivityIndicator size="small" color={colors.background.primary} />
+              ) : (
+                <>
+                  <Icon name="add" size={16} color={colors.background.primary} />
+                  <Text style={styles.addToCalendarButtonText}>
+                    {copyAny.addToMyCalendarCta ?? 'Ajouter à mon calendrier'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           )}
         </View>
 
@@ -601,22 +1275,30 @@ export const CalendarScreenNew = () => {
         />
       }
     >
-      {filteredMatches.length === 0 ? (
+      {renderWeekNavigator()}
+      {groupedListByDay.length === 0 ? (
         <View testID="calendar-center-empty-state">
           <GlassCard variant="elevated" style={styles.emptyCard}>
             <Icon name="calendar" size={48} color={colors.text.secondary} />
-            <Text style={styles.emptyText}>{copy.emptyTitle ?? 'Aucun rendez-vous planifié'}</Text>
-            <Text style={styles.emptySubtext}>{copy.emptyBody ?? 'Aucun élément pour ce filtre.'}</Text>
+            <Text style={styles.emptyText}>{defaultEmptyTitle}</Text>
+            <Text style={styles.emptySubtext}>{defaultEmptyBody}</Text>
           </GlassCard>
         </View>
       ) : (
-        filteredMatches.map((match, index) => renderMatchListItem(match, index))
+        groupedListByDay.map((group) => (
+          <View key={group.date.toISOString()} style={styles.daySection}>
+            <Text style={styles.daySectionTitle}>{formatSectionDayLabel(group.date, language)}</Text>
+            {group.items.map((match, index) => renderMatchListItem(match, index))}
+          </View>
+        ))
       )}
     </ScrollView>
   );
 
   const renderWeekView = () => {
-    const weekDates = getWeekDates();
+    const weekDates = selectedWeekDates;
+    const selectedDayMatches = getMatchesForDate(selectedDate);
+    const hasAnyWeekMatch = weekScopedMatches.length > 0;
 
     return (
       <ScrollView
@@ -631,6 +1313,7 @@ export const CalendarScreenNew = () => {
           />
         }
       >
+        {renderWeekNavigator()}
         <View style={styles.weekHeader}>
           {weekDates.map((date) => {
             const dayMatches = getMatchesForDate(date);
@@ -665,48 +1348,68 @@ export const CalendarScreenNew = () => {
         </View>
 
         <View style={styles.weekContent}>
-          {weekDates.map((date) => {
-            const dayMatches = getMatchesForDate(date);
-            if (dayMatches.length === 0) return null;
-
-            return (
-              <View key={date.toISOString()} style={styles.daySection}>
-                <Text style={styles.daySectionTitle}>{formatSectionDayLabel(date, language)}</Text>
-                {dayMatches.map((match) => (
-                  <TouchableOpacity
-                    key={match.id}
-                    activeOpacity={0.9}
-                    onPress={() => navigation.navigate('MatchDetail', { match })}
-                  >
-                    <GlassCard variant="elevated" style={styles.weekMatchCard}>
-                      <View style={styles.weekMatchHeader}>
-                        <Text style={styles.weekMatchTime}>{formatTimeLabel(match.date, language)}</Text>
-                        <Text
-                          style={[
-                            styles.weekMatchStatus,
-                            { color: STATUS_COLORS[normalizeStatus(match.status)] },
-                          ]}
-                        >
-                          {(copy.statusLabels ?? {})[normalizeStatus(match.status)] ??
-                            normalizeStatus(match.status)}
-                        </Text>
-                      </View>
-                      <Text style={styles.weekMatchTeams}>
-                        {match.homeClub?.name ?? copy.teamsTbd ?? 'TBD'} vs{' '}
-                        {match.awayClub?.name ?? copy.teamsTbd ?? 'TBD'}
+          {!hasAnyWeekMatch ? (
+            <GlassCard variant="elevated" style={styles.emptyCard}>
+              <Icon name="calendar" size={48} color={colors.text.secondary} />
+              <Text style={styles.emptyText}>{defaultEmptyTitle}</Text>
+              <Text style={styles.emptySubtext}>{defaultEmptyBody}</Text>
+            </GlassCard>
+          ) : selectedDayMatches.length === 0 ? (
+            <GlassCard variant="elevated" style={styles.emptyCard}>
+              <Icon name="calendar" size={48} color={colors.text.secondary} />
+              <Text style={styles.emptyText}>
+                {copyAny.emptySelectedDayTitle ?? 'Aucun rendez-vous ce jour'}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {copyAny.emptySelectedDayBody ??
+                  'Sélectionnez un autre jour ou changez le filtre persona.'}
+              </Text>
+            </GlassCard>
+          ) : (
+            <View key={selectedDate.toISOString()} style={styles.daySection}>
+              <Text style={styles.daySectionTitle}>
+                {formatSectionDayLabel(selectedDate, language)}
+              </Text>
+              {selectedDayMatches.map((match) => (
+                <TouchableOpacity
+                  key={match.id}
+                  activeOpacity={0.9}
+                  onPress={() =>
+                    navigation.navigate('MatchDetail', {
+                      match,
+                      matchId: match.id,
+                      assignmentId: match.assignmentId,
+                    })
+                  }
+                >
+                  <GlassCard variant="elevated" style={styles.weekMatchCard}>
+                    <View style={styles.weekMatchHeader}>
+                      <Text style={styles.weekMatchTime}>{formatTimeLabel(match.date, language)}</Text>
+                      <Text
+                        style={[
+                          styles.weekMatchStatus,
+                          { color: STATUS_COLORS[normalizeStatus(match.status)] },
+                        ]}
+                      >
+                        {(copy.statusLabels ?? {})[normalizeStatus(match.status)] ??
+                          normalizeStatus(match.status)}
                       </Text>
-                      {(match.locationLabel || match.venue?.name) ? (
-                        <Text style={styles.weekMatchVenue}>
-                          {match.locationLabel ??
-                            [match.venue?.name, match.venue?.city].filter(Boolean).join(', ')}
-                        </Text>
-                      ) : null}
-                    </GlassCard>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            );
-          })}
+                    </View>
+                    <Text style={styles.weekMatchTeams}>
+                      {match.homeClub?.name ?? copy.teamsTbd ?? 'TBD'} vs{' '}
+                      {match.awayClub?.name ?? copy.teamsTbd ?? 'TBD'}
+                    </Text>
+                    {(match.locationLabel || match.venue?.name) ? (
+                      <Text style={styles.weekMatchVenue}>
+                        {match.locationLabel ??
+                          [match.venue?.name, match.venue?.city].filter(Boolean).join(', ')}
+                      </Text>
+                    ) : null}
+                  </GlassCard>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     );
@@ -801,6 +1504,21 @@ export const CalendarScreenNew = () => {
 
         <View style={styles.mapOverlay} testID="calendar-center-map-overlay">{renderStatusLegend()}</View>
 
+        {matchesWithLocation.length === 0 ? (
+          <View style={styles.mapEmptyOverlay} testID="calendar-center-map-empty">
+            <GlassCard variant="elevated" style={styles.mapEmptyCard}>
+              <Icon name="location" size={28} color={colors.text.secondary} />
+              <Text style={styles.mapEmptyTitle}>
+                {copyAny.mapNoGeodataTitle ?? 'Aucun point GPS disponible'}
+              </Text>
+              <Text style={styles.mapEmptyBody}>
+                {copyAny.mapNoGeodataBody ??
+                  'Ajoutez un stade avec coordonnées pour afficher les missions sur la carte.'}
+              </Text>
+            </GlassCard>
+          </View>
+        ) : null}
+
         {matchesWithLocation.length > 0 ? (
           <View style={styles.mapMissionsPanel} testID="calendar-center-map-missions">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mapMissionsRow}>
@@ -852,7 +1570,24 @@ export const CalendarScreenNew = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader blur={false} borderBottom={false} />
+      <ScreenHeader
+        blur={false}
+        borderBottom={false}
+        rightActions={
+          canOpenMissionRequestsHub ? (
+            <TouchableOpacity
+              style={styles.headerHubButton}
+              onPress={handleOpenMissionRequestsHub}
+              testID="calendar-center-open-mission-requests"
+            >
+              <Icon name="clipboard" size={14} color={colors.background.primary} />
+              <Text style={styles.headerHubButtonText}>
+                {copyAny.missionRequestsHubCta ?? 'Missions'}
+              </Text>
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
 
       <View style={styles.heroSection}>
         <Text style={styles.heroEyebrow}>{copy.eyebrow ?? 'Arcane Calendar'}</Text>
@@ -885,9 +1620,44 @@ export const CalendarScreenNew = () => {
         ))}
       </View>
 
+      {isScoutCalendarMode ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sectionFilterRow}
+          testID="calendar-center-section-filters"
+        >
+          {(['ALL', 'MY', 'SHARED', 'DISCOVER'] as CalendarSectionFilter[]).map((filter) => {
+            const active = sectionFilter === filter;
+            const label =
+              filter === 'ALL'
+                ? copyAny.sectionAllLabel ?? 'Toutes missions'
+                : filter === 'MY'
+                ? copyAny.myMissionLabel ?? 'Mes missions'
+                : filter === 'SHARED'
+                ? copyAny.sharedMissionLabel ?? 'Calendrier partagé'
+                : copyAny.discoverMissionLabel ?? 'Découverte';
+            const count = sectionCounts[filter];
+            return (
+              <TouchableOpacity
+                key={filter}
+                style={[styles.sectionFilterChip, active && styles.sectionFilterChipActive]}
+                onPress={() => setSectionFilter(filter)}
+                testID={`calendar-center-section-${filter.toLowerCase()}`}
+              >
+                <Text style={[styles.sectionFilterChipText, active && styles.sectionFilterChipTextActive]}>
+                  {label} · {count}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
       <View style={styles.personaRow}>
         {(['ALL', 'SCOUTS', 'PLAYERS', 'AGENTS'] as CalendarPersonaFilter[]).map((filter) => {
           const active = personaFilter === filter;
+          const count = personaCounts[filter];
           return (
             <TouchableOpacity
               key={filter}
@@ -896,7 +1666,7 @@ export const CalendarScreenNew = () => {
               onPress={() => setPersonaFilter(filter)}
             >
               <Text style={[styles.personaChipText, active && styles.personaChipTextActive]}>
-                {personaLabels[filter] ?? filter}
+                {(personaLabels[filter] ?? filter).toString()} · {count}
               </Text>
             </TouchableOpacity>
           );
@@ -907,6 +1677,48 @@ export const CalendarScreenNew = () => {
           <Text style={styles.shareBtnText}>{copy.shareCta ?? 'Partager votre calendrier'}</Text>
         </TouchableOpacity>
       </View>
+
+      {countries.length > 0 || leagues.length > 0 ? (
+        <View style={styles.zoneFiltersContainer}>
+          {countries.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.zoneFilterRow}>
+              {['ALL', ...countries].map((country) => {
+                const active = selectedCountry === country;
+                return (
+                  <TouchableOpacity
+                    key={`country-${country}`}
+                    style={[styles.zoneFilterChip, active && styles.zoneFilterChipActive]}
+                    onPress={() => setSelectedCountry(country)}
+                  >
+                    <Text style={[styles.zoneFilterChipText, active && styles.zoneFilterChipTextActive]}>
+                      {country === 'ALL' ? copyAny.allCountriesLabel ?? 'Tous pays' : country}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          {leagues.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.zoneFilterRow}>
+              {['ALL', ...leagues].map((league) => {
+                const active = selectedLeague === league;
+                return (
+                  <TouchableOpacity
+                    key={`league-${league}`}
+                    style={[styles.zoneFilterChip, active && styles.zoneFilterChipActive]}
+                    onPress={() => setSelectedLeague(league)}
+                  >
+                    <Text style={[styles.zoneFilterChipText, active && styles.zoneFilterChipTextActive]}>
+                      {league === 'ALL' ? copyAny.allLeaguesLabel ?? 'Toutes ligues' : league}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+        </View>
+      ) : null}
 
       {viewMode === 'list' && renderListView()}
       {viewMode === 'week' && renderWeekView()}
@@ -933,6 +1745,20 @@ const styles = StyleSheet.create({
   heroSection: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  headerHubButton: {
+    borderRadius: 999,
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerHubButtonText: {
+    color: colors.background.primary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
   },
   heroEyebrow: {
     fontSize: typography.sizes.xs,
@@ -982,6 +1808,31 @@ const styles = StyleSheet.create({
   viewModeTextActive: {
     color: colors.background.primary,
   },
+  sectionFilterRow: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  sectionFilterChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  sectionFilterChipActive: {
+    borderColor: '#58D3FF',
+    backgroundColor: 'rgba(88,211,255,0.18)',
+  },
+  sectionFilterChipText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+  },
+  sectionFilterChipTextActive: {
+    color: '#58D3FF',
+  },
   personaRow: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
@@ -1026,6 +1877,35 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: typography.sizes.xs,
     fontWeight: '600',
+  },
+  zoneFiltersContainer: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  zoneFilterRow: {
+    gap: spacing.xs,
+    paddingRight: spacing.sm,
+  },
+  zoneFilterChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  zoneFilterChipActive: {
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.primary + '20',
+  },
+  zoneFilterChipText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
+  },
+  zoneFilterChipTextActive: {
+    color: colors.brand.primary,
   },
   scrollView: {
     flex: 1,
@@ -1091,6 +1971,56 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: '700',
   },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  roleBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  roleBadgeText: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+  },
+  sectionBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.35)',
+    backgroundColor: 'rgba(148,163,184,0.16)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  sectionBadgeText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+  },
+  missionBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  missionBadgePriority: {
+    borderColor: '#FDE047',
+    backgroundColor: 'rgba(250,204,21,0.2)',
+  },
+  missionBadgeVoluntary: {
+    borderColor: '#58D3FF',
+    backgroundColor: 'rgba(56,189,248,0.2)',
+  },
+  missionBadgeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
   competitionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1134,6 +2064,25 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.text.secondary,
   },
+  addToCalendarButton: {
+    marginTop: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.brand.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  addToCalendarButtonDisabled: {
+    opacity: 0.6,
+  },
+  addToCalendarButtonText: {
+    color: colors.background.primary,
+    fontWeight: '700',
+    fontSize: typography.sizes.sm,
+  },
   badgePlaceholder: {
     width: 22,
     height: 22,
@@ -1144,6 +2093,63 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
+  },
+  weekNavigator: {
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+  },
+  weekNavigatorRow: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  weekNavigatorButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glassLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekNavigatorCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  weekNavigatorLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  weekNavigatorHint: {
+    marginTop: 2,
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+  },
+  weekNavigatorCurrentButton: {
+    alignSelf: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.primary + '1F',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  weekNavigatorCurrentText: {
+    color: colors.brand.primary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
   },
   weekHeader: {
     flexDirection: 'row',
@@ -1241,6 +2247,31 @@ const styles = StyleSheet.create({
     right: spacing.lg,
     top: spacing.lg,
     width: Math.min(220, width * 0.55),
+  },
+  mapEmptyOverlay: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    top: spacing.lg,
+    alignItems: 'center',
+  },
+  mapEmptyCard: {
+    width: '100%',
+    maxWidth: 360,
+    padding: spacing.md,
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  mapEmptyTitle: {
+    fontSize: typography.sizes.base,
+    fontWeight: '700',
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  mapEmptyBody: {
+    fontSize: typography.sizes.sm,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
   mapMissionsPanel: {
     position: 'absolute',

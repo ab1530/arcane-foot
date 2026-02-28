@@ -21,6 +21,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SubscriptionTierGuard } from '../../common/guards/subscription-tier.guard';
+import { ScoutCertificationGuard } from '../../common/guards/scout-certification.guard';
 import { MinTier } from '../../common/decorators/min-tier.decorator';
 import { SubscriptionTier } from '@prisma/client';
 import { VoiceToReportService } from './voice-to-report.service';
@@ -33,13 +34,13 @@ import {
 
 @Controller('voice-to-report')
 @ApiTags('Voice to Report')
-@UseGuards(JwtAuthGuard, SubscriptionTierGuard)
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class VoiceToReportController {
   constructor(private readonly voiceToReportService: VoiceToReportService) {}
 
   @Post('process')
-  @MinTier(SubscriptionTier.GOLD)
+  @UseGuards(ScoutCertificationGuard)
   @UseInterceptors(
     FileInterceptor('audio', {
       limits: {
@@ -56,9 +57,9 @@ export class VoiceToReportController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Process voice recording into scouting report (GOLD+)',
+    summary: 'Process voice recording into scouting report (certified scouts)',
     description:
-      'Upload an audio file (mp3, wav, webm, m4a, ogg) containing a spoken scouting report. The system will transcribe the audio using OpenAI Whisper and extract structured scouting report data using AI. Requires GOLD subscription or higher.',
+      'Upload an audio file (mp3, wav, webm, m4a, ogg) containing a spoken scouting report. The system will transcribe the audio using OpenAI Whisper and extract structured scouting report data using AI. Requires certified scout level (currentLevel >= 5).',
   })
   @ApiBody({
     schema: {
@@ -103,7 +104,7 @@ export class VoiceToReportController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden - Requires GOLD subscription tier or higher',
+    description: 'Forbidden - Requires scout certification (currentLevel >= 5)',
   })
   @ApiResponse({
     status: 413,
@@ -125,6 +126,11 @@ export class VoiceToReportController {
       throw new BadRequestException('No audio file provided');
     }
 
+    const userId = req?.user?.id ?? req?.user?.userId ?? req?.user?.sub;
+    if (!userId) {
+      throw new BadRequestException('Authenticated user is required');
+    }
+
     const dto: ProcessVoiceReportDto = {
       language: language || SupportedLanguage.EN,
       matchId,
@@ -132,7 +138,7 @@ export class VoiceToReportController {
       keepAudio: keepAudio === true || (keepAudio as any) === 'true',
     };
 
-    return this.voiceToReportService.processVoiceReport(file, req.user.userId, dto);
+    return this.voiceToReportService.processVoiceReport(file, userId, dto);
   }
 
   @Get('languages')
@@ -166,6 +172,7 @@ export class VoiceToReportController {
   }
 
   @Post('test-transcription')
+  @UseGuards(SubscriptionTierGuard)
   @MinTier(SubscriptionTier.GOLD)
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   @ApiOperation({

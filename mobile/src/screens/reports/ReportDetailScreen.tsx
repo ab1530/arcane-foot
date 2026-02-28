@@ -34,6 +34,15 @@ const getRatingColor = (rating?: number) => {
   return colors.semantic.error;
 };
 
+const getCompletenessBadge = (score?: number | null) => {
+  if (typeof score !== 'number') {
+    return null;
+  }
+  if (score >= 80) return { label: 'Complet', color: colors.semantic.success };
+  if (score >= 40) return { label: 'Partiel', color: colors.semantic.warning };
+  return { label: 'Minimal', color: colors.text.secondary };
+};
+
 const formatOptionalText = (value?: string | null) => {
   if (!value || !value.trim()) {
     return 'Non renseigné';
@@ -46,6 +55,19 @@ const formatOptionalNumber = (value?: number | null, suffix = '') => {
     return 'Non renseigné';
   }
   return `${value}${suffix}`;
+};
+
+const getMissionTypeLabel = (value?: 'PRIORITY' | 'VOLUNTARY' | null) => {
+  if (value === 'PRIORITY') return 'Prioritaire';
+  if (value === 'VOLUNTARY') return 'Volontaire';
+  return 'Non renseigné';
+};
+
+const getResolutionModeLabel = (value?: string | null) => {
+  if (value === 'exact_match') return 'Correspondance exacte';
+  if (value === 'probable_match') return 'Correspondance probable';
+  if (value === 'created_new') return 'Nouveau joueur créé';
+  return 'Non renseigné';
 };
 
 const ReportDetailScreen = () => {
@@ -189,6 +211,7 @@ const ReportDetailScreen = () => {
   const matchInfo = report.match
     ? `${report.match.homeClub?.name || 'Home'} vs ${report.match.awayClub?.name || 'Away'}`
     : 'Match inconnu';
+  const completenessBadge = getCompletenessBadge(report.analysis?.identityCompletenessScore);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -293,6 +316,26 @@ const ReportDetailScreen = () => {
 
         <GlassCard variant="elevated" style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Identité observée</Text>
+          {completenessBadge && (
+            <View
+              style={[
+                styles.identityBadge,
+                {
+                  borderColor: completenessBadge.color,
+                  backgroundColor: `${completenessBadge.color}22`,
+                },
+              ]}
+            >
+              <Text style={[styles.identityBadgeText, { color: completenessBadge.color }]}>
+                {completenessBadge.label} ({Math.round(report.analysis?.identityCompletenessScore || 0)}%)
+              </Text>
+            </View>
+          )}
+          <InfoRow label="Prénom observé" value={formatOptionalText(report.observedFirstName)} />
+          <InfoRow label="Nom observé" value={formatOptionalText(report.observedLastName)} />
+          <InfoRow label="Nationalité observée" value={formatOptionalText(report.observedNationality)} />
+          <InfoRow label="Téléphone observé" value={formatOptionalText(report.observedPhone)} />
+          <InfoRow label="Email observé" value={formatOptionalText(report.observedEmail)} />
           <InfoRow
             label="Pied fort"
             value={formatOptionalText(report.observedDominantFoot || report.player?.preferredFoot)}
@@ -307,6 +350,60 @@ const ReportDetailScreen = () => {
           />
           <InfoRow label="Club observé" value={formatOptionalText(report.observedClubName)} />
         </GlassCard>
+
+        <GlassCard variant="elevated" style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Mission & envoi</Text>
+          <InfoRow label="Type mission" value={getMissionTypeLabel(report.analysis?.missionType)} />
+          <InfoRow
+            label="Mode de rattachement"
+            value={getResolutionModeLabel(report.analysis?.resolutionMode)}
+          />
+          <InfoRow
+            label="Assignment"
+            value={formatOptionalText(report.analysis?.assignmentId)}
+          />
+          <InfoRow label="Statut" value={getStatusLabel(report.status)} />
+          <InfoRow
+            label="Soumis le"
+            value={
+              report.submittedAt
+                ? new Date(report.submittedAt).toLocaleString('fr-FR')
+                : 'Non soumis'
+            }
+          />
+          <Text style={styles.helperText}>Visible aux agents dès le statut SUBMITTED.</Text>
+        </GlassCard>
+
+        {report.analysis?.voice && (
+          <GlassCard variant="elevated" style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Voice notes</Text>
+            <InfoRow
+              label="Confiance transcription"
+              value={
+                typeof report.analysis.voice.confidence === 'number'
+                  ? `${Math.round(report.analysis.voice.confidence * 100)}%`
+                  : 'Non renseigné'
+              }
+            />
+            <AnalysisBlock
+              title="Transcription"
+              content={formatOptionalText(report.analysis.voice.transcription)}
+            />
+            {Array.isArray(report.analysis.voice.warnings) &&
+              report.analysis.voice.warnings.length > 0 && (
+                <View style={styles.warningList}>
+                  {report.analysis.voice.warnings.map((warning, index) => (
+                    <Text key={`${warning}-${index}`} style={styles.warningText}>
+                      • {warning}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            {report.analysis.voice.audioUrl && (
+              <AnalysisBlock title="Audio source" content={report.analysis.voice.audioUrl} />
+            )}
+          </GlassCard>
+        )}
 
         <GlassCard variant="elevated" style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Analyse pro</Text>
@@ -542,6 +639,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
   },
+  identityBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  identityBadgeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
+  },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -614,6 +723,19 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.text.secondary,
     lineHeight: 20,
+  },
+  warningList: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  warningText: {
+    fontSize: typography.sizes.sm,
+    color: colors.semantic.warning,
+  },
+  helperText: {
+    marginTop: spacing.sm,
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
   },
   recommendationBadge: {
     alignSelf: 'flex-start',

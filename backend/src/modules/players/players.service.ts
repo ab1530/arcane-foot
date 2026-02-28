@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MatchStatus, ProfileContentStatus, ReportStatus } from '@prisma/client';
+import {
+  EventStatus,
+  EventType,
+  MatchStatus,
+  ProfileContentStatus,
+  ReportStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheManagerService } from '../../common/interceptors/cache.interceptor';
 import { CreatePlayerDto } from './dto/create-player.dto';
@@ -15,6 +21,8 @@ import {
   ScoutQuickImportResult,
   ScoutQuickImportRow,
 } from './dto/scout-quick-import.dto';
+import { ResolveObservedPlayerDto } from './dto/resolve-observed-player.dto';
+import { DiscoveredTreeSquadType, GetDiscoveredTreeDto } from './dto/get-discovered-tree.dto';
 import { SubmitPlayerWeeklyUpdateDto } from './dto/submit-player-weekly-update.dto';
 import { randomUUID } from 'crypto';
 
@@ -53,6 +61,18 @@ type PlayerSpaceWeeklyUpdate = {
   isInjured: boolean;
   healthStatus: 'NORMAL' | 'FATIGUE' | 'INJURY';
   remarks?: string | null;
+  selectedMatchId?: string | null;
+  selectedMatchAvailability?: 'PLAYING' | 'BENCH' | 'INJURED' | 'ABSENT';
+  trackerSteps?: number | null;
+  trackerDistanceM?: number | null;
+  trackerSource?: string | null;
+  selectedMatchTeamScore?: number | null;
+  selectedMatchOpponentScore?: number | null;
+  selectedMatchRating?: number | null;
+  highlightsUploaded?: number | null;
+  gpsSyncConfirmed?: boolean | null;
+  dailyTimeline?: Array<PlayerSpaceDailyTimelineEntry> | null;
+  linkedEventId?: string | null;
 };
 
 type PlayerSpacePayload = {
@@ -122,6 +142,49 @@ type PlayerSpaceStoredWeeklyUpdate = {
   isInjured: boolean;
   healthStatus: 'NORMAL' | 'FATIGUE' | 'INJURY';
   remarks?: string | null;
+  selectedMatchId?: string | null;
+  selectedMatchAvailability?: 'PLAYING' | 'BENCH' | 'INJURED' | 'ABSENT';
+  trackerSteps?: number | null;
+  trackerDistanceM?: number | null;
+  trackerSource?: string | null;
+  selectedMatchTeamScore?: number | null;
+  selectedMatchOpponentScore?: number | null;
+  selectedMatchRating?: number | null;
+  highlightsUploaded?: number | null;
+  gpsSyncConfirmed?: boolean | null;
+  dailyTimeline?: Array<PlayerSpaceDailyTimelineEntry> | null;
+  linkedEventId?: string | null;
+};
+
+type SelectedMatchAvailability = 'PLAYING' | 'BENCH' | 'INJURED' | 'ABSENT';
+type DailyActivityType = 'NONE' | 'TRAINING' | 'MATCH' | 'BOTH' | 'PERSONAL' | 'REST';
+
+type PlayerSpaceDailyTimelineEntry = {
+  dayKey: string;
+  activityType: DailyActivityType;
+  linkedMatchId?: string | null;
+  braceletSynced?: boolean | null;
+  gpsDistanceM?: number | null;
+  matchAvailability?: string | null;
+  matchStats?: string | null;
+  videoUploaded?: boolean | null;
+  notes?: string | null;
+};
+
+type AgeCategory = 'SENIOR' | 'U19' | 'U17' | 'U16';
+type SquadType = 'PRO' | 'RESERVE';
+
+type DiscoveredPlayerNode = {
+  playerId: string;
+  fullName: string;
+  ageCategory: AgeCategory;
+  squadType: SquadType;
+  country: string;
+  competition: string;
+  reportCount: number;
+  lastReportAt: string | null;
+  weightedOverallRating: number | null;
+  latestOverallRating: number | null;
 };
 
 @Injectable()
@@ -139,6 +202,61 @@ export class PlayersService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, ' ')
       .trim();
+  }
+
+  private normalizePhone(value?: string | null): string | undefined {
+    if (!value) return undefined;
+    const normalized = value.replace(/[^\d+]/g, '').trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private normalizeDisplayLabel(value?: string | null, fallback = 'Unknown'): string {
+    const normalized = this.toDisplayCase(value);
+    return normalized && normalized.length > 0 ? normalized : fallback;
+  }
+
+  private inferAgeCategory(player: {
+    birthYear?: number | null;
+    dateOfBirth?: Date | null;
+  }): AgeCategory {
+    const nowYear = new Date().getUTCFullYear();
+    const birthYear =
+      player.birthYear ?? (player.dateOfBirth ? player.dateOfBirth.getUTCFullYear() : null);
+    if (!birthYear || birthYear < 1900 || birthYear > nowYear) {
+      return 'SENIOR';
+    }
+
+    const age = nowYear - birthYear;
+    if (age <= 16) return 'U16';
+    if (age <= 17) return 'U17';
+    if (age <= 19) return 'U19';
+    return 'SENIOR';
+  }
+
+  private inferSquadType(clubLabel?: string | null): SquadType {
+    const normalized = this.normalizeText(clubLabel);
+    if (!normalized) return 'PRO';
+
+    const reserveSignals = [
+      'reserve',
+      'reserve team',
+      'reserves',
+      'team b',
+      'b team',
+      ' ii ',
+      ' u23 ',
+      ' u21 ',
+      ' u20 ',
+      ' u19 ',
+      ' u18 ',
+      ' u17 ',
+      ' u16 ',
+      'academy',
+      'youth',
+    ];
+
+    const marker = ` ${normalized} `;
+    return reserveSignals.some((signal) => marker.includes(signal)) ? 'RESERVE' : 'PRO';
   }
 
   private toDisplayCase(value?: string | null): string | undefined {
@@ -388,6 +506,29 @@ export class PlayersService {
     return fallback;
   }
 
+  private toOptionalInt(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number | null {
+    let parsed: number | null = null;
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      parsed = Math.round(value);
+    } else if (typeof value === 'string' && value.trim().length > 0) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) {
+        parsed = Math.round(numeric);
+      }
+    }
+
+    if (parsed === null) {
+      return null;
+    }
+
+    if (parsed < min || parsed > max) {
+      return null;
+    }
+
+    return parsed;
+  }
+
   private toSafeBoolean(value: unknown, fallback = false): boolean {
     if (typeof value === 'boolean') {
       return value;
@@ -416,6 +557,86 @@ export class PlayersService {
     return fallback;
   }
 
+  private normalizeSelectedMatchAvailability(
+    value: unknown,
+    fallback: SelectedMatchAvailability = 'PLAYING',
+  ): SelectedMatchAvailability {
+    if (value === 'PLAYING' || value === 'BENCH' || value === 'INJURED' || value === 'ABSENT') {
+      return value;
+    }
+    return fallback;
+  }
+
+  private normalizeDailyActivityType(value: unknown): DailyActivityType {
+    const normalized = this.toSafeString(value, '').toUpperCase();
+    if (
+      normalized === 'NONE' ||
+      normalized === 'TRAINING' ||
+      normalized === 'MATCH' ||
+      normalized === 'BOTH' ||
+      normalized === 'PERSONAL' ||
+      normalized === 'REST'
+    ) {
+      return normalized as DailyActivityType;
+    }
+    return 'NONE';
+  }
+
+  private normalizeDailyTimelineEntry(
+    value: unknown,
+    fallbackDayKey: string,
+  ): PlayerSpaceDailyTimelineEntry | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    const dayKey = this.toSafeString(record.dayKey, fallbackDayKey) || fallbackDayKey;
+    return {
+      dayKey,
+      activityType: this.normalizeDailyActivityType(record.activityType),
+      linkedMatchId: this.toSafeString(record.linkedMatchId, '') || null,
+      braceletSynced: typeof record.braceletSynced === 'boolean' ? record.braceletSynced : null,
+      gpsDistanceM: this.toOptionalInt(record.gpsDistanceM, 0, 200000) ?? null,
+      matchAvailability: this.toSafeString(record.matchAvailability, '') || null,
+      matchStats: this.toSafeString(record.matchStats, '') || null,
+      videoUploaded: typeof record.videoUploaded === 'boolean' ? record.videoUploaded : null,
+      notes: this.toSafeString(record.notes, '') || null,
+    };
+  }
+
+  private normalizeDailyTimeline(
+    value: unknown,
+    weekStartDate: string,
+  ): Array<PlayerSpaceDailyTimelineEntry> | null {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+
+    const baseDate = this.parseDate(weekStartDate) ?? new Date();
+    const normalized = value
+      .slice(0, 7)
+      .map((entry, index) => {
+        const currentDate = new Date(baseDate);
+        currentDate.setDate(baseDate.getDate() + index);
+        const fallbackDayKey = this.toDateOnly(currentDate);
+        return this.normalizeDailyTimelineEntry(entry, fallbackDayKey);
+      })
+      .filter((entry): entry is PlayerSpaceDailyTimelineEntry => entry !== null);
+
+    if (normalized.length === 0) {
+      return null;
+    }
+
+    const deduped = new Map<string, PlayerSpaceDailyTimelineEntry>();
+    for (const entry of normalized) {
+      deduped.set(entry.dayKey, entry);
+    }
+
+    return Array.from(deduped.values()).sort((left, right) =>
+      left.dayKey.localeCompare(right.dayKey),
+    );
+  }
+
   private startOfWeek(date: Date): string {
     const value = new Date(date);
     value.setHours(0, 0, 0, 0);
@@ -432,8 +653,10 @@ export class PlayersService {
 
     const parsedSubmittedAt = this.toDateTime(value.submittedAt);
 
+    const selectedMatchId = this.toSafeString(value.selectedMatchId, '') || null;
+    const weekStartDate = this.toSafeString(value.weekStartDate, this.startOfWeek(new Date()));
     return {
-      weekStartDate: this.toSafeString(value.weekStartDate, this.startOfWeek(new Date())),
+      weekStartDate,
       submittedAt: this.toSafeString(parsedSubmittedAt, new Date().toISOString()),
       updatedBy: this.toSafeString(value.updatedBy, 'player'),
       minutesPlayed: this.toSafeNumber(value.minutesPlayed),
@@ -443,7 +666,37 @@ export class PlayersService {
       matchesNotPlayed: this.toSafeNumber(value.matchesNotPlayed),
       isInjured: this.toSafeBoolean(value.isInjured),
       healthStatus: this.normalizeHealthStatus(value.healthStatus),
-      remarks: this.toSafeString(value.remarks, '').length > 0 ? this.toSafeString(value.remarks) : null,
+      remarks:
+        this.toSafeString(value.remarks, '').length > 0 ? this.toSafeString(value.remarks) : null,
+      selectedMatchId,
+      selectedMatchAvailability: selectedMatchId
+        ? this.normalizeSelectedMatchAvailability(
+            value.selectedMatchAvailability,
+            this.toSafeBoolean(value.isInjured) ? 'INJURED' : 'PLAYING',
+          )
+        : undefined,
+      trackerSteps:
+        typeof value.trackerSteps === 'number' && Number.isFinite(value.trackerSteps)
+          ? Math.max(0, Math.round(value.trackerSteps))
+          : null,
+      trackerDistanceM:
+        typeof value.trackerDistanceM === 'number' && Number.isFinite(value.trackerDistanceM)
+          ? Math.max(0, Math.round(value.trackerDistanceM))
+          : null,
+      trackerSource: this.toSafeString(value.trackerSource, '') || null,
+      selectedMatchTeamScore: selectedMatchId
+        ? this.toOptionalInt(value.selectedMatchTeamScore, 0, 30)
+        : null,
+      selectedMatchOpponentScore: selectedMatchId
+        ? this.toOptionalInt(value.selectedMatchOpponentScore, 0, 30)
+        : null,
+      selectedMatchRating: selectedMatchId
+        ? this.toOptionalInt(value.selectedMatchRating, 0, 10)
+        : null,
+      highlightsUploaded: this.toOptionalInt(value.highlightsUploaded, 0, 20),
+      gpsSyncConfirmed: typeof value.gpsSyncConfirmed === 'boolean' ? value.gpsSyncConfirmed : null,
+      dailyTimeline: this.normalizeDailyTimeline(value.dailyTimeline, weekStartDate),
+      linkedEventId: this.toSafeString(value.linkedEventId, '') || null,
     };
   }
 
@@ -455,10 +708,7 @@ export class PlayersService {
     const latestWeekly = weeklyUpdates[0] ?? null;
 
     const snapshot = {
-      matchesPlayed: this.toSafeNumber(
-        stats.matchesPlayed ?? latestWeekly?.matchesPlayed,
-        0,
-      ),
+      matchesPlayed: this.toSafeNumber(stats.matchesPlayed ?? latestWeekly?.matchesPlayed, 0),
       matchesNotPlayed: this.toSafeNumber(
         stats.matchesNotPlayed ?? latestWeekly?.matchesNotPlayed,
         0,
@@ -469,10 +719,11 @@ export class PlayersService {
       isInjured:
         player?.status === 'INJURED' ||
         this.toSafeBoolean(stats.isInjured, latestWeekly?.isInjured ?? false),
-      injuryStatus: this.toSafeString(
-        stats.injuryStatus || latestWeekly?.healthStatus || null,
-        player?.status === 'INJURED' ? 'INJURY' : '',
-      ) || null,
+      injuryStatus:
+        this.toSafeString(
+          stats.injuryStatus || latestWeekly?.healthStatus || null,
+          player?.status === 'INJURED' ? 'INJURY' : '',
+        ) || null,
     };
 
     return snapshot;
@@ -489,7 +740,7 @@ export class PlayersService {
 
     if (snapshot.isInjured) {
       status = 'Blessé';
-    } else if (latestSession) {
+    } else if (latestSession || latestWeekly?.trackerSource) {
       status = 'Connecté';
     } else if (player?.lastSyncAt) {
       status = 'Inactif';
@@ -498,10 +749,10 @@ export class PlayersService {
     return {
       status,
       lastDeviceSync: this.toDateTime(latestSession?.endedAt ?? player?.lastSyncAt),
-      syncSource:
-        latestWeekly?.healthStatus === 'INJURY'
-          ? 'auto'
-          : this.toSafeString(latestSession?.source ?? null),
+      syncSource: this.toSafeString(
+        latestWeekly?.trackerSource ??
+          (latestWeekly?.healthStatus === 'INJURY' ? 'auto' : (latestSession?.source ?? null)),
+      ),
     };
   }
 
@@ -519,8 +770,7 @@ export class PlayersService {
           ? entry.overallRating
           : null;
       const minutes =
-        typeof entry?.playerMinutesPlayed === 'number' &&
-        Number.isFinite(entry.playerMinutesPlayed)
+        typeof entry?.playerMinutesPlayed === 'number' && Number.isFinite(entry.playerMinutesPlayed)
           ? entry.playerMinutesPlayed
           : null;
       return {
@@ -537,18 +787,35 @@ export class PlayersService {
     player: any,
     matches: any[],
   ): PlayerSpacePayload['upcomingCalendar'] {
-    if (!Array.isArray(matches) || !player?.clubId) {
+    if (!Array.isArray(matches)) {
       return [];
     }
 
+    const playerClubId = this.toSafeString(player?.clubId);
+
     return matches.map((match) => {
-      const isHome = match.homeClubId === player.clubId;
-      const opponentClub = isHome ? match.clubs_matches_awayClubIdToclubs : match.clubs_matches_homeClubIdToclubs;
+      const isPlayerClubMatch =
+        !!playerClubId && (match.homeClubId === playerClubId || match.awayClubId === playerClubId);
+      const isHome = isPlayerClubMatch ? match.homeClubId === playerClubId : false;
+      const opponentClub = isHome
+        ? match.clubs_matches_awayClubIdToclubs
+        : match.clubs_matches_homeClubIdToclubs;
+      const homeClubName = this.toSafeString(
+        match?.clubs_matches_homeClubIdToclubs?.name,
+        this.toSafeString(match?.homeClub?.name, 'Club domicile'),
+      );
+      const awayClubName = this.toSafeString(
+        match?.clubs_matches_awayClubIdToclubs?.name,
+        this.toSafeString(match?.awayClub?.name, 'Club extérieur'),
+      );
+
       return {
         id: match.id,
         scheduledAt: this.toDateTime(match.scheduledAt) || '',
-        opponent: this.toSafeString(opponentClub?.name, '—'),
-        opponentLogo: opponentClub?.logo ?? null,
+        opponent: isPlayerClubMatch
+          ? this.toSafeString(opponentClub?.name, '—')
+          : `${homeClubName} vs ${awayClubName}`,
+        opponentLogo: isPlayerClubMatch ? (opponentClub?.logo ?? null) : null,
         isHome,
         status: this.toSafeString(match.status, ''),
         competition: this.toSafeString(
@@ -557,6 +824,80 @@ export class PlayersService {
         ),
       };
     });
+  }
+
+  private async getMatchesForPlayerSpace(player: any): Promise<any[]> {
+    const include = {
+      clubs_matches_homeClubIdToclubs: {
+        select: { id: true, name: true, logo: true },
+      },
+      clubs_matches_awayClubIdToclubs: {
+        select: { id: true, name: true, logo: true },
+      },
+      competitions: {
+        select: { name: true },
+      },
+    } as const;
+
+    const getUpcoming = (scope: Record<string, any> = {}) =>
+      this.prisma.matches.findMany({
+        where: {
+          ...scope,
+          scheduledAt: { gte: new Date() },
+          status: {
+            in: [MatchStatus.SCHEDULED, MatchStatus.LIVE],
+          },
+        },
+        include,
+        orderBy: { scheduledAt: 'asc' },
+        take: 10,
+      });
+
+    const getRecent = (scope: Record<string, any> = {}) =>
+      this.prisma.matches.findMany({
+        where: {
+          ...scope,
+          status: {
+            in: [MatchStatus.SCHEDULED, MatchStatus.LIVE, MatchStatus.COMPLETED],
+          },
+        },
+        include,
+        orderBy: { scheduledAt: 'desc' },
+        take: 10,
+      });
+
+    const clubScope = player?.clubId
+      ? { OR: [{ homeClubId: player.clubId }, { awayClubId: player.clubId }] }
+      : null;
+
+    // Priority order:
+    // 1) Player club upcoming matches
+    // 2) Global upcoming matches (if club has no fixtures in DB)
+    // 3) Player club recent matches
+    // 4) Global recent matches
+    if (clubScope) {
+      const clubUpcoming = await getUpcoming(clubScope);
+      if (clubUpcoming.length > 0) {
+        return clubUpcoming;
+      }
+
+      const globalUpcoming = await getUpcoming();
+      if (globalUpcoming.length > 0) {
+        return globalUpcoming;
+      }
+
+      const clubRecent = await getRecent(clubScope);
+      if (clubRecent.length > 0) {
+        return clubRecent;
+      }
+    } else {
+      const globalUpcoming = await getUpcoming();
+      if (globalUpcoming.length > 0) {
+        return globalUpcoming;
+      }
+    }
+
+    return getRecent();
   }
 
   private mapNewsItems(items: any[]): PlayerSpacePayload['news'] {
@@ -638,6 +979,32 @@ export class PlayersService {
       : fallback;
     const now = new Date().toISOString();
 
+    const selectedMatchId = this.toSafeString(dto.selectedMatchId, '') || null;
+    const selectedMatchTeamScore = selectedMatchId
+      ? this.toOptionalInt(dto.selectedMatchTeamScore, 0, 30)
+      : null;
+    const selectedMatchOpponentScore = selectedMatchId
+      ? this.toOptionalInt(dto.selectedMatchOpponentScore, 0, 30)
+      : null;
+    const selectedMatchRating = selectedMatchId
+      ? this.toOptionalInt(dto.selectedMatchRating, 0, 10)
+      : null;
+    const highlightsUploaded =
+      this.toOptionalInt(dto.highlightsUploaded, 0, 20) ?? latestUpdate?.highlightsUploaded ?? null;
+    const gpsSyncConfirmed =
+      typeof dto.gpsSyncConfirmed === 'boolean'
+        ? dto.gpsSyncConfirmed
+        : typeof latestUpdate?.gpsSyncConfirmed === 'boolean'
+          ? latestUpdate.gpsSyncConfirmed
+          : this.toOptionalInt(dto.trackerSteps, 0, 500000) !== null ||
+              this.toOptionalInt(dto.trackerDistanceM, 0, 2000000) !== null
+            ? true
+            : null;
+    const dailyTimeline =
+      this.normalizeDailyTimeline(dto.dailyTimeline, weekStartDate) ??
+      latestUpdate?.dailyTimeline ??
+      null;
+
     return {
       weekStartDate,
       submittedAt: now,
@@ -650,10 +1017,225 @@ export class PlayersService {
       isInjured: dto.isInjured,
       healthStatus: this.normalizeHealthStatus(dto.healthStatus ?? latestUpdate?.healthStatus),
       remarks: this.toSafeString(dto.remarks, '').length > 0 ? dto.remarks : null,
+      selectedMatchId,
+      selectedMatchAvailability: selectedMatchId
+        ? this.normalizeSelectedMatchAvailability(
+            dto.selectedMatchAvailability,
+            dto.isInjured ? 'INJURED' : 'PLAYING',
+          )
+        : undefined,
+      trackerSteps:
+        typeof dto.trackerSteps === 'number' && Number.isFinite(dto.trackerSteps)
+          ? Math.max(0, Math.round(dto.trackerSteps))
+          : null,
+      trackerDistanceM:
+        typeof dto.trackerDistanceM === 'number' && Number.isFinite(dto.trackerDistanceM)
+          ? Math.max(0, Math.round(dto.trackerDistanceM))
+          : null,
+      trackerSource: this.toSafeString(dto.trackerSource, '') || null,
+      selectedMatchTeamScore,
+      selectedMatchOpponentScore,
+      selectedMatchRating,
+      highlightsUploaded,
+      gpsSyncConfirmed,
+      dailyTimeline,
+      linkedEventId: latestUpdate?.linkedEventId ?? null,
     };
   }
 
-  async getMyPlayerSpace(userId: string, playerIdHint?: string | null): Promise<PlayerSpacePayload> {
+  private getMatchAvailabilityLabel(value: SelectedMatchAvailability): string {
+    switch (value) {
+      case 'PLAYING':
+        return 'Titulaire';
+      case 'BENCH':
+        return 'Banc';
+      case 'INJURED':
+        return 'Blessé';
+      case 'ABSENT':
+        return 'Absent';
+      default:
+        return 'Indéfini';
+    }
+  }
+
+  private async resolveSelectableMatchForPlayer(player: any, matchId: string) {
+    const match = await this.prisma.matches.findUnique({
+      where: { id: matchId },
+      include: {
+        clubs_matches_homeClubIdToclubs: {
+          select: { id: true, name: true },
+        },
+        clubs_matches_awayClubIdToclubs: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${matchId} not found`);
+    }
+
+    if (player?.clubId) {
+      const belongsToPlayerClub =
+        match.homeClubId === player.clubId || match.awayClubId === player.clubId;
+      if (!belongsToPlayerClub) {
+        const playerClubFixturesCount = await this.prisma.matches.count({
+          where: {
+            OR: [{ homeClubId: player.clubId }, { awayClubId: player.clubId }],
+            status: {
+              in: [MatchStatus.SCHEDULED, MatchStatus.LIVE, MatchStatus.COMPLETED],
+            },
+          },
+        });
+
+        if (playerClubFixturesCount > 0) {
+          throw new BadRequestException(
+            'Le match sélectionné ne correspond pas au club du joueur connecté',
+          );
+        }
+      }
+    }
+
+    return match;
+  }
+
+  private async upsertPlayerAvailabilityEvent(params: {
+    player: any;
+    userId: string;
+    weekStartDate: string;
+    match: any;
+    availability: SelectedMatchAvailability;
+    remarks?: string | null;
+    teamScore?: number | null;
+    opponentScore?: number | null;
+    matchRating?: number | null;
+    highlightsUploaded?: number | null;
+    existingEventId?: string | null;
+    trackerSource?: string | null;
+  }): Promise<string | null> {
+    const {
+      player,
+      userId,
+      weekStartDate,
+      match,
+      availability,
+      remarks,
+      teamScore,
+      opponentScore,
+      matchRating,
+      highlightsUploaded,
+      existingEventId,
+      trackerSource,
+    } = params;
+
+    if (!player?.userId) {
+      return null;
+    }
+
+    const playerName =
+      `${this.toSafeString(
+        player?.users?.firstName,
+        this.toSafeString(player?.firstName),
+      )} ${this.toSafeString(player?.users?.lastName, this.toSafeString(player?.lastName))}`.trim() ||
+      'Joueur';
+    const availabilityLabel = this.getMatchAvailabilityLabel(availability);
+    const homeName = this.toSafeString(match?.clubs_matches_homeClubIdToclubs?.name, 'Club A');
+    const awayName = this.toSafeString(match?.clubs_matches_awayClubIdToclubs?.name, 'Club B');
+    const eventStatus =
+      availability === 'INJURED' || availability === 'ABSENT'
+        ? EventStatus.CANCELLED
+        : EventStatus.CONFIRMED;
+    const startDate = this.parseDate(match?.scheduledAt) ?? new Date();
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+    const venueLabel =
+      this.toSafeString(match?.venueOld, '') ||
+      this.toSafeString(match?.stadium, '') ||
+      `${homeName} vs ${awayName}`;
+    const descriptionParts = [
+      `Semaine du ${weekStartDate}`,
+      `Disponibilité déclarée: ${availabilityLabel}`,
+      typeof teamScore === 'number' && typeof opponentScore === 'number'
+        ? `Score déclaré: ${teamScore}-${opponentScore}`
+        : null,
+      typeof matchRating === 'number' ? `Note joueur: ${matchRating}/10` : null,
+      typeof highlightsUploaded === 'number' ? `Highlights ajoutés: ${highlightsUploaded}` : null,
+      trackerSource ? `Source tracker: ${trackerSource}` : null,
+      remarks ? `Note joueur: ${remarks}` : null,
+    ].filter(Boolean);
+    const baseData = {
+      title: `${playerName} - ${availabilityLabel}`,
+      description: descriptionParts.join(' • '),
+      type: EventType.MATCH,
+      status: eventStatus,
+      startDate,
+      endDate,
+      location: venueLabel,
+      matchId: match.id,
+      updatedAt: new Date(),
+    };
+
+    if (existingEventId) {
+      const existing = await this.prisma.events.findUnique({
+        where: { id: existingEventId },
+        select: { id: true, createdById: true },
+      });
+
+      if (existing && existing.createdById === userId) {
+        await this.prisma.events.update({
+          where: { id: existingEventId },
+          data: baseData,
+        });
+        return existingEventId;
+      }
+    }
+
+    const created = await this.prisma.events.create({
+      data: {
+        id: randomUUID(),
+        ...baseData,
+        createdById: userId,
+        event_assignments: {
+          create: [
+            {
+              id: randomUUID(),
+              userId: player.userId,
+            },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  }
+
+  private async cancelPlayerAvailabilityEvent(eventId: string | null | undefined, userId: string) {
+    if (!eventId) {
+      return;
+    }
+
+    const existing = await this.prisma.events.findUnique({
+      where: { id: eventId },
+      select: { id: true, createdById: true, status: true },
+    });
+
+    if (!existing || existing.createdById !== userId || existing.status === EventStatus.CANCELLED) {
+      return;
+    }
+
+    await this.prisma.events.update({
+      where: { id: eventId },
+      data: {
+        status: EventStatus.CANCELLED,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async getMyPlayerSpace(
+    userId: string,
+    playerIdHint?: string | null,
+  ): Promise<PlayerSpacePayload> {
     const player = await this.resolvePlayerForSpace(userId, playerIdHint);
     const rawStats = this.toJsonRecord(player.statsJson);
     const weeklyUpdates = this.toJsonArray(rawStats.weeklyUpdates)
@@ -684,30 +1266,7 @@ export class PlayersService {
         orderBy: { createdAt: 'desc' },
         take: 8,
       }),
-      player.clubId
-        ? this.prisma.matches.findMany({
-            where: {
-              OR: [{ homeClubId: player.clubId }, { awayClubId: player.clubId }],
-              scheduledAt: { gte: new Date() },
-              status: {
-                in: [MatchStatus.SCHEDULED, MatchStatus.LIVE],
-              },
-            },
-            include: {
-              clubs_matches_homeClubIdToclubs: {
-                select: { id: true, name: true, logo: true },
-              },
-              clubs_matches_awayClubIdToclubs: {
-                select: { id: true, name: true, logo: true },
-              },
-              competitions: {
-                select: { name: true },
-              },
-            },
-            orderBy: { scheduledAt: 'asc' },
-            take: 10,
-          })
-        : Promise.resolve([]),
+      this.getMatchesForPlayerSpace(player),
       this.prisma.hardwareSession.findFirst({
         where: { playerId: player.id },
         orderBy: { endedAt: 'desc' },
@@ -736,10 +1295,11 @@ export class PlayersService {
       totalUpdates: weeklyUpdates.length,
     };
 
-    const fullName = `${this.toSafeString(player?.users?.firstName, player.firstName)} ${this.toSafeString(
-      player?.users?.lastName,
-      player.lastName,
-    )}`.trim();
+    const fullName =
+      `${this.toSafeString(player?.users?.firstName, player.firstName)} ${this.toSafeString(
+        player?.users?.lastName,
+        player.lastName,
+      )}`.trim();
 
     return {
       playerId: player.id,
@@ -774,17 +1334,52 @@ export class PlayersService {
     const existingWeekly = this.toJsonArray(rawStats.weeklyUpdates).map((entry) =>
       this.normalizeWeeklyUpdate(entry),
     );
-    const latestExisting = existingWeekly
-      .filter((entry): entry is PlayerSpaceStoredWeeklyUpdate => entry !== null)
-      .sort((left, right) => {
-        const rightDate = this.toDateTime(right.submittedAt);
-        const leftDate = this.toDateTime(left.submittedAt);
-        if (!rightDate && !leftDate) return 0;
-        if (!rightDate) return 1;
-        if (!leftDate) return -1;
-        return rightDate < leftDate ? -1 : rightDate > leftDate ? 1 : 0;
-      })[0] ?? null;
+    const latestExisting =
+      existingWeekly
+        .filter((entry): entry is PlayerSpaceStoredWeeklyUpdate => entry !== null)
+        .sort((left, right) => {
+          const rightDate = this.toDateTime(right.submittedAt);
+          const leftDate = this.toDateTime(left.submittedAt);
+          if (!rightDate && !leftDate) return 0;
+          if (!rightDate) return 1;
+          if (!leftDate) return -1;
+          return rightDate < leftDate ? -1 : rightDate > leftDate ? 1 : 0;
+        })[0] ?? null;
     const incoming = this.normalizeIncomingWeeklyUpdate(dto, player.id, latestExisting);
+    if (incoming.selectedMatchAvailability === 'INJURED') {
+      incoming.isInjured = true;
+      incoming.healthStatus = 'INJURY';
+    }
+    const previousForSameWeek =
+      existingWeekly
+        .filter((entry): entry is PlayerSpaceStoredWeeklyUpdate => entry !== null)
+        .find((entry) => entry.weekStartDate === incoming.weekStartDate) ?? null;
+    let linkedEventId = previousForSameWeek?.linkedEventId ?? incoming.linkedEventId ?? null;
+
+    if (incoming.selectedMatchId) {
+      const selectedMatch = await this.resolveSelectableMatchForPlayer(
+        player,
+        incoming.selectedMatchId,
+      );
+      linkedEventId = await this.upsertPlayerAvailabilityEvent({
+        player,
+        userId,
+        weekStartDate: incoming.weekStartDate,
+        match: selectedMatch,
+        availability: incoming.selectedMatchAvailability ?? 'PLAYING',
+        remarks: incoming.remarks,
+        teamScore: incoming.selectedMatchTeamScore,
+        opponentScore: incoming.selectedMatchOpponentScore,
+        matchRating: incoming.selectedMatchRating,
+        highlightsUploaded: incoming.highlightsUploaded,
+        existingEventId: linkedEventId,
+        trackerSource: incoming.trackerSource,
+      });
+    } else if (linkedEventId) {
+      await this.cancelPlayerAvailabilityEvent(linkedEventId, userId);
+      linkedEventId = null;
+    }
+    incoming.linkedEventId = linkedEventId;
     const updatesMap = new Map<string, PlayerSpaceStoredWeeklyUpdate>();
 
     for (const item of existingWeekly) {
@@ -815,6 +1410,17 @@ export class PlayersService {
           minutesPlayed: incoming.minutesPlayed,
           isInjured: incoming.isInjured,
           injuryStatus: incoming.healthStatus,
+          selectedMatchId: incoming.selectedMatchId,
+          selectedMatchAvailability: incoming.selectedMatchAvailability,
+          selectedMatchTeamScore: incoming.selectedMatchTeamScore,
+          selectedMatchOpponentScore: incoming.selectedMatchOpponentScore,
+          selectedMatchRating: incoming.selectedMatchRating,
+          highlightsUploaded: incoming.highlightsUploaded,
+          gpsSyncConfirmed: incoming.gpsSyncConfirmed,
+          dailyTimeline: incoming.dailyTimeline,
+          trackerSteps: incoming.trackerSteps,
+          trackerDistanceM: incoming.trackerDistanceM,
+          trackerSource: incoming.trackerSource,
           weeklyUpdates: nextWeeklyUpdates,
           lastWeeklyUpdateAt: incoming.submittedAt,
         },
@@ -823,7 +1429,6 @@ export class PlayersService {
 
     return this.getMyPlayerSpace(userId, player.id);
   }
-
 
   /**
    * Create a new player
@@ -1317,6 +1922,404 @@ export class PlayersService {
     }
 
     return { created, updated, failed, rows };
+  }
+
+  async getDiscoveredTree(scoutId: string, query: GetDiscoveredTreeDto) {
+    const squadTypeFilter = query?.squadType ?? DiscoveredTreeSquadType.ALL;
+    const reportStatuses = ['SUBMITTED', 'REVIEWED', 'APPROVED'] as const;
+
+    const reports = await this.prisma.scouting_reports.findMany({
+      where: {
+        scoutId,
+        status: {
+          in: [...reportStatuses],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        playerId: true,
+        createdAt: true,
+        overallRating: true,
+        notesJson: true,
+        observedClubName: true,
+        matches: {
+          select: {
+            competitionOld: true,
+            competitions: {
+              select: {
+                name: true,
+                country: true,
+              },
+            },
+            clubs_matches_homeClubIdToclubs: {
+              select: {
+                name: true,
+                country: true,
+              },
+            },
+            clubs_matches_awayClubIdToclubs: {
+              select: {
+                name: true,
+                country: true,
+              },
+            },
+          },
+        },
+        players: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            birthYear: true,
+            dateOfBirth: true,
+            nationality: true,
+            observedClubName: true,
+            clubs: {
+              select: {
+                name: true,
+              },
+            },
+            users: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const treeAccumulator = new Map<
+      string,
+      {
+        country: string;
+        competitions: Map<
+          string,
+          {
+            competition: string;
+            ageCategories: Map<
+              AgeCategory,
+              {
+                ageCategory: AgeCategory;
+                players: Map<
+                  string,
+                  DiscoveredPlayerNode & {
+                    weightedRatingSum: number;
+                    weightedRatingCount: number;
+                  }
+                >;
+              }
+            >;
+          }
+        >;
+      }
+    >();
+
+    for (const report of reports) {
+      const player = report.players;
+      if (!player) continue;
+
+      const ageCategory = this.inferAgeCategory(player);
+      const squadType = this.inferSquadType(
+        report.observedClubName ?? player.observedClubName ?? player.clubs?.name,
+      );
+      if (squadTypeFilter !== DiscoveredTreeSquadType.ALL && squadType !== squadTypeFilter) {
+        continue;
+      }
+
+      const notesAnalysis =
+        report.notesJson &&
+        typeof report.notesJson === 'object' &&
+        !Array.isArray(report.notesJson) &&
+        (report.notesJson as any).analysis &&
+        typeof (report.notesJson as any).analysis === 'object'
+          ? ((report.notesJson as any).analysis as Record<string, unknown>)
+          : {};
+      const weightedOverallRating =
+        typeof notesAnalysis.weightedOverallRating === 'number'
+          ? (notesAnalysis.weightedOverallRating as number)
+          : typeof report.overallRating === 'number'
+            ? report.overallRating
+            : null;
+
+      const country = this.normalizeDisplayLabel(
+        report.matches?.competitions?.country ??
+          report.matches?.clubs_matches_homeClubIdToclubs?.country ??
+          report.matches?.clubs_matches_awayClubIdToclubs?.country ??
+          player.nationality,
+      );
+      const competition = this.normalizeDisplayLabel(
+        report.matches?.competitions?.name ?? report.matches?.competitionOld,
+      );
+
+      const playerFullName = this.normalizeDisplayLabel(
+        `${player.firstName ?? player.users?.firstName ?? ''} ${player.lastName ?? player.users?.lastName ?? ''}`,
+        `Player ${player.id.slice(0, 8)}`,
+      );
+
+      const countryNode = treeAccumulator.get(country) ?? {
+        country,
+        competitions: new Map(),
+      };
+      treeAccumulator.set(country, countryNode);
+
+      const competitionNode = countryNode.competitions.get(competition) ?? {
+        competition,
+        ageCategories: new Map(),
+      };
+      countryNode.competitions.set(competition, competitionNode);
+
+      const ageCategoryNode = competitionNode.ageCategories.get(ageCategory) ?? {
+        ageCategory,
+        players: new Map(),
+      };
+      competitionNode.ageCategories.set(ageCategory, ageCategoryNode);
+
+      const existingPlayer = ageCategoryNode.players.get(player.id);
+      if (existingPlayer) {
+        existingPlayer.reportCount += 1;
+        if (
+          !existingPlayer.lastReportAt ||
+          report.createdAt > new Date(existingPlayer.lastReportAt)
+        ) {
+          existingPlayer.lastReportAt = report.createdAt.toISOString();
+        }
+        if (weightedOverallRating !== null) {
+          existingPlayer.weightedRatingSum += weightedOverallRating;
+          existingPlayer.weightedRatingCount += 1;
+          existingPlayer.weightedOverallRating =
+            Math.round(
+              (existingPlayer.weightedRatingSum / existingPlayer.weightedRatingCount) * 10,
+            ) / 10;
+        }
+        existingPlayer.latestOverallRating =
+          typeof report.overallRating === 'number'
+            ? report.overallRating
+            : existingPlayer.latestOverallRating;
+      } else {
+        ageCategoryNode.players.set(player.id, {
+          playerId: player.id,
+          fullName: playerFullName,
+          ageCategory,
+          squadType,
+          country,
+          competition,
+          reportCount: 1,
+          lastReportAt: report.createdAt.toISOString(),
+          weightedOverallRating,
+          latestOverallRating:
+            typeof report.overallRating === 'number' ? report.overallRating : null,
+          weightedRatingSum: weightedOverallRating ?? 0,
+          weightedRatingCount: weightedOverallRating !== null ? 1 : 0,
+        });
+      }
+    }
+
+    const ageOrder: Record<AgeCategory, number> = {
+      SENIOR: 0,
+      U19: 1,
+      U17: 2,
+      U16: 3,
+    };
+
+    const data = Array.from(treeAccumulator.values())
+      .map((countryNode) => {
+        const competitions = Array.from(countryNode.competitions.values())
+          .map((competitionNode) => {
+            const ageCategories = Array.from(competitionNode.ageCategories.values())
+              .map((ageNode) => {
+                const players = Array.from(ageNode.players.values())
+                  .map((item) => {
+                    const { weightedRatingSum, weightedRatingCount, ...rest } = item;
+                    return rest;
+                  })
+                  .sort((a, b) => {
+                    const aScore = a.weightedOverallRating ?? -1;
+                    const bScore = b.weightedOverallRating ?? -1;
+                    if (bScore !== aScore) return bScore - aScore;
+                    return a.fullName.localeCompare(b.fullName);
+                  });
+
+                return {
+                  ageCategory: ageNode.ageCategory,
+                  totalPlayers: players.length,
+                  totalReports: players.reduce((acc, item) => acc + item.reportCount, 0),
+                  players,
+                };
+              })
+              .sort((a, b) => ageOrder[a.ageCategory] - ageOrder[b.ageCategory]);
+
+            return {
+              competition: competitionNode.competition,
+              totalAgeCategories: ageCategories.length,
+              totalPlayers: ageCategories.reduce((acc, item) => acc + item.totalPlayers, 0),
+              totalReports: ageCategories.reduce((acc, item) => acc + item.totalReports, 0),
+              ageCategories,
+            };
+          })
+          .sort((a, b) => a.competition.localeCompare(b.competition));
+
+        return {
+          country: countryNode.country,
+          totalCompetitions: competitions.length,
+          totalPlayers: competitions.reduce((acc, item) => acc + item.totalPlayers, 0),
+          totalReports: competitions.reduce((acc, item) => acc + item.totalReports, 0),
+          competitions,
+        };
+      })
+      .sort((a, b) => a.country.localeCompare(b.country));
+
+    return {
+      data,
+      meta: {
+        scoutId,
+        squadType: squadTypeFilter,
+        totalCountries: data.length,
+        totalCompetitions: data.reduce((acc, country) => acc + country.totalCompetitions, 0),
+        totalPlayers: data.reduce((acc, country) => acc + country.totalPlayers, 0),
+        totalReports: data.reduce((acc, country) => acc + country.totalReports, 0),
+      },
+    };
+  }
+
+  async resolveObservedPlayer(dto: ResolveObservedPlayerDto, resolverId: string) {
+    const observedEmail = dto.observedEmail?.trim().toLowerCase();
+    const observedPhone = this.normalizePhone(dto.observedPhone);
+    const observedFirstName = this.toDisplayCase(dto.observedFirstName);
+    const observedLastName = this.toDisplayCase(dto.observedLastName);
+    const observedClubName = this.toDisplayCase(dto.observedClubName);
+    const observedNationality = this.toDisplayCase(dto.observedNationality) || 'Unknown';
+    const observedBirthYear = dto.observedBirthYear;
+
+    const hasIdentity =
+      !!observedEmail || !!observedPhone || (!!observedFirstName && !!observedLastName);
+    if (!hasIdentity) {
+      throw new BadRequestException(
+        'At least one identity source is required (email, phone, or observed full name)',
+      );
+    }
+
+    if (observedEmail || observedPhone) {
+      const exactCriteria = [];
+      if (observedEmail) {
+        exactCriteria.push({ email: observedEmail });
+      }
+      if (observedPhone) {
+        exactCriteria.push({ phone: observedPhone });
+      }
+
+      const exactMatch = await this.prisma.players.findFirst({
+        where: {
+          users: {
+            is: {
+              OR: exactCriteria,
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      if (exactMatch) {
+        return {
+          playerId: exactMatch.id,
+          resolutionMode: 'exact_match',
+          confidence: 0.99,
+        };
+      }
+    }
+
+    if (observedFirstName && observedLastName && observedClubName) {
+      const probableMatch = await this.prisma.players.findFirst({
+        where: {
+          AND: [
+            {
+              OR: [
+                {
+                  firstName: { equals: observedFirstName, mode: 'insensitive' },
+                  lastName: { equals: observedLastName, mode: 'insensitive' },
+                },
+                {
+                  users: {
+                    is: {
+                      firstName: { equals: observedFirstName, mode: 'insensitive' },
+                      lastName: { equals: observedLastName, mode: 'insensitive' },
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              observedClubName: {
+                equals: observedClubName,
+                mode: 'insensitive',
+              },
+            },
+            ...(observedBirthYear ? [{ birthYear: observedBirthYear }] : []),
+          ],
+        },
+        select: { id: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      if (probableMatch) {
+        return {
+          playerId: probableMatch.id,
+          resolutionMode: 'probable_match',
+          confidence: observedBirthYear ? 0.86 : 0.78,
+        };
+      }
+    }
+
+    const createdPlayer = await this.prisma.players.create({
+      data: {
+        id: randomUUID(),
+        userId: null,
+        firstName: observedFirstName ?? null,
+        lastName: observedLastName ?? null,
+        birthYear: observedBirthYear ?? null,
+        observedClubName: observedClubName ?? null,
+        importSource: 'SCOUT_RESOLVE',
+        position: dto.playerPosition || 'Unknown',
+        preferredFoot: null,
+        nationality: observedNationality,
+        dateOfBirth: null,
+        status: 'PROSPECT',
+        updatedAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    await this.cacheManager.invalidateByTag('players:list');
+
+    await this.prisma.audit_logs
+      .create({
+        data: {
+          id: randomUUID(),
+          userId: resolverId,
+          action: 'SCOUT_RESOLVE_OBSERVED_PLAYER',
+          entityType: 'Player',
+          entityId: createdPlayer.id,
+          changes: {
+            matchId: dto.matchId ?? null,
+            observedFirstName: observedFirstName ?? null,
+            observedLastName: observedLastName ?? null,
+            observedEmail: observedEmail ?? null,
+            observedPhone: observedPhone ?? null,
+            observedClubName: observedClubName ?? null,
+            observedBirthYear: observedBirthYear ?? null,
+            resolutionMode: 'created_new',
+          },
+        },
+      })
+      .catch(() => undefined);
+
+    return {
+      playerId: createdPlayer.id,
+      resolutionMode: 'created_new',
+      confidence: 0.64,
+    };
   }
 
   async recordView(playerId: string, viewerId: string, source?: string) {

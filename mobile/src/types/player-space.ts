@@ -1,4 +1,18 @@
 export type PlayerSpaceHealthStatus = 'NORMAL' | 'FATIGUE' | 'INJURY';
+export type PlayerMatchAvailability = 'PLAYING' | 'BENCH' | 'INJURED' | 'ABSENT';
+export type PlayerDailyActivityType = 'NONE' | 'TRAINING' | 'MATCH' | 'BOTH' | 'PERSONAL' | 'REST';
+
+export interface PlayerDailyTimelineEntry {
+  dayKey: string;
+  activityType: PlayerDailyActivityType;
+  linkedMatchId?: string | null;
+  braceletSynced?: boolean | null;
+  gpsDistanceM?: number | null;
+  matchAvailability?: string | null;
+  matchStats?: string | null;
+  videoUploaded?: boolean | null;
+  notes?: string | null;
+}
 
 export interface PlayerSpacePlayerProfile {
   id: string;
@@ -56,6 +70,18 @@ export interface PlayerSpaceWeeklyRecord {
   isInjured: boolean;
   healthStatus: PlayerSpaceHealthStatus;
   remarks?: string | null;
+  selectedMatchId?: string | null;
+  selectedMatchAvailability?: PlayerMatchAvailability;
+  selectedMatchTeamScore?: number | null;
+  selectedMatchOpponentScore?: number | null;
+  selectedMatchRating?: number | null;
+  highlightsUploaded?: number | null;
+  gpsSyncConfirmed?: boolean | null;
+  dailyTimeline?: PlayerDailyTimelineEntry[] | null;
+  trackerSteps?: number | null;
+  trackerDistanceM?: number | null;
+  trackerSource?: string | null;
+  linkedEventId?: string | null;
 }
 
 export interface PlayerSpaceNewsItem {
@@ -91,4 +117,15 @@ export interface PlayerSpaceSubmitPayload {
   isInjured: boolean;
   healthStatus?: PlayerSpaceHealthStatus;
   remarks?: string;
+  selectedMatchId?: string;
+  selectedMatchAvailability?: PlayerMatchAvailability;
+  selectedMatchTeamScore?: number;
+  selectedMatchOpponentScore?: number;
+  selectedMatchRating?: number;
+  highlightsUploaded?: number;
+  gpsSyncConfirmed?: boolean;
+  dailyTimeline?: PlayerDailyTimelineEntry[];
+  trackerSteps?: number;
+  trackerDistanceM?: number;
+  trackerSource?: string;
 }

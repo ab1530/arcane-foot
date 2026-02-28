@@ -25,6 +25,8 @@ import { FilterPlayersDto } from './dto/filter-players.dto';
 import { RecordPlayerViewDto } from './dto/record-player-view.dto';
 import { ScoutQuickImportDto } from './dto/scout-quick-import.dto';
 import { SubmitPlayerWeeklyUpdateDto } from './dto/submit-player-weekly-update.dto';
+import { ResolveObservedPlayerDto } from './dto/resolve-observed-player.dto';
+import { GetDiscoveredTreeDto } from './dto/get-discovered-tree.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -86,7 +88,8 @@ export class PlayersController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get space dashboard for connected player',
-    description: 'Returns snapshot, weekly trends, calendar and health/news data for the current player.',
+    description:
+      'Returns snapshot, weekly trends, calendar and health/news data for the current player.',
   })
   @ApiResponse({ status: 200, description: 'Player space dashboard retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
@@ -188,7 +191,10 @@ export class PlayersController {
   @ApiResponse({ status: 400, description: 'Bad request - invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
   @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
-  submitWeeklyUpdateDashboardCompatibility(@Request() req, @Body() dto: SubmitPlayerWeeklyUpdateDto) {
+  submitWeeklyUpdateDashboardCompatibility(
+    @Request() req,
+    @Body() dto: SubmitPlayerWeeklyUpdateDto,
+  ) {
     return this.playersService.submitMyPlayerWeeklyUpdate(req.user.id, req.user.playerId, dto);
   }
 
@@ -205,7 +211,10 @@ export class PlayersController {
   @ApiResponse({ status: 400, description: 'Bad request - invalid payload' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
   @ApiResponse({ status: 403, description: 'Forbidden - PLAYER role required' })
-  submitWeeklyUpdateReverseDashboardCompatibility(@Request() req, @Body() dto: SubmitPlayerWeeklyUpdateDto) {
+  submitWeeklyUpdateReverseDashboardCompatibility(
+    @Request() req,
+    @Body() dto: SubmitPlayerWeeklyUpdateDto,
+  ) {
     return this.playersService.submitMyPlayerWeeklyUpdate(req.user.id, req.user.playerId, dto);
   }
 
@@ -224,6 +233,49 @@ export class PlayersController {
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   quickImport(@Body() dto: ScoutQuickImportDto, @Request() req) {
     return this.playersService.quickImportFromScoutText(dto, req.user.id);
+  }
+
+  @Post('resolve-observed')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Resolve observed player identity',
+    description:
+      'Resolve a player from observed identity data (exact/probable match) or create a new prospect when no candidate is found.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Player successfully resolved from observed identity',
+    schema: {
+      example: {
+        playerId: 'player-uuid',
+        resolutionMode: 'exact_match',
+        confidence: 0.99,
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid observed identity payload' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - SCOUT, ADMIN or SUPER_ADMIN required' })
+  resolveObserved(@Body() dto: ResolveObservedPlayerDto, @Request() req) {
+    return this.playersService.resolveObservedPlayer(dto, req.user.id);
+  }
+
+  @Get('discovered/tree')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCOUT', 'ADMIN', 'SUPER_ADMIN')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get discovered players tree for connected scout',
+    description:
+      'Returns discovered players grouped by country -> competition -> ageCategory, with optional squadType filter (ALL, PRO, RESERVE).',
+  })
+  @ApiResponse({ status: 200, description: 'Discovered players tree retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
+  @ApiResponse({ status: 403, description: 'Forbidden - SCOUT, ADMIN or SUPER_ADMIN required' })
+  getDiscoveredTree(@Query() query: GetDiscoveredTreeDto, @Request() req) {
+    return this.playersService.getDiscoveredTree(req.user.id, query);
   }
 
   @Get(':id')

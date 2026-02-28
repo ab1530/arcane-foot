@@ -1502,6 +1502,25 @@ export default function ClubNeedsScreen({ navigation, route }: any) {
           </Text>
         </View>
 
+        <GlassCard variant="elevated" style={styles.advancedEntryCard}>
+          <View style={styles.advancedEntryContent}>
+            <View style={styles.advancedEntryTextWrap}>
+              <Text style={styles.advancedEntryTitle}>Mode Avancé</Text>
+              <Text style={styles.advancedEntrySubtitle}>
+                Ouvre le parseur complet pour générer et sauvegarder rapidement.
+              </Text>
+            </View>
+            <TouchableOpacity
+              testID="club-needs-open-advanced-entry"
+              style={styles.advancedEntryButton}
+              onPress={() => setViewMode('ADVANCED')}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.advancedEntryButtonText}>Avancé</Text>
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -2416,6 +2435,41 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: typography.sizes.sm,
     lineHeight: 20,
+  },
+  advancedEntryCard: {
+    padding: spacing.md,
+  },
+  advancedEntryContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  advancedEntryTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  advancedEntryTitle: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.base,
+    fontWeight: '900',
+  },
+  advancedEntrySubtitle: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    lineHeight: 18,
+  },
+  advancedEntryButton: {
+    height: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primary,
+  },
+  advancedEntryButtonText: {
+    color: colors.background.primary,
+    fontWeight: '900',
+    fontSize: typography.sizes.xs,
   },
   leagueChipRow: {
     gap: spacing.sm,

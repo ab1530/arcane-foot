@@ -185,7 +185,7 @@ describe('ScoutingReportsController', () => {
 
       const result = await controller.findAll({});
 
-      expect(service.findAll).toHaveBeenCalledWith({});
+      expect(service.findAll).toHaveBeenCalledWith({}, undefined);
       expect(result).toEqual(mockReports);
     });
 
@@ -194,7 +194,7 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll({ playerId: 'player-123' });
 
-      expect(service.findAll).toHaveBeenCalledWith({ playerId: 'player-123' });
+      expect(service.findAll).toHaveBeenCalledWith({ playerId: 'player-123' }, undefined);
     });
 
     it('should filter by scoutId', async () => {
@@ -202,7 +202,7 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll({ scoutId: 'scout-123' });
 
-      expect(service.findAll).toHaveBeenCalledWith({ scoutId: 'scout-123' });
+      expect(service.findAll).toHaveBeenCalledWith({ scoutId: 'scout-123' }, undefined);
     });
 
     it('should filter by matchId', async () => {
@@ -210,7 +210,7 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll({ matchId: 'match-123' });
 
-      expect(service.findAll).toHaveBeenCalledWith({ matchId: 'match-123' });
+      expect(service.findAll).toHaveBeenCalledWith({ matchId: 'match-123' }, undefined);
     });
 
     it('should filter by status', async () => {
@@ -218,7 +218,7 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll({ status: 'SUBMITTED' as ReportStatus });
 
-      expect(service.findAll).toHaveBeenCalledWith({ status: 'SUBMITTED' });
+      expect(service.findAll).toHaveBeenCalledWith({ status: 'SUBMITTED' }, undefined);
     });
 
     it('should filter by recommendation', async () => {
@@ -226,7 +226,10 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll({ recommendation: 'HIGHLY_RECOMMENDED' as RecommendationType });
 
-      expect(service.findAll).toHaveBeenCalledWith({ recommendation: 'HIGHLY_RECOMMENDED' });
+      expect(service.findAll).toHaveBeenCalledWith(
+        { recommendation: 'HIGHLY_RECOMMENDED' },
+        undefined,
+      );
     });
 
     it('should handle multiple filters', async () => {
@@ -239,7 +242,7 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll(queryDto);
 
-      expect(service.findAll).toHaveBeenCalledWith(queryDto);
+      expect(service.findAll).toHaveBeenCalledWith(queryDto, undefined);
     });
   });
 
@@ -249,7 +252,7 @@ describe('ScoutingReportsController', () => {
 
       const result = await controller.findOne('report-123');
 
-      expect(service.findOne).toHaveBeenCalledWith('report-123');
+      expect(service.findOne).toHaveBeenCalledWith('report-123', undefined);
       expect(result).toEqual(mockReport);
     });
 
@@ -267,7 +270,7 @@ describe('ScoutingReportsController', () => {
 
       const result = await controller.getPlayerReports('player-123');
 
-      expect(service.getPlayerReports).toHaveBeenCalledWith('player-123');
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-123', undefined);
       expect(result).toEqual(mockReports);
     });
 
@@ -287,7 +290,7 @@ describe('ScoutingReportsController', () => {
 
       const result = await controller.getScoutReports('scout-123');
 
-      expect(service.getScoutReports).toHaveBeenCalledWith('scout-123');
+      expect(service.getScoutReports).toHaveBeenCalledWith('scout-123', undefined);
       expect(result).toEqual(mockReports);
     });
 
@@ -307,7 +310,7 @@ describe('ScoutingReportsController', () => {
 
       const result = await controller.getMatchReports('match-123');
 
-      expect(service.getMatchReports).toHaveBeenCalledWith('match-123');
+      expect(service.getMatchReports).toHaveBeenCalledWith('match-123', undefined);
       expect(result).toEqual(mockReports);
     });
 
@@ -594,7 +597,7 @@ describe('ScoutingReportsController', () => {
 
       const result = await controller.findAll({});
 
-      expect(service.findAll).toHaveBeenCalledWith({});
+      expect(service.findAll).toHaveBeenCalledWith({}, undefined);
       expect(result).toEqual([]);
     });
 
@@ -618,7 +621,7 @@ describe('ScoutingReportsController', () => {
 
       await controller.findAll(complexQuery);
 
-      expect(service.findAll).toHaveBeenCalledWith(complexQuery);
+      expect(service.findAll).toHaveBeenCalledWith(complexQuery, undefined);
     });
   });
 
@@ -688,7 +691,7 @@ describe('ScoutingReportsController', () => {
 
         await controller.findAll({ status });
 
-        expect(service.findAll).toHaveBeenCalledWith({ status });
+        expect(service.findAll).toHaveBeenCalledWith({ status }, undefined);
       });
     });
   });
@@ -710,7 +713,7 @@ describe('ScoutingReportsController', () => {
 
         await controller.findAll({ recommendation: recommendation as RecommendationType });
 
-        expect(service.findAll).toHaveBeenCalledWith({ recommendation });
+        expect(service.findAll).toHaveBeenCalledWith({ recommendation }, undefined);
       });
     });
   });
@@ -756,9 +759,9 @@ describe('ScoutingReportsController', () => {
       await controller.getPlayerReports('player-3');
 
       expect(service.getPlayerReports).toHaveBeenCalledTimes(3);
-      expect(service.getPlayerReports).toHaveBeenCalledWith('player-1');
-      expect(service.getPlayerReports).toHaveBeenCalledWith('player-2');
-      expect(service.getPlayerReports).toHaveBeenCalledWith('player-3');
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-1', undefined);
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-2', undefined);
+      expect(service.getPlayerReports).toHaveBeenCalledWith('player-3', undefined);
     });
 
     it('should handle fetching reports for multiple scouts sequentially', async () => {

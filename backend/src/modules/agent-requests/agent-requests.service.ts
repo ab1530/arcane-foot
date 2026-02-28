@@ -1,36 +1,17 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, TaskPriority, TaskStatus, type users, type tasks } from '@prisma/client';
+import { Prisma, TaskPriority, TaskStatus, UserRole, type users, type tasks } from '@prisma/client';
 import { CreateAgentRequestDto } from './dto/create-agent-request.dto';
 import { MarketProfileRuleDto } from './dto/market-profile-rule.dto';
 
 export type AgentRequestCategory = 'INJURY' | 'MEDICAL' | 'EQUIPMENT' | 'OTHER';
 export type AgentRequestStatus = 'CREATED' | 'IN_PROGRESS' | 'SATISFIED' | 'CANCELLED';
-
-type AgentRequest = {
-  id: string;
-  title: string;
-  category: AgentRequestCategory;
-  status: AgentRequestStatus;
-  priority: AgentRequestPriority;
-  playerId: string | null;
-  dueAt: string | null;
-  details: string | null;
-  content: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-  creator: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  };
-  assignee: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  } | null;
-};
 
 type AgentRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
@@ -39,6 +20,7 @@ type PersistedMetadata = {
   category: AgentRequestCategory;
   createdByRole?: string | null;
   playerId?: string | null;
+  assigneeId?: string | null;
   details?: string | null;
   equipment?: string | null;
   medicalDetails?: string | null;
@@ -106,20 +88,26 @@ export class AgentRequestsService {
 
   constructor(private prisma: PrismaService) {}
 
-  async createRequest(payload: CreateAgentRequestDto, requester: { id: string; role?: string; playerId?: string }) {
+  async createRequest(
+    payload: CreateAgentRequestDto,
+    requester: { id: string; role?: string; playerId?: string },
+  ) {
     if (!payload.title?.trim()) {
       throw new BadRequestException('Le titre de la demande est requis');
     }
 
     const category = payload.category || 'OTHER';
+    const requesterRole = this.normalizeRole(requester.role);
+    const assigneeId = await this.resolveAssigneeId(payload.assigneeId, requesterRole);
     const playerId = payload.playerId || requester.playerId || null;
     const dueAt = payload.dueAt && this.isISODate(payload.dueAt) ? payload.dueAt : null;
 
     const metadata: PersistedMetadata = {
       kind: 'AGENT_REQUEST',
       category,
-      createdByRole: requester.role || null,
+      createdByRole: requesterRole,
       playerId,
+      assigneeId,
       details: payload.details,
       equipment: payload.equipment,
       medicalDetails: payload.medicalDetails,
@@ -139,6 +127,11 @@ export class AgentRequestsService {
         users_tasks_creatorIdTousers: {
           connect: { id: requester.id },
         },
+        users_tasks_assigneeIdTousers: assigneeId
+          ? {
+              connect: { id: assigneeId },
+            }
+          : undefined,
         dueDate: dueAt ? new Date(dueAt) : undefined,
       },
       include: {
@@ -147,6 +140,15 @@ export class AgentRequestsService {
             id: true,
             firstName: true,
             lastName: true,
+            role: true,
+          },
+        },
+        users_tasks_assigneeIdTousers: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
           },
         },
       },
@@ -158,6 +160,7 @@ export class AgentRequestsService {
   async listRequests(filters: {
     status?: AgentRequestStatus | null;
     category?: AgentRequestCategory | null;
+    creatorRole?: string | null;
     page?: number;
     limit?: number;
     includeMineOnly?: boolean;
@@ -181,7 +184,7 @@ export class AgentRequestsService {
       orderBy: { createdAt: 'desc' },
       include: {
         users_tasks_creatorIdTousers: {
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, role: true },
         },
         users_tasks_assigneeIdTousers: {
           select: { id: true, firstName: true, lastName: true },
@@ -194,6 +197,16 @@ export class AgentRequestsService {
       const parsed = this.safeParseMetadata(task.description);
       if (!parsed || parsed.kind !== 'AGENT_REQUEST') return false;
       if (filters.category && parsed.category !== filters.category) return false;
+      if (filters.creatorRole) {
+        const creatorRoleFromMetadata = parsed.createdByRole || null;
+        const creatorRoleFromUser = task?.users_tasks_creatorIdTousers?.role || null;
+        if (
+          creatorRoleFromMetadata !== filters.creatorRole &&
+          creatorRoleFromUser !== filters.creatorRole
+        ) {
+          return false;
+        }
+      }
       return true;
     });
     const total = filtered.length;
@@ -201,10 +214,14 @@ export class AgentRequestsService {
     const paginated = filtered.slice(start, start + limit);
 
     return {
-      data: paginated.map((task) => this.normalizeRequest(task as tasks & {
-        users_tasks_creatorIdTousers: any;
-        users_tasks_assigneeIdTousers: any;
-      })),
+      data: paginated.map((task) =>
+        this.normalizeRequest(
+          task as tasks & {
+            users_tasks_creatorIdTousers: any;
+            users_tasks_assigneeIdTousers: any;
+          },
+        ),
+      ),
       meta: {
         total,
         page,
@@ -219,7 +236,7 @@ export class AgentRequestsService {
       where: { id },
       include: {
         users_tasks_creatorIdTousers: {
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, role: true },
         },
         users_tasks_assigneeIdTousers: {
           select: { id: true, firstName: true, lastName: true },
@@ -236,13 +253,15 @@ export class AgentRequestsService {
       throw new NotFoundException(`Demande avec l'ID ${id} introuvable`);
     }
 
-    return this.normalizeRequest(request as tasks & {
-      users_tasks_creatorIdTousers: any;
-      users_tasks_assigneeIdTousers: any;
-    });
+    return this.normalizeRequest(
+      request as tasks & {
+        users_tasks_creatorIdTousers: any;
+        users_tasks_assigneeIdTousers: any;
+      },
+    );
   }
 
-  async updateStatus(id: string, status: AgentRequestStatus, actorId: string) {
+  async updateStatus(id: string, status: AgentRequestStatus, _actorId: string) {
     await this.ensureRequestExists(id);
 
     const updated = await this.prisma.tasks.update({
@@ -252,7 +271,7 @@ export class AgentRequestsService {
       },
       include: {
         users_tasks_creatorIdTousers: {
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, role: true },
         },
         users_tasks_assigneeIdTousers: {
           select: { id: true, firstName: true, lastName: true },
@@ -260,10 +279,12 @@ export class AgentRequestsService {
       },
     });
 
-    return this.normalizeRequest(updated as tasks & {
-      users_tasks_creatorIdTousers: any;
-      users_tasks_assigneeIdTousers: any;
-    });
+    return this.normalizeRequest(
+      updated as tasks & {
+        users_tasks_creatorIdTousers: any;
+        users_tasks_assigneeIdTousers: any;
+      },
+    );
   }
 
   async getMarketRules() {
@@ -280,7 +301,10 @@ export class AgentRequestsService {
   }
 
   private async ensureRequestExists(id: string) {
-    const request = await this.prisma.tasks.findUnique({ where: { id }, select: { description: true } });
+    const request = await this.prisma.tasks.findUnique({
+      where: { id },
+      select: { description: true },
+    });
     if (!request) {
       throw new NotFoundException(`Demande avec l'ID ${id} introuvable`);
     }
@@ -298,10 +322,16 @@ export class AgentRequestsService {
         id: String(rule.id).trim(),
         label: String(rule.label).trim(),
         market: String(rule.market).trim(),
-        positions: Array.isArray(rule.positions) ? rule.positions.map((position) => String(position).trim()).filter(Boolean) : [],
-        minHeightCm: typeof rule.minHeightCm === 'number' ? Math.max(100, rule.minHeightCm) : undefined,
+        positions: Array.isArray(rule.positions)
+          ? rule.positions.map((position) => String(position).trim()).filter(Boolean)
+          : [],
+        minHeightCm:
+          typeof rule.minHeightCm === 'number' ? Math.max(100, rule.minHeightCm) : undefined,
         preferredFoot: rule.preferredFoot || undefined,
-        minEndurance: typeof rule.minEndurance === 'number' ? Math.max(0, Math.min(100, rule.minEndurance)) : undefined,
+        minEndurance:
+          typeof rule.minEndurance === 'number'
+            ? Math.max(0, Math.min(100, rule.minEndurance))
+            : undefined,
         traits: Array.isArray(rule.traits)
           ? rule.traits.map((trait) => String(trait).trim()).filter(Boolean)
           : [],
@@ -309,10 +339,13 @@ export class AgentRequestsService {
       }));
   }
 
-  private normalizeRequest(task: tasks & { users_tasks_creatorIdTousers?: any; users_tasks_assigneeIdTousers?: any }) {
+  private normalizeRequest(
+    task: tasks & { users_tasks_creatorIdTousers?: any; users_tasks_assigneeIdTousers?: any },
+  ) {
     const metadata = this.safeParseMetadata(task.description);
     const creator = task.users_tasks_creatorIdTousers as users | null | undefined;
     const assignee = task.users_tasks_assigneeIdTousers as users | null | undefined;
+    const creatorRole = metadata?.createdByRole ?? creator?.role ?? null;
 
     return {
       id: task.id,
@@ -320,6 +353,7 @@ export class AgentRequestsService {
       category: metadata?.category || 'OTHER',
       status: TASK_STATUS_TO_AGENT_STATUS[task.status],
       priority: this.fromTaskPriority(task.priority),
+      creatorRole,
       playerId: (metadata?.playerId as string) ?? null,
       dueAt: metadata?.dueAt ?? (task.dueDate ? task.dueDate.toISOString() : null),
       details: metadata?.details ?? null,
@@ -330,8 +364,12 @@ export class AgentRequestsService {
       },
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
-      creator: creator ? { id: creator.id, firstName: creator.firstName, lastName: creator.lastName } : null,
-      assignee: assignee ? { id: assignee.id, firstName: assignee.firstName, lastName: assignee.lastName } : null,
+      creator: creator
+        ? { id: creator.id, firstName: creator.firstName, lastName: creator.lastName }
+        : null,
+      assignee: assignee
+        ? { id: assignee.id, firstName: assignee.firstName, lastName: assignee.lastName }
+        : null,
     };
   }
 
@@ -370,5 +408,42 @@ export class AgentRequestsService {
     }
 
     return 'MEDIUM';
+  }
+
+  private normalizeRole(role?: string | null) {
+    return role?.trim().toUpperCase() || null;
+  }
+
+  private canAssignToScout(role?: string | null) {
+    return role === 'AGENT' || role === 'ADMIN' || role === 'SUPER_ADMIN';
+  }
+
+  private async resolveAssigneeId(assigneeId: string | undefined, requesterRole: string | null) {
+    const normalizedAssigneeId = assigneeId?.trim();
+    if (!normalizedAssigneeId) {
+      return null;
+    }
+
+    if (!this.canAssignToScout(requesterRole)) {
+      throw new ForbiddenException('Only agent/admin can target a scout assignee');
+    }
+
+    const assignee = await this.prisma.users.findUnique({
+      where: { id: normalizedAssigneeId },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+
+    if (!assignee) {
+      throw new NotFoundException(`Scout with ID ${normalizedAssigneeId} not found`);
+    }
+
+    if (assignee.role !== UserRole.SCOUT) {
+      throw new BadRequestException('Target assignee must have SCOUT role');
+    }
+
+    return assignee.id;
   }
 }

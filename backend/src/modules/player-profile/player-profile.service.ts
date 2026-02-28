@@ -7,10 +7,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import {
-  ProfileContentStatus,
-  RecommendationType,
-} from '@prisma/client';
+import { ProfileContentStatus, RecommendationType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { CacheManagerService } from '../../common/interceptors/cache.interceptor';
 import { PrismaService } from '../prisma/prisma.service';
@@ -250,7 +247,9 @@ export class PlayerProfileService {
     const avg = (values: Array<number | null | undefined>) => {
       const normalized = values.filter((value): value is number => typeof value === 'number');
       if (!normalized.length) return null;
-      return Number((normalized.reduce((acc, value) => acc + value, 0) / normalized.length).toFixed(2));
+      return Number(
+        (normalized.reduce((acc, value) => acc + value, 0) / normalized.length).toFixed(2),
+      );
     };
 
     const totalDistanceKm = sum(sessions.map((session) => session.movementDistanceM)) / 1000;
@@ -287,7 +286,10 @@ export class PlayerProfileService {
 
   private buildMarketSnapshot(player: any, meta: any, latestValuation: any, highestValuation: any) {
     const currentValue =
-      player.marketValue ?? latestValuation?.estimatedValue ?? highestValuation?.estimatedValue ?? null;
+      player.marketValue ??
+      latestValuation?.estimatedValue ??
+      highestValuation?.estimatedValue ??
+      null;
 
     const highestCandidates = [
       typeof player.marketValue === 'number' ? player.marketValue : null,
@@ -394,8 +396,14 @@ export class PlayerProfileService {
         where: { playerId, ...contentWhere },
         orderBy: [{ sourceDate: 'desc' }, { createdAt: 'desc' }],
       }),
-      this.prisma.player_valuations.findFirst({ where: { playerId }, orderBy: { createdAt: 'desc' } }),
-      this.prisma.player_valuations.findFirst({ where: { playerId }, orderBy: { estimatedValue: 'desc' } }),
+      this.prisma.player_valuations.findFirst({
+        where: { playerId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.player_valuations.findFirst({
+        where: { playerId },
+        orderBy: { estimatedValue: 'desc' },
+      }),
       this.prisma.scouting_reports.findMany({
         where: { playerId, status: 'APPROVED' },
         orderBy: { createdAt: 'desc' },
@@ -546,7 +554,9 @@ export class PlayerProfileService {
         positions: {
           main: meta?.mainPosition ?? player.position,
           other: Array.isArray(meta?.otherPositions)
-            ? meta.otherPositions.filter((value: unknown): value is string => typeof value === 'string')
+            ? meta.otherPositions.filter(
+                (value: unknown): value is string => typeof value === 'string',
+              )
             : [],
         },
         physical: {
@@ -883,7 +893,12 @@ export class PlayerProfileService {
     return this.createSectionItem('transfers', playerId, dto, actorId);
   }
 
-  async updateTransfer(playerId: string, itemId: string, dto: UpdateTransferEventDto, actorId: string) {
+  async updateTransfer(
+    playerId: string,
+    itemId: string,
+    dto: UpdateTransferEventDto,
+    actorId: string,
+  ) {
     return this.updateSectionItem('transfers', playerId, itemId, dto, actorId);
   }
 
@@ -895,7 +910,12 @@ export class PlayerProfileService {
     return this.createSectionItem('career', playerId, dto, actorId);
   }
 
-  async updateCareerEntry(playerId: string, itemId: string, dto: UpdateCareerEntryDto, actorId: string) {
+  async updateCareerEntry(
+    playerId: string,
+    itemId: string,
+    dto: UpdateCareerEntryDto,
+    actorId: string,
+  ) {
     return this.updateSectionItem('career', playerId, itemId, dto, actorId);
   }
 
@@ -920,7 +940,11 @@ export class PlayerProfileService {
     return this.deleteSectionItem('achievements', playerId, itemId);
   }
 
-  async createNationalTeamEntry(playerId: string, dto: CreateNationalTeamEntryDto, actorId: string) {
+  async createNationalTeamEntry(
+    playerId: string,
+    dto: CreateNationalTeamEntryDto,
+    actorId: string,
+  ) {
     return this.createSectionItem('national-team', playerId, dto, actorId);
   }
 
@@ -941,7 +965,12 @@ export class PlayerProfileService {
     return this.createSectionItem('news', playerId, dto, actorId);
   }
 
-  async updateNewsEntry(playerId: string, itemId: string, dto: UpdateNewsEntryDto, actorId: string) {
+  async updateNewsEntry(
+    playerId: string,
+    itemId: string,
+    dto: UpdateNewsEntryDto,
+    actorId: string,
+  ) {
     return this.updateSectionItem('news', playerId, itemId, dto, actorId);
   }
 

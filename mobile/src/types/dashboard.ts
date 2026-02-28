@@ -38,3 +38,25 @@ export interface MobileHomeDashboardResponse {
   };
   generatedAt: string;
 }
+
+export interface DashboardScoutDirectoryItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatar?: string | null;
+  reportsCount: number;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface DashboardScoutDirectoryResponse {
+  data: DashboardScoutDirectoryItem[];
+  items?: DashboardScoutDirectoryItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

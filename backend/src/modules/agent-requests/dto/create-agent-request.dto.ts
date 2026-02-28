@@ -1,18 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsIn,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export type AgentRequestCategory = 'INJURY' | 'MEDICAL' | 'EQUIPMENT' | 'OTHER';
 export type AgentRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export class CreateAgentRequestDto {
   @ApiProperty({
-    example: 'Demande d\'équipement',
+    example: "Demande d'équipement",
     description: 'Titre de la demande',
   })
   @IsString()
@@ -36,6 +30,14 @@ export class CreateAgentRequestDto {
   @IsOptional()
   @IsString()
   playerId?: string;
+
+  @ApiPropertyOptional({
+    example: 'scout-123',
+    description: 'Identifiant du scout ciblé (agent/admin uniquement)',
+  })
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
 
   @ApiPropertyOptional({
     example: 'Entorse cheville droite depuis 10 jours',

@@ -1,8 +1,4 @@
-import {
-  isCategoryARole,
-  isCategoryBRole,
-  ROLE_CATEGORY_MAP,
-} from './role.constants';
+import { isCategoryARole, isCategoryBRole, ROLE_CATEGORY_MAP } from './role.constants';
 
 describe('Role category mapping', () => {
   it('should map SUPER_ADMIN and ADMIN as category A', () => {
@@ -20,4 +16,3 @@ describe('Role category mapping', () => {
     expect(ROLE_CATEGORY_MAP.AGENT).toBe('B');
   });
 });
-

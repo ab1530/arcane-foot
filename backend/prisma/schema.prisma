@@ -159,18 +159,70 @@ model club_requests {
 }
 
 model club_need_requests {
-  id              String   @id @default(uuid())
-  createdById     String
-  rawText         String
-  parsed          Json
-  matchesSnapshot Json?
-  lineStates      Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  users           users    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  id                            String                             @id @default(uuid())
+  createdById                   String
+  requestKind                   TransferRequestKind                @default(LEGACY_RAW)
+  rawText                       String
+  parsed                        Json
+  matchesSnapshot               Json?
+  lineStates                    Json?
+  clubId                        String?
+  clubName                      String?
+  country                       String?
+  league                        String?
+  status                        TransferRequestStatus              @default(OPEN)
+  priority                      TaskPriority                       @default(MEDIUM)
+  visibility                    TransferRequestVisibility          @default(PRIVATE)
+  requirementsJson              Json?
+  deadlineAt                    DateTime?
+  createdAt                     DateTime                           @default(now())
+  updatedAt                     DateTime                           @updatedAt
+  club_need_request_activities  club_need_request_activities[]
+  club_need_request_suggestions club_need_request_suggestions[]
+  clubs                         clubs?                             @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  users                         users                              @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([createdById])
+  @@index([clubId])
+  @@index([status])
+  @@index([priority])
+  @@index([visibility])
+  @@index([league])
   @@index([createdAt])
+  @@index([requestKind, country, league, status, visibility, createdAt])
+}
+
+model club_need_request_suggestions {
+  id                 String                 @id @default(uuid())
+  requestId          String
+  playerId           String
+  scoutId            String
+  comment            String?
+  status             TransferSuggestionStatus @default(PROPOSED)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  club_need_requests club_need_requests     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  players            players                @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  users              users                  @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, playerId, scoutId])
+  @@index([requestId, createdAt])
+  @@index([status])
+  @@index([scoutId])
+}
+
+model club_need_request_activities {
+  id                 String             @id @default(uuid())
+  requestId          String
+  actorId            String
+  actionType         String
+  payloadJson        Json?
+  createdAt          DateTime           @default(now())
+  club_need_requests club_need_requests @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  users              users              @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 model passport_share_sets {
@@ -210,6 +262,7 @@ model clubs {
   externalSource                    String?
   lastSyncAt                        DateTime?
   camps                             camps[]
+  club_need_requests                club_need_requests[]
   club_requests                     club_requests[]
   users                             users?                @relation(fields: [contactUserId], references: [id])
   marketplace_offers                marketplace_offers[]
@@ -435,6 +488,7 @@ model match_assignments {
   matchId                                     String
   scoutId                                     String
   status                                      MatchAssignmentStatus @default(ASSIGNED)
+  missionType                                 MissionType           @default(PRIORITY)
   role                                        MatchAssignmentRole   @default(PRIMARY_SCOUT)
   arrivalTime                                 DateTime?
   seatingSection                              String?
@@ -604,6 +658,7 @@ model players {
   importSource                    String?
   auto_generated_reports          auto_generated_reports[]
   camp_participations             camp_participations[]
+  club_need_request_suggestions   club_need_request_suggestions[]
   club_requests                   club_requests[]
   hardware_sessions               HardwareSession[]
   kanban_cards                    kanban_cards[]
@@ -737,6 +792,11 @@ model scouting_reports {
   observedHeightCm         Int?
   observedWeightKg         Int?
   observedClubName         String?
+  observedFirstName        String?
+  observedLastName         String?
+  observedNationality      String?
+  observedPhone            String?
+  observedEmail            String?
   sprint10mSec             Float?
   sprint20mSec             Float?
   sprint40mSec             Float?
@@ -862,7 +922,9 @@ model users {
   auto_generated_reports                                  auto_generated_reports[]
   clubs                                                   clubs?
   coaching_bookings                                       coaching_bookings[]
+  club_need_request_activities                            club_need_request_activities[]
   club_need_requests                                      club_need_requests[]
+  club_need_request_suggestions                           club_need_request_suggestions[]
   comments                                                comments[]
   event_assignments                                       event_assignments[]
   events                                                  events[]
@@ -1642,6 +1704,11 @@ enum MatchAssignmentRole {
   VIDEO_ANALYST
 }
 
+enum MissionType {
+  PRIORITY
+  VOLUNTARY
+}
+
 enum MatchAssignmentStatus {
   ASSIGNED
   CONFIRMED
@@ -1746,6 +1813,28 @@ enum TaskStatus {
   IN_PROGRESS
   DONE
   CANCELLED
+}
+
+enum TransferRequestKind {
+  LEGACY_RAW
+  TRANSFER_REQUEST
+}
+
+enum TransferRequestStatus {
+  OPEN
+  IN_DISCUSSION
+  CLOSED
+}
+
+enum TransferRequestVisibility {
+  PRIVATE
+  SHARED
+}
+
+enum TransferSuggestionStatus {
+  PROPOSED
+  SHORTLISTED
+  REJECTED
 }
 
 enum UserRole {

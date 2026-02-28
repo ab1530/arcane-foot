@@ -5,8 +5,9 @@ import type { AppStackParamList } from '../types/navigation';
 import MainTabNavigator from './MainTabNavigator';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { AnalyticsScreen } from '../screens/analytics/AnalyticsScreen';
-import { MarketScreen } from '../screens/market/MarketScreen';
 import ClubNeedsScreen from '../screens/admin/ClubNeedsScreen';
+import ScoutsDirectoryScreen from '../screens/admin/ScoutsDirectoryScreen';
+import ScoutAdminDetailScreen from '../screens/admin/ScoutAdminDetailScreen';
 import { CampsListScreen } from '../screens/camps/CampsListScreen';
 import { CampDetailScreen } from '../screens/camps/CampDetailScreen';
 import { MyCampsScreen } from '../screens/camps/MyCampsScreen';
@@ -28,6 +29,7 @@ import CreateReportScreen from '../screens/reports/CreateReportScreen';
 import { ReportsScreen } from '../screens/reports/ReportsScreen';
 import { CalendarScreenNew } from '../screens/calendar/CalendarScreenNew';
 import { MatchDetailScreen } from '../screens/calendar/MatchDetailScreen';
+import MissionRequestsScreen from '../screens/calendar/MissionRequestsScreen';
 import MembershipScreen from '../screens/membership/MembershipScreen';
 import AboutScreen from '../screens/info/AboutScreen';
 import ContactScreen from '../screens/info/ContactScreen';
@@ -38,8 +40,7 @@ import { PlayerPassport } from '../screens/players/PlayerPassport';
 import PlayerHighlightsScreen from '../screens/players/PlayerHighlightsScreen';
 import PlayerComparisonScreen from '../screens/players/PlayerComparisonScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
-import { ScoutingReportsScreen } from '../screens/scouting/ScoutingReportsScreen';
-import { CreateScoutingReportScreen } from '../screens/scouting/CreateScoutingReportScreen';
+import ScoutProfileScreen from '../screens/profile/ScoutProfileScreen';
 import MarketplaceScreen from '../screens/marketplace/MarketplaceScreen';
 import ScoutDetailScreen from '../screens/marketplace/ScoutDetailScreen';
 import { PlayersScreen } from '../screens/players/PlayersScreen';
@@ -54,10 +55,13 @@ import { PlayerHardwareSessionDetailScreen } from '../screens/hardware/PlayerHar
 import { ConnectGpsTrackerScreen } from '../screens/hardware/ConnectGpsTrackerScreen';
 import { ImportGpsSessionScreen } from '../screens/hardware/ImportGpsSessionScreen';
 import { QCBandScreen } from '../screens/hardware/QCBandScreen';
+import { isFeatureEnabled } from '../constants/features';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export default function AppNavigator() {
+  const scoutProfileEnabled = isFeatureEnabled('scoutProfileScreen');
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -91,12 +95,22 @@ export default function AppNavigator() {
       />
       <Stack.Screen
         name="Market"
-        component={MarketScreen}
+        component={MarketplaceScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ClubNeeds"
         component={ClubNeedsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ScoutsDirectory"
+        component={ScoutsDirectoryScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ScoutAdminDetail"
+        component={ScoutAdminDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -255,6 +269,11 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="MissionRequests"
+        component={MissionRequestsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="MatchDetail"
         component={MatchDetailScreen}
         options={{ headerShown: false }}
@@ -284,6 +303,13 @@ export default function AppNavigator() {
         component={PassportScreen}
         options={{ headerShown: false }}
       />
+      {scoutProfileEnabled ? (
+        <Stack.Screen
+          name="ScoutProfile"
+          component={ScoutProfileScreen}
+          options={{ headerShown: false }}
+        />
+      ) : null}
       <Stack.Screen
         name="PassportPreview"
         component={PassportPreviewScreen}
@@ -292,16 +318,6 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ScoutingReports"
-        component={ScoutingReportsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="CreateScoutingReport"
-        component={CreateScoutingReportScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

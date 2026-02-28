@@ -15,12 +15,20 @@ export function buildPlayersWhereFromNeedLine(line: ParsedNeedLine) {
     where.dateOfBirth = {};
 
     if (line.age?.max !== undefined) {
-      const minDate = new Date(today.getFullYear() - line.age.max, today.getMonth(), today.getDate());
+      const minDate = new Date(
+        today.getFullYear() - line.age.max,
+        today.getMonth(),
+        today.getDate(),
+      );
       where.dateOfBirth.gte = minDate;
     }
 
     if (line.age?.min !== undefined) {
-      const maxDate = new Date(today.getFullYear() - line.age.min, today.getMonth(), today.getDate());
+      const maxDate = new Date(
+        today.getFullYear() - line.age.min,
+        today.getMonth(),
+        today.getDate(),
+      );
       where.dateOfBirth.lte = maxDate;
     }
   }
@@ -36,4 +44,3 @@ export function buildPlayersWhereFromNeedLine(line: ParsedNeedLine) {
 
   return where;
 }
-

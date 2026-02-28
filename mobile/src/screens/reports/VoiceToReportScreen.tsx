@@ -12,7 +12,7 @@
  * 5. COMPLETE - Report generated, show results
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { COLORS, FONT_SIZES, SPACING } from '../../constants/config';
+import { Audio } from 'expo-av';
 import type {
   RecordingState,
   ExtractedReportData,
@@ -34,6 +35,8 @@ import type {
 } from '../../types/voice-to-report';
 import { voiceToReportApi } from '../../services/api/voice-to-report';
 import { useLocalization } from '../../contexts/LocalizationContext';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../../types/navigation';
 
 // Components
 import { RecordButton } from '../../components/voice/RecordButton';
@@ -43,19 +46,9 @@ import { AudioPlayer } from '../../components/voice/AudioPlayer';
 import { TranscriptionCard } from '../../components/voice/TranscriptionCard';
 import { ExtractedDataCard } from '../../components/voice/ExtractedDataCard';
 
-// Note: expo-av imports would be here
-// import { Audio } from 'expo-av';
-// import * as FileSystem from 'expo-file-system';
+type VoiceToReportScreenProps = NativeStackScreenProps<AppStackParamList, 'VoiceToReport'>;
 
-interface VoiceToReportScreenProps {
-  navigation: any;
-  route?: any;
-}
-
-export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
-  navigation,
-  route,
-}) => {
+export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({ navigation, route }) => {
   const { dictionary } = useLocalization();
   const t = dictionary.voiceReport || {
     header: { title: 'Voice to Report' },
@@ -99,20 +92,31 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en' as SupportedLanguage);
   const [voiceReport, setVoiceReport] = useState<VoiceReportResponse | null>(null);
   const [editedData, setEditedData] = useState<ExtractedReportData | null>(null);
-
-  // Recording objects (would use expo-av)
-  // const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   // Get optional params from route
   const matchId = route?.params?.matchId;
   const playerId = route?.params?.playerId;
+  const playerIds = route?.params?.playerIds;
+  const assignmentId = route?.params?.assignmentId;
 
   /**
    * Request audio permissions
    */
   const requestPermissions = async (): Promise<boolean> => {
-    // TODO: Implement with expo-av permissions flow
-    return true;
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          dictionary?.common?.feedback?.error || 'Error',
+          'Microphone permission is required to record voice notes.',
+        );
+      }
+      return permission.granted;
+    } catch (error) {
+      console.error('Failed to request recording permission', error);
+      return false;
+    }
   };
 
   /**
@@ -123,17 +127,25 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      // TODO: Implement with expo-av
-      // await Audio.setAudioModeAsync({
-      //   allowsRecordingIOS: true,
-      //   playsInSilentModeIOS: true,
-      // });
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync();
+        recordingRef.current = null;
+      }
 
-      // const { recording } = await Audio.Recording.createAsync(
-      //   Audio.RecordingOptionsPresets.HIGH_QUALITY
-      // );
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
 
-      // setRecording(recording);
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      recordingRef.current = recording;
+      setAudioUri(null);
+      setAudioDuration(0);
+      setVoiceReport(null);
+      setEditedData(null);
       setRecordingState('recording');
 
       Toast.show({
@@ -152,20 +164,27 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    */
   const stopRecording = async () => {
     try {
-      // TODO: Implement with expo-av
-      // if (!recording) return;
+      const currentRecording = recordingRef.current;
+      if (!currentRecording) {
+        return;
+      }
 
-      // await recording.stopAndUnloadAsync();
-      // const uri = recording.getURI();
-      // const status = await recording.getStatusAsync();
+      await currentRecording.stopAndUnloadAsync();
+      const status = await currentRecording.getStatusAsync();
+      const uri = currentRecording.getURI();
+      recordingRef.current = null;
 
-      // setAudioUri(uri);
-      // setAudioDuration(status.durationMillis / 1000);
-      // setRecording(null);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
 
-      // Placeholder
-      setAudioUri('/tmp/recording.m4a');
-      setAudioDuration(45);
+      if (!uri) {
+        throw new Error('Recording URI is empty');
+      }
+
+      const durationMillis = status && 'durationMillis' in status ? status.durationMillis ?? 0 : 0;
+      setAudioUri(uri);
+      setAudioDuration(Math.max(1, Math.round(durationMillis / 1000)));
       setRecordingState('recorded');
 
       Toast.show({
@@ -184,9 +203,13 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    */
   const handleRecordPress = () => {
     if (recordingState === 'idle' || recordingState === 'recorded') {
-      startRecording();
+      startRecording().catch((error) => {
+        console.error('Failed to start recording from button', error);
+      });
     } else if (recordingState === 'recording') {
-      stopRecording();
+      stopRecording().catch((error) => {
+        console.error('Failed to stop recording from button', error);
+      });
     }
   };
 
@@ -194,7 +217,9 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    * Handle max recording duration reached
    */
   const handleMaxDurationReached = () => {
-    stopRecording();
+    stopRecording().catch((error) => {
+      console.error('Failed to stop recording at max duration', error);
+    });
     Toast.show({
       type: 'warning',
       text1: t.toasts.maxDuration.title,
@@ -211,26 +236,13 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
       return;
     }
 
-    // Check if this is a placeholder/demo recording
-    if (audioUri === '/tmp/recording.m4a' || audioUri.includes('/tmp/')) {
-      Alert.alert(
-        'Demo Mode',
-        'Voice recording feature is not yet fully implemented. Real audio recording will be available soon with expo-av integration.',
-        [
-          { text: 'OK', style: 'default' }
-        ]
-      );
-      setRecordingState('recorded');
-      return;
-    }
-
     try {
       setRecordingState('processing');
 
       const response = await voiceToReportApi.processVoiceReport(audioUri, {
         language: selectedLanguage,
         matchId,
-        playerId,
+        playerId: playerId ?? playerIds?.[0],
         keepAudio: false,
       });
 
@@ -271,6 +283,16 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
     navigation.navigate('CreateReport', {
       prefillData: editedData,
       fromVoice: true,
+      matchId,
+      playerId,
+      playerIds,
+      assignmentId,
+      voicePayload: {
+        transcription: voiceReport?.transcription,
+        confidence: voiceReport?.confidence,
+        audioUrl: voiceReport?.audioUrl,
+        warnings: voiceReport?.warnings,
+      },
     });
 
     Toast.show({
@@ -284,12 +306,28 @@ export const VoiceToReportScreen: React.FC<VoiceToReportScreenProps> = ({
    * Reset to initial state
    */
   const resetRecording = () => {
+    if (recordingRef.current) {
+      recordingRef.current.stopAndUnloadAsync().catch(() => undefined);
+      recordingRef.current = null;
+    }
     setRecordingState('idle');
     setAudioUri(null);
     setAudioDuration(0);
     setVoiceReport(null);
     setEditedData(null);
   };
+
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => undefined);
+        recordingRef.current = null;
+      }
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      }).catch(() => undefined);
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

@@ -34,6 +34,10 @@ describe('ApiClient', () => {
     mock = new MockAdapter(api.client);
     // Clear auth token to reset state between tests
     api.setAuthToken(null);
+    // @ts-ignore - reset getPlayer cache/in-flight maps for deterministic tests
+    api.playerCache?.clear?.();
+    // @ts-ignore - reset getPlayer cache/in-flight maps for deterministic tests
+    api.inFlightPlayerRequests?.clear?.();
     jest.clearAllMocks();
   });
 
@@ -173,6 +177,50 @@ describe('ApiClient', () => {
       expect(result).toEqual(mockPlayer);
     });
 
+    it('should reuse cached player response for a short interval', async () => {
+      const mockPlayer = {
+        id: '123',
+        firstName: 'Cached',
+        lastName: 'Player',
+      };
+
+      mock.onGet('/players/123').reply(200, mockPlayer);
+
+      const first = await api.getPlayer('123');
+      const second = await api.getPlayer('123');
+
+      expect(first).toEqual(mockPlayer);
+      expect(second).toEqual(mockPlayer);
+      expect(mock.history.get.filter((entry) => entry.url === '/players/123')).toHaveLength(1);
+    });
+
+    it('should dedupe concurrent getPlayer calls for the same player', async () => {
+      const mockPlayer = {
+        id: '123',
+        firstName: 'Concurrent',
+        lastName: 'Player',
+      };
+
+      let replyCount = 0;
+      mock.onGet('/players/123').reply(async () => {
+        replyCount += 1;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return [200, mockPlayer];
+      });
+
+      const [first, second, third] = await Promise.all([
+        api.getPlayer('123'),
+        api.getPlayer('123'),
+        api.getPlayer('123'),
+      ]);
+
+      expect(first).toEqual(mockPlayer);
+      expect(second).toEqual(mockPlayer);
+      expect(third).toEqual(mockPlayer);
+      expect(replyCount).toBe(1);
+      expect(mock.history.get.filter((entry) => entry.url === '/players/123')).toHaveLength(1);
+    });
+
     it('should get player stats', async () => {
       const mockStats = {
         goals: 15,
@@ -280,6 +328,7 @@ describe('ApiClient', () => {
         '/players/dashboard/me',
         '/auth/me',
         '/players/player-1',
+        '/matches',
       ]);
     });
 
@@ -372,6 +421,7 @@ describe('ApiClient', () => {
         '/players/dashboard/me',
         '/auth/me',
         '/players/player-2',
+        '/matches',
       ]);
     });
 

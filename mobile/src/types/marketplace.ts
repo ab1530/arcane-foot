@@ -63,7 +63,7 @@ export interface MarketplaceListing {
     totalReports: number;
     completedOffers: number;
   };
-  status: 'ACTIVE' | 'PAUSED' | 'INACTIVE';
+  status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | 'INACTIVE';
   isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;

@@ -28,7 +28,10 @@ export class GetHardwareSessionDto {
   @ApiProperty({ description: 'Player ID the session belongs to' })
   playerId: string;
 
-  @ApiPropertyOptional({ description: 'Attached player snapshot', type: () => HardwareSessionPlayerDto })
+  @ApiPropertyOptional({
+    description: 'Attached player snapshot',
+    type: () => HardwareSessionPlayerDto,
+  })
   player?: HardwareSessionPlayerDto;
 
   @ApiProperty({ description: 'Device identifier' })

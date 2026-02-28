@@ -38,11 +38,9 @@ export const ROLE_ENUM = USER_ROLES.reduce(
 
 export const isAdminRole = (role: Role | PrismaUserRole) => sharedIsPrivilegedRole(role as Role);
 
-export const isCategoryARole = (role: Role | PrismaUserRole) =>
-  sharedIsCategoryARole(role as Role);
+export const isCategoryARole = (role: Role | PrismaUserRole) => sharedIsCategoryARole(role as Role);
 
-export const isCategoryBRole = (role: Role | PrismaUserRole) =>
-  sharedIsCategoryBRole(role as Role);
+export const isCategoryBRole = (role: Role | PrismaUserRole) => sharedIsCategoryBRole(role as Role);
 
 export const getRolePriority = (role: Role | PrismaUserRole) => sharedRolePriority(role as Role);
 

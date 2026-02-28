@@ -11,4 +11,3 @@ import { PassportSharesService } from './passport-shares.service';
   exports: [PassportSharesService],
 })
 export class PassportSharesModule {}
-

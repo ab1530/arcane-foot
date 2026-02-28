@@ -10,7 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 jest.mock('../../../services/api/scouting-reports', () => ({
   scoutingReportsApi: {
-    create: jest.fn(),
+    bulkSubmit: jest.fn(),
   },
 }));
 
@@ -30,9 +30,13 @@ const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
 };
+const mockRoute = {
+  params: undefined as any,
+};
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
+  useRoute: () => mockRoute,
 }));
 
 const renderWithProviders = () =>
@@ -69,7 +73,7 @@ const mockPlayers = {
 
 const mockGetMatches = api.getMatches as unknown as jest.Mock;
 const mockGetPlayers = api.getPlayers as unknown as jest.Mock;
-const mockCreate = scoutingReportsApi.create as jest.Mock;
+const mockBulkSubmit = scoutingReportsApi.bulkSubmit as jest.Mock;
 
 const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -89,8 +93,13 @@ describe('CreateReportScreen', () => {
     jest.clearAllMocks();
     mockNavigation.goBack = jest.fn();
     mockNavigation.navigate = jest.fn();
+    mockRoute.params = undefined;
     mockGetMatches.mockResolvedValue(mockMatches);
     mockGetPlayers.mockResolvedValue(mockPlayers);
+    mockBulkSubmit.mockResolvedValue({
+      data: [{ id: 'report-1', status: 'SUBMITTED' }],
+      meta: { matchId: 'match-1', scoutId: 'scout-1', created: 1 },
+    });
     alertSpy.mockReset();
   });
 
@@ -111,7 +120,6 @@ describe('CreateReportScreen', () => {
   });
 
   it('valide la création et envoie les données formatées', async () => {
-    mockCreate.mockResolvedValue({ id: 'report-1' });
     alertSpy.mockImplementation((title, message, buttons) => {
       if (title === 'Succès') {
         const okButton = buttons?.find((btn) => btn.text === 'OK');
@@ -139,26 +147,28 @@ describe('CreateReportScreen', () => {
     fireEvent.press(getByTestId('create-report-submit'));
 
     await waitFor(() => {
-      expect(mockCreate).toHaveBeenCalledWith(
+      expect(mockBulkSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
           matchId: 'match-1',
-          playerId: 'player-1',
-          overallRating: 85,
-          playerMinutesPlayed: 75,
-          recommendation: 'BUY_NOW',
-          tags: ['rapide', 'technique'],
-          strengths: 'Rapide',
-          weaknesses: 'Doit progresser',
-          summary: 'Très bon profil',
-          recommendationNotes: 'Recruter immédiatement',
+          playerIds: ['player-1'],
+          template: expect.objectContaining({
+            overallRating: 85,
+            playerMinutesPlayed: 75,
+            recommendation: 'BUY_NOW',
+            tags: ['rapide', 'technique'],
+            strengths: 'Rapide',
+            weaknesses: 'Doit progresser',
+            summary: 'Très bon profil',
+            recommendationNotes: 'Recruter immédiatement',
+          }),
         })
       );
       expect(alertSpy).toHaveBeenCalledWith(
         'Succès',
-        'Rapport créé avec succès',
+        '1 rapport envoyé(s) et visibles aux agents.',
         expect.any(Array)
       );
-      expect(mockNavigation.goBack).toHaveBeenCalled();
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Reports');
     });
   });
 
@@ -173,7 +183,7 @@ describe('CreateReportScreen', () => {
   });
 
   it('affiche une erreur si la création échoue', async () => {
-    mockCreate.mockRejectedValue({
+    mockBulkSubmit.mockRejectedValue({
       response: { data: { message: 'Validation error' } },
     });
     alertSpy.mockImplementation(() => {});

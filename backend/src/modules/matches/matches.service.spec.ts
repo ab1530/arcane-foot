@@ -23,6 +23,9 @@ describe('MatchesService', () => {
     users: {
       findUnique: jest.fn(),
     },
+    match_assignments: {
+      upsert: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -154,6 +157,7 @@ describe('MatchesService', () => {
         homeClub: { name: 'PSG' },
         awayClub: { name: 'OM' },
         scout: null,
+        assignments: [],
         _count: { scoutingReports: 3 },
       },
       {
@@ -165,6 +169,7 @@ describe('MatchesService', () => {
         homeClub: { name: 'Lyon' },
         awayClub: { name: 'PSG' },
         scout: null,
+        assignments: [],
         _count: { scoutingReports: 5 },
       },
     ];

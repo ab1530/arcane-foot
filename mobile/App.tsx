@@ -8,7 +8,6 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { FavoritesProvider } from './src/contexts/FavoritesContext';
 import { ComparisonProvider } from './src/contexts/ComparisonContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
-import { ScoutingProvider } from './src/contexts/ScoutingContext';
 import { LocalizationProvider } from './src/contexts/LocalizationContext';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { logError } from './src/logging/expoLogBridge';
@@ -61,9 +60,7 @@ export default function App() {
               <AuthProvider>
                 <FavoritesProvider>
                   <ComparisonProvider>
-                    <ScoutingProvider>
-                      <AppContent />
-                    </ScoutingProvider>
+                    <AppContent />
                   </ComparisonProvider>
                 </FavoritesProvider>
               </AuthProvider>

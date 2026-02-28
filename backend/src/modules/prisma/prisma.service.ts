@@ -23,16 +23,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
       if (message.includes('Authentication failed')) {
         this.logger.error(
-          '[DB] Invalid DB credentials. Refresh DATABASE_URL from Supabase > Database > Connect.'
+          '[DB] Invalid DB credentials. Refresh DATABASE_URL from Supabase > Database > Connect.',
         );
       }
       if (message.includes("Can't reach database server")) {
         this.logger.error(
-          '[DB] Database host unreachable. On IPv4 networks, use Supabase pooler (port 6543).'
+          '[DB] Database host unreachable. On IPv4 networks, use Supabase pooler (port 6543).',
         );
       }
       if (!hasSslMode) {
-        this.logger.error('[DB] Missing sslmode. For Supabase, append ?sslmode=require to DATABASE_URL.');
+        this.logger.error(
+          '[DB] Missing sslmode. For Supabase, append ?sslmode=require to DATABASE_URL.',
+        );
       }
 
       throw error;

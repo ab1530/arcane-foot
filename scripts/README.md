@@ -275,6 +275,38 @@ sudo apt-get install jq
 - Vérifier la connexion réseau
 - Télécharger les artifacts manuellement depuis GitLab
 
+## Scripts QA Scout L7
+
+### `qa/scout-l7-set-flags.sh`
+
+Met à jour automatiquement les flags L7 dans:
+- `backend/.env.local` (`VOICE_CERTIFIED_GUARD_ENABLED`)
+- `mobile/.env.local` (`EXPO_PUBLIC_SCOUT_NEW_FLOW_ENABLED`, `EXPO_PUBLIC_SCOUT_PROFILE_SCREEN_ENABLED`)
+
+Usage:
+```bash
+VOICE_GUARD=true SCOUT_NEW_FLOW=true SCOUT_PROFILE_SCREEN=true ./scripts/qa/scout-l7-set-flags.sh
+```
+
+### `qa/scout-l7-smoke.sh`
+
+Exécute les suites de tests ciblées L7 (backend + mobile), et optionnellement un smoke API du guard voice.
+
+Usage basique:
+```bash
+./scripts/qa/scout-l7-smoke.sh
+```
+
+Usage avec smoke API:
+```bash
+RUN_API_SMOKE=1 \
+API_BASE_URL=http://localhost:3000/api \
+SCOUT_CERTIFIED_EMAIL="<email>" \
+SCOUT_UNCERTIFIED_EMAIL="<email>" \
+SCOUT_PASSWORD="<password>" \
+./scripts/qa/scout-l7-smoke.sh
+```
+
 ## Support
 
 Pour toute question ou problème:

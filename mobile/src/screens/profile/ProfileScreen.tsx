@@ -21,6 +21,7 @@ import { showSuccess, showError } from '../../services/toast';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ROLE_CONFIG } from '../../lib/roles';
 import type { UserRole } from '../../lib/roles';
+import { isFeatureEnabled } from '../../constants/features';
 
 type ThemeColorsType = ReturnType<typeof useTheme>['colors'];
 
@@ -32,6 +33,7 @@ export const ProfileScreen = () => {
   const { dictionary, language, setLanguage } = useLocalization();
   const { colors, themeMode, setThemeMode } = useTheme();
   const t = dictionary.profile;
+  const scoutProfileEnabled = isFeatureEnabled('scoutProfileScreen');
 
   const [profile, setProfile] = useState(user ?? null);
   const [form, setForm] = useState({
@@ -346,31 +348,23 @@ export const ProfileScreen = () => {
       </View>
 
       <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            if (effectiveRole !== 'PLAYER') {
-              showError('Fonction réservée aux joueurs');
-              return;
-            }
-            navigation.navigate('HardwareSessions');
-          }}
-        >
-          <Text style={styles.menuText}>Mes stats GPS</Text>
-        </TouchableOpacity>
+        {effectiveRole === 'PLAYER' && (
+          <>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => navigation.navigate('HardwareSessions')}
+            >
+              <Text style={styles.menuText}>Mes stats GPS</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            if (effectiveRole !== 'PLAYER') {
-              showError('Fonction réservée aux joueurs');
-              return;
-            }
-            navigation.navigate('QCBand');
-          }}
-        >
-          <Text style={styles.menuText}>Mon bracelet QC Band</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => navigation.navigate('QCBand')}
+            >
+              <Text style={styles.menuText}>Mon bracelet QC Band</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         <TouchableOpacity
           style={styles.menuItem}
@@ -378,6 +372,15 @@ export const ProfileScreen = () => {
         >
           <Text style={styles.menuText}>{t.menu.settings}</Text>
         </TouchableOpacity>
+
+        {scoutProfileEnabled && ['SCOUT', 'ADMIN', 'SUPER_ADMIN'].includes(effectiveRole ?? '') && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('ScoutProfile')}
+          >
+            <Text style={styles.menuText}>Profil scout</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.menuItem}

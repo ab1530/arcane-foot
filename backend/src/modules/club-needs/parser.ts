@@ -1,10 +1,6 @@
 import type { ParsedAge, ParsedNeedLine, PreferredFoot } from './types';
 
-const normalizeToken = (value: string) =>
-  value
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
+const normalizeToken = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
 const parseAgeToken = (token: string): ParsedAge | null => {
   const t = normalizeToken(token);
@@ -21,13 +17,7 @@ const parseAgeToken = (token: string): ParsedAge | null => {
   if (rangeMatch) {
     const min = parseInt(rangeMatch[1], 10);
     const max = parseInt(rangeMatch[2], 10);
-    if (
-      Number.isFinite(min) &&
-      Number.isFinite(max) &&
-      min >= 14 &&
-      max <= 50 &&
-      min <= max
-    ) {
+    if (Number.isFinite(min) && Number.isFinite(max) && min >= 14 && max <= 50 && min <= max) {
       return { min, max };
     }
   }
@@ -71,7 +61,16 @@ const POSITION_MAP: Array<{ patterns: string[]; positions: string[] }> = [
   { patterns: ['left back', 'lb', 'arriere gauche', 'lat gauche'], positions: ['Left Back'] },
   { patterns: ['right back', 'rb', 'arriere droit', 'lat droit'], positions: ['Right Back'] },
   {
-    patterns: ['defensive midfielder', 'defensive mid', 'dm', 'cdm', 'mdf', '6', 'numero 6', 'num 6'],
+    patterns: [
+      'defensive midfielder',
+      'defensive mid',
+      'dm',
+      'cdm',
+      'mdf',
+      '6',
+      'numero 6',
+      'num 6',
+    ],
     positions: ['Defensive Midfielder'],
   },
   {
@@ -114,7 +113,10 @@ export function parseClubNeedsRawText(rawText: string): ParsedNeedLine[] {
 
   return lines.map((line, idx) => {
     const lineNumber = idx + 1;
-    const parts = line.split(',').map((p) => p.trim()).filter(Boolean);
+    const parts = line
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
     const clubName = parts[0] ?? '';
 
     const warnings: string[] = [];

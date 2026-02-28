@@ -77,6 +77,7 @@ describe('EventsController', () => {
     update: jest.fn(),
     remove: jest.fn(),
     findUserEvents: jest.fn(),
+    findTeamEvents: jest.fn(),
     findUpcoming: jest.fn(),
   };
 
@@ -380,6 +381,39 @@ describe('EventsController', () => {
       const result = await controller.findMyEvents(mockRequest as any, {});
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('GET /events/team-events - findTeamEvents', () => {
+    it('should return team events for admin context', async () => {
+      const adminRequest = {
+        user: {
+          sub: 'admin-1',
+          role: 'SUPER_ADMIN',
+        },
+      };
+      const query: QueryEventDto = { status: EventStatus.PLANNED };
+      const mockEvents = [mockEvent];
+      service.findTeamEvents.mockResolvedValue(mockEvents);
+
+      const result = await controller.findTeamEvents(adminRequest as any, query);
+
+      expect(result).toEqual(mockEvents);
+      expect(service.findTeamEvents).toHaveBeenCalledWith('admin-1', 'SUPER_ADMIN', query);
+    });
+
+    it('should support request.user.id fallback', async () => {
+      const adminRequest = {
+        user: {
+          id: 'admin-id-2',
+          role: 'ADMIN',
+        },
+      };
+      service.findTeamEvents.mockResolvedValue([]);
+
+      await controller.findTeamEvents(adminRequest as any, {});
+
+      expect(service.findTeamEvents).toHaveBeenCalledWith('admin-id-2', 'ADMIN', {});
     });
   });
 

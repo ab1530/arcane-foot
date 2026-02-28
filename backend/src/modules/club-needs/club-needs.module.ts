@@ -10,4 +10,3 @@ import { ClubNeedsService } from './club-needs.service';
   exports: [ClubNeedsService],
 })
 export class ClubNeedsModule {}
-

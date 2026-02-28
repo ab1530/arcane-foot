@@ -57,8 +57,7 @@ export class PerformancePredictorService {
 
     // Prepare request for AI service
     const opponentStrength =
-      player.clubId &&
-      (player.clubId === match.homeClubId || player.clubId === match.awayClubId)
+      player.clubId && (player.clubId === match.homeClubId || player.clubId === match.awayClubId)
         ? await this.calculateOpponentStrength(match, player.clubId)
         : 3;
 
@@ -137,8 +136,7 @@ export class PerformancePredictorService {
   }
 
   private async calculateOpponentStrength(match: any, playerClubId: string): Promise<number> {
-    const opponentClubId =
-      playerClubId === match.homeClubId ? match.awayClubId : match.homeClubId;
+    const opponentClubId = playerClubId === match.homeClubId ? match.awayClubId : match.homeClubId;
 
     if (!opponentClubId) {
       return 3;

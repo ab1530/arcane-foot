@@ -37,7 +37,9 @@ export class AlertService {
   @Cron(CronExpression.EVERY_HOUR)
   async checkHourlyMetrics() {
     if (this.isHourlyCheckRunning) {
-      this.logger.warn('[RBAC-CRON] Previous hourly metrics check still running, skipping this tick');
+      this.logger.warn(
+        '[RBAC-CRON] Previous hourly metrics check still running, skipping this tick',
+      );
       return;
     }
 

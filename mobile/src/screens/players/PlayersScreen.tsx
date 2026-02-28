@@ -18,6 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../design/theme';
 import type { AppStackParamList } from '../../types/navigation';
 import api from '../../services/api';
+import {
+  playersApi,
+  type DiscoveredTreeAgeCategoryNode,
+  type DiscoveredTreeCountryNode,
+  type DiscoveredTreeSquadType,
+} from '../../services/api/players';
 import { ScreenHeader } from '../../components/navigation';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { getFlagUrl, getClubLogo } from '../../utils/badgeHelpers';
@@ -27,6 +33,7 @@ import { loadRecentPlayers } from '../../services/recentPlayers';
 import { logger } from '../../utils/logger';
 
 type FilterMode = 'ALL' | 'POSITION' | 'LEAGUE' | 'TRENDING';
+type PlayerViewMode = 'LIST' | 'DISCOVERED';
 
 export const PlayersScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -40,8 +47,20 @@ export const PlayersScreen = () => {
   const [activePosition, setActivePosition] = useState<string | null>(null);
   const [activeLeague, setActiveLeague] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>('ALL');
+  const currentRole = user?.role ?? 'PUBLIC';
+  const canUseDiscoveredTree = ['SCOUT', 'ADMIN', 'SUPER_ADMIN'].includes(currentRole);
+  const [viewMode, setViewMode] = useState<PlayerViewMode>(() =>
+    ['SCOUT', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '') ? 'DISCOVERED' : 'LIST',
+  );
   const [recentPlayers, setRecentPlayers] = useState<RecentPlayer[]>([]);
   const [recentLoading, setRecentLoading] = useState(true);
+  const [discoveredTree, setDiscoveredTree] = useState<DiscoveredTreeCountryNode[]>([]);
+  const [discoveredLoading, setDiscoveredLoading] = useState(false);
+  const [discoveredError, setDiscoveredError] = useState<string | null>(null);
+  const [squadTypeFilter, setSquadTypeFilter] = useState<DiscoveredTreeSquadType>('ALL');
+  const [activeCountry, setActiveCountry] = useState<string | null>(null);
+  const [activeCompetition, setActiveCompetition] = useState<string | null>(null);
+  const [treeSearchQuery, setTreeSearchQuery] = useState('');
   const heroCopy = t.hero ?? {
     eyebrow: 'Arcane Roster',
     title: 'Elite Players',
@@ -111,15 +130,48 @@ export const PlayersScreen = () => {
     }
   }, []);
 
+  const loadDiscoveredTree = useCallback(async () => {
+    if (!canUseDiscoveredTree) return;
+    try {
+      setDiscoveredLoading(true);
+      const response = await playersApi.getDiscoveredTree({ squadType: squadTypeFilter });
+      setDiscoveredTree(response?.data ?? []);
+      setDiscoveredError(null);
+    } catch (error) {
+      logger.error('players', 'Failed to load discovered tree', {
+        error: (error as Error)?.message,
+      });
+      setDiscoveredError('Impossible de charger les joueurs découverts');
+      setDiscoveredTree([]);
+    } finally {
+      setDiscoveredLoading(false);
+    }
+  }, [canUseDiscoveredTree, squadTypeFilter]);
+
   useEffect(() => {
     loadPlayers();
   }, [loadPlayers]);
+
+  useEffect(() => {
+    if (!canUseDiscoveredTree && viewMode === 'DISCOVERED') {
+      setViewMode('LIST');
+    }
+  }, [canUseDiscoveredTree, viewMode]);
+
+  useEffect(() => {
+    if (canUseDiscoveredTree && viewMode === 'DISCOVERED') {
+      loadDiscoveredTree();
+    }
+  }, [canUseDiscoveredTree, loadDiscoveredTree, viewMode]);
 
   useFocusEffect(
     useCallback(() => {
       loadRecent();
       loadPlayers();
-    }, [loadRecent, loadPlayers]),
+      if (canUseDiscoveredTree) {
+        loadDiscoveredTree();
+      }
+    }, [canUseDiscoveredTree, loadDiscoveredTree, loadRecent, loadPlayers]),
   );
 
   const uniquePositions = useMemo(() => {
@@ -162,6 +214,15 @@ export const PlayersScreen = () => {
     const role = user?.role ?? 'PUBLIC';
     return ['SCOUT', 'ADMIN', 'SUPER_ADMIN'].includes(role);
   }, [user?.role]);
+
+  const canManageVideoUploadForPlayer = useCallback(
+    (playerId: string) => {
+      const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN';
+      const isOwner = currentRole === 'PLAYER' && !!user?.playerId && user.playerId === playerId;
+      return isAdmin || isOwner;
+    },
+    [currentRole, user?.playerId],
+  );
 
   const getPlayerRating = (player: any) => {
     return (
@@ -313,6 +374,85 @@ export const PlayersScreen = () => {
       ? uniqueLeagues
       : [];
 
+  const selectedCountryNode = useMemo(
+    () => discoveredTree.find((country) => country.country === activeCountry) ?? null,
+    [activeCountry, discoveredTree],
+  );
+
+  const selectedCompetitionNode = useMemo(
+    () =>
+      selectedCountryNode?.competitions.find(
+        (competition) => competition.competition === activeCompetition,
+      ) ?? null,
+    [activeCompetition, selectedCountryNode],
+  );
+
+  useEffect(() => {
+    if (!activeCountry) return;
+    const countryExists = discoveredTree.some((country) => country.country === activeCountry);
+    if (!countryExists) {
+      setActiveCountry(null);
+      setActiveCompetition(null);
+      return;
+    }
+    if (activeCompetition && selectedCountryNode) {
+      const competitionExists = selectedCountryNode.competitions.some(
+        (competition) => competition.competition === activeCompetition,
+      );
+      if (!competitionExists) {
+        setActiveCompetition(null);
+      }
+    }
+  }, [activeCompetition, activeCountry, discoveredTree, selectedCountryNode]);
+
+  const treeQuery = treeSearchQuery.trim().toLowerCase();
+  const visibleCountries = useMemo(() => {
+    if (activeCountry) return [];
+    if (!treeQuery) return discoveredTree;
+    return discoveredTree.filter((country) => country.country.toLowerCase().includes(treeQuery));
+  }, [activeCountry, discoveredTree, treeQuery]);
+
+  const visibleCompetitions = useMemo(() => {
+    if (!selectedCountryNode || activeCompetition) return [];
+    if (!treeQuery) return selectedCountryNode.competitions;
+    return selectedCountryNode.competitions.filter((competition) =>
+      competition.competition.toLowerCase().includes(treeQuery),
+    );
+  }, [activeCompetition, selectedCountryNode, treeQuery]);
+
+  const visibleAgeCategories = useMemo(() => {
+    if (!selectedCompetitionNode) return [] as DiscoveredTreeAgeCategoryNode[];
+    if (!treeQuery) return selectedCompetitionNode.ageCategories;
+    return selectedCompetitionNode.ageCategories
+      .map((ageCategory) => ({
+        ...ageCategory,
+        players: ageCategory.players.filter((player) =>
+          player.fullName.toLowerCase().includes(treeQuery),
+        ),
+      }))
+      .filter((ageCategory) => ageCategory.players.length > 0);
+  }, [selectedCompetitionNode, treeQuery]);
+
+  const discoveredTotals = useMemo(
+    () => ({
+      players: discoveredTree.reduce((sum, country) => sum + country.totalPlayers, 0),
+      reports: discoveredTree.reduce((sum, country) => sum + country.totalReports, 0),
+      countries: discoveredTree.length,
+    }),
+    [discoveredTree],
+  );
+
+  const formatScore = (value?: number | null) =>
+    typeof value === 'number' ? value.toFixed(1) : '--';
+
+  const ageCategoryLabel = (value: string) => {
+    if (value === 'SENIOR') return 'Senior';
+    if (value === 'U19') return 'U19';
+    if (value === 'U17') return 'U17';
+    if (value === 'U16') return 'U16';
+    return value;
+  };
+
   const renderPlayer = ({ item, index }: { item: any; index: number }) => {
     const rating = getPlayerRating(item);
     const accent =
@@ -377,6 +517,27 @@ export const PlayersScreen = () => {
               </Text>
             </View>
           </View>
+
+          {canManageVideoUploadForPlayer(item.id) ? (
+            <View style={styles.playerActionRow}>
+              <TouchableOpacity
+                style={styles.playerVideoAction}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  navigation.navigate('PlayerHighlights', {
+                    playerId: item.id,
+                    mode:
+                      currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
+                        ? 'adminView'
+                        : 'owner',
+                  });
+                }}
+              >
+                <Ionicons name="videocam-outline" size={14} color={theme.colors.brand.primary} />
+                <Text style={styles.playerVideoActionText}>Ajouter vidéo</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
         <LinearGradient colors={accent} style={styles.playerCardAccent} />
       </TouchableOpacity>
@@ -387,6 +548,218 @@ export const PlayersScreen = () => {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <ActivityIndicator size="large" color={theme.colors.brand.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (viewMode === 'DISCOVERED' && canUseDiscoveredTree) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader blur={false} borderBottom={false} />
+        <ScrollView contentContainerStyle={styles.discoveredContent}>
+          <View style={styles.pageHeader}>
+            <Text style={styles.pageTitle}>{layoutCopy.title}</Text>
+            <Text style={styles.pageSubtitle}>
+              Arborescence découverte scout: pays → championnat → catégorie d’âge
+            </Text>
+          </View>
+
+          <View style={styles.viewModeRow}>
+            <TouchableOpacity
+              style={styles.viewModeChip}
+              onPress={() => setViewMode('LIST')}
+            >
+              <Text style={styles.viewModeChipText}>Liste</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeChip, styles.viewModeChipActive]}
+              onPress={() => setViewMode('DISCOVERED')}
+            >
+              <Text style={[styles.viewModeChipText, styles.viewModeChipTextActive]}>
+                Découvertes
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Pays</Text>
+              <Text style={styles.statValue}>{discoveredTotals.countries}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Joueurs</Text>
+              <Text style={styles.statValue}>{discoveredTotals.players}</Text>
+            </View>
+          </View>
+
+          <View style={styles.treeFilterSection}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={20} color={theme.colors.text.tertiary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher pays, compétition ou joueur..."
+                placeholderTextColor={theme.colors.text.tertiary}
+                value={treeSearchQuery}
+                onChangeText={setTreeSearchQuery}
+              />
+            </View>
+
+            <View style={styles.squadFilterRow}>
+              {(['ALL', 'PRO', 'RESERVE'] as DiscoveredTreeSquadType[]).map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.squadFilterChip,
+                    squadTypeFilter === option && styles.squadFilterChipActive,
+                  ]}
+                  onPress={() => setSquadTypeFilter(option)}
+                >
+                  <Text
+                    style={[
+                      styles.squadFilterText,
+                      squadTypeFilter === option && styles.squadFilterTextActive,
+                    ]}
+                  >
+                    {option === 'ALL' ? 'Tous' : option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.breadcrumbRow}>
+            <TouchableOpacity
+              style={styles.breadcrumbChip}
+              onPress={() => {
+                setActiveCountry(null);
+                setActiveCompetition(null);
+              }}
+            >
+              <Text style={styles.breadcrumbText}>Pays</Text>
+            </TouchableOpacity>
+            {activeCountry ? (
+              <TouchableOpacity
+                style={styles.breadcrumbChip}
+                onPress={() => setActiveCompetition(null)}
+              >
+                <Text style={styles.breadcrumbText}>{activeCountry}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {activeCompetition ? (
+              <View style={styles.breadcrumbChip}>
+                <Text style={styles.breadcrumbText}>{activeCompetition}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {discoveredLoading ? (
+            <View style={styles.discoveredLoading}>
+              <ActivityIndicator size="small" color={theme.colors.brand.primary} />
+            </View>
+          ) : discoveredError ? (
+            <View style={styles.discoveredEmpty}>
+              <Text style={styles.emptyText}>{discoveredError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={loadDiscoveredTree}>
+                <Text style={styles.retryButtonText}>Réessayer</Text>
+              </TouchableOpacity>
+            </View>
+          ) : !activeCountry ? (
+            visibleCountries.length === 0 ? (
+              <View style={styles.discoveredEmpty}>
+                <Text style={styles.emptyText}>Aucun pays trouvé.</Text>
+              </View>
+            ) : (
+              visibleCountries.map((country) => (
+                <TouchableOpacity
+                  key={country.country}
+                  style={styles.treeCard}
+                  onPress={() => {
+                    setActiveCountry(country.country);
+                    setActiveCompetition(null);
+                  }}
+                >
+                  <Text style={styles.treeCardTitle}>{country.country}</Text>
+                  <Text style={styles.treeCardMeta}>
+                    {country.totalCompetitions} compétition(s) • {country.totalPlayers} joueur(s) •{' '}
+                    {country.totalReports} rapport(s)
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )
+          ) : !activeCompetition ? (
+            visibleCompetitions.length === 0 ? (
+              <View style={styles.discoveredEmpty}>
+                <Text style={styles.emptyText}>Aucune compétition trouvée.</Text>
+              </View>
+            ) : (
+              visibleCompetitions.map((competition) => (
+                <TouchableOpacity
+                  key={competition.competition}
+                  style={styles.treeCard}
+                  onPress={() => setActiveCompetition(competition.competition)}
+                >
+                  <Text style={styles.treeCardTitle}>{competition.competition}</Text>
+                  <Text style={styles.treeCardMeta}>
+                    {competition.totalAgeCategories} catégorie(s) • {competition.totalPlayers} joueur(s) •{' '}
+                    {competition.totalReports} rapport(s)
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )
+          ) : visibleAgeCategories.length === 0 ? (
+            <View style={styles.discoveredEmpty}>
+              <Text style={styles.emptyText}>Aucun joueur trouvé.</Text>
+            </View>
+          ) : (
+            visibleAgeCategories.map((ageCategory) => (
+              <View key={ageCategory.ageCategory} style={styles.ageCategoryCard}>
+                <Text style={styles.ageCategoryTitle}>{ageCategoryLabel(ageCategory.ageCategory)}</Text>
+                <Text style={styles.ageCategoryMeta}>
+                  {ageCategory.totalPlayers} joueur(s) • {ageCategory.totalReports} rapport(s)
+                </Text>
+
+                {ageCategory.players.map((player) => (
+                  <TouchableOpacity
+                    key={player.playerId}
+                    style={styles.treePlayerRow}
+                    onPress={() => navigation.navigate('PlayerDetail', { playerId: player.playerId })}
+                  >
+                    <View style={styles.treePlayerMain}>
+                      <Text style={styles.treePlayerName}>{player.fullName}</Text>
+                      <Text style={styles.treePlayerMeta}>
+                        {player.reportCount} rapport(s) • pondérée {formatScore(player.weightedOverallRating)} •
+                        latest {formatScore(player.latestOverallRating)}
+                      </Text>
+                    </View>
+                    <View style={styles.treePlayerActions}>
+                      <View style={styles.treeSquadBadge}>
+                        <Text style={styles.treeSquadText}>{player.squadType}</Text>
+                      </View>
+                      {canManageVideoUploadForPlayer(player.playerId) ? (
+                        <TouchableOpacity
+                          style={styles.treeVideoButton}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            navigation.navigate('PlayerHighlights', {
+                              playerId: player.playerId,
+                              mode:
+                                currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
+                                  ? 'adminView'
+                                  : 'owner',
+                            });
+                          }}
+                        >
+                          <Ionicons name="videocam-outline" size={12} color={theme.colors.brand.primary} />
+                          <Text style={styles.treeVideoText}>Ajouter vidéo</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))
+          )}
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -407,6 +780,23 @@ export const PlayersScreen = () => {
               <Text style={styles.pageTitle}>{layoutCopy.title}</Text>
               <Text style={styles.pageSubtitle}>{layoutCopy.subtitle}</Text>
             </View>
+
+            {canUseDiscoveredTree && (
+              <View style={styles.viewModeRow}>
+                <TouchableOpacity
+                  style={[styles.viewModeChip, styles.viewModeChipActive]}
+                  onPress={() => setViewMode('LIST')}
+                >
+                  <Text style={[styles.viewModeChipText, styles.viewModeChipTextActive]}>Liste</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.viewModeChip}
+                  onPress={() => setViewMode('DISCOVERED')}
+                >
+                  <Text style={styles.viewModeChipText}>Découvertes</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {canUseScoutQuickImport && (
               <TouchableOpacity
@@ -632,6 +1022,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 80,
   },
+  discoveredContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 80,
+    gap: 14,
+  },
   columnWrapper: {
     gap: 16,
   },
@@ -652,6 +1047,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text.secondary,
     marginTop: 4,
+  },
+  viewModeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  viewModeChip: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.surface.glass,
+    paddingVertical: 10,
+  },
+  viewModeChipActive: {
+    borderColor: theme.colors.brand.primary,
+    backgroundColor: `${theme.colors.brand.primary}22`,
+  },
+  viewModeChipText: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fonts.medium,
+  },
+  viewModeChipTextActive: {
+    color: theme.colors.brand.primary,
+    fontFamily: theme.typography.fonts.bold,
   },
   quickImportButton: {
     alignSelf: 'flex-start',
@@ -693,6 +1115,173 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surface.glassLight,
+  },
+  treeFilterSection: {
+    gap: 10,
+  },
+  squadFilterRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  squadFilterChip: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.surface.glass,
+    paddingVertical: 9,
+  },
+  squadFilterChipActive: {
+    borderColor: theme.colors.brand.primary,
+    backgroundColor: `${theme.colors.brand.primary}22`,
+  },
+  squadFilterText: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fonts.medium,
+  },
+  squadFilterTextActive: {
+    color: theme.colors.brand.primary,
+    fontFamily: theme.typography.fonts.bold,
+  },
+  breadcrumbRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  breadcrumbChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.surface.glassLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  breadcrumbText: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fonts.medium,
+  },
+  discoveredLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  discoveredEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  retryButton: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.brand.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: `${theme.colors.brand.primary}1A`,
+  },
+  retryButtonText: {
+    color: theme.colors.brand.primary,
+    fontSize: 12,
+    fontFamily: theme.typography.fonts.bold,
+  },
+  treeCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.background.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  treeCardTitle: {
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    fontFamily: theme.typography.fonts.bold,
+  },
+  treeCardMeta: {
+    marginTop: 6,
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+  },
+  ageCategoryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.background.secondary,
+    padding: 14,
+    marginBottom: 12,
+  },
+  ageCategoryTitle: {
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    fontFamily: theme.typography.fonts.bold,
+  },
+  ageCategoryMeta: {
+    marginTop: 4,
+    marginBottom: 8,
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+  },
+  treePlayerRow: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.surface.glass,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  treePlayerMain: {
+    flex: 1,
+  },
+  treePlayerName: {
+    fontSize: 14,
+    color: theme.colors.text.primary,
+    fontFamily: theme.typography.fonts.bold,
+  },
+  treePlayerMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+  },
+  treePlayerActions: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  treeSquadBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.surface.border,
+    backgroundColor: theme.colors.surface.glassLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  treeSquadText: {
+    fontSize: 10,
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fonts.bold,
+  },
+  treeVideoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.brand.primary,
+    backgroundColor: `${theme.colors.brand.primary}15`,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  treeVideoText: {
+    fontSize: 11,
+    color: theme.colors.brand.primary,
+    fontFamily: theme.typography.fonts.bold,
   },
   primaryFilters: {
     flexDirection: 'row',
@@ -994,6 +1583,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: theme.typography.fonts.bold,
     color: theme.colors.text.primary,
+  },
+  playerActionRow: {
+    marginTop: 2,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  playerVideoAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.brand.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: `${theme.colors.brand.primary}1A`,
+  },
+  playerVideoActionText: {
+    fontSize: 11,
+    color: theme.colors.brand.primary,
+    fontFamily: theme.typography.fonts.bold,
   },
   playerCardAccent: {
     height: 6,

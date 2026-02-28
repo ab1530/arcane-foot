@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { PlayerProfileController, InternalPlayerProfileController } from './player-profile.controller';
+import {
+  PlayerProfileController,
+  InternalPlayerProfileController,
+} from './player-profile.controller';
 import { PlayerProfileService } from './player-profile.service';
 
 @Module({

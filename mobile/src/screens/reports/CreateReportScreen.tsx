@@ -11,23 +11,59 @@ import {
   Image,
   Modal,
   FlatList,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { scoutingReportsApi, RecommendationType } from '../../services/api/scouting-reports';
+import { playersApi } from '../../services/api/players';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useLocalization } from '../../contexts/LocalizationContext';
+import type { AppStackParamList } from '../../types/navigation';
+import type { ExtractedReportData } from '../../types/voice-to-report';
+
+type CreateReportNavigationProp = NativeStackNavigationProp<AppStackParamList, 'CreateReport'>;
+type CreateReportRouteProp = RouteProp<AppStackParamList, 'CreateReport'>;
+type CreateReportVoicePayload = {
+  transcription?: string;
+  confidence?: number;
+  audioUrl?: string;
+  warnings?: string[];
+};
+
+const normalizeRecommendationFromVoice = (
+  value?: ExtractedReportData['recommendation'],
+): RecommendationType | undefined => {
+  if (!value) return undefined;
+  if (value === 'BUY_NOW') return 'BUY_NOW';
+  if (value === 'NOT_INTERESTED') return 'NOT_INTERESTED';
+  if (value === 'WATCH') return 'MONITOR';
+  if (value === 'NEEDS_DEVELOPMENT') return 'NEEDS_MORE_DATA';
+  return undefined;
+};
+
+const toStringValue = (value?: string | number | null): string => {
+  if (value === null || value === undefined) return '';
+  return String(value);
+};
+
+const getResolutionModeLabel = (mode?: 'exact_match' | 'probable_match' | 'created_new') => {
+  if (mode === 'exact_match') return 'correspondance exacte';
+  if (mode === 'probable_match') return 'correspondance probable';
+  if (mode === 'created_new') return 'nouveau joueur prospect';
+  return 'résolution inconnue';
+};
 
 const CreateReportScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<CreateReportNavigationProp>();
+  const route = useRoute<CreateReportRouteProp>();
   const { colors } = useTheme();
   const { dictionary } = useLocalization();
-  const t = dictionary.reports?.create ?? {
+  const t = (dictionary as any).reports?.create ?? {
     title: 'Nouveau rapport',
     match: 'Match',
     player: 'Joueur',
@@ -44,7 +80,8 @@ const CreateReportScreen = () => {
   const [players, setPlayers] = useState<any[]>([]);
 
   const [selectedMatchId, setSelectedMatchId] = useState('');
-  const [selectedPlayerId, setSelectedPlayerId] = useState('');
+  const [assignmentId, setAssignmentId] = useState<string | undefined>(route.params?.assignmentId);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [overallRating, setOverallRating] = useState('');
   const [technicalRating, setTechnicalRating] = useState('');
   const [physicalRating, setPhysicalRating] = useState('');
@@ -62,6 +99,11 @@ const CreateReportScreen = () => {
   const [observedHeightCm, setObservedHeightCm] = useState('');
   const [observedWeightKg, setObservedWeightKg] = useState('');
   const [observedClubName, setObservedClubName] = useState('');
+  const [observedFirstName, setObservedFirstName] = useState('');
+  const [observedLastName, setObservedLastName] = useState('');
+  const [observedNationality, setObservedNationality] = useState('');
+  const [observedPhone, setObservedPhone] = useState('');
+  const [observedEmail, setObservedEmail] = useState('');
   const [sprint10mSec, setSprint10mSec] = useState('');
   const [sprint20mSec, setSprint20mSec] = useState('');
   const [sprint40mSec, setSprint40mSec] = useState('');
@@ -75,45 +117,100 @@ const CreateReportScreen = () => {
   const [playerPickerVisible, setPlayerPickerVisible] = useState(false);
   const [matchSearch, setMatchSearch] = useState('');
   const [playerSearch, setPlayerSearch] = useState('');
+  const [voicePayload, setVoicePayload] = useState<CreateReportVoicePayload | undefined>(undefined);
 
   const selectedMatch = useMemo(
-    () => matches.find((match) => match.id === selectedMatchId),
+    () => matches.find((match) => String(match.id) === selectedMatchId),
     [matches, selectedMatchId],
   );
-  const selectedPlayer = useMemo(
-    () => players.find((player) => player.id === selectedPlayerId),
-    [players, selectedPlayerId],
+  const selectedPlayers = useMemo(
+    () => players.filter((player) => selectedPlayerIds.includes(String(player.id))),
+    [players, selectedPlayerIds],
   );
+  const selectedPrimaryPlayer = selectedPlayers[0];
 
   useEffect(() => {
-    if (!selectedPlayer) {
+    if (!selectedPrimaryPlayer) {
       return;
     }
 
     const preferredFoot =
-      selectedPlayer.preferredFoot || selectedPlayer.player?.preferredFoot || '';
-    const height = selectedPlayer.height || selectedPlayer.player?.height;
-    const weight = selectedPlayer.weight || selectedPlayer.player?.weight;
+      selectedPrimaryPlayer.preferredFoot || selectedPrimaryPlayer.player?.preferredFoot || '';
+    const height = selectedPrimaryPlayer.height || selectedPrimaryPlayer.player?.height;
+    const weight = selectedPrimaryPlayer.weight || selectedPrimaryPlayer.player?.weight;
     const clubName =
-      selectedPlayer.club?.name ||
-      selectedPlayer.clubs?.name ||
-      selectedPlayer.team?.name ||
-      selectedPlayer.currentClub?.name ||
+      selectedPrimaryPlayer.club?.name ||
+      selectedPrimaryPlayer.clubs?.name ||
+      selectedPrimaryPlayer.team?.name ||
+      selectedPrimaryPlayer.currentClub?.name ||
       '';
 
     setObservedDominantFoot(preferredFoot);
     setObservedHeightCm(height ? String(height) : '');
     setObservedWeightKg(weight ? String(weight) : '');
     setObservedClubName(clubName);
+    setObservedFirstName((prev) => prev || selectedPrimaryPlayer.user?.firstName || '');
+    setObservedLastName((prev) => prev || selectedPrimaryPlayer.user?.lastName || '');
+    setObservedNationality(
+      (prev) =>
+        prev ||
+        selectedPrimaryPlayer.nationality ||
+        selectedPrimaryPlayer.player?.nationality ||
+        '',
+    );
+    setObservedPhone((prev) => prev || selectedPrimaryPlayer.user?.phone || '');
+    setObservedEmail((prev) => prev || selectedPrimaryPlayer.user?.email || '');
 
-    if (!playerPosition && selectedPlayer.position) {
-      setPlayerPosition(selectedPlayer.position);
+    if (!playerPosition && selectedPrimaryPlayer.position) {
+      setPlayerPosition(selectedPrimaryPlayer.position);
     }
-  }, [selectedPlayer, playerPosition]);
+  }, [selectedPrimaryPlayer, playerPosition]);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const params = route.params;
+    if (!params) return;
+
+    if (params.matchId) {
+      setSelectedMatchId((prev) => prev || String(params.matchId));
+    }
+    if (params.assignmentId) {
+      setAssignmentId(params.assignmentId);
+    }
+    if (params.voicePayload) {
+      setVoicePayload(params.voicePayload);
+    }
+
+    if (Array.isArray(params.playerIds) && params.playerIds.length > 0) {
+      setSelectedPlayerIds(Array.from(new Set(params.playerIds.filter(Boolean).map((id) => String(id)))));
+    } else if (params.playerId) {
+      setSelectedPlayerIds((prev) => (prev.length > 0 ? prev : [String(params.playerId)]));
+    }
+
+    if (params.prefillData) {
+      const prefill = params.prefillData;
+      setOverallRating(toStringValue(prefill.overallRating));
+      setTechnicalRating(toStringValue(prefill.technicalRating));
+      setPhysicalRating(toStringValue(prefill.physicalRating));
+      setMentalRating(toStringValue(prefill.mentalRating));
+      setTacticalRating(toStringValue(prefill.tacticalRating));
+      setStrengths(prefill.strengths ?? '');
+      setWeaknesses(prefill.weaknesses ?? '');
+      setPlayerPosition(prefill.position ?? '');
+      setPlayerMinutesPlayed(toStringValue(prefill.minutesPlayed));
+      setSummary(prefill.observations ?? prefill.keyMoments ?? '');
+      if (Array.isArray(prefill.tags) && prefill.tags.length > 0) {
+        setTags(prefill.tags.join(','));
+      }
+      const mappedRecommendation = normalizeRecommendationFromVoice(prefill.recommendation);
+      if (mappedRecommendation) {
+        setRecommendation(mappedRecommendation);
+      }
+    }
+  }, [route.params]);
 
   const fetchData = async () => {
     try {
@@ -134,48 +231,101 @@ const CreateReportScreen = () => {
       Alert.alert('Erreur', 'Veuillez sélectionner un match');
       return;
     }
-    if (!selectedPlayerId) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un joueur');
+
+    const hasObservedIdentity =
+      observedFirstName.trim().length > 0 ||
+      observedLastName.trim().length > 0 ||
+      observedEmail.trim().length > 0 ||
+      observedPhone.trim().length > 0;
+
+    if (selectedPlayerIds.length === 0 && !hasObservedIdentity) {
+      Alert.alert(
+        'Erreur',
+        'Veuillez sélectionner un joueur ou compléter une identité observée (nom, email ou téléphone).',
+      );
       return;
     }
 
     setLoading(true);
     try {
-      const reportData: any = {
+      const template: any = {};
+
+      if (overallRating) template.overallRating = parseInt(overallRating, 10);
+      if (technicalRating) template.technicalRating = parseInt(technicalRating, 10);
+      if (physicalRating) template.physicalRating = parseInt(physicalRating, 10);
+      if (mentalRating) template.mentalRating = parseInt(mentalRating, 10);
+      if (tacticalRating) template.tacticalRating = parseInt(tacticalRating, 10);
+      if (withBallAnalysis) template.withBallAnalysis = withBallAnalysis;
+      if (offBallAnalysis) template.offBallAnalysis = offBallAnalysis;
+      if (gameIntelligenceAnalysis) template.gameIntelligenceAnalysis = gameIntelligenceAnalysis;
+      if (attitudeAnalysis) template.attitudeAnalysis = attitudeAnalysis;
+      if (staffOpinion) template.staffOpinion = staffOpinion;
+      if (summary) template.summary = summary;
+      if (strengths) template.strengths = strengths;
+      if (weaknesses) template.weaknesses = weaknesses;
+      if (observedDominantFoot) template.observedDominantFoot = observedDominantFoot;
+      if (observedHeightCm) template.observedHeightCm = parseInt(observedHeightCm, 10);
+      if (observedWeightKg) template.observedWeightKg = parseInt(observedWeightKg, 10);
+      if (observedClubName) template.observedClubName = observedClubName;
+      if (observedFirstName) template.observedFirstName = observedFirstName.trim();
+      if (observedLastName) template.observedLastName = observedLastName.trim();
+      if (observedNationality) template.observedNationality = observedNationality.trim();
+      if (observedPhone) template.observedPhone = observedPhone.trim();
+      if (observedEmail) template.observedEmail = observedEmail.trim().toLowerCase();
+      if (sprint10mSec) template.sprint10mSec = parseFloat(sprint10mSec);
+      if (sprint20mSec) template.sprint20mSec = parseFloat(sprint20mSec);
+      if (sprint40mSec) template.sprint40mSec = parseFloat(sprint40mSec);
+      if (vmaKmh) template.vmaKmh = parseFloat(vmaKmh);
+      if (recommendation) template.recommendation = recommendation;
+      if (recommendationNotes) template.recommendationNotes = recommendationNotes;
+      if (tags) template.tags = tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+      if (playerPosition) template.playerPosition = playerPosition;
+      if (playerMinutesPlayed) template.playerMinutesPlayed = parseInt(playerMinutesPlayed, 10);
+
+      let targetPlayerIds = Array.from(new Set(selectedPlayerIds.filter(Boolean)));
+      let resolutionSummary:
+        | { mode: 'exact_match' | 'probable_match' | 'created_new'; confidence: number }
+        | undefined;
+
+      if (targetPlayerIds.length === 0) {
+        const resolved = await playersApi.resolveObservedPlayer({
+          observedFirstName: observedFirstName.trim() || undefined,
+          observedLastName: observedLastName.trim() || undefined,
+          observedNationality: observedNationality.trim() || undefined,
+          observedPhone: observedPhone.trim() || undefined,
+          observedEmail: observedEmail.trim().toLowerCase() || undefined,
+          observedClubName: observedClubName.trim() || undefined,
+          playerPosition: playerPosition.trim() || undefined,
+          matchId: selectedMatchId,
+        });
+        targetPlayerIds = [resolved.playerId];
+        resolutionSummary = {
+          mode: resolved.resolutionMode,
+          confidence: resolved.confidence,
+        };
+      }
+
+      const result = await scoutingReportsApi.bulkSubmit({
         matchId: selectedMatchId,
-        playerId: selectedPlayerId,
-      };
+        playerIds: targetPlayerIds,
+        assignmentId,
+        template,
+        voice: voicePayload,
+      });
 
-      if (overallRating) reportData.overallRating = parseInt(overallRating, 10);
-      if (technicalRating) reportData.technicalRating = parseInt(technicalRating, 10);
-      if (physicalRating) reportData.physicalRating = parseInt(physicalRating, 10);
-      if (mentalRating) reportData.mentalRating = parseInt(mentalRating, 10);
-      if (tacticalRating) reportData.tacticalRating = parseInt(tacticalRating, 10);
-      if (withBallAnalysis) reportData.withBallAnalysis = withBallAnalysis;
-      if (offBallAnalysis) reportData.offBallAnalysis = offBallAnalysis;
-      if (gameIntelligenceAnalysis) reportData.gameIntelligenceAnalysis = gameIntelligenceAnalysis;
-      if (attitudeAnalysis) reportData.attitudeAnalysis = attitudeAnalysis;
-      if (staffOpinion) reportData.staffOpinion = staffOpinion;
-      if (summary) reportData.summary = summary;
-      if (strengths) reportData.strengths = strengths;
-      if (weaknesses) reportData.weaknesses = weaknesses;
-      if (observedDominantFoot) reportData.observedDominantFoot = observedDominantFoot;
-      if (observedHeightCm) reportData.observedHeightCm = parseInt(observedHeightCm, 10);
-      if (observedWeightKg) reportData.observedWeightKg = parseInt(observedWeightKg, 10);
-      if (observedClubName) reportData.observedClubName = observedClubName;
-      if (sprint10mSec) reportData.sprint10mSec = parseFloat(sprint10mSec);
-      if (sprint20mSec) reportData.sprint20mSec = parseFloat(sprint20mSec);
-      if (sprint40mSec) reportData.sprint40mSec = parseFloat(sprint40mSec);
-      if (vmaKmh) reportData.vmaKmh = parseFloat(vmaKmh);
-      if (recommendation) reportData.recommendation = recommendation;
-      if (recommendationNotes) reportData.recommendationNotes = recommendationNotes;
-      if (tags) reportData.tags = tags.split(',').map((t: string) => t.trim()).filter(Boolean);
-      if (playerPosition) reportData.playerPosition = playerPosition;
-      if (playerMinutesPlayed) reportData.playerMinutesPlayed = parseInt(playerMinutesPlayed, 10);
+      const createdCount = result?.meta?.created ?? targetPlayerIds.length;
+      const reportWord = createdCount > 1 ? 'rapports' : 'rapport';
+      let successMessage = `${createdCount} ${reportWord} envoyé(s) et visibles aux agents.`;
 
-      await scoutingReportsApi.create(reportData);
-      Alert.alert('Succès', 'Rapport créé avec succès', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      if (resolutionSummary) {
+        const confidence = Math.round((resolutionSummary.confidence ?? 0) * 100);
+        successMessage += ` Rattachement auto: ${getResolutionModeLabel(
+          resolutionSummary.mode,
+        )} (${confidence}%).`;
+      }
+
+      Alert.alert('Succès', successMessage, [
+        { text: 'OK', onPress: () => navigation.navigate('Reports') },
       ]);
     } catch (error: any) {
       console.error('Erreur lors de la création:', error);
@@ -284,13 +434,15 @@ const CreateReportScreen = () => {
   );
 
   const handleMatchSelect = useCallback((match: any) => {
-    setSelectedMatchId(match.id);
+    setSelectedMatchId(String(match.id));
     setMatchPickerVisible(false);
   }, []);
 
   const handlePlayerSelect = useCallback((player: any) => {
-    setSelectedPlayerId(player.id);
-    setPlayerPickerVisible(false);
+    const playerId = String(player.id);
+    setSelectedPlayerIds((prev) =>
+      prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId],
+    );
   }, []);
 
   const renderInput = (
@@ -325,10 +477,32 @@ const CreateReportScreen = () => {
         month: 'short',
       })
     : 'Choisissez un match ci-dessous';
-  const playerName = formatPlayerName(selectedPlayer);
-  const playerSubtitle = selectedPlayer
-    ? selectedPlayer.position || selectedPlayer.team?.name || selectedPlayer.club?.name || 'Profil complet'
-    : 'Sélectionnez un joueur ci-dessous';
+  const playerName = selectedPrimaryPlayer ? formatPlayerName(selectedPrimaryPlayer) : 'Sélectionnez';
+  const playerSubtitle =
+    selectedPlayerIds.length > 0
+      ? `${selectedPlayerIds.length} joueur(s) sélectionné(s)`
+      : "Sélectionnez un ou plusieurs joueurs (optionnel si identité observée)";
+
+  const observedIdentityCompleteness = useMemo(() => {
+    const filled = [
+      observedFirstName,
+      observedLastName,
+      observedNationality,
+      observedPhone,
+      observedEmail,
+    ].filter((value) => value.trim().length > 0).length;
+    return Math.round((filled / 5) * 100);
+  }, [observedEmail, observedFirstName, observedLastName, observedNationality, observedPhone]);
+
+  const observedIdentityBadge = useMemo(() => {
+    if (observedIdentityCompleteness >= 80) {
+      return { label: 'Complet', color: '#16A34A' };
+    }
+    if (observedIdentityCompleteness >= 40) {
+      return { label: 'Partiel', color: '#D97706' };
+    }
+    return { label: 'Minimal', color: '#6B7280' };
+  }, [observedIdentityCompleteness]);
 
   const filteredMatches = useMemo(() => {
     if (!matchSearch.trim()) {
@@ -354,30 +528,46 @@ const CreateReportScreen = () => {
     });
   }, [playerSearch, players, formatPlayerName]);
 
+  useEffect(() => {
+    const hintedName = route.params?.prefillData?.playerName?.trim();
+    if (!hintedName || selectedPlayerIds.length > 0 || players.length === 0) {
+      return;
+    }
+
+    const loweredHint = hintedName.toLowerCase();
+    const matched = players.find((player) => formatPlayerName(player).toLowerCase().includes(loweredHint));
+    if (matched?.id) {
+      setSelectedPlayerIds([String(matched.id)]);
+    }
+  }, [formatPlayerName, players, route.params?.prefillData?.playerName, selectedPlayerIds.length]);
+  const submitLabel =
+    selectedPlayerIds.length > 1 ? `Envoyer ${selectedPlayerIds.length} rapports` : 'Envoyer rapport';
+
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={styles.flex}>
-          <View style={styles.header}>
-            <View style={styles.headerTopRow}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
-                <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.headerTitleBlock}>
-              <Text style={styles.headerTitle}>{t.title}</Text>
-              <Text style={styles.headerSubtitle}>
-                {matches.length} matchs · {players.length} joueurs
-              </Text>
-            </View>
+      <View style={styles.flex}>
+        <View style={styles.header}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
+              <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
           </View>
+          <View style={styles.headerTitleBlock}>
+            <Text style={styles.headerTitle}>{t.title}</Text>
+            <Text style={styles.headerSubtitle}>
+              {matches.length} matchs · {players.length} joueurs
+            </Text>
+          </View>
+        </View>
 
-          <ScrollView
-            style={styles.content}
-            contentContainerStyle={styles.scrollContent}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-          >
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+        >
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t.match} *</Text>
               <GlassCard variant="elevated" style={styles.card}>
@@ -388,9 +578,15 @@ const CreateReportScreen = () => {
                 >
                   <View style={styles.dropdownValueRow}>
                     <View style={styles.dropdownLogosMini}>
-                      {renderLogo(selectedMatch?.homeClub?.logoUrl, selectedMatch?.homeClub?.name)}
+                      {renderLogo(
+                        selectedMatch?.homeClub?.logoUrl || selectedMatch?.homeClub?.logo,
+                        selectedMatch?.homeClub?.name,
+                      )}
                       <Text style={styles.heroVs}>vs</Text>
-                      {renderLogo(selectedMatch?.awayClub?.logoUrl, selectedMatch?.awayClub?.name)}
+                      {renderLogo(
+                        selectedMatch?.awayClub?.logoUrl || selectedMatch?.awayClub?.logo,
+                        selectedMatch?.awayClub?.name,
+                      )}
                     </View>
                     <View style={styles.dropdownValueText}>
                       <Text style={styles.dropdownValueTitle} numberOfLines={1}>
@@ -405,7 +601,7 @@ const CreateReportScreen = () => {
             </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t.player} *</Text>
+          <Text style={styles.sectionTitle}>{t.player}</Text>
           <GlassCard variant="elevated" style={styles.card}>
             <TouchableOpacity
               style={styles.dropdownTrigger}
@@ -413,7 +609,12 @@ const CreateReportScreen = () => {
               testID="create-report-player-dropdown"
             >
               <View style={styles.dropdownValueRow}>
-                {renderLogo(selectedPlayer?.user?.avatarUrl || selectedPlayer?.avatarUrl, playerName)}
+                {renderLogo(
+                  selectedPrimaryPlayer?.user?.avatarUrl ||
+                    selectedPrimaryPlayer?.avatarUrl ||
+                    selectedPrimaryPlayer?.user?.avatar,
+                  playerName,
+                )}
                 <View style={styles.dropdownValueText}>
                   <Text style={styles.dropdownValueTitle} numberOfLines={1}>
                     {playerName}
@@ -425,15 +626,54 @@ const CreateReportScreen = () => {
               </View>
               <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
+
+            {selectedPlayers.length > 0 ? (
+              <View style={styles.selectedPlayersWrap}>
+                {selectedPlayers.map((player) => (
+                  <View key={player.id} style={styles.selectedPlayerChip}>
+                    <Text style={styles.selectedPlayerChipText} numberOfLines={1}>
+                      {formatPlayerName(player)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </GlassCard>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Identité observée</Text>
           <GlassCard variant="default" style={styles.card}>
-            <Text style={styles.sectionSubtitle}>
-              Prérempli depuis le profil joueur. Vous pouvez ajuster selon le match observé.
-            </Text>
+            <View style={styles.identityHeader}>
+              <Text style={styles.sectionSubtitle}>
+                Prérempli depuis le profil joueur. Vous pouvez ajuster selon le match observé.
+              </Text>
+              <View
+                style={[
+                  styles.completenessBadge,
+                  { borderColor: observedIdentityBadge.color, backgroundColor: `${observedIdentityBadge.color}22` },
+                ]}
+              >
+                <Text style={[styles.completenessBadgeText, { color: observedIdentityBadge.color }]}>
+                  {observedIdentityBadge.label} ({observedIdentityCompleteness}%)
+                </Text>
+              </View>
+            </View>
+            {renderInput('Prénom observé', observedFirstName, setObservedFirstName, {
+              placeholder: 'Walid',
+            })}
+            {renderInput('Nom observé', observedLastName, setObservedLastName, {
+              placeholder: 'Regragui',
+            })}
+            {renderInput('Nationalité observée', observedNationality, setObservedNationality, {
+              placeholder: 'Maroc',
+            })}
+            {renderInput('Téléphone observé', observedPhone, setObservedPhone, {
+              placeholder: '+33 6 00 00 00 00',
+            })}
+            {renderInput('Email observé', observedEmail, setObservedEmail, {
+              placeholder: 'joueur@club.com',
+            })}
             {renderInput('Pied fort', observedDominantFoot, setObservedDominantFoot, {
               placeholder: 'Droitier',
             })}
@@ -616,21 +856,21 @@ const CreateReportScreen = () => {
           </GlassCard>
         </View>
 
-            <View style={styles.section}>
-              <TouchableOpacity
-                testID="create-report-submit"
-                style={[styles.ctaButton, loading && { opacity: 0.6 }]}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color={colors.darkBg} />
-                ) : (
-                  <Text style={styles.ctaButtonText}>{t.create}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+          <View style={styles.section}>
+            <TouchableOpacity
+              testID="create-report-submit"
+              style={[styles.ctaButton, loading && { opacity: 0.6 }]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.darkBg} />
+              ) : (
+                <Text style={styles.ctaButtonText}>{submitLabel}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
       <Modal
         visible={matchPickerVisible}
@@ -669,7 +909,7 @@ const CreateReportScreen = () => {
                   testID={`match-option-${item.id ?? index}`}
                 >
                   {renderMatchOption(item)}
-                  {selectedMatchId === item.id && (
+                  {selectedMatchId === String(item.id) && (
                     <Ionicons name="checkmark" size={18} color={colors.accent} />
                   )}
                 </TouchableOpacity>
@@ -714,6 +954,9 @@ const CreateReportScreen = () => {
                 onChangeText={setPlayerSearch}
               />
             </View>
+            <Text style={styles.modalHelperText}>
+              {selectedPlayerIds.length} joueur(s) sélectionné(s)
+            </Text>
             <FlatList
               data={filteredPlayers}
               keyExtractor={(item, index) => item.id?.toString() ?? index.toString()}
@@ -724,7 +967,7 @@ const CreateReportScreen = () => {
                   testID={`player-option-${item.id ?? index}`}
                 >
                   {renderPlayerOption(item)}
-                  {selectedPlayerId === item.id && (
+                  {selectedPlayerIds.includes(String(item.id)) && (
                     <Ionicons name="checkmark" size={18} color={colors.accent} />
                   )}
                 </TouchableOpacity>
@@ -741,8 +984,7 @@ const CreateReportScreen = () => {
           </View>
         </View>
       </Modal>
-        </View>
-      </TouchableWithoutFeedback>
+      </View>
     </SafeAreaView>
   );
 };
@@ -827,6 +1069,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flex: 1,
     },
     scrollContent: {
+      flexGrow: 1,
       paddingBottom: 60,
     },
     section: {
@@ -852,6 +1095,21 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     sectionSubtitle: {
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    identityHeader: {
+      marginBottom: 12,
+      gap: 8,
+    },
+    completenessBadge: {
+      alignSelf: 'flex-start',
+      borderWidth: 1,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    completenessBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
     },
     card: {
       padding: 16,
@@ -885,6 +1143,26 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.textSecondary,
       fontSize: 12,
       marginTop: 2,
+    },
+    selectedPlayersWrap: {
+      marginTop: 12,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    selectedPlayerChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: colors.glass,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      maxWidth: '100%',
+    },
+    selectedPlayerChipText: {
+      color: colors.textPrimary,
+      fontSize: 12,
+      fontWeight: '600',
     },
     fieldBlock: {
       marginBottom: 12,
@@ -999,6 +1277,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     modalSearchInput: {
       flex: 1,
       color: colors.textPrimary,
+    },
+    modalHelperText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: -4,
+      marginBottom: 4,
     },
     modalRow: {
       flexDirection: 'row',

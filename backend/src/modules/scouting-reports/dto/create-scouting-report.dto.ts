@@ -19,10 +19,10 @@ export class CreateScoutingReportDto {
   @IsNotEmpty()
   matchId: string;
 
-  @ApiProperty({ description: 'ID du joueur observé' })
+  @ApiPropertyOptional({ description: 'ID du joueur observé' })
   @IsString()
-  @IsNotEmpty()
-  playerId: string;
+  @IsOptional()
+  playerId?: string;
 
   @ApiPropertyOptional({
     description: 'Statut du rapport',
@@ -182,6 +182,31 @@ export class CreateScoutingReportDto {
   @IsString()
   @IsOptional()
   observedClubName?: string;
+
+  @ApiPropertyOptional({ description: 'Prénom observé du joueur' })
+  @IsString()
+  @IsOptional()
+  observedFirstName?: string;
+
+  @ApiPropertyOptional({ description: 'Nom observé du joueur' })
+  @IsString()
+  @IsOptional()
+  observedLastName?: string;
+
+  @ApiPropertyOptional({ description: 'Nationalité observée du joueur' })
+  @IsString()
+  @IsOptional()
+  observedNationality?: string;
+
+  @ApiPropertyOptional({ description: 'Téléphone observé du joueur' })
+  @IsString()
+  @IsOptional()
+  observedPhone?: string;
+
+  @ApiPropertyOptional({ description: 'Email observé du joueur' })
+  @IsString()
+  @IsOptional()
+  observedEmail?: string;
 
   @ApiPropertyOptional({ description: 'Sprint 10m (secondes)', minimum: 0 })
   @Type(() => Number)

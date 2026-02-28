@@ -6,6 +6,7 @@ import { SupabaseModule } from '../supabase/supabase.module';
 import { ScoutingReportsModule } from '../scouting-reports/scouting-reports.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { ScoutCertificationGuard } from '../../common/guards/scout-certification.guard';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     SubscriptionsModule,
   ],
   controllers: [VoiceToReportController],
-  providers: [VoiceToReportService],
+  providers: [VoiceToReportService, ScoutCertificationGuard],
   exports: [VoiceToReportService],
 })
 export class VoiceToReportModule {}

@@ -23,6 +23,9 @@ import {
 import { MatchesService } from './matches.service';
 import { CreateMatchDto } from './dto/create-match.dto';
 import { UpdateMatchDto } from './dto/update-match.dto';
+import { CreateMissionRequestDto } from './dto/create-mission-request.dto';
+import { QueryMissionRequestsDto } from './dto/query-mission-requests.dto';
+import { DecideMissionRequestDto } from './dto/decide-mission-request.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MatchStatus } from '@prisma/client';
 
@@ -106,13 +109,166 @@ export class MatchesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.matchesService.findUserAssignments(req.user.sub, {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    return this.matchesService.findUserAssignments(userId, {
       status,
       from,
       to,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
+  }
+
+  @Get('scout-calendar')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get scout shared calendar',
+    description:
+      'Returns my missions, shared scout missions and discover matches with country/league filters.',
+  })
+  @ApiQuery({ name: 'country', required: false, description: 'Filter by country' })
+  @ApiQuery({ name: 'league', required: false, description: 'Filter by league name' })
+  @ApiQuery({ name: 'from', required: false, description: 'Filter from date (ISO 8601)' })
+  @ApiQuery({ name: 'to', required: false, description: 'Filter to date (ISO 8601)' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filter by assignment or mobile status',
+  })
+  getScoutCalendar(
+    @Request() req,
+    @Query('country') country?: string,
+    @Query('league') league?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('status') status?: string,
+  ) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.getScoutCalendar(userId, role, {
+      country,
+      league,
+      from,
+      to,
+      status,
+    });
+  }
+
+  @Post(':id/my-calendar')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Add match to my scout calendar',
+    description: 'Creates or updates a VOLUNTARY mission assignment for the authenticated scout.',
+  })
+  addMatchToMyCalendar(@Param('id') id: string, @Request() req) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.addMatchToMyCalendar(id, userId, role);
+  }
+
+  @Post(':id/mission-requests')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Create mission request on a match',
+    description: 'Agent/Admin requests a scout mission assignment workflow.',
+  })
+  @ApiResponse({ status: 201, description: 'Mission request created successfully' })
+  createMissionRequest(
+    @Param('id') id: string,
+    @Body() payload: CreateMissionRequestDto,
+    @Request() req,
+  ) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.createMissionRequest(id, payload, userId, role);
+  }
+
+  @Get(':id/mission-requests')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'List mission requests for one match',
+  })
+  @ApiResponse({ status: 200, description: 'Mission requests fetched successfully' })
+  getMatchMissionRequests(
+    @Param('id') id: string,
+    @Query() query: QueryMissionRequestsDto,
+    @Request() req,
+  ) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.listMissionRequests(
+      { matchId: id, status: query.status },
+      userId,
+      role,
+    );
+  }
+
+  @Get('mission-requests')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'List mission requests',
+  })
+  @ApiResponse({ status: 200, description: 'Mission requests fetched successfully' })
+  getMissionRequests(@Query() query: QueryMissionRequestsDto, @Request() req) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.listMissionRequests({ status: query.status }, userId, role);
+  }
+
+  @Patch('mission-requests/:requestId/approve')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Approve mission request',
+  })
+  @ApiResponse({ status: 200, description: 'Mission request approved successfully' })
+  approveMissionRequest(
+    @Param('requestId') requestId: string,
+    @Body() payload: DecideMissionRequestDto,
+    @Request() req,
+  ) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.approveMissionRequest(requestId, payload, userId, role);
+  }
+
+  @Patch('mission-requests/:requestId/reject')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Reject mission request',
+  })
+  @ApiResponse({ status: 200, description: 'Mission request rejected successfully' })
+  rejectMissionRequest(
+    @Param('requestId') requestId: string,
+    @Body() payload: DecideMissionRequestDto,
+    @Request() req,
+  ) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.rejectMissionRequest(requestId, payload, userId, role);
+  }
+
+  @Patch('mission-requests/:requestId/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Cancel mission request',
+  })
+  @ApiResponse({ status: 200, description: 'Mission request cancelled successfully' })
+  cancelMissionRequest(
+    @Param('requestId') requestId: string,
+    @Body() payload: DecideMissionRequestDto,
+    @Request() req,
+  ) {
+    const userId = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    const role = req?.user?.role;
+    return this.matchesService.cancelMissionRequest(requestId, payload, userId, role);
   }
 
   @Get('upcoming')
@@ -186,8 +342,9 @@ export class MatchesController {
   @ApiResponse({ status: 200, description: 'Scout successfully assigned' })
   @ApiResponse({ status: 404, description: 'Match not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token required' })
-  assignScout(@Param('id') id: string, @Body('scoutId') scoutId: string) {
-    return this.matchesService.assignScout(id, scoutId);
+  assignScout(@Param('id') id: string, @Body('scoutId') scoutId: string, @Request() req) {
+    const assignedById = req?.user?.id ?? req?.user?.sub ?? req?.user?.userId;
+    return this.matchesService.assignScout(id, scoutId, assignedById);
   }
 
   @Patch(':id/score')

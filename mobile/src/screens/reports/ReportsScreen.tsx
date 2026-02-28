@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,22 @@ interface Report {
     firstName: string;
     lastName: string;
   };
+  analysis?: {
+    identityCompletenessScore?: number | null;
+  };
+}
+
+interface MatchGroup {
+  key: string;
+  label: string;
+  reports: Report[];
+}
+
+interface DayGroup {
+  dateKey: string;
+  dateLabel: string;
+  totalReports: number;
+  matches: MatchGroup[];
 }
 
 const statusGradients: Record<Report['status'], [string, string]> = {
@@ -128,6 +144,19 @@ export const ReportsScreen = () => {
     return colors.semantic.error;
   };
 
+  const getCompletenessBadge = (score?: number | null) => {
+    if (typeof score !== 'number') {
+      return null;
+    }
+    if (score >= 80) {
+      return { label: 'Complet', color: colors.semantic.success };
+    }
+    if (score >= 40) {
+      return { label: 'Partiel', color: colors.semantic.warning };
+    }
+    return { label: 'Minimal', color: colors.text.secondary };
+  };
+
   const filteredReports = reports.filter(report => {
     const matchesSearch = searchQuery === '' ||
       report.player?.user?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -139,6 +168,54 @@ export const ReportsScreen = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const groupedReports = useMemo<DayGroup[]>(() => {
+    const sorted = [...filteredReports].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    const dayMap = new Map<
+      string,
+      { dateLabel: string; totalReports: number; matches: Map<string, MatchGroup> }
+    >();
+
+    sorted.forEach((report) => {
+      const createdAt = new Date(report.createdAt);
+      const dateKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}-${String(
+        createdAt.getDate(),
+      ).padStart(2, '0')}`;
+      const dateLabel = createdAt.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+
+      const matchLabel = report.match
+        ? `${report.match.homeClub?.name || 'Home'} vs ${report.match.awayClub?.name || 'Away'}`
+        : 'Match non renseigné';
+      const matchKey = report.matchId ? `match-${report.matchId}` : `fallback-${matchLabel}`;
+
+      if (!dayMap.has(dateKey)) {
+        dayMap.set(dateKey, { dateLabel, totalReports: 0, matches: new Map<string, MatchGroup>() });
+      }
+
+      const day = dayMap.get(dateKey)!;
+      if (!day.matches.has(matchKey)) {
+        day.matches.set(matchKey, { key: matchKey, label: matchLabel, reports: [] });
+      }
+
+      day.matches.get(matchKey)!.reports.push(report);
+      day.totalReports += 1;
+    });
+
+    return Array.from(dayMap.entries()).map(([dateKey, day]) => ({
+      dateKey,
+      dateLabel: day.dateLabel,
+      totalReports: day.totalReports,
+      matches: Array.from(day.matches.values()),
+    }));
+  }, [filteredReports]);
 
   const statuses = ['all', 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'];
   const statusCounts = reports.reduce(
@@ -263,110 +340,145 @@ export const ReportsScreen = () => {
             </Text>
           </GlassCard>
         ) : (
-          filteredReports.map((report, index) => (
-            <TouchableOpacity
-              key={report.id}
-              activeOpacity={0.92}
-              onPress={() => navigation.navigate('ReportDetail', { reportId: report.id })}
-            >
-              <View style={styles.reportTile}>
-                <LinearGradient
-                  colors={statusGradients[report.status] || [colors.surface.border, colors.surface.glass]}
-                  style={styles.statusRibbon}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Icon name={getStatusIcon(report.status)} size={16} color={colors.background.primary} />
-                  <Text style={styles.statusRibbonText}>{report.status}</Text>
-                </LinearGradient>
-
-                <View style={styles.tileHeader}>
-                  <View style={styles.playerMeta}>
-                    <Text style={styles.playerName}>
-                      {report.player?.user?.firstName} {report.player?.user?.lastName}
-                    </Text>
-                    <Text style={styles.reportDate}>
-                      {new Date(report.createdAt).toLocaleDateString('fr-FR', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </View>
-
-                {report.overallRating && (
-                  <View style={styles.ratingWrap}>
-                    <Text style={styles.ratingLabel}>Overall</Text>
-                    <View style={styles.ratingBubble}>
-                      <Text
-                        style={[
-                          styles.ratingBubbleValue,
-                          { color: getRatingColor(report.overallRating) },
-                        ]}
-                      >
-                        {report.overallRating}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                {report.match && (
-                  <View style={styles.matchupRow}>
-                    <View style={styles.teamPill}>
-                      <Text style={styles.teamText} numberOfLines={1}>
-                        {report.match.homeClub?.name || 'Home'}
-                      </Text>
-                    </View>
-                    <Text style={styles.vsText}>vs</Text>
-                    <View style={styles.teamPill}>
-                      <Text style={styles.teamText} numberOfLines={1}>
-                        {report.match.awayClub?.name || 'Away'}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                {report.recommendation && (
-                  <View style={styles.recommendationRow}>
-                    <Icon name="sparkles" size={16} color={colors.brand.primary} />
-                    <Text style={styles.recommendationText}>
-                      {report.recommendation.replace(/_/g, ' ')}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.tileFooter}>
-                  <View style={styles.scoutInfo}>
-                    <View style={styles.scoutAvatar}>
-                      <Text style={styles.scoutAvatarText}>
-                        {report.scout?.firstName?.[0]}
-                        {report.scout?.lastName?.[0]}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={styles.scoutLabel}>Scout</Text>
-                      <Text style={styles.scoutName}>
-                        {report.scout?.firstName} {report.scout?.lastName}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.tileActions}>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Icon name="share" size={16} color={colors.text.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Icon name="document" size={16} color={colors.text.primary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <LinearGradient
-                  colors={index % 2 === 0 ? colors.brand.gradient : [colors.brand.accent, colors.brand.primary]}
-                  style={styles.tileAccent}
-                />
+          groupedReports.map((dayGroup) => (
+            <View key={dayGroup.dateKey} style={styles.daySection}>
+              <View style={styles.dayHeader}>
+                <Text style={styles.dayTitle}>{dayGroup.dateLabel}</Text>
+                <Text style={styles.dayCount}>{dayGroup.totalReports} rapport(s)</Text>
               </View>
-            </TouchableOpacity>
+
+              {dayGroup.matches.map((matchGroup) => (
+                <View key={matchGroup.key} style={styles.matchGroup}>
+                  <View style={styles.matchGroupHeader}>
+                    <Text style={styles.matchGroupTitle}>{matchGroup.label}</Text>
+                    <Text style={styles.matchGroupCount}>{matchGroup.reports.length} joueur(s)</Text>
+                  </View>
+
+                  {matchGroup.reports.map((report, index) => (
+                    <TouchableOpacity
+                      key={report.id}
+                      activeOpacity={0.92}
+                      onPress={() => navigation.navigate('ReportDetail', { reportId: report.id })}
+                    >
+                      <View style={styles.reportTile}>
+                        <LinearGradient
+                          colors={statusGradients[report.status] || [colors.surface.border, colors.surface.glass]}
+                          style={styles.statusRibbon}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Icon name={getStatusIcon(report.status)} size={16} color={colors.background.primary} />
+                          <Text style={styles.statusRibbonText}>{report.status}</Text>
+                        </LinearGradient>
+
+                        <View style={styles.tileHeader}>
+                          <View style={styles.playerMeta}>
+                            <Text style={styles.playerName}>
+                              {report.player?.user?.firstName} {report.player?.user?.lastName}
+                            </Text>
+                            <Text style={styles.reportDate}>
+                              {new Date(report.createdAt).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {(() => {
+                          const badge = getCompletenessBadge(report.analysis?.identityCompletenessScore);
+                          if (!badge) return null;
+                          return (
+                            <View
+                              style={[
+                                styles.identityBadge,
+                                { borderColor: badge.color, backgroundColor: `${badge.color}22` },
+                              ]}
+                            >
+                              <Text style={[styles.identityBadgeText, { color: badge.color }]}>
+                                {badge.label} ({Math.round(report.analysis?.identityCompletenessScore || 0)}%)
+                              </Text>
+                            </View>
+                          );
+                        })()}
+
+                        {report.overallRating && (
+                          <View style={styles.ratingWrap}>
+                            <Text style={styles.ratingLabel}>Overall</Text>
+                            <View style={styles.ratingBubble}>
+                              <Text
+                                style={[
+                                  styles.ratingBubbleValue,
+                                  { color: getRatingColor(report.overallRating) },
+                                ]}
+                              >
+                                {report.overallRating}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+
+                        {report.match && (
+                          <View style={styles.matchupRow}>
+                            <View style={styles.teamPill}>
+                              <Text style={styles.teamText} numberOfLines={1}>
+                                {report.match.homeClub?.name || 'Home'}
+                              </Text>
+                            </View>
+                            <Text style={styles.vsText}>vs</Text>
+                            <View style={styles.teamPill}>
+                              <Text style={styles.teamText} numberOfLines={1}>
+                                {report.match.awayClub?.name || 'Away'}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+
+                        {report.recommendation && (
+                          <View style={styles.recommendationRow}>
+                            <Icon name="sparkles" size={16} color={colors.brand.primary} />
+                            <Text style={styles.recommendationText}>
+                              {report.recommendation.replace(/_/g, ' ')}
+                            </Text>
+                          </View>
+                        )}
+
+                        <View style={styles.tileFooter}>
+                          <View style={styles.scoutInfo}>
+                            <View style={styles.scoutAvatar}>
+                              <Text style={styles.scoutAvatarText}>
+                                {report.scout?.firstName?.[0]}
+                                {report.scout?.lastName?.[0]}
+                              </Text>
+                            </View>
+                            <View>
+                              <Text style={styles.scoutLabel}>Scout</Text>
+                              <Text style={styles.scoutName}>
+                                {report.scout?.firstName} {report.scout?.lastName}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={styles.tileActions}>
+                            <TouchableOpacity style={styles.actionButton}>
+                              <Icon name="share" size={16} color={colors.text.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionButton}>
+                              <Icon name="document" size={16} color={colors.text.primary} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <LinearGradient
+                          colors={index % 2 === 0 ? colors.brand.gradient : [colors.brand.accent, colors.brand.primary]}
+                          style={styles.tileAccent}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </View>
           ))
         )}
       </ScrollView>
@@ -509,6 +621,46 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.text.secondary,
   },
+  daySection: {
+    marginBottom: spacing.lg,
+  },
+  dayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  dayTitle: {
+    fontSize: typography.sizes.base,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    textTransform: 'capitalize',
+  },
+  dayCount: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+  },
+  matchGroup: {
+    marginBottom: spacing.md,
+  },
+  matchGroupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  matchGroupTitle: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  matchGroupCount: {
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+  },
   reportTile: {
     borderRadius: 28,
     borderWidth: 1,
@@ -553,6 +705,17 @@ const styles = StyleSheet.create({
   reportDate: {
     fontSize: typography.sizes.xs,
     color: colors.text.secondary,
+  },
+  identityBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  identityBadgeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
   },
   ratingWrap: {
     flexDirection: 'row',

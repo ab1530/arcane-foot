@@ -46,7 +46,9 @@ export class ClubNeedsService {
           : index + 1;
 
       const preferredFoot =
-        raw?.preferredFoot === 'Left' || raw?.preferredFoot === 'Right' || raw?.preferredFoot === 'Both'
+        raw?.preferredFoot === 'Left' ||
+        raw?.preferredFoot === 'Right' ||
+        raw?.preferredFoot === 'Both'
           ? (raw.preferredFoot as PreferredFoot)
           : undefined;
 
@@ -67,9 +69,7 @@ export class ClubNeedsService {
         warnings: Array.isArray(raw?.warnings)
           ? raw.warnings.map((value: unknown) => String(value))
           : [],
-        errors: Array.isArray(raw?.errors)
-          ? raw.errors.map((value: unknown) => String(value))
-          : [],
+        errors: Array.isArray(raw?.errors) ? raw.errors.map((value: unknown) => String(value)) : [],
       };
     });
   }
@@ -86,12 +86,15 @@ export class ClubNeedsService {
     }
 
     const fromParsed = parsed.map((line, index) => {
-      const lineNumber = Number.isInteger(line.lineNumber) && line.lineNumber > 0 ? line.lineNumber : index + 1;
+      const lineNumber =
+        Number.isInteger(line.lineNumber) && line.lineNumber > 0 ? line.lineNumber : index + 1;
       const source = rawMap.get(lineNumber) ?? {};
 
       return {
         lineNumber,
-        clubName: String(source?.clubName ?? line.clubName ?? `Ligne ${lineNumber}`).trim() || `Ligne ${lineNumber}`,
+        clubName:
+          String(source?.clubName ?? line.clubName ?? `Ligne ${lineNumber}`).trim() ||
+          `Ligne ${lineNumber}`,
         isCompleted: Boolean(source?.isCompleted),
         completedAt: source?.completedAt ? String(source.completedAt) : null,
         completedById: source?.completedById ? String(source.completedById) : null,
@@ -106,7 +109,8 @@ export class ClubNeedsService {
 
     return Array.from(rawMap.values()).map((source: any) => ({
       lineNumber: Number(source.lineNumber),
-      clubName: String(source?.clubName ?? `Ligne ${source?.lineNumber ?? 0}`).trim() ||
+      clubName:
+        String(source?.clubName ?? `Ligne ${source?.lineNumber ?? 0}`).trim() ||
         `Ligne ${source?.lineNumber ?? 0}`,
       isCompleted: Boolean(source?.isCompleted),
       completedAt: source?.completedAt ? String(source.completedAt) : null,
@@ -154,7 +158,12 @@ export class ClubNeedsService {
     const year = Number(yearRaw);
     const monthValue = Number(monthRaw);
 
-    if (!Number.isInteger(year) || !Number.isInteger(monthValue) || monthValue < 1 || monthValue > 12) {
+    if (
+      !Number.isInteger(year) ||
+      !Number.isInteger(monthValue) ||
+      monthValue < 1 ||
+      monthValue > 12
+    ) {
       return undefined;
     }
 
@@ -165,7 +174,9 @@ export class ClubNeedsService {
   }
 
   private inferLeagueFromCountry(country?: string | null): ClubNeedLeagueFilter | null {
-    const normalized = String(country ?? '').trim().toLowerCase();
+    const normalized = String(country ?? '')
+      .trim()
+      .toLowerCase();
     if (!normalized) return null;
 
     if (normalized.includes('france')) return 'LIGUE_1';
@@ -179,18 +190,21 @@ export class ClubNeedsService {
     const source = value.trim().toLowerCase();
     if (!source) return null;
 
-    const matched = (Object.entries(LEAGUE_KEYWORDS) as Array<[ClubNeedLeagueFilter, string[]]>)
-      .find(([, keywords]) => keywords.some((keyword) => source.includes(keyword)));
+    const matched = (
+      Object.entries(LEAGUE_KEYWORDS) as Array<[ClubNeedLeagueFilter, string[]]>
+    ).find(([, keywords]) => keywords.some((keyword) => source.includes(keyword)));
     return matched ? matched[0] : null;
   }
 
-  private buildCoverageSummary(
-    requests: any[],
-    sharesCount: number,
-  ) {
+  private buildCoverageSummary(requests: any[], sharesCount: number) {
     const clubsTotal = requests.reduce((acc, request) => acc + Number(request.linesTotal ?? 0), 0);
-    const clubsCovered = requests.reduce((acc, request) => acc + Number(request.linesCompleted ?? 0), 0);
-    const completedCount = requests.filter((request) => request.requestProgress === 'COMPLETED').length;
+    const clubsCovered = requests.reduce(
+      (acc, request) => acc + Number(request.linesCompleted ?? 0),
+      0,
+    );
+    const completedCount = requests.filter(
+      (request) => request.requestProgress === 'COMPLETED',
+    ).length;
 
     return {
       clubsCovered,
@@ -277,7 +291,11 @@ export class ClubNeedsService {
           leagues.add(leagueFromClubName);
         }
 
-        const country = countryByClubName.get(String(line.clubName ?? '').trim().toLowerCase());
+        const country = countryByClubName.get(
+          String(line.clubName ?? '')
+            .trim()
+            .toLowerCase(),
+        );
         const leagueFromCountry = this.inferLeagueFromCountry(country);
         if (leagueFromCountry) {
           leagues.add(leagueFromCountry);
@@ -448,7 +466,8 @@ export class ClubNeedsService {
       ? (request.matchesSnapshot as ClubNeedMatchResult[])
       : null;
 
-    const matches = matchesSnapshot ?? (await this.computeMatches(request.parsed as ParsedNeedLine[], topN));
+    const matches =
+      matchesSnapshot ?? (await this.computeMatches(request.parsed as ParsedNeedLine[], topN));
 
     return { request, matches };
   }
@@ -576,7 +595,9 @@ export class ClubNeedsService {
           lastName: (p as any).users?.lastName ?? p.lastName ?? null,
           position: p.position,
           nationality: p.nationality,
-          club: (p as any).clubs ? { id: (p as any).clubs.id, name: (p as any).clubs.name, logo: (p as any).clubs.logo } : null,
+          club: (p as any).clubs
+            ? { id: (p as any).clubs.id, name: (p as any).clubs.name, logo: (p as any).clubs.logo }
+            : null,
           marketValue: p.marketValue ?? null,
           contractUntil: p.contractUntil ?? null,
           preferredFoot: p.preferredFoot ?? null,

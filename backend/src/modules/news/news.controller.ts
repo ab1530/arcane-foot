@@ -14,7 +14,12 @@ export class NewsController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Legacy alias for news feed' })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'categories', required: false, type: String, description: 'Comma-separated category list (clubs,players,market,notifications)' })
+  @ApiQuery({
+    name: 'categories',
+    required: false,
+    type: String,
+    description: 'Comma-separated category list (clubs,players,market,notifications)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Combined feed with latest club, player, market and notification items.',
@@ -32,7 +37,12 @@ export class NewsController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get live news feed for the connected user' })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'categories', required: false, type: String, description: 'Comma-separated category list (clubs,players,market,notifications)' })
+  @ApiQuery({
+    name: 'categories',
+    required: false,
+    type: String,
+    description: 'Comma-separated category list (clubs,players,market,notifications)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Combined feed with latest club, player, market and notification items.',

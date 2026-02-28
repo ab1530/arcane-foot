@@ -46,6 +46,7 @@ import { PassportSharesModule } from './modules/passport-shares/passport-shares.
 import { PlayerProfileModule } from './modules/player-profile/player-profile.module';
 import { AgentRequestsModule } from './modules/agent-requests/agent-requests.module';
 import { NewsModule } from './modules/news/news.module';
+import { TransferMarketModule } from './modules/transfer-market/transfer-market.module';
 import { UsersController } from './modules/users/users.controller';
 import { LoggerModule } from './logger/logger.module';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
@@ -108,6 +109,7 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     PlayerProfileModule,
     AgentRequestsModule,
     NewsModule,
+    TransferMarketModule,
     LoggerModule,
   ],
   providers: [

@@ -31,7 +31,8 @@ export class HardwareController {
   @Roles('PLAYER', 'ADMIN', 'SCOUT', 'ANALYST', 'AGENT', 'SUPER_ADMIN', 'CLUB_CONTACT')
   @ApiOperation({
     summary: 'List hardware sessions for a player',
-    description: 'Returns all GPS hardware sessions for the given player with attached player snapshot.',
+    description:
+      'Returns all GPS hardware sessions for the given player with attached player snapshot.',
   })
   @ApiParam({ name: 'playerId', description: 'Player ID' })
   @ApiResponse({

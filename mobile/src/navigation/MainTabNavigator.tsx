@@ -120,7 +120,7 @@ const ROLE_TABS: RoleTabMap = {
   SUPER_ADMIN: ['Home', 'AIHub', 'Marketplace', 'News', 'Profile'],
   ADMIN: ['Home', 'AIHub', 'Marketplace', 'News', 'Profile'],
   AGENT: ['Home', 'Marketplace', 'News', 'Profile'],
-  SCOUT: ['Home', 'AIHub', 'News', 'Profile'],
+  SCOUT: ['Home', 'AIHub', 'Marketplace', 'News', 'Profile'],
   ANALYST: ['Home', 'AIHub', 'News', 'Profile'],
   PLAYER: ['Home', 'Camps', 'Coaching', 'Passport', 'News', 'Profile'],
   CLUB_CONTACT: ['Home', 'Marketplace', 'News', 'Profile'],
@@ -294,6 +294,8 @@ export default function MainTabNavigator() {
   const role = (activeRole ?? user?.role ?? DEFAULT_ROLE) as UserRole;
   const roleConfig = ROLE_CONFIG[role] ?? ROLE_CONFIG[DEFAULT_ROLE];
   const requestedTabs = ROLE_TABS[role] ?? ROLE_TABS.DEFAULT;
+  const scoutNewFlowEnabled = isFeatureEnabled('scoutNewFlow');
+  const missionRequestHubEnabled = isFeatureEnabled('missionRequestHub');
 
   const availableTabs = useMemo(() => {
     return requestedTabs
@@ -348,21 +350,32 @@ export default function MainTabNavigator() {
         action: () => navigation.navigate('Analytics'),
       });
     }
-    if (permissions.canAccessScouting && isFeatureEnabled('shortcuts.matches')) {
+    if (scoutNewFlowEnabled && permissions.canAccessScouting && isFeatureEnabled('shortcuts.matches')) {
       shortcuts.push({
         label: 'Matches',
         icon: 'football',
         action: () => navigation.navigate('Calendar'),
       });
     }
-    if (permissions.canAccessScouting && isFeatureEnabled('shortcuts.reports')) {
+    if (
+      missionRequestHubEnabled &&
+      ['SUPER_ADMIN', 'ADMIN', 'AGENT', 'SCOUT'].includes(role) &&
+      isFeatureEnabled('shortcuts.missionRequests')
+    ) {
+      shortcuts.push({
+        label: 'Missions',
+        icon: 'clipboard',
+        action: () => navigation.navigate('MissionRequests'),
+      });
+    }
+    if (scoutNewFlowEnabled && permissions.canAccessScouting && isFeatureEnabled('shortcuts.reports')) {
       shortcuts.push({
         label: 'Rapports',
         icon: 'document',
         action: () => navigation.navigate('Reports'),
       });
     }
-    if (permissions.canAccessAI && isFeatureEnabled('shortcuts.voiceToReport')) {
+    if (scoutNewFlowEnabled && permissions.canAccessAI && isFeatureEnabled('shortcuts.voiceToReport')) {
       shortcuts.push({
         label: 'Voice Report',
         icon: 'mic',
@@ -377,7 +390,7 @@ export default function MainTabNavigator() {
       });
     }
     return shortcuts;
-  }, [navigation, roleConfig]);
+  }, [missionRequestHubEnabled, navigation, role, roleConfig, scoutNewFlowEnabled]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>

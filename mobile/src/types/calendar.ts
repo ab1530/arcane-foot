@@ -5,20 +5,26 @@ export interface CalendarClubRef {
 }
 
 export interface CalendarVenue {
+  id?: string;
   name: string;
   city?: string;
+  country?: string;
   address?: string;
   latitude?: number;
   longitude?: number;
 }
 
 export interface CalendarCompetition {
+  id?: string;
   name: string;
   logo?: string | null;
 }
 
 export interface CalendarMatchAssignment {
+  id?: string;
+  assignmentId?: string;
   scoutId: string;
+  missionType?: 'PRIORITY' | 'VOLUNTARY';
   status?: string;
   mobileStatus?: 'PLANNED' | 'EN_ROUTE' | 'REPORT_SUBMITTED';
   role?: string;
@@ -51,6 +57,9 @@ export type CalendarPersonaFilter = 'ALL' | 'SCOUTS' | 'PLAYERS' | 'AGENTS';
 export interface CalendarMatch {
   id: string;
   sourceType?: 'MATCH' | 'EVENT';
+  sectionType?: 'MY' | 'SHARED' | 'DISCOVER';
+  assignmentId?: string;
+  missionType?: 'PRIORITY' | 'VOLUNTARY';
   title?: string;
   date: string;
   time?: string;
@@ -58,6 +67,8 @@ export interface CalendarMatch {
   homeScore?: number;
   awayScore?: number;
   notes?: string;
+  country?: string;
+  league?: string;
   persona?: CalendarPersonaFilter;
   homeClub?: CalendarClubRef;
   awayClub?: CalendarClubRef;

@@ -114,7 +114,7 @@ export class PassportSharesService {
     playerIds: string[];
     title?: string;
     clubName?: string;
-    sourceFeature?: 'CLUB_NEEDS';
+    sourceFeature?: 'CLUB_NEEDS' | 'TRANSFER_MARKET_REQUEST';
     sourceRequestId?: string;
     sourceRequestLineNumber?: number;
   }) {

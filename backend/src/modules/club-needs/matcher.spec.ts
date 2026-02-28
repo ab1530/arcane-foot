@@ -34,4 +34,3 @@ describe('ClubNeeds matcher', () => {
     expect(where.dateOfBirth.lte).toBeInstanceOf(Date);
   });
 });
-

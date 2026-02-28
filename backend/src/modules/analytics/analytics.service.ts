@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../cache/redis.service';
 import { ClubRequestStatus, Prisma, ReportStatus, TaskStatus, UserRole } from '@prisma/client';
@@ -556,6 +556,76 @@ export class AnalyticsService {
 
     await this.redisService.set(cacheKey, result, 60);
     return result;
+  }
+
+  async getScoutsDirectory(
+    actorRole: string,
+    filters?: { page?: number; limit?: number; search?: string },
+  ) {
+    if (!isCategoryARole(actorRole as UserRole)) {
+      throw new ForbiddenException('Seuls les admins peuvent consulter cette liste');
+    }
+
+    const page = Math.max(1, Number(filters?.page) || 1);
+    const limit = Math.max(1, Math.min(Number(filters?.limit) || 20, 100));
+    const search = filters?.search?.trim();
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.usersWhereInput = {
+      role: UserRole.SCOUT,
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, scouts] = await Promise.all([
+      this.prisma.users.count({ where }),
+      this.prisma.users.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }],
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          avatar: true,
+          createdAt: true,
+          lastLoginAt: true,
+          _count: {
+            select: {
+              scouting_reports: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data: scouts.map((scout) => ({
+        id: scout.id,
+        firstName: scout.firstName,
+        lastName: scout.lastName,
+        email: scout.email,
+        avatar: scout.avatar,
+        reportsCount: scout._count.scouting_reports,
+        createdAt: scout.createdAt.toISOString(),
+        lastLoginAt: scout.lastLoginAt?.toISOString() ?? null,
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
   }
 
   /**

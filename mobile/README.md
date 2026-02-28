@@ -134,10 +134,15 @@ If running on Android Emulator and connecting to local backend:
 - **Coaching**: Hub des coachs avec filtres, disponibilités et réservations.
 - **Passport**: Passeport joueur numérique avec QR code partageable.
 - **Profile**: Préférences utilisateur, thèmes, support et logout.
-- **Command Center**: bouton flottant + menu dans l’en-tête pour rejoindre Joueurs, Analytique, Matches, Rapports, Voice-to-Report et Marketplace depuis n’importe quel onglet.
+- **Command Center**: bouton flottant + menu dans l’en-tête pour rejoindre Joueurs, Analytique, Matches, Mission Requests, Rapports, Voice-to-Report et Marketplace depuis n’importe quel onglet.
 
 > Les onglets et raccourcis sont contrôlés par `src/constants/features.ts`.  
 > Des presets (`demo`, `staging`, `production`) permettent d’activer/désactiver facilement les modules, et tu peux choisir le preset via `EXPO_PUBLIC_FEATURE_PRESET` avant `npm start` (ex. `EXPO_PUBLIC_FEATURE_PRESET=production npm start`).
+>
+> Flags scout rollout (mobile):
+> - `EXPO_PUBLIC_SCOUT_NEW_FLOW_ENABLED=true|false` (par défaut `true`)
+> - `EXPO_PUBLIC_SCOUT_PROFILE_SCREEN_ENABLED=true|false` (par défaut `true`)
+> - `EXPO_PUBLIC_MISSION_REQUEST_HUB_ENABLED=true|false` (par défaut `true`)
 
 ### HomeScreen
 - Displays user greeting with role

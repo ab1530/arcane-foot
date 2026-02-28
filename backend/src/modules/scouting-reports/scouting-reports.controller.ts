@@ -18,6 +18,7 @@ import { PdfService } from './pdf.service';
 import { CreateScoutingReportDto } from './dto/create-scouting-report.dto';
 import { UpdateScoutingReportDto } from './dto/update-scouting-report.dto';
 import { QueryScoutingReportDto } from './dto/query-scouting-report.dto';
+import { BulkSubmitScoutingReportsDto } from './dto/bulk-submit-scouting-reports.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('scouting-reports')
@@ -40,32 +41,52 @@ export class ScoutingReportsController {
     return this.reportsService.create(createDto, scoutId);
   }
 
+  @Post('bulk-submit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Créer et soumettre plusieurs rapports (1 par joueur)' })
+  @ApiResponse({ status: 201, description: 'Rapports soumis avec succès' })
+  @ApiResponse({ status: 400, description: 'Données invalides' })
+  @ApiResponse({ status: 401, description: 'Non autorisé' })
+  bulkSubmit(@Body() payload: BulkSubmitScoutingReportsDto, @Request() req) {
+    const scoutId = req.user.id || req.user.sub;
+    return this.reportsService.bulkSubmit(payload, scoutId);
+  }
+
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtenir tous les rapports avec filtres' })
   @ApiResponse({ status: 200, description: 'Liste des rapports' })
-  findAll(@Query() query: QueryScoutingReportDto) {
-    return this.reportsService.findAll(query);
+  findAll(@Query() query: QueryScoutingReportDto, @Request() req?: any) {
+    return this.reportsService.findAll(query, req?.user);
   }
 
   @Get('player/:playerId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Obtenir les rapports d'un joueur" })
   @ApiResponse({ status: 200, description: 'Rapports du joueur' })
-  getPlayerReports(@Param('playerId') playerId: string) {
-    return this.reportsService.getPlayerReports(playerId);
+  getPlayerReports(@Param('playerId') playerId: string, @Request() req?: any) {
+    return this.reportsService.getPlayerReports(playerId, req?.user);
   }
 
   @Get('scout/:scoutId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Obtenir les rapports d'un scout" })
   @ApiResponse({ status: 200, description: 'Rapports du scout' })
-  getScoutReports(@Param('scoutId') scoutId: string) {
-    return this.reportsService.getScoutReports(scoutId);
+  getScoutReports(@Param('scoutId') scoutId: string, @Request() req?: any) {
+    return this.reportsService.getScoutReports(scoutId, req?.user);
   }
 
   @Get('match/:matchId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Obtenir les rapports d'un match" })
   @ApiResponse({ status: 200, description: 'Rapports du match' })
-  getMatchReports(@Param('matchId') matchId: string) {
-    return this.reportsService.getMatchReports(matchId);
+  getMatchReports(@Param('matchId') matchId: string, @Request() req?: any) {
+    return this.reportsService.getMatchReports(matchId, req?.user);
   }
 
   @Get(':id/pdf')
@@ -85,11 +106,13 @@ export class ScoutingReportsController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtenir un rapport par ID' })
   @ApiResponse({ status: 200, description: 'Détails du rapport' })
   @ApiResponse({ status: 404, description: 'Rapport introuvable' })
-  findOne(@Param('id') id: string) {
-    return this.reportsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req?: any) {
+    return this.reportsService.findOne(id, req?.user);
   }
 
   @Patch(':id')

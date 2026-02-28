@@ -44,4 +44,22 @@ export class ListAgentRequestsQueryDto {
   @IsOptional()
   @IsString()
   myOnly?: string;
+
+  @ApiPropertyOptional({
+    example: 'SCOUT',
+    enum: ['SUPER_ADMIN', 'ADMIN', 'AGENT', 'SCOUT', 'ANALYST', 'PLAYER', 'CLUB_CONTACT', 'PUBLIC'],
+    description: 'Filtrer selon le rôle du créateur de la demande',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['SUPER_ADMIN', 'ADMIN', 'AGENT', 'SCOUT', 'ANALYST', 'PLAYER', 'CLUB_CONTACT', 'PUBLIC'])
+  creatorRole?:
+    | 'SUPER_ADMIN'
+    | 'ADMIN'
+    | 'AGENT'
+    | 'SCOUT'
+    | 'ANALYST'
+    | 'PLAYER'
+    | 'CLUB_CONTACT'
+    | 'PUBLIC';
 }

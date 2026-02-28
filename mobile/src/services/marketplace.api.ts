@@ -128,7 +128,8 @@ export const marketplaceApi = {
    * Get my scout listing (scouts only)
    */
   async getMyListing(): Promise<MarketplaceListing> {
-    return api.getRaw<MarketplaceListing>('/marketplace/listings/my');
+    const payload = await api.getRaw<any>('/marketplace/listings/my');
+    return normalizeListing(payload);
   },
 
   /**
@@ -156,7 +157,8 @@ export const marketplaceApi = {
       playersDiscovered?: string[];
     };
   }): Promise<MarketplaceListing> {
-    return api.postRaw<MarketplaceListing>('/marketplace/listings', payload);
+    const result = await api.postRaw<any>('/marketplace/listings', payload);
+    return normalizeListing(result);
   },
 
   /**
@@ -184,21 +186,24 @@ export const marketplaceApi = {
       playersDiscovered?: string[];
     };
   }>): Promise<MarketplaceListing> {
-    return api.patchRaw<MarketplaceListing>('/marketplace/listings', payload);
+    const result = await api.patchRaw<any>('/marketplace/listings', payload);
+    return normalizeListing(result);
   },
 
   /**
    * Activate scout listing (make it visible)
    */
   async activateListing(): Promise<MarketplaceListing> {
-    return api.patchRaw<MarketplaceListing>('/marketplace/listings/activate', {});
+    const result = await api.patchRaw<any>('/marketplace/listings/activate', {});
+    return normalizeListing(result);
   },
 
   /**
    * Pause scout listing (temporarily hide)
    */
   async pauseListing(): Promise<MarketplaceListing> {
-    return api.patchRaw<MarketplaceListing>('/marketplace/listings/pause', {});
+    const result = await api.patchRaw<any>('/marketplace/listings/pause', {});
+    return normalizeListing(result);
   },
 
   /**

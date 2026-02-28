@@ -296,7 +296,13 @@ export class PlayerProfileController {
     @Request() req: any,
   ) {
     const actorId = req.user?.id ?? req.user?.userId ?? req.user?.sub;
-    return this.playerProfileService.updateSectionStatus(section, playerId, itemId, dto.status, actorId);
+    return this.playerProfileService.updateSectionStatus(
+      section,
+      playerId,
+      itemId,
+      dto.status,
+      actorId,
+    );
   }
 }
 

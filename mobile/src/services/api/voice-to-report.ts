@@ -6,12 +6,12 @@
  */
 
 import { api } from '../api';
+import { SupportedLanguage } from '../../types/voice-to-report';
 import type {
   VoiceReportResponse,
   ProcessVoiceRequest,
   LanguageInfo,
   VoiceReportExample,
-  SupportedLanguage,
 } from '../../types/voice-to-report';
 
 export class VoiceToReportApi {

@@ -11,7 +11,12 @@ export class CreateClubNeedRequestDto {
   @IsNotEmpty()
   rawText: string;
 
-  @ApiPropertyOptional({ description: 'Number of players per club line', default: 5, minimum: 1, maximum: 20 })
+  @ApiPropertyOptional({
+    description: 'Number of players per club line',
+    default: 5,
+    minimum: 1,
+    maximum: 20,
+  })
   @Type(() => Number)
   @IsInt()
   @IsOptional()
@@ -19,4 +24,3 @@ export class CreateClubNeedRequestDto {
   @Max(20)
   topN?: number;
 }
-

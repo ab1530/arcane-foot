@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AgentRequestsService } from './agent-requests.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
@@ -78,6 +78,72 @@ describe('AgentRequestsService', () => {
     await expect(
       service.createRequest({ title: ' ', category: 'OTHER' }, { id: 'user-1', role: 'PLAYER' }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('allows agent to create request with scout assignee', async () => {
+    prisma.users.findUnique.mockResolvedValue({
+      id: 'scout-1',
+      role: 'SCOUT',
+    } as any);
+
+    prisma.tasks.create.mockResolvedValue({
+      id: 'task-2',
+      title: 'Mission agent',
+      description: JSON.stringify({
+        kind: 'AGENT_REQUEST',
+        category: 'OTHER',
+        assigneeId: 'scout-1',
+      }),
+      status: 'TODO',
+      priority: 'MEDIUM',
+      creatorId: 'agent-1',
+      assigneeId: 'scout-1',
+      dueDate: null,
+      createdAt: new Date('2026-02-20T10:00:00.000Z'),
+      updatedAt: new Date('2026-02-20T10:00:00.000Z'),
+      users_tasks_creatorIdTousers: { id: 'agent-1', firstName: 'Ada', lastName: 'Agent' },
+      users_tasks_assigneeIdTousers: { id: 'scout-1', firstName: 'Sam', lastName: 'Scout' },
+    } as any);
+
+    const result = await service.createRequest(
+      {
+        title: 'Mission agent',
+        category: 'OTHER',
+        assigneeId: 'scout-1',
+      },
+      { id: 'agent-1', role: 'AGENT' },
+    );
+
+    expect(prisma.users.findUnique).toHaveBeenCalledWith({
+      where: { id: 'scout-1' },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+    expect(prisma.tasks.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        users_tasks_assigneeIdTousers: {
+          connect: { id: 'scout-1' },
+        },
+      }),
+      include: expect.any(Object),
+    });
+    expect(result.assignee?.id).toBe('scout-1');
+  });
+
+  it('rejects assignee target for non agent/admin roles', async () => {
+    await expect(
+      service.createRequest(
+        {
+          title: 'Demande invalide',
+          category: 'OTHER',
+          assigneeId: 'scout-1',
+        },
+        { id: 'player-1', role: 'PLAYER' },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(prisma.tasks.create).not.toHaveBeenCalled();
   });
 
   it('lists agent requests with category filter and pagination', async () => {

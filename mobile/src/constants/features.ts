@@ -1,3 +1,11 @@
+const envFlag = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (value == null) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return defaultValue;
+};
+
 export const FEATURE_FLAGS = {
   aiHubTab: true,
   marketplaceTab: true,
@@ -6,10 +14,23 @@ export const FEATURE_FLAGS = {
   profileTab: true,
   playerDashboardV2: true,
   playerBraceletCard: true,
+  scoutNewFlow: envFlag(process.env.EXPO_PUBLIC_SCOUT_NEW_FLOW_ENABLED, true),
+  scoutProfileScreen: envFlag(process.env.EXPO_PUBLIC_SCOUT_PROFILE_SCREEN_ENABLED, true),
+  missionRequestHub: envFlag(process.env.EXPO_PUBLIC_MISSION_REQUEST_HUB_ENABLED, true),
+  transferMarketHub: envFlag(process.env.EXPO_PUBLIC_TRANSFER_MARKET_HUB_ENABLED, true),
+  transferMarketSharedVisibility: envFlag(
+    process.env.EXPO_PUBLIC_TRANSFER_MARKET_SHARED_VISIBILITY_ENABLED,
+    true,
+  ),
+  transferMarketShortlistExport: envFlag(
+    process.env.EXPO_PUBLIC_TRANSFER_MARKET_SHORTLIST_EXPORT_ENABLED,
+    true,
+  ),
   shortcuts: {
     players: true,
     analytics: true,
     matches: true,
+    missionRequests: true,
     reports: true,
     voiceToReport: true,
     marketplace: true,
