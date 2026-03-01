@@ -22,7 +22,7 @@ interface DNARadarChartProps {
 
 export const DNARadarChart: React.FC<DNARadarChartProps> = ({
   dnaProfile,
-  styleColor = '#E4FF3B',
+  styleColor = '#e6ff3c',
   size = 250,
   animated = true,
   showLabels = true,

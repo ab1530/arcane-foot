@@ -16,6 +16,7 @@ import { theme } from '../../design/theme';
 import type { AppStackParamList } from '../../types/navigation';
 import api from '../../services/api';
 import type { DashboardScoutDirectoryItem } from '../../types';
+import { ScreenHeader } from '../../components/navigation';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ScoutsDirectory'>;
 
@@ -98,14 +99,12 @@ export default function ScoutsDirectoryScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={20} color={theme.colors.brand.primary} />
-          <Text style={styles.backLabel}>Retour</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Liste des scouts</Text>
-        <Text style={styles.subtitle}>{total} scout(s) visible(s)</Text>
-      </View>
+      <ScreenHeader
+        title="Liste des scouts"
+        subtitle={`${total} scout(s) visible(s)`}
+        compact
+        showBackButton
+      />
 
       <View style={styles.searchWrapper}>
         <Ionicons name="search" size={16} color={theme.colors.text.secondary} />
@@ -164,29 +163,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.secondary,
   },
   loadingText: {
-    color: theme.colors.text.secondary,
-  },
-  header: {
-    marginBottom: 12,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
-  },
-  backLabel: {
-    color: theme.colors.brand.primary,
-    fontWeight: '600',
-  },
-  title: {
-    color: theme.colors.text.primary,
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  subtitle: {
     color: theme.colors.text.secondary,
   },
   searchWrapper: {

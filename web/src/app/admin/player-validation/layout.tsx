@@ -16,8 +16,8 @@ export default function PlayerValidationLayout({
         position="top-right"
         toastOptions={{
           style: {
-            background: '#0F1425',
-            border: '1px solid #1B2133',
+            background: '#353439',
+            border: '1px solid #353439',
             color: '#FFFFFF',
           },
         }}

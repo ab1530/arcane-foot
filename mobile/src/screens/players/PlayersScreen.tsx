@@ -11,7 +11,12 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+  RouteProp,
+} from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,20 +42,25 @@ type PlayerViewMode = 'LIST' | 'DISCOVERED';
 
 export const PlayersScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'Players'>>();
   const { dictionary } = useLocalization();
   const { user } = useAuth();
   const t = dictionary.players;
   const common = dictionary.common;
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(route.params?.initialSearch ?? '');
   const [activePosition, setActivePosition] = useState<string | null>(null);
   const [activeLeague, setActiveLeague] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>('ALL');
   const currentRole = user?.role ?? 'PUBLIC';
   const canUseDiscoveredTree = ['SCOUT', 'ADMIN', 'SUPER_ADMIN'].includes(currentRole);
   const [viewMode, setViewMode] = useState<PlayerViewMode>(() =>
-    ['SCOUT', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '') ? 'DISCOVERED' : 'LIST',
+    route.params?.viewMode
+      ? route.params.viewMode
+      : canUseDiscoveredTree
+        ? 'DISCOVERED'
+        : 'LIST',
   );
   const [recentPlayers, setRecentPlayers] = useState<RecentPlayer[]>([]);
   const [recentLoading, setRecentLoading] = useState(true);
@@ -159,6 +169,15 @@ export const PlayersScreen = () => {
   }, [canUseDiscoveredTree, viewMode]);
 
   useEffect(() => {
+    if (route.params?.viewMode) {
+      setViewMode(route.params.viewMode);
+    }
+    if (route.params?.initialSearch !== undefined) {
+      setSearchQuery(route.params.initialSearch);
+    }
+  }, [route.params?.viewMode, route.params?.initialSearch]);
+
+  useEffect(() => {
     if (canUseDiscoveredTree && viewMode === 'DISCOVERED') {
       loadDiscoveredTree();
     }
@@ -217,9 +236,8 @@ export const PlayersScreen = () => {
 
   const canManageVideoUploadForPlayer = useCallback(
     (playerId: string) => {
-      const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN';
       const isOwner = currentRole === 'PLAYER' && !!user?.playerId && user.playerId === playerId;
-      return isAdmin || isOwner;
+      return isOwner;
     },
     [currentRole, user?.playerId],
   );

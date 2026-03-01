@@ -67,16 +67,16 @@ export const LevelBadge: React.FC<LevelBadgeProps> = ({
         )}
         style={{
           boxShadow: animated
-            ? `0 0 30px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#E4FF3B'}40`
+            ? `0 0 30px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#e6ff3c'}40`
             : undefined,
         }}
         animate={
           animated
             ? {
                 boxShadow: [
-                  `0 0 20px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#E4FF3B'}40`,
-                  `0 0 40px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#E4FF3B'}60`,
-                  `0 0 20px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#E4FF3B'}40`,
+                  `0 0 20px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#e6ff3c'}40`,
+                  `0 0 40px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#e6ff3c'}60`,
+                  `0 0 20px ${isLegendary ? '#F59E0B' : isMaster ? '#8B5CF6' : '#e6ff3c'}40`,
                 ],
               }
             : undefined

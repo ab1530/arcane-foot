@@ -7,6 +7,7 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
+  Platform,
   StyleSheet,
   Switch,
   Text,
@@ -15,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,9 +28,11 @@ import {
   Users,
   X,
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { colors, radius, spacing, typography } from '../../design/theme';
 import { EmptyState, GlassCard, LoadingSpinner } from '../../components/ui';
+import { ScreenHeader } from '../../components/navigation';
 import ScoutCard from '../../components/marketplace/ScoutCard';
 import { marketplaceApi } from '../../services/marketplace.api';
 import { api } from '../../services/api';
@@ -137,6 +141,7 @@ const suggestionStatusLabelMap: Record<TransferSuggestionStatus, string> = {
 const DEFAULT_FREE_REQUEST_MARKETS: Record<string, string[]> = {
   FR: ['Ligue 1', 'Ligue 2', 'National'],
   DE: ['Bundesliga', '2. Bundesliga', '3. Liga'],
+  IT: ['Serie A', 'Serie B', 'Serie C'],
   GB: ['Premier League', 'Championship', 'League One', 'League Two'],
   ES: ['La Liga', 'LaLiga 2', 'Primera RFEF'],
 };
@@ -189,6 +194,27 @@ const LEAGUE_LOGO_RULES: Array<{
     shortLabel: '3L',
     countryCode: 'DE',
     accentColor: '#FFB4C3',
+  },
+  {
+    pattern: /^serie\s*a$/i,
+    logoUri: 'https://media.api-sports.io/football/leagues/135.png',
+    shortLabel: 'SA',
+    countryCode: 'IT',
+    accentColor: '#4BD17A',
+  },
+  {
+    pattern: /^serie\s*b$/i,
+    logoUri: 'https://media.api-sports.io/football/leagues/136.png',
+    shortLabel: 'SB',
+    countryCode: 'IT',
+    accentColor: '#5BD0E6',
+  },
+  {
+    pattern: /^serie\s*c$/i,
+    logoUri: 'https://media.api-sports.io/football/leagues/137.png',
+    shortLabel: 'SC',
+    countryCode: 'IT',
+    accentColor: '#7DA8FF',
   },
   {
     pattern: /premier\s*league/i,
@@ -597,6 +623,23 @@ const mergeDefaultLeagues = (
     });
 };
 
+const normalizeLeagueLabelForDisplay = (
+  league: string,
+  selectedCountry?: string | null,
+): string => {
+  const raw = String(league ?? '').trim();
+  if (!raw) return raw;
+
+  const countryCode = normalizeCountryCode(selectedCountry);
+  if (countryCode === 'IT') {
+    if (/^ligue\s*1$/i.test(raw)) return 'Serie A';
+    if (/^ligue\s*2$/i.test(raw)) return 'Serie B';
+    if (/^national$/i.test(raw)) return 'Serie C';
+  }
+
+  return raw;
+};
+
 const guessCountryCodeFromLeague = (
   league: string,
   selectedCountry?: string | null,
@@ -685,6 +728,7 @@ const buildPlayerDisplayName = (player?: Player | null) => {
 };
 
 const MarketplaceScreen: React.FC = () => {
+  const safeAreaInsets = useSafeAreaInsets();
   const { dictionary } = useLocalization();
   const { user, activeRole } = useAuth();
   const role = normalizeRole(activeRole ?? user?.role);
@@ -693,6 +737,9 @@ const MarketplaceScreen: React.FC = () => {
   const canCreateRequest = roleCanCreateRequest(role);
   const canSuggestPlayers = roleCanSuggest(role);
   const canUseLegacyRawMode = roleIsAdmin(role);
+
+  const iosHeaderOffset = Math.min(Math.max(0, safeAreaInsets.top - 18), 16);
+  const shouldCompactHeaderForIos = Platform.OS === 'ios';
 
   const navigation = useNavigation<any>();
   const [segment, setSegment] = useState<Segment>('REQUESTS');
@@ -1132,6 +1179,11 @@ const MarketplaceScreen: React.FC = () => {
     });
   }, [clubOptions, clubSearch]);
 
+  const leagueInputPlaceholder = useMemo(() => {
+    const countryCode = normalizeCountryCode(createForm.country || selectedCountry) ?? '';
+    return DEFAULT_FREE_REQUEST_MARKETS[countryCode]?.[0] ?? 'Ligue 1';
+  }, [createForm.country, selectedCountry]);
+
   const resetRequestFilters = useCallback(() => {
     setFilters({
       status: 'ALL',
@@ -1483,7 +1535,7 @@ const MarketplaceScreen: React.FC = () => {
     if (scopeStep === 'LEAGUES') {
       return (
         <View style={styles.scopeHeaderRow}>
-          <View style={styles.scopeHeaderLeft}>
+        <View style={styles.scopeHeaderLeft}>
             <TouchableOpacity style={styles.backButton} onPress={handleBackScope}>
               <ChevronLeft size={18} color={colors.text.primary} />
             </TouchableOpacity>
@@ -1498,26 +1550,57 @@ const MarketplaceScreen: React.FC = () => {
       );
     }
 
+    const requestLeagueDisplay = normalizeLeagueLabelForDisplay(selectedLeague || '', selectedCountry);
+    const requestLeagueVisual = getLeagueVisual(requestLeagueDisplay, selectedCountry);
+    const requestLeagueKey = selectedLeague || requestLeagueDisplay || 'Ligue';
+
     return (
-      <View style={styles.scopeHeaderRow}>
-        <View style={styles.scopeHeaderLeft}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackScope}>
-            <ChevronLeft size={18} color={colors.text.primary} />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.scopeTitle}>
-              {selectedCountry ? formatCountryDisplay(selectedCountry) : 'Pays'}
-              {' -> '}
-              {selectedLeague}
-            </Text>
-            <Text style={styles.scopeSubtitle}>Demandes libres actives</Text>
+      <View style={styles.scopeHeaderStack}>
+        <View style={styles.scopeHeaderRow}>
+          <View style={styles.scopeHeaderLeft}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBackScope}>
+              <ChevronLeft size={18} color={colors.text.primary} />
+            </TouchableOpacity>
+            <View style={styles.scopeLeagueIdentity}>
+              {Boolean(requestLeagueVisual.logoUri) && !failedLeagueLogos[requestLeagueKey] ? (
+                <Image
+                  source={{ uri: requestLeagueVisual.logoUri as string }}
+                  style={styles.leagueLogoImageSmall}
+                  resizeMode="contain"
+                  onError={() =>
+                    setFailedLeagueLogos((prev) => ({
+                      ...prev,
+                      [requestLeagueKey]: true,
+                    }))
+                  }
+                />
+              ) : (
+                <View style={[styles.leagueLogoFallbackSmall, { backgroundColor: requestLeagueVisual.accentColor }]}> 
+                  <Text style={styles.leagueLogoFallbackTextSmall}>{requestLeagueVisual.shortLabel}</Text>
+                </View>
+              )}
+              <View style={styles.scopeHeaderLeagueTextWrap}>
+                <Text style={styles.scopeTitle} numberOfLines={1} ellipsizeMode="tail">
+                  {requestLeagueDisplay || 'Ligue'}
+                </Text>
+                <Text style={styles.scopeSubtitle} numberOfLines={1} ellipsizeMode="tail">
+                  Demandes libres actives
+                </Text>
+              </View>
+            </View>
           </View>
+          {canCreateRequest ? (
+            <TouchableOpacity
+              style={styles.createCtaCompact}
+              onPress={handleOpenCreateModal}
+              accessibilityLabel="Créer une nouvelle demande"
+            >
+              <Plus size={18} color="#0f172a" />
+            </TouchableOpacity>
+          ) : null}
         </View>
         {canCreateRequest ? (
-          <TouchableOpacity style={styles.createCta} onPress={handleOpenCreateModal}>
-            <Plus size={16} color="#0f172a" />
-            <Text style={styles.createCtaText}>Nouvelle demande</Text>
-          </TouchableOpacity>
+          <Text style={styles.createCtaCompactLabel}>Nouvelle demande</Text>
         ) : null}
       </View>
     );
@@ -1723,11 +1806,13 @@ const MarketplaceScreen: React.FC = () => {
         data={leagues}
         keyExtractor={(item) => item.league}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const displayLeague = normalizeLeagueLabelForDisplay(item.league, selectedCountry);
+          return (
           <TouchableOpacity style={styles.scopeCard} onPress={() => handleSelectLeague(item.league)}>
             <View style={styles.leagueCardLeft}>
               {(() => {
-                const visual = getLeagueVisual(item.league, selectedCountry);
+                const visual = getLeagueVisual(displayLeague, selectedCountry);
                 const hasLogo = Boolean(visual.logoUri) && !failedLeagueLogos[item.league];
                 const flag = visual.countryCode ? flagFromCountryCode(visual.countryCode) : '🏳️';
 
@@ -1764,14 +1849,15 @@ const MarketplaceScreen: React.FC = () => {
 
               <View>
                 <Text style={styles.scopeCardTitle} numberOfLines={1}>
-                  {item.league}
+                  {displayLeague}
                 </Text>
                 <Text style={styles.scopeCardMeta}>{item.requestsCount} request(s)</Text>
               </View>
             </View>
             <ChevronRight size={18} color={colors.text.secondary} />
           </TouchableOpacity>
-        )}
+          );
+        }}
       />
     );
   };
@@ -2648,7 +2734,7 @@ const MarketplaceScreen: React.FC = () => {
                   <TextInput
                     value={createForm.league}
                     onChangeText={(value) => setCreateForm((prev) => ({ ...prev, league: value }))}
-                    placeholder="Ligue 1"
+                    placeholder={leagueInputPlaceholder}
                     placeholderTextColor={colors.text.secondary}
                     style={styles.fieldInput}
                   />
@@ -2851,27 +2937,49 @@ const MarketplaceScreen: React.FC = () => {
       </Modal>
     );
   };
+  const renderBackdrop = () => (
+    <View pointerEvents="none" style={styles.backdropLayer}>
+      <LinearGradient
+        colors={['rgba(228,255,59,0.14)', 'rgba(228,255,59,0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backdropGlowTop}
+      />
+      <LinearGradient
+        colors={['rgba(88,230,255,0.12)', 'rgba(88,230,255,0)']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.backdropGlowBottom}
+      />
+    </View>
+  );
 
   if (!canOpenHub) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{dictionary.marketplace.header.title}</Text>
-          <Text style={styles.headerSubtitle}>{dictionary.marketplace.header.subtitle}</Text>
-        </View>
+      <SafeAreaView style={styles.container} edges={shouldCompactHeaderForIos ? [] : ['top']}>
+        {renderBackdrop()}
+        <ScreenHeader
+          title={dictionary.marketplace.header.title}
+          subtitle={dictionary.marketplace.header.subtitle}
+          compact
+          safeAreaEdges={['top']}
+          safeAreaTopOffset={shouldCompactHeaderForIos ? -iosHeaderOffset : undefined}
+        />
         {renderScoutsTab()}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Transfer Market</Text>
-        <Text style={styles.headerSubtitle}>
-          Hub opportunités clubs ({role || 'Rôle inconnu'})
-        </Text>
-      </View>
+    <SafeAreaView style={styles.container} edges={shouldCompactHeaderForIos ? [] : ['top']}>
+      {renderBackdrop()}
+      <ScreenHeader
+        title="Transfer Market"
+        subtitle={`Hub opportunités clubs (${role || 'Rôle inconnu'})`}
+        compact
+        safeAreaEdges={['top']}
+        safeAreaTopOffset={shouldCompactHeaderForIos ? -iosHeaderOffset : undefined}
+      />
 
       {renderSegmentSwitcher()}
       {segment === 'REQUESTS' ? renderRequestsHub() : renderLegacyRequestsTab()}
@@ -2888,26 +2996,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
+  backdropLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
-  headerTitle: {
-    fontSize: typography.sizes.h2,
-    fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
+  backdropGlowTop: {
+    position: 'absolute',
+    top: -130,
+    left: -70,
+    width: 280,
+    height: 280,
+    borderRadius: 180,
   },
-  headerSubtitle: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
+  backdropGlowBottom: {
+    position: 'absolute',
+    right: -90,
+    bottom: 120,
+    width: 280,
+    height: 280,
+    borderRadius: 180,
   },
   segmentContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    backgroundColor: colors.surface.glassLight,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    padding: 4,
+    zIndex: 1,
   },
   segmentButton: {
     flex: 1,
@@ -2917,13 +3036,18 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.surface.border,
-    backgroundColor: colors.surface.glass,
-    height: 42,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+    minHeight: 40,
   },
   segmentButtonActive: {
     backgroundColor: colors.brand.primary,
     borderColor: colors.brand.primary,
+    shadowColor: colors.brand.primary,
+    shadowOpacity: 0.24,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 3,
   },
   segmentLabel: {
     fontSize: typography.sizes.sm,
@@ -2943,15 +3067,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  scopeHeaderStack: {
+    marginBottom: 0,
+    rowGap: spacing.xs,
   },
   scopeHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    flex: 1,
+    minWidth: 0,
+  },
+  scopeLeagueIdentity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     flex: 1,
+    minWidth: 0,
+  },
+  scopeHeaderLeagueTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: spacing.xs,
   },
   scopeHeaderActions: {
     flexDirection: 'row',
@@ -2963,11 +3106,13 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.h3,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
+    flexShrink: 1,
   },
   scopeSubtitle: {
     marginTop: 2,
     fontSize: typography.sizes.sm,
     color: colors.text.secondary,
+    flexShrink: 1,
   },
   backButton: {
     width: 34,
@@ -2983,10 +3128,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    minWidth: 0,
     height: 36,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
     backgroundColor: colors.brand.primary,
+    alignSelf: 'flex-start',
+    flexShrink: 0,
+  },
+  createCtaCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    height: 36,
+    width: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primary,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.25)',
+    flexShrink: 0,
+  },
+  createCtaCompactLabel: {
+    marginLeft: spacing.lg + 34 + spacing.sm,
+    marginRight: spacing.lg,
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fonts.medium,
   },
   createCtaText: {
     fontSize: typography.sizes.sm,
@@ -3184,6 +3353,24 @@ const styles = StyleSheet.create({
   },
   leagueFlagText: {
     fontSize: 14,
+  },
+  leagueLogoImageSmall: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.surface.glassLight,
+  },
+  leagueLogoFallbackSmall: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leagueLogoFallbackTextSmall: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontFamily: typography.fonts.bold,
   },
   leagueLogoImage: {
     width: 28,

@@ -28,7 +28,7 @@ import { api } from '../../services/api';
 
 type Props = NativeStackScreenProps<any, 'PlayStyleComparison'>;
 
-const CHART_COLORS = ['#E4FF3B', '#3B82F6', '#EC4899', '#10B981', '#F97316'];
+const CHART_COLORS = ['#e6ff3c', '#3B82F6', '#EC4899', '#10B981', '#F97316'];
 
 export const PlayStyleComparisonScreen: React.FC<Props> = ({ navigation, route }) => {
   const initialPlayerIds = route.params?.playerIds || [];
@@ -263,7 +263,7 @@ export const PlayStyleComparisonScreen: React.FC<Props> = ({ navigation, route }
 
         {comparison.insights.map((insight, index) => (
           <View key={index} style={styles.insightCard}>
-            <Ionicons name="bulb" size={20} color="#E4FF3B" />
+            <Ionicons name="bulb" size={20} color="#e6ff3c" />
             <Text style={styles.insightText}>{insight}</Text>
           </View>
         ))}
@@ -317,7 +317,7 @@ export const PlayStyleComparisonScreen: React.FC<Props> = ({ navigation, route }
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={['#0A0E1F', '#080C1D']} style={styles.header}>
+      <LinearGradient colors={['#353439', '#01071d']} style={styles.header}>
         <Text style={styles.headerTitle}>Compare Styles</Text>
         <Text style={styles.headerSubtitle}>
           {selectedPlayerIds.length} player{selectedPlayerIds.length !== 1 ? 's' : ''} selected
@@ -330,7 +330,7 @@ export const PlayStyleComparisonScreen: React.FC<Props> = ({ navigation, route }
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Selected Players</Text>
             <TouchableOpacity style={styles.addButton} onPress={handleAddPlayer}>
-              <Ionicons name="add" size={20} color="#E4FF3B" />
+              <Ionicons name="add" size={20} color="#e6ff3c" />
               <Text style={styles.addButtonText}>Add Player</Text>
             </TouchableOpacity>
           </View>
@@ -356,19 +356,19 @@ export const PlayStyleComparisonScreen: React.FC<Props> = ({ navigation, route }
             disabled={comparing}
           >
             <LinearGradient
-              colors={['#E4FF3B', '#B8CC00']}
+              colors={['#e6ff3c', '#c9e933']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.compareButtonGradient}
             >
               {comparing ? (
                 <>
-                  <ActivityIndicator size="small" color="#080C1D" />
+                  <ActivityIndicator size="small" color="#01071d" />
                   <Text style={styles.compareButtonText}>Comparing...</Text>
                 </>
               ) : (
                 <>
-                  <Ionicons name="git-compare" size={24} color="#080C1D" />
+                  <Ionicons name="git-compare" size={24} color="#01071d" />
                   <Text style={styles.compareButtonText}>Compare Players</Text>
                 </>
               )}
@@ -401,7 +401,7 @@ export const PlayStyleComparisonScreen: React.FC<Props> = ({ navigation, route }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
   },
   header: {
     padding: 20,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
   scrollView: {
     flex: 1,
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
   addButton: {
     flexDirection: 'row',
@@ -452,13 +452,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E4FF3B',
+    borderColor: '#e6ff3c',
     gap: 6,
   },
   addButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#E4FF3B',
+    color: '#e6ff3c',
   },
   playerChip: {
     flexDirection: 'row',
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   compareButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#080C1D',
+    color: '#01071d',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   },
   matrixLabelText: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '500',
   },
   insightsContainer: {

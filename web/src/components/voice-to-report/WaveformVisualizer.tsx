@@ -99,7 +99,7 @@ export default function WaveformVisualizer({
             style={{
               backgroundColor: isRecording
                 ? `rgba(228, 255, 59, ${0.3 + level * 0.7})` // arcane-accent with opacity
-                : "#9FA1A9", // arcane-grey
+                : "#b3afb2", // arcane-grey
             }}
             animate={{
               height: `${height}%`,

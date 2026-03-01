@@ -37,7 +37,7 @@ export function GeneratedReportPreview({
             <h2 className="text-3xl font-bold text-white">
               {report.playerName}
             </h2>
-            <span className="px-3 py-1 rounded-full bg-[#E4FF3B]/20 border border-[#E4FF3B]/30 text-[#E4FF3B] text-sm font-semibold">
+            <span className="px-3 py-1 rounded-full bg-[#e6ff3c]/20 border border-[#e6ff3c]/30 text-[#e6ff3c] text-sm font-semibold">
               {report.position}
             </span>
           </div>
@@ -89,7 +89,7 @@ export function GeneratedReportPreview({
       )}
 
       {/* Summary */}
-      <div className="p-6 rounded-xl bg-gradient-to-br from-[#E4FF3B]/10 to-purple-500/10 border border-white/10">
+      <div className="p-6 rounded-xl bg-gradient-to-br from-[#e6ff3c]/10 to-purple-500/10 border border-white/10">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-white">
             Executive Summary
@@ -106,7 +106,7 @@ export function GeneratedReportPreview({
           <textarea
             value={editedSummary}
             onChange={(e) => setEditedSummary(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-[#E4FF3B] transition-colors resize-none"
+            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-[#e6ff3c] transition-colors resize-none"
             rows={6}
           />
         ) : (
@@ -150,7 +150,7 @@ export function GeneratedReportPreview({
           <h4 className="text-sm font-semibold text-gray-400 mb-2">
             Overall Rating
           </h4>
-          <p className="text-4xl font-bold text-[#E4FF3B]">
+          <p className="text-4xl font-bold text-[#e6ff3c]">
             {report.overallRating.toFixed(1)}/10
           </p>
         </div>
@@ -226,7 +226,7 @@ export function GeneratedReportPreview({
       <div className="flex gap-4">
         <button
           onClick={handleSave}
-          className="flex-1 py-4 rounded-xl bg-[#E4FF3B] text-black font-bold hover:bg-[#d4ef2b] transition-colors flex items-center justify-center gap-2"
+          className="flex-1 py-4 rounded-xl bg-[#e6ff3c] text-black font-bold hover:bg-[#d8f14e] transition-colors flex items-center justify-center gap-2"
         >
           <Save className="w-5 h-5" />
           Save as Official Report

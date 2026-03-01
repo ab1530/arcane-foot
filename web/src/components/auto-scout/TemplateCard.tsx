@@ -20,7 +20,7 @@ export function TemplateCard({ template, selected, onClick }: TemplateCardProps)
         relative p-6 rounded-xl border-2 transition-all duration-300
         bg-black/30 backdrop-blur-sm
         ${selected
-          ? 'border-[#E4FF3B] shadow-lg shadow-[#E4FF3B]/20'
+          ? 'border-[#e6ff3c] shadow-lg shadow-[#e6ff3c]/20'
           : 'border-white/10 hover:border-white/30'
         }
       `}
@@ -30,7 +30,7 @@ export function TemplateCard({ template, selected, onClick }: TemplateCardProps)
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#E4FF3B] flex items-center justify-center"
+          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#e6ff3c] flex items-center justify-center"
         >
           <Check className="w-4 h-4 text-black" />
         </motion.div>
@@ -60,7 +60,7 @@ export function TemplateCard({ template, selected, onClick }: TemplateCardProps)
         {/* Cost estimate */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
           <span className="text-xs text-gray-400">Est. cost:</span>
-          <span className="text-sm font-bold text-[#E4FF3B]">
+          <span className="text-sm font-bold text-[#e6ff3c]">
             {template.costEstimate}
           </span>
         </div>

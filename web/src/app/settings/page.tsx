@@ -14,7 +14,7 @@ export default function SettingsPage() {
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E4FF3B] mx-auto"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e6ff3c] mx-auto"></div>
         <p className="mt-4 text-gray-400">Redirecting to profile...</p>
       </div>
     </div>

@@ -74,7 +74,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
         {gradient && (
           <defs>
             <linearGradient id={`progress-gradient-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#E4FF3B" />
+              <stop offset="0%" stopColor="#e6ff3c" />
               <stop offset="100%" stopColor="#10B981" />
             </linearGradient>
           </defs>
@@ -98,7 +98,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
             cy={dimension / 2}
             r={radius}
             fill="none"
-            stroke={gradient ? `url(#progress-gradient-${size})` : '#E4FF3B'}
+            stroke={gradient ? `url(#progress-gradient-${size})` : '#e6ff3c'}
             strokeWidth={thickness}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -117,7 +117,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
             cy={dimension / 2}
             r={radius}
             fill="none"
-            stroke={gradient ? `url(#progress-gradient-${size})` : '#E4FF3B'}
+            stroke={gradient ? `url(#progress-gradient-${size})` : '#e6ff3c'}
             strokeWidth={thickness}
             strokeLinecap="round"
             strokeDasharray={circumference * 0.75}

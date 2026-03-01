@@ -42,9 +42,9 @@ export function ReportSectionCard({ title, section, defaultExpanded = false }: R
                   key={i}
                   className={`w-4 h-4 ${
                     i < fullStars
-                      ? 'fill-[#E4FF3B] text-[#E4FF3B]'
+                      ? 'fill-[#e6ff3c] text-[#e6ff3c]'
                       : i === fullStars && hasHalfStar
-                      ? 'fill-[#E4FF3B]/50 text-[#E4FF3B]'
+                      ? 'fill-[#e6ff3c]/50 text-[#e6ff3c]'
                       : 'fill-none text-gray-600'
                   }`}
                 />

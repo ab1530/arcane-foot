@@ -42,7 +42,7 @@ export const AccuracyTab: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E4FF3B" />
+        <ActivityIndicator size="large" color="#e6ff3c" />
         <Text style={styles.loadingText}>Loading accuracy metrics...</Text>
       </View>
     );
@@ -66,7 +66,7 @@ export const AccuracyTab: React.FC = () => {
     datasets: [
       {
         data: [0.92, 0.88, 0.85, 0.82, 0.79, latestMetrics.avgError],
-        color: () => '#E4FF3B',
+        color: () => '#e6ff3c',
         strokeWidth: 3,
       },
     ],
@@ -85,7 +85,7 @@ export const AccuracyTab: React.FC = () => {
     propsForDots: {
       r: '6',
       strokeWidth: '2',
-      stroke: '#E4FF3B',
+      stroke: '#e6ff3c',
     },
   };
 
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   insightHighlight: {
-    color: '#E4FF3B',
+    color: '#e6ff3c',
     fontWeight: '600',
   },
   bottomSpacer: {

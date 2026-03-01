@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   predictButton: {
-    backgroundColor: '#E4FF3B',
+    backgroundColor: '#e6ff3c',
     marginHorizontal: 16,
     marginVertical: 20,
     padding: 16,

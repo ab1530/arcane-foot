@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   rankText: {
-    color: '#E4FF3B',
+    color: '#e6ff3c',
     fontSize: 12,
     fontWeight: 'bold',
   },

@@ -33,7 +33,7 @@ export function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) 
 
       {/* Selected template info */}
       {selected && (
-        <div className="p-4 rounded-xl bg-[#E4FF3B]/10 border border-[#E4FF3B]/30">
+        <div className="p-4 rounded-xl bg-[#e6ff3c]/10 border border-[#e6ff3c]/30">
           <p className="text-sm text-white">
             <span className="font-semibold">Selected:</span>{' '}
             {REPORT_TEMPLATES.find((t) => t.id === selected)?.name}

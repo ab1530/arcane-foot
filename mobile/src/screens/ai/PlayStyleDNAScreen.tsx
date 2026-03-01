@@ -129,7 +129,7 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E4FF3B" />
+        <ActivityIndicator size="large" color="#e6ff3c" />
         <Text style={styles.loadingText}>Loading player data...</Text>
       </View>
     );
@@ -161,13 +161,13 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#E4FF3B"
+          tintColor="#e6ff3c"
         />
       }
     >
       {/* Header */}
       <LinearGradient
-        colors={['#0A0E1F', '#080C1D']}
+        colors={['#353439', '#01071d']}
         style={styles.header}
       >
         <View style={styles.playerInfo}>
@@ -181,7 +181,7 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
           style={styles.exploreButton}
           onPress={() => navigation.navigate('StyleExplorer')}
         >
-          <Ionicons name="grid-outline" size={20} color="#E4FF3B" />
+          <Ionicons name="grid-outline" size={20} color="#e6ff3c" />
           <Text style={styles.exploreButtonText}>Explore Styles</Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -194,19 +194,19 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
           disabled={classifying}
         >
           <LinearGradient
-            colors={['#E4FF3B', '#B8CC00']}
+            colors={['#e6ff3c', '#c9e933']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.classifyButtonGradient}
           >
             {classifying ? (
               <>
-                <ActivityIndicator size="small" color="#080C1D" />
+                <ActivityIndicator size="small" color="#01071d" />
                 <Text style={styles.classifyButtonText}>Classifying...</Text>
               </>
             ) : (
               <>
-                <Ionicons name="analytics" size={24} color="#080C1D" />
+                <Ionicons name="analytics" size={24} color="#01071d" />
                 <Text style={styles.classifyButtonText}>Classify Playing Style</Text>
               </>
             )}
@@ -256,7 +256,7 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
               style={styles.actionButton}
               onPress={handleCompareStyles}
             >
-              <Ionicons name="git-compare" size={20} color="#E4FF3B" />
+              <Ionicons name="git-compare" size={20} color="#e6ff3c" />
               <Text style={styles.actionButtonText}>Compare</Text>
             </TouchableOpacity>
 
@@ -264,7 +264,7 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
               style={styles.actionButton}
               onPress={handleClassifyStyle}
             >
-              <Ionicons name="refresh" size={20} color="#E4FF3B" />
+              <Ionicons name="refresh" size={20} color="#e6ff3c" />
               <Text style={styles.actionButtonText}>Re-classify</Text>
             </TouchableOpacity>
           </View>
@@ -327,25 +327,25 @@ export const PlayStyleDNAScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
   },
   contentContainer: {
     paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
   emptyContainer: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
@@ -359,12 +359,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     textAlign: 'center',
     marginBottom: 24,
   },
   selectButton: {
-    backgroundColor: '#E4FF3B',
+    backgroundColor: '#e6ff3c',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   selectButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#080C1D',
+    color: '#01071d',
   },
   header: {
     flexDirection: 'row',
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
   playerPosition: {
     fontSize: 16,
-    color: '#E4FF3B',
+    color: '#e6ff3c',
     fontWeight: '600',
   },
   exploreButton: {
@@ -402,13 +402,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E4FF3B',
+    borderColor: '#e6ff3c',
     gap: 8,
   },
   exploreButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E4FF3B',
+    color: '#e6ff3c',
   },
   classifyButton: {
     margin: 20,
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   classifyButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#080C1D',
+    color: '#01071d',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '500',
   },
   radarContainer: {
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E4FF3B',
+    color: '#e6ff3c',
   },
   infoCard: {
     flexDirection: 'row',
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     lineHeight: 18,
   },
 });

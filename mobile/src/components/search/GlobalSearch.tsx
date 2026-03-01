@@ -148,7 +148,10 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ visible, onClose, na
 
         switch (result.type) {
           case 'player':
-            targetNav.navigate('PlayerDetail', { playerId: result.id });
+            targetNav.navigate('Players', {
+              viewMode: 'LIST',
+              initialSearch: result.title,
+            });
             break;
           case 'club':
             targetNav.navigate('ClubDetail', { clubId: result.id });

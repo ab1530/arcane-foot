@@ -171,7 +171,7 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     estimatedTokens: 3200,
     costEstimate: '$0.026',
     icon: '🌱',
-    color: '#E4FF3B',
+    color: '#e6ff3c',
   },
   {
     id: 'QUICK_SCAN',

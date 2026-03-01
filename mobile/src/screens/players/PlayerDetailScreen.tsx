@@ -451,9 +451,8 @@ export const PlayerDetailScreen = ({ route, navigation }: any) => {
   );
 
   const canManageHighlights = useMemo(() => {
-    if (isAdmin) return true;
-    return !!user?.playerId && user.playerId === playerId;
-  }, [isAdmin, playerId, user?.playerId]);
+    return effectiveRole === 'PLAYER' && !!user?.playerId && user.playerId === playerId;
+  }, [effectiveRole, playerId, user?.playerId]);
 
   const openMediaVideo = useCallback(async (item: PlayerMediaItem) => {
     try {
@@ -1296,7 +1295,7 @@ export const PlayerDetailScreen = ({ route, navigation }: any) => {
                 onPress={() =>
                   navigation.navigate('PlayerHighlights', {
                     playerId,
-                    mode: isAdmin ? 'adminView' : 'owner',
+                    mode: 'owner',
                   })
                 }
               >

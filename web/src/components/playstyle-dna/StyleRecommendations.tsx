@@ -38,7 +38,7 @@ const getIconColor = (type: string): string => {
     case 'development':
       return '#F59E0B'; // Amber
     default:
-      return '#E4FF3B'; // Arcane accent
+      return '#e6ff3c'; // Arcane accent
   }
 };
 

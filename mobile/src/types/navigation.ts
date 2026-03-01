@@ -37,7 +37,12 @@ export type AppStackParamList = {
   AutoScoutHistory: undefined;
   MarketValue: { playerId?: string };
   MarketValueDetail: { playerId: string };
-  Players: undefined;
+  Players:
+    | {
+        viewMode?: 'LIST' | 'DISCOVERED';
+        initialSearch?: string;
+      }
+    | undefined;
   ScoutQuickImport: undefined;
   AgentRequests: undefined;
   ScoutsDirectory: undefined;

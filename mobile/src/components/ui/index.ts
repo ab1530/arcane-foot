@@ -10,3 +10,6 @@ export { Icon, TabIcon } from './Icon';
 export { Skeleton, SkeletonGroup, SkeletonCard, SkeletonList } from './Skeleton';
 export { GradientText } from './GradientText';
 export { AnimatedBadge } from './AnimatedBadge';
+export { Select } from './Select';
+export { SegmentedControl } from './SegmentedControl';
+export { SectionHeader } from './SectionHeader';

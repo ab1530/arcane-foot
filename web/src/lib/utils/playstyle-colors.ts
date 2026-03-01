@@ -45,7 +45,7 @@ export const STYLE_ICONS: Record<string, LucideIcon> = {
 };
 
 export const getStyleColor = (style: string): string => {
-  return STYLE_COLORS[style] || '#E4FF3B';
+  return STYLE_COLORS[style] || '#e6ff3c';
 };
 
 export const getStyleIcon = (style: string): LucideIcon => {

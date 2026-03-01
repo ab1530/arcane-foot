@@ -36,7 +36,7 @@ export function AnimatedBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
       {/* Grille subtile */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1B2133_1px,transparent_1px),linear-gradient(to_bottom,#1B2133_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#353439_1px,transparent_1px),linear-gradient(to_bottom,#353439_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30" />
 
       {/* Gradient radial central */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(228,255,59,0.03)_0%,transparent_50%)]" />

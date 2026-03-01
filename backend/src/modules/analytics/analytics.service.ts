@@ -280,6 +280,13 @@ export class AnalyticsService {
           variant: 'secondary',
         },
         {
+          id: 'agentRequests',
+          label: 'Demandes agent',
+          target: 'AgentRequests',
+          icon: 'clipboard-outline',
+          variant: 'secondary',
+        },
+        {
           id: 'analytics',
           label: 'Voir les analytics',
           target: 'Analytics',
@@ -310,6 +317,13 @@ export class AnalyticsService {
           label: 'Demandes agent',
           target: 'AgentRequests',
           icon: 'clipboard-outline',
+          variant: 'secondary',
+        },
+        {
+          id: 'analytics',
+          label: 'Voir les analytics',
+          target: 'Analytics',
+          icon: 'analytics',
           variant: 'secondary',
         },
       ];

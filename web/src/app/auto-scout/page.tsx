@@ -291,7 +291,7 @@ export default function AutoScoutPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Sparkles className="w-8 h-8 text-[#E4FF3B]" />
+            <Sparkles className="w-8 h-8 text-[#e6ff3c]" />
             <h1 className="text-4xl font-bold text-white" data-test="auto-scout-hero-title">
               {heroCopy.title}
             </h1>
@@ -328,7 +328,7 @@ export default function AutoScoutPage() {
             className={`
               flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
               ${activeTab === 'generate'
-                ? 'bg-[#E4FF3B] text-black'
+                ? 'bg-[#e6ff3c] text-black'
                 : 'bg-white/10 text-white hover:bg-white/20'
               }
             `}
@@ -342,7 +342,7 @@ export default function AutoScoutPage() {
             className={`
               flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
               ${activeTab === 'history'
-                ? 'bg-[#E4FF3B] text-black'
+                ? 'bg-[#e6ff3c] text-black'
                 : 'bg-white/10 text-white hover:bg-white/20'
               }
             `}
@@ -372,7 +372,7 @@ export default function AutoScoutPage() {
                         className={`
                           flex items-center gap-3 px-4 py-2 rounded-full transition-all
                           ${index <= currentStepIndex
-                            ? 'bg-[#E4FF3B]/20 border-2 border-[#E4FF3B]'
+                            ? 'bg-[#e6ff3c]/20 border-2 border-[#e6ff3c]'
                             : 'bg-white/5 border-2 border-white/20'
                           }
                         `}
@@ -381,7 +381,7 @@ export default function AutoScoutPage() {
                           className={`
                             w-8 h-8 rounded-full flex items-center justify-center font-bold
                             ${index <= currentStepIndex
-                              ? 'bg-[#E4FF3B] text-black'
+                              ? 'bg-[#e6ff3c] text-black'
                               : 'bg-white/10 text-gray-500'
                             }
                           `}
@@ -407,7 +407,7 @@ export default function AutoScoutPage() {
                           className={`
                             w-5 h-5
                             ${index < currentStepIndex
-                              ? 'text-[#E4FF3B]'
+                              ? 'text-[#e6ff3c]'
                               : 'text-gray-600'
                             }
                           `}
@@ -493,7 +493,7 @@ export default function AutoScoutPage() {
                   <button
                     onClick={handleNext}
                     disabled={currentStep === 'template' && !selectedTemplate}
-                    className="px-6 py-3 rounded-xl bg-[#E4FF3B] text-black font-semibold hover:bg-[#d4ef2b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-3 rounded-xl bg-[#e6ff3c] text-black font-semibold hover:bg-[#d8f14e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {autoScoutCopy.navigation.next}
                     <ArrowRight className="w-5 h-5" />

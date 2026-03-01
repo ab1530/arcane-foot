@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -33,6 +34,213 @@ type CreateReportVoicePayload = {
   confidence?: number;
   audioUrl?: string;
   warnings?: string[];
+};
+
+type NationalityOption = {
+  code: string;
+  label: string;
+};
+
+type PositionOption = {
+  code: string;
+  label: string;
+};
+
+const OBSERVED_NATIONALITY_OPTIONS: NationalityOption[] = [
+  { code: 'FR', label: 'France' },
+  { code: 'DE', label: 'Allemagne' },
+  { code: 'ES', label: 'Espagne' },
+  { code: 'IT', label: 'Italie' },
+  { code: 'GB', label: 'Angleterre' },
+  { code: 'PT', label: 'Portugal' },
+  { code: 'BE', label: 'Belgique' },
+  { code: 'NL', label: 'Pays-Bas' },
+  { code: 'CH', label: 'Suisse' },
+  { code: 'AT', label: 'Autriche' },
+  { code: 'MA', label: 'Maroc' },
+  { code: 'DZ', label: 'Algérie' },
+  { code: 'TN', label: 'Tunisie' },
+  { code: 'EG', label: 'Égypte' },
+  { code: 'CM', label: 'Cameroun' },
+  { code: 'SN', label: 'Sénégal' },
+  { code: 'CI', label: "Côte d'Ivoire" },
+  { code: 'GH', label: 'Ghana' },
+  { code: 'NG', label: 'Nigeria' },
+  { code: 'US', label: 'États-Unis' },
+  { code: 'CA', label: 'Canada' },
+  { code: 'BR', label: 'Brésil' },
+  { code: 'AR', label: 'Argentine' },
+  { code: 'UY', label: 'Uruguay' },
+  { code: 'CO', label: 'Colombie' },
+  { code: 'JP', label: 'Japon' },
+  { code: 'KR', label: 'Corée du Sud' },
+  { code: 'AU', label: 'Australie' },
+];
+
+const PLAYER_POSITION_OPTIONS: PositionOption[] = [
+  { code: 'GK', label: 'Gardien de but' },
+  { code: 'CB', label: 'Défenseur central' },
+  { code: 'LB', label: 'Latéral gauche' },
+  { code: 'RB', label: 'Latéral droit' },
+  { code: 'DM', label: 'Milieu défensif' },
+  { code: 'CM', label: 'Milieu central' },
+  { code: 'AM', label: 'Milieu offensif' },
+  { code: 'LW', label: 'Ailier gauche' },
+  { code: 'RW', label: 'Ailier droit' },
+  { code: 'ST', label: 'Avant-centre' },
+];
+
+const countryCodeToFlag = (code?: string | null): string => {
+  const normalized = String(code ?? '')
+    .trim()
+    .toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    return '🏳️';
+  }
+  const points = normalized.split('').map((char) => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...points);
+};
+
+const normalizeObservedNationality = (value?: string | null): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  const upper = raw.toUpperCase();
+  if (/^[A-Z]{2}$/.test(upper)) {
+    return upper;
+  }
+
+  const aliases: Record<string, string> = {
+    FRA: 'FR',
+    FRANCE: 'FR',
+    DEU: 'DE',
+    GER: 'DE',
+    GERMANY: 'DE',
+    ALLEMAGNE: 'DE',
+    ESP: 'ES',
+    SPAIN: 'ES',
+    ESPAGNE: 'ES',
+    ITA: 'IT',
+    ITALY: 'IT',
+    ITALIE: 'IT',
+    GBR: 'GB',
+    UK: 'GB',
+    ENG: 'GB',
+    ENGLAND: 'GB',
+    ANGLETERRE: 'GB',
+    PRT: 'PT',
+    PORTUGAL: 'PT',
+    BEL: 'BE',
+    BELGIUM: 'BE',
+    BELGIQUE: 'BE',
+    NLD: 'NL',
+    NETHERLANDS: 'NL',
+    'PAYS-BAS': 'NL',
+    CHE: 'CH',
+    SWITZERLAND: 'CH',
+    SUISSE: 'CH',
+    AUT: 'AT',
+    AUSTRIA: 'AT',
+    AUTRICHE: 'AT',
+    MAR: 'MA',
+    MOROCCO: 'MA',
+    MAROC: 'MA',
+    ALG: 'DZ',
+    ALGERIA: 'DZ',
+    ALGERIE: 'DZ',
+    'ALGÉRIE': 'DZ',
+    TUN: 'TN',
+    TUNISIA: 'TN',
+    TUNISIE: 'TN',
+    EGY: 'EG',
+    EGYPT: 'EG',
+    EGYPTE: 'EG',
+    'ÉGYPTE': 'EG',
+    CMR: 'CM',
+    CAMEROON: 'CM',
+    CAMEROUN: 'CM',
+    SEN: 'SN',
+    SENEGAL: 'SN',
+    'SÉNÉGAL': 'SN',
+    CIV: 'CI',
+    GHA: 'GH',
+    GHANA: 'GH',
+    NGA: 'NG',
+    NIGERIA: 'NG',
+    USA: 'US',
+    'ETATS-UNIS': 'US',
+    'ÉTATS-UNIS': 'US',
+    CAN: 'CA',
+    CANADA: 'CA',
+    BRA: 'BR',
+    BRAZIL: 'BR',
+    BRESIL: 'BR',
+    'BRÉSIL': 'BR',
+    ARG: 'AR',
+    ARGENTINA: 'AR',
+    ARGENTINE: 'AR',
+    URY: 'UY',
+    URUGUAY: 'UY',
+    COL: 'CO',
+    COLOMBIA: 'CO',
+    COLOMBIE: 'CO',
+    JPN: 'JP',
+    JAPAN: 'JP',
+    JAPON: 'JP',
+    KOR: 'KR',
+    'SOUTH KOREA': 'KR',
+    'CORÉE DU SUD': 'KR',
+    'COREE DU SUD': 'KR',
+    AUS: 'AU',
+    AUSTRALIA: 'AU',
+    AUSTRALIE: 'AU',
+  };
+
+  return aliases[upper] ?? upper;
+};
+
+const normalizePlayerPosition = (value?: string | null): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const upper = raw.toUpperCase();
+
+  const aliases: Record<string, string> = {
+    GOALKEEPER: 'GK',
+    GARDIEN: 'GK',
+    'GARDIEN DE BUT': 'GK',
+    CENTRE_BACK: 'CB',
+    CENTER_BACK: 'CB',
+    DEFENSEUR_CENTRAL: 'CB',
+    'DÉFENSEUR CENTRAL': 'CB',
+    'DEFENSEUR CENTRAL': 'CB',
+    LEFT_BACK: 'LB',
+    'LATERAL GAUCHE': 'LB',
+    'LATÉRAL GAUCHE': 'LB',
+    RIGHT_BACK: 'RB',
+    'LATERAL DROIT': 'RB',
+    'LATÉRAL DROIT': 'RB',
+    DEFENSIVE_MIDFIELDER: 'DM',
+    'MILIEU DEFENSIF': 'DM',
+    'MILIEU DÉFENSIF': 'DM',
+    CENTRAL_MIDFIELDER: 'CM',
+    'MILIEU CENTRAL': 'CM',
+    ATTACKING_MIDFIELDER: 'AM',
+    'MILIEU OFFENSIF': 'AM',
+    LEFT_WINGER: 'LW',
+    'AILIER GAUCHE': 'LW',
+    RIGHT_WINGER: 'RW',
+    'AILIER DROIT': 'RW',
+    STRIKER: 'ST',
+    FORWARD: 'ST',
+    'AVANT CENTRE': 'ST',
+    'AVANT-CENTRE': 'ST',
+  };
+
+  if (PLAYER_POSITION_OPTIONS.some((option) => option.code === upper)) {
+    return upper;
+  }
+
+  return aliases[upper] ?? upper;
 };
 
 const normalizeRecommendationFromVoice = (
@@ -115,8 +323,12 @@ const CreateReportScreen = () => {
   const [playerMinutesPlayed, setPlayerMinutesPlayed] = useState('');
   const [matchPickerVisible, setMatchPickerVisible] = useState(false);
   const [playerPickerVisible, setPlayerPickerVisible] = useState(false);
+  const [nationalityPickerVisible, setNationalityPickerVisible] = useState(false);
+  const [positionPickerVisible, setPositionPickerVisible] = useState(false);
   const [matchSearch, setMatchSearch] = useState('');
   const [playerSearch, setPlayerSearch] = useState('');
+  const [nationalitySearch, setNationalitySearch] = useState('');
+  const [positionSearch, setPositionSearch] = useState('');
   const [voicePayload, setVoicePayload] = useState<CreateReportVoicePayload | undefined>(undefined);
 
   const selectedMatch = useMemo(
@@ -154,15 +366,15 @@ const CreateReportScreen = () => {
     setObservedNationality(
       (prev) =>
         prev ||
-        selectedPrimaryPlayer.nationality ||
-        selectedPrimaryPlayer.player?.nationality ||
-        '',
+        normalizeObservedNationality(
+          selectedPrimaryPlayer.nationality || selectedPrimaryPlayer.player?.nationality || '',
+        ),
     );
     setObservedPhone((prev) => prev || selectedPrimaryPlayer.user?.phone || '');
     setObservedEmail((prev) => prev || selectedPrimaryPlayer.user?.email || '');
 
     if (!playerPosition && selectedPrimaryPlayer.position) {
-      setPlayerPosition(selectedPrimaryPlayer.position);
+      setPlayerPosition(normalizePlayerPosition(selectedPrimaryPlayer.position));
     }
   }, [selectedPrimaryPlayer, playerPosition]);
 
@@ -199,7 +411,7 @@ const CreateReportScreen = () => {
       setTacticalRating(toStringValue(prefill.tacticalRating));
       setStrengths(prefill.strengths ?? '');
       setWeaknesses(prefill.weaknesses ?? '');
-      setPlayerPosition(prefill.position ?? '');
+      setPlayerPosition(normalizePlayerPosition(prefill.position ?? ''));
       setPlayerMinutesPlayed(toStringValue(prefill.minutesPlayed));
       setSummary(prefill.observations ?? prefill.keyMoments ?? '');
       if (Array.isArray(prefill.tags) && prefill.tags.length > 0) {
@@ -528,6 +740,48 @@ const CreateReportScreen = () => {
     });
   }, [playerSearch, players, formatPlayerName]);
 
+  const selectedPositionOption = useMemo(
+    () =>
+      PLAYER_POSITION_OPTIONS.find(
+        (option) => option.code === normalizePlayerPosition(playerPosition),
+      ),
+    [playerPosition],
+  );
+
+  const filteredPositions = useMemo(() => {
+    const query = positionSearch.trim().toLowerCase();
+    if (!query) {
+      return PLAYER_POSITION_OPTIONS;
+    }
+    return PLAYER_POSITION_OPTIONS.filter((option) => {
+      const haystack = `${option.label} ${option.code}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [positionSearch]);
+
+  const selectedNationalityOption = useMemo(
+    () =>
+      OBSERVED_NATIONALITY_OPTIONS.find(
+        (option) => option.code === normalizeObservedNationality(observedNationality),
+      ),
+    [observedNationality],
+  );
+  const selectedNationalityCode = useMemo(() => {
+    const normalized = normalizeObservedNationality(observedNationality);
+    return selectedNationalityOption?.code || normalized;
+  }, [observedNationality, selectedNationalityOption?.code]);
+
+  const filteredNationalities = useMemo(() => {
+    const query = nationalitySearch.trim().toLowerCase();
+    if (!query) {
+      return OBSERVED_NATIONALITY_OPTIONS;
+    }
+    return OBSERVED_NATIONALITY_OPTIONS.filter((option) => {
+      const haystack = `${option.label} ${option.code}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [nationalitySearch]);
+
   useEffect(() => {
     const hintedName = route.params?.prefillData?.playerName?.trim();
     if (!hintedName || selectedPlayerIds.length > 0 || players.length === 0) {
@@ -545,6 +799,20 @@ const CreateReportScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View pointerEvents="none" style={styles.backdropLayer}>
+        <LinearGradient
+          colors={['rgba(228,255,59,0.15)', 'rgba(228,255,59,0)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.backdropGlowTop}
+        />
+        <LinearGradient
+          colors={['rgba(88,230,255,0.10)', 'rgba(88,230,255,0)']}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.backdropGlowBottom}
+        />
+      </View>
       <View style={styles.flex}>
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
@@ -665,9 +933,19 @@ const CreateReportScreen = () => {
             {renderInput('Nom observé', observedLastName, setObservedLastName, {
               placeholder: 'Regragui',
             })}
-            {renderInput('Nationalité observée', observedNationality, setObservedNationality, {
-              placeholder: 'Maroc',
-            })}
+            <View style={styles.fieldBlock}>
+              <Text style={styles.fieldLabel}>Nationalité observée</Text>
+              <TouchableOpacity
+                style={styles.nationalityTrigger}
+                onPress={() => setNationalityPickerVisible(true)}
+                testID="create-report-observed-nationality-picker"
+              >
+                <Text style={styles.nationalityFlagOnly}>
+                  {countryCodeToFlag(selectedNationalityCode)}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
             {renderInput('Téléphone observé', observedPhone, setObservedPhone, {
               placeholder: '+33 6 00 00 00 00',
             })}
@@ -694,9 +972,28 @@ const CreateReportScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t.context}</Text>
           <GlassCard variant="default" style={styles.card}>
-            {renderInput('Position jouée', playerPosition, setPlayerPosition, {
-              placeholder: 'Milieu central',
-            })}
+            <View style={styles.fieldBlock}>
+              <Text style={styles.fieldLabel}>Position jouée</Text>
+              <TouchableOpacity
+                style={styles.selectTrigger}
+                onPress={() => setPositionPickerVisible(true)}
+                testID="create-report-position-picker"
+              >
+                <View style={styles.selectValueWrap}>
+                  <Text
+                    style={[
+                      styles.selectValueText,
+                      !selectedPositionOption && !playerPosition && styles.selectValuePlaceholder,
+                    ]}
+                  >
+                    {selectedPositionOption
+                      ? `${selectedPositionOption.label} (${selectedPositionOption.code})`
+                      : playerPosition || 'Sélectionner un poste'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
             {renderInput('Minutes jouées', playerMinutesPlayed, setPlayerMinutesPlayed, {
               placeholder: '90',
               keyboardType: 'numeric',
@@ -856,21 +1153,22 @@ const CreateReportScreen = () => {
           </GlassCard>
         </View>
 
-          <View style={styles.section}>
-            <TouchableOpacity
-              testID="create-report-submit"
-              style={[styles.ctaButton, loading && { opacity: 0.6 }]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.darkBg} />
-              ) : (
-                <Text style={styles.ctaButtonText}>{submitLabel}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
         </ScrollView>
+
+        <View style={styles.submitBar}>
+          <TouchableOpacity
+            testID="create-report-submit"
+            style={[styles.ctaButton, loading && { opacity: 0.6 }]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.darkBg} />
+            ) : (
+              <Text style={styles.ctaButtonText}>{submitLabel}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
       <Modal
         visible={matchPickerVisible}
@@ -984,6 +1282,146 @@ const CreateReportScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={nationalityPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setNationalityPickerVisible(false);
+          setNationalitySearch('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choisir une nationalité</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => {
+                  setNationalityPickerVisible(false);
+                  setNationalitySearch('');
+                }}
+              >
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearchRow}>
+              <Ionicons name="search" size={16} color={colors.textSecondary} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Rechercher une nationalité"
+                placeholderTextColor={colors.textSecondary + '80'}
+                value={nationalitySearch}
+                onChangeText={setNationalitySearch}
+              />
+            </View>
+            <FlatList
+              data={filteredNationalities}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const isSelected = normalizeObservedNationality(observedNationality) === item.code;
+                return (
+                  <TouchableOpacity
+                    style={styles.modalRow}
+                    onPress={() => {
+                      setObservedNationality(item.code);
+                      setNationalityPickerVisible(false);
+                      setNationalitySearch('');
+                    }}
+                    testID={`nationality-option-${item.code}`}
+                  >
+                    <View style={styles.modalRowContent}>
+                      <Text style={styles.modalRowTitle}>{`${countryCodeToFlag(item.code)}  ${item.label}`}</Text>
+                      <Text style={styles.modalRowSubtitle}>{item.code}</Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color={colors.accent} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+              ListEmptyComponent={() => (
+                <Text style={styles.emptyText}>Aucune nationalité trouvée</Text>
+              )}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={
+                filteredNationalities.length === 0 ? styles.modalEmptyContent : undefined
+              }
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={positionPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setPositionPickerVisible(false);
+          setPositionSearch('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choisir un poste</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => {
+                  setPositionPickerVisible(false);
+                  setPositionSearch('');
+                }}
+              >
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearchRow}>
+              <Ionicons name="search" size={16} color={colors.textSecondary} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Rechercher un poste"
+                placeholderTextColor={colors.textSecondary + '80'}
+                value={positionSearch}
+                onChangeText={setPositionSearch}
+              />
+            </View>
+            <FlatList
+              data={filteredPositions}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const isSelected = normalizePlayerPosition(playerPosition) === item.code;
+                return (
+                  <TouchableOpacity
+                    style={styles.modalRow}
+                    onPress={() => {
+                      setPlayerPosition(item.code);
+                      setPositionPickerVisible(false);
+                      setPositionSearch('');
+                    }}
+                    testID={`position-option-${item.code}`}
+                  >
+                    <View style={styles.modalRowContent}>
+                      <Text style={styles.modalRowTitle}>{item.label}</Text>
+                      <Text style={styles.modalRowSubtitle}>{item.code}</Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color={colors.accent} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+              ListEmptyComponent={() => <Text style={styles.emptyText}>Aucun poste trouvé</Text>}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={
+                filteredPositions.length === 0 ? styles.modalEmptyContent : undefined
+              }
+            />
+          </View>
+        </View>
+      </Modal>
       </View>
     </SafeAreaView>
   );
@@ -997,6 +1435,26 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     container: {
       flex: 1,
       backgroundColor: colors.darkBg,
+    },
+    backdropLayer: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    backdropGlowTop: {
+      position: 'absolute',
+      top: -120,
+      left: -60,
+      width: 260,
+      height: 260,
+      borderRadius: 180,
+    },
+    backdropGlowBottom: {
+      position: 'absolute',
+      right: -90,
+      bottom: 140,
+      width: 260,
+      height: 260,
+      borderRadius: 180,
     },
     header: {
       paddingTop: 8,
@@ -1054,11 +1512,16 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontWeight: '700',
     },
     ctaButton: {
-      marginTop: 16,
       backgroundColor: colors.accent,
       paddingVertical: 14,
       borderRadius: 16,
       alignItems: 'center',
+      width: '100%',
+      shadowColor: colors.accent,
+      shadowOpacity: 0.28,
+      shadowOffset: { width: 0, height: 8 },
+      shadowRadius: 18,
+      elevation: 8,
     },
     ctaButtonText: {
       color: colors.darkBg,
@@ -1067,10 +1530,23 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     },
     content: {
       flex: 1,
+      zIndex: 1,
     },
     scrollContent: {
       flexGrow: 1,
-      paddingBottom: 60,
+      paddingBottom: 140,
+    },
+    submitBar: {
+      position: 'absolute',
+      left: 20,
+      right: 20,
+      bottom: 16,
+      zIndex: 10,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      backgroundColor: colors.dark + 'F2',
+      padding: 12,
     },
     section: {
       paddingHorizontal: 20,
@@ -1171,6 +1647,48 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.textSecondary,
       fontSize: 13,
       marginBottom: 6,
+    },
+    nationalityTrigger: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      backgroundColor: colors.glass,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      minHeight: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    nationalityFlagOnly: {
+      fontSize: 28,
+      lineHeight: 32,
+    },
+    selectTrigger: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      backgroundColor: colors.glass,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      minHeight: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    selectValueWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    selectValueText: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    selectValuePlaceholder: {
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
     input: {
       borderRadius: 12,

@@ -79,7 +79,7 @@ describe('AuthService', () => {
       email: signupDto.email,
       firstName: signupDto.firstName,
       lastName: signupDto.lastName,
-      role: 'PUBLIC',
+      role: 'SCOUT',
       phone: signupDto.phone,
       avatar: null,
       createdAt: new Date(),
@@ -113,7 +113,7 @@ describe('AuthService', () => {
           lastName: signupDto.lastName,
           phone: signupDto.phone,
           id: expect.any(String),
-          role: 'PUBLIC',
+          role: 'SCOUT',
           updatedAt: expect.any(Date),
         }),
         select: expect.any(Object),
@@ -131,6 +131,38 @@ describe('AuthService', () => {
         ...mockTokens,
         tokenType: 'Bearer',
       });
+    });
+
+    it('should map SUPER_ADMIN role to ADMIN', async () => {
+      const dto = { ...signupDto, role: 'SUPER_ADMIN' as const };
+      const adminMockUser = { ...mockUser, role: 'ADMIN' };
+
+      const mockTokens = {
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        accessTokenExpiresIn: 900,
+        refreshTokenExpiresIn: 2592000,
+      };
+
+      prisma.users.findUnique.mockResolvedValue(null);
+      prisma.users.create.mockResolvedValue(adminMockUser as any);
+      prisma.players.findUnique.mockResolvedValue(null as any);
+      refreshTokenService.generateTokens.mockResolvedValue(mockTokens);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+
+      await service.signup(dto);
+
+      expect(prisma.users.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          role: 'ADMIN',
+        }),
+        select: expect.any(Object),
+      });
+      expect(refreshTokenService.generateTokens).toHaveBeenCalledWith(
+        adminMockUser.id,
+        adminMockUser.email,
+        adminMockUser.role,
+      );
     });
 
     it('should throw ConflictException if email already exists', async () => {

@@ -39,7 +39,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import api from '../../services/api';
 import { logError } from '../../utils/logger';
-import { StatCard, QuickActionCard, ActivityItem } from './components';
+import { StatCard, QuickActionCard } from './components';
 import type { HardwareSession } from '../../types/hardware';
 import type { MobileHomeDashboardResponse, Player } from '../../types';
 import { DEFAULT_ROLE, isCategoryARole } from '../../lib/roles';
@@ -87,15 +87,6 @@ interface DashboardStats {
   matchesAttended: number;
   openDemandRequests: number;
   totalXP: number;
-}
-
-interface Activity {
-  id: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
-  title: string;
-  description: string;
-  timestamp: string;
 }
 
 interface Match {
@@ -228,10 +219,6 @@ export const DashboardScreen = ({ navigation }: any) => {
     currentXP: 0,
     nextLevelXP: 1000,
   });
-
-  const [recentActivities, setRecentActivities] = useState<Activity[]>(
-    dashboardCopy.activity.samples,
-  );
 
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>(
     dashboardCopy.matches.samples,
@@ -549,38 +536,93 @@ export const DashboardScreen = ({ navigation }: any) => {
 
   const handleNavigate = (screen: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (screen === 'Players') {
+      navigation.navigate('Players', { viewMode: 'LIST' });
+      return;
+    }
     navigation.navigate(screen);
   };
 
   const quickActions = useMemo(() => {
-    if (!isPlayerRole && Array.isArray(mobileHome?.quickActions) && mobileHome.quickActions.length > 0) {
-      return mobileHome.quickActions
+    const actionOrder = ['newReport', 'missionRequests', 'globalSearch', 'calendar'];
+    const actionRankById = actionOrder.reduce<Record<string, number>>((acc, id, index) => {
+      acc[id] = index;
+      return acc;
+    }, {});
+    const actionRankByTarget = {
+      CreateReport: 'newReport',
+      GlobalSearch: 'globalSearch',
+      MissionRequests: 'missionRequests',
+      Calendar: 'calendar',
+    } as Record<string, string>;
+    const ignoredTargetActions = new Set(['Analytics', 'AgentRequests']);
+    const rankAction = (action: { id?: string; target?: string }) => {
+      const key = action.id || actionRankByTarget[action.target ?? ''] || action.target || '';
+      return actionRankById[key] ?? 999;
+    };
+    const defaultMissionAction = {
+      id: 'missionRequests',
+      label:
+        dashboardCopy.quickActions?.items?.find((item: any) => item.id === 'missionRequests')?.label ??
+        'Demander mission',
+      icon: 'add',
+      target: 'MissionRequests',
+      variant: 'secondary' as const,
+    };
+
+    const cleanActions = (actions: any[]) =>
+      actions
+        .filter((action) => {
+          if (!action) return false;
+          if (ignoredTargetActions.has(action.target)) return false;
+          if (action.target === 'MissionRequests' && isPlayerRole) return false;
+          return true;
+        })
         .map((action) => ({
+          id: action.id,
           label: action.label,
           icon: action.icon,
           target: action.target,
           variant: action.variant,
-        }))
-        .filter((action) =>
+        }));
+
+    const ensureMissionAction = (actions: any[]) => {
+      if (isPlayerRole) {
+        return actions;
+      }
+      if (actions.some((action) => action.target === 'MissionRequests' || action.id === 'missionRequests')) {
+        return actions;
+      }
+      return [...actions, defaultMissionAction];
+    };
+
+    if (!isPlayerRole && Array.isArray(mobileHome?.quickActions) && mobileHome.quickActions.length > 0) {
+      const actions = ensureMissionAction(
+        cleanActions(mobileHome.quickActions as any[]).filter((action) =>
           scoutNewFlowEnabled ? true : action.target !== 'Calendar' && action.target !== 'Reports',
-        );
+        ),
+      );
+      return actions.sort((left, right) => rankAction(left) - rankAction(right)).slice(0, 3);
     }
 
     const base = Array.isArray(dashboardCopy.quickActions?.items)
       ? [...dashboardCopy.quickActions.items]
       : [];
 
-    const filtered = base.filter((a: any) => {
-      if (a?.target === 'ClubNeeds') return false;
-      if (!scoutNewFlowEnabled && (a?.target === 'Calendar' || a?.target === 'Reports')) {
-        return false;
-      }
-      return true;
-    });
+    const filtered = ensureMissionAction(
+      cleanActions(base).filter((a: any) => {
+        if (a?.target === 'ClubNeeds') return false;
+        if (!scoutNewFlowEnabled && (a?.target === 'Calendar' || a?.target === 'Reports')) {
+          return false;
+        }
+        return true;
+      }),
+    );
+
     if (isPlayerRole) {
-      return filtered.slice(0, 3);
+      return filtered;
     }
-    return filtered.slice(0, 3);
+    return filtered.sort((left, right) => rankAction(left) - rankAction(right)).slice(0, 3);
   }, [dashboardCopy.quickActions?.items, isPlayerRole, mobileHome?.quickActions, scoutNewFlowEnabled]);
 
   const statCards = useMemo<DashboardCardDescriptor[]>(() => {
@@ -739,9 +781,27 @@ export const DashboardScreen = ({ navigation }: any) => {
   // RENDER
   // ============================================================================
 
+  const renderBackdrop = () => (
+    <View pointerEvents="none" style={styles.backdropLayer}>
+      <LinearGradient
+        colors={['rgba(228, 255, 59, 0.16)', 'rgba(228, 255, 59, 0.00)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backdropGlowTop}
+      />
+      <LinearGradient
+        colors={['rgba(88, 230, 255, 0.10)', 'rgba(88, 230, 255, 0.00)']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.backdropGlowBottom}
+      />
+    </View>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        {renderBackdrop()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={tokens.colors.yellow.DEFAULT} />
           <Text style={styles.loadingText}>{dashboardCopy.loading}</Text>
@@ -756,6 +816,7 @@ export const DashboardScreen = ({ navigation }: any) => {
     if (playerDashboardV2Enabled) {
       return (
         <SafeAreaView style={styles.container} edges={['top']}>
+          {renderBackdrop()}
           <ScrollView
             testID="dashboard-scroll"
             style={styles.scrollView}
@@ -1095,6 +1156,7 @@ export const DashboardScreen = ({ navigation }: any) => {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        {renderBackdrop()}
         <ScrollView
           testID="dashboard-scroll"
           style={styles.scrollView}
@@ -1265,6 +1327,7 @@ export const DashboardScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {renderBackdrop()}
       <ScrollView
         testID="dashboard-scroll"
         style={styles.scrollView}
@@ -1467,31 +1530,6 @@ export const DashboardScreen = ({ navigation }: any) => {
         ) : null}
 
         {/* ================================================================ */}
-        {/* RECENT ACTIVITY */}
-        {/* ================================================================ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{dashboardCopy.activity.title}</Text>
-            <TouchableOpacity onPress={() => handleNavigate('Activity')}>
-              <Text style={styles.viewAllLink}>{dashboardCopy.activity.viewAll}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.activityCard}>
-            {recentActivities.slice(0, 5).map((activity, index) => (
-              <ActivityItem
-                key={activity.id}
-                icon={activity.icon}
-                iconColor={activity.iconColor}
-                title={activity.title}
-                description={activity.description}
-                timestamp={activity.timestamp}
-                showSeparator={index < recentActivities.length - 1}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* ================================================================ */}
         {/* UPCOMING MATCHES */}
         {/* ================================================================ */}
         <View style={[styles.section, styles.lastSection]}>
@@ -1566,12 +1604,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: tokens.colors.arcane.black,
   },
+  backdropLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  backdropGlowTop: {
+    position: 'absolute',
+    top: -120,
+    left: -40,
+    width: 280,
+    height: 280,
+    borderRadius: 160,
+  },
+  backdropGlowBottom: {
+    position: 'absolute',
+    right: -90,
+    bottom: 120,
+    width: 260,
+    height: 260,
+    borderRadius: 180,
+  },
   scrollView: {
     flex: 1,
+    zIndex: 1,
   },
   content: {
-    padding: 16,
-    paddingBottom: 80,
+    padding: 18,
+    paddingBottom: 90,
   },
   loadingContainer: {
     flex: 1,
@@ -2114,16 +2173,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: tokens.colors.feature.gamification,
     fontWeight: tokens.fontWeight.semibold,
-  },
-
-  // Activity Card
-  activityCard: {
-    backgroundColor: tokens.colors.arcane.charcoal,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: tokens.colors.arcane.slate + '60',
-    ...tokens.shadows.md,
   },
 
   // Matches Card

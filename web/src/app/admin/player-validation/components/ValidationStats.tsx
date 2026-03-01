@@ -25,7 +25,7 @@ interface ValidationStatsProps {
 }
 
 const COLORS = {
-  pending: '#E4FF3B',
+  pending: '#e6ff3c',
   verified: '#10B981',
   rejected: '#EF4444',
   suspicious: '#F59E0B',
@@ -170,8 +170,8 @@ export const ValidationStats: React.FC<ValidationStatsProps> = ({ stats, isLoadi
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0F1425',
-                      border: '1px solid #1B2133',
+                      backgroundColor: '#353439',
+                      border: '1px solid #353439',
                       borderRadius: '8px',
                       color: '#FFFFFF',
                     }}
@@ -197,13 +197,13 @@ export const ValidationStats: React.FC<ValidationStatsProps> = ({ stats, isLoadi
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1B2133" />
-                  <XAxis dataKey="name" stroke="#9FA1A9" />
-                  <YAxis stroke="#9FA1A9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#353439" />
+                  <XAxis dataKey="name" stroke="#b3afb2" />
+                  <YAxis stroke="#b3afb2" />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0F1425',
-                      border: '1px solid #1B2133',
+                      backgroundColor: '#353439',
+                      border: '1px solid #353439',
                       borderRadius: '8px',
                       color: '#FFFFFF',
                     }}

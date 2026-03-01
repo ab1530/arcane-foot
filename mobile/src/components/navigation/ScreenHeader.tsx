@@ -35,6 +35,11 @@ interface ScreenHeaderProps {
   title?: string;
 
   /**
+   * Optional subtitle below the title
+   */
+  subtitle?: string;
+
+  /**
    * Show back button (default: true)
    */
   showBackButton?: boolean;
@@ -68,10 +73,25 @@ interface ScreenHeaderProps {
    * Large title style (default: false)
    */
   largeTitle?: boolean;
+
+  /**
+   * Compact height and tighter spacing (default: false)
+   */
+  compact?: boolean;
+  /**
+   * Safe area edges for the header container.
+   */
+  safeAreaEdges?: ('top' | 'bottom' | 'left' | 'right')[];
+  /**
+   * Optional manual top offset added to safe-area container.
+   * Useful to fine-tune iOS header placement.
+   */
+  safeAreaTopOffset?: number;
 }
 
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
+  subtitle,
   showBackButton = true,
   onBackPress,
   rightActions,
@@ -79,6 +99,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   backgroundColor = tokens.colors.arcane.black,
   borderBottom = true,
   largeTitle = false,
+  compact = false,
+  safeAreaEdges = ['top'],
+  safeAreaTopOffset,
 }) => {
   const navigation = useNavigation();
 
@@ -92,11 +115,14 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   };
 
   const HeaderContent = (
-    <View style={[
-      styles.container,
-      borderBottom && styles.containerWithBorder,
-      !blur && { backgroundColor },
-    ]}>
+    <View
+      style={[
+        styles.container,
+        compact ? styles.containerCompact : styles.containerRegular,
+        borderBottom && styles.containerWithBorder,
+        !blur && { backgroundColor },
+      ]}
+    >
       {/* Left side - Back button */}
       <View style={styles.leftSection}>
         {showBackButton && (
@@ -121,14 +147,21 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       {/* Center - Title */}
       <View style={styles.centerSection}>
         {title && (
-          <Text
-            style={[
-              largeTitle ? styles.titleLarge : styles.title,
-            ]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
+          <View style={styles.centerTextStack}>
+            <Text
+              style={[
+                largeTitle ? styles.titleLarge : styles.title,
+              ]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            {subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
         )}
       </View>
 
@@ -140,24 +173,31 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   );
 
   if (blur) {
-    return (
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <BlurView
-          intensity={80}
-          tint="dark"
-          style={[
-            styles.blurContainer,
-            borderBottom && styles.containerWithBorder,
-          ]}
-        >
-          {HeaderContent}
-        </BlurView>
-      </SafeAreaView>
-    );
+    const safeAreaStyle = [styles.safeArea];
+    if (typeof safeAreaTopOffset === 'number' && !Number.isNaN(safeAreaTopOffset)) {
+      safeAreaStyle.push({ paddingTop: safeAreaTopOffset });
+    }
+
+  return (
+    <SafeAreaView edges={safeAreaEdges} style={safeAreaStyle}>
+      <BlurView
+        intensity={80}
+        tint="dark"
+        style={[styles.blurContainer, borderBottom && styles.containerWithBorder]}
+      >
+        {HeaderContent}
+      </BlurView>
+    </SafeAreaView>
+  );
+  }
+
+  const safeAreaStyle = [styles.safeArea];
+  if (typeof safeAreaTopOffset === 'number' && !Number.isNaN(safeAreaTopOffset)) {
+    safeAreaStyle.push({ paddingTop: safeAreaTopOffset });
   }
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={safeAreaEdges} style={safeAreaStyle}>
       {HeaderContent}
     </SafeAreaView>
   );
@@ -176,8 +216,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+  },
+  containerRegular: {
     paddingVertical: 12,
     minHeight: 56,
+  },
+  containerCompact: {
+    paddingVertical: 8,
+    minHeight: 48,
   },
   containerWithBorder: {
     borderBottomWidth: 0.5,
@@ -192,6 +238,9 @@ const styles = StyleSheet.create({
     flex: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerTextStack: {
+    alignItems: 'center',
   },
   rightSection: {
     flex: 1,
@@ -226,5 +275,12 @@ const styles = StyleSheet.create({
     color: tokens.colors.gray[50],
     fontWeight: tokens.fontWeight.black,
     letterSpacing: -0.5,
+  },
+  subtitle: {
+    marginTop: 2,
+    ...typography.caption,
+    color: tokens.colors.gray[400],
+    fontWeight: tokens.fontWeight.medium,
+    fontSize: 12,
   },
 });

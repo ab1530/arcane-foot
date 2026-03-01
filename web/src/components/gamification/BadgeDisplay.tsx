@@ -62,8 +62,8 @@ export const BadgeDisplay: React.FC<BadgeDisplayProps> = ({
         )}
         style={{
           borderWidth: 3,
-          borderColor: isEarned ? rarityColor : '#3F3F46',
-          backgroundColor: '#1B1B1F',
+          borderColor: isEarned ? rarityColor : '#b3afb2',
+          backgroundColor: '#353439',
           boxShadow: isEarned ? `0 0 20px ${rarityColor}30` : undefined,
         }}
         onClick={isEarned ? onClick : undefined}
@@ -134,8 +134,8 @@ export const BadgeDisplay: React.FC<BadgeDisplayProps> = ({
             )}
             style={{
               borderWidth: 3,
-              borderColor: isEarned ? rarityColor : '#3F3F46',
-              backgroundColor: '#1B1B1F',
+              borderColor: isEarned ? rarityColor : '#b3afb2',
+              backgroundColor: '#353439',
               boxShadow: isEarned ? `0 0 20px ${rarityColor}30` : undefined,
             }}
             whileHover={isEarned ? { rotate: [0, -5, 5, -5, 0], scale: 1.05 } : undefined}

@@ -172,7 +172,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
             placeholder="Search for a player..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#E4FF3B] transition-colors"
+            className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#e6ff3c] transition-colors"
           />
         </div>
 
@@ -228,7 +228,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
         <select
           value={matchId}
           onChange={(e) => setMatchId(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-[#E4FF3B] transition-colors"
+          className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-[#e6ff3c] transition-colors"
         >
           <option value="">Select a match (optional)</option>
           {matches.map((match) => (
@@ -252,7 +252,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
           onChange={(e) => setCustomContext(e.target.value)}
           placeholder="Add any specific context, focus areas, or questions for the AI..."
           rows={4}
-          className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#E4FF3B] transition-colors resize-none"
+          className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#e6ff3c] transition-colors resize-none"
         />
         <p className="text-xs text-gray-500 mt-1">
           E.g., "Focus on defensive positioning" or "Compare with Xavi's playing style"
@@ -266,7 +266,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
           id="autoSave"
           checked={autoSave}
           onChange={(e) => setAutoSave(e.target.checked)}
-          className="mt-1 w-4 h-4 rounded border-white/20 bg-black/40 text-[#E4FF3B] focus:ring-[#E4FF3B] focus:ring-offset-0"
+          className="mt-1 w-4 h-4 rounded border-white/20 bg-black/40 text-[#e6ff3c] focus:ring-[#e6ff3c] focus:ring-offset-0"
         />
         <div className="flex-1">
           <label htmlFor="autoSave" className="text-sm font-semibold text-white cursor-pointer">
@@ -296,7 +296,7 @@ export function GenerationForm({ selectedTemplate, onGenerate }: GenerationFormP
       <button
         type="submit"
         disabled={!playerId}
-        className="w-full py-4 rounded-xl bg-[#E4FF3B] text-black font-bold text-lg hover:bg-[#d4ef2b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-4 rounded-xl bg-[#e6ff3c] text-black font-bold text-lg hover:bg-[#d8f14e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Generate Report
       </button>

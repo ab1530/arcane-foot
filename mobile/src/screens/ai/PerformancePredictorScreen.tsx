@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabTextActive: {
-    color: '#E4FF3B',
+    color: '#e6ff3c',
   },
   tabIndicator: {
     position: 'absolute',
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: '#E4FF3B',
+    backgroundColor: '#e6ff3c',
     borderRadius: 2,
   },
   content: {

@@ -61,7 +61,7 @@ export function ComparisonRadar({ players, className = '' }: ComparisonRadarProp
         max: 10,
         ticks: {
           stepSize: 2,
-          color: '#9FA1A9',
+          color: '#b3afb2',
           backdropColor: 'transparent',
           font: {
             size: 11,
@@ -101,10 +101,10 @@ export function ComparisonRadar({ players, className = '' }: ComparisonRadarProp
         },
       },
       tooltip: {
-        backgroundColor: '#0F1425',
-        titleColor: '#E4FF3B',
+        backgroundColor: '#353439',
+        titleColor: '#e6ff3c',
         bodyColor: '#E5E7EB',
-        borderColor: '#1B2133',
+        borderColor: '#353439',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,

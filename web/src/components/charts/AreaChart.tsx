@@ -59,7 +59,7 @@ export function AreaChart({
               borderRadius: "8px",
               color: "#fff",
             }}
-            cursor={{ stroke: "#E4FF3B", strokeWidth: 2 }}
+            cursor={{ stroke: "#e6ff3c", strokeWidth: 2 }}
           />
           {showLegend && (
             <Legend

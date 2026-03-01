@@ -3,7 +3,6 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { DashboardScreen } from '../DashboardScreen';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
-import { fr } from '../../../i18n/locales/fr';
 
 jest.mock('../../../contexts/AuthContext', () => ({
   useAuth: jest.fn(),
@@ -129,23 +128,36 @@ describe('DashboardScreen', () => {
   });
 
   it('navigue via les 3 quick actions visibles', async () => {
-    const { getByText, queryByText } = render(<DashboardScreen navigation={mockNavigation as any} />);
-    const quickActions = fr.dashboard.quickActions.items;
+    const { getByTestId, queryByTestId, queryAllByTestId } = render(
+      <DashboardScreen navigation={mockNavigation as any} />,
+    );
 
     await waitFor(() => {
-      expect(getByText(quickActions[0].label)).toBeTruthy();
-      expect(getByText(quickActions[1].label)).toBeTruthy();
-      expect(getByText(quickActions[2].label)).toBeTruthy();
-      expect(queryByText(quickActions[3].label)).toBeNull();
+      expect(mockApi.getDashboardStats).toHaveBeenCalled();
     });
 
-    fireEvent.press(getByText(quickActions[0].label));
-    fireEvent.press(getByText(quickActions[1].label));
-    fireEvent.press(getByText(quickActions[2].label));
+    await waitFor(() => {
+      const quickActionNodes = queryAllByTestId(/quick-action-/);
+      const quickActionIds = quickActionNodes.map((item) => item.props.testID);
+
+      expect(quickActionIds).toEqual(
+        expect.arrayContaining([
+          'quick-action-createreport',
+          'quick-action-globalsearch',
+          'quick-action-missionrequests',
+        ]),
+      );
+      expect(queryByTestId('quick-action-analytics')).toBeNull();
+      expect(queryByTestId('quick-action-agentrequests')).toBeNull();
+    });
+
+    fireEvent.press(getByTestId('quick-action-createreport'));
+    fireEvent.press(getByTestId('quick-action-globalsearch'));
+    fireEvent.press(getByTestId('quick-action-missionrequests'));
 
     expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateReport');
     expect(mockNavigation.navigate).toHaveBeenCalledWith('GlobalSearch');
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Analytics');
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MissionRequests');
   });
 
   it('affiche le dashboard joueur premium avec données hardware', async () => {

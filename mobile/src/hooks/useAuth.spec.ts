@@ -267,6 +267,42 @@ describe('useAuth', () => {
       );
     });
 
+    it('should keep explicit role in payload', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockAsyncStorage.multiSet.mockResolvedValue(undefined);
+
+      const signupData = {
+        email: 'admin@example.com',
+        password: 'password123',
+        fullName: 'John Admin',
+        role: 'ADMIN',
+      };
+
+      const signupResponse = {
+        user: mockUser,
+        accessToken: mockToken,
+        tokenType: 'Bearer',
+      };
+
+      mockApi.signup.mockResolvedValue(signupResponse);
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      await act(async () => {
+        await result.current.signup(signupData);
+      });
+
+      expect(mockApi.signup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: 'ADMIN',
+        })
+      );
+    });
+
     it('should handle signup errors', async () => {
       mockAsyncStorage.getItem.mockResolvedValue(null);
       const error = new Error('Signup failed');

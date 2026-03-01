@@ -79,7 +79,7 @@ export default function ScoutQuickImportScreen() {
 
   const getRowColor = (action: ImportRow['action']) => {
     if (action === 'CREATED') return '#1FD8A4';
-    if (action === 'UPDATED') return '#58E6FF';
+    if (action === 'UPDATED') return '#b3afb2';
     return '#FF6B6B';
   };
 

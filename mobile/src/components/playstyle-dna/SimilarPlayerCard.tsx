@@ -112,7 +112,7 @@ export const SimilarPlayerCard: React.FC<SimilarPlayerCardProps> = ({
           <Ionicons
             name="chevron-forward"
             size={20}
-            color="#9FA1A9"
+            color="#b3afb2"
             style={styles.arrow}
           />
         )}
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   position: {
     fontSize: 12,
-    color: '#E4FF3B',
+    color: '#e6ff3c',
     fontWeight: '600',
   },
   separator: {
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   nationality: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
   club: {
     fontSize: 11,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   similarityLabel: {
     fontSize: 9,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '600',
   },
   arrow: {

@@ -2,11 +2,12 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, radius, shadows } from '../../design/theme';
+import type { ButtonVariant } from '../../types/ui';
 
 interface ButtonProps {
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: 'default' | 'secondary' | 'outline' | 'ghost';
+  variant?: ButtonVariant;
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -26,6 +27,7 @@ export const Button: React.FC<ButtonProps> = ({
   textStyle,
   icon,
 }) => {
+  const resolvedVariant: ButtonVariant = variant === 'default' ? 'primary' : variant;
   const getButtonStyle = () => {
     const baseStyle: ViewStyle[] = [styles.button];
 
@@ -42,7 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
     }
 
     // Variant styles
-    switch (variant) {
+    switch (resolvedVariant) {
       case 'secondary':
         baseStyle.push(styles.secondary);
         break;
@@ -51,6 +53,9 @@ export const Button: React.FC<ButtonProps> = ({
         break;
       case 'ghost':
         baseStyle.push(styles.ghost);
+        break;
+      case 'danger':
+        baseStyle.push(styles.danger);
         break;
     }
 
@@ -75,10 +80,13 @@ export const Button: React.FC<ButtonProps> = ({
         baseStyle.push(styles.textMd);
     }
 
-    switch (variant) {
+    switch (resolvedVariant) {
       case 'outline':
       case 'ghost':
         baseStyle.push(styles.textOutline);
+        break;
+      case 'danger':
+        baseStyle.push(styles.textDanger);
         break;
     }
 
@@ -91,17 +99,22 @@ export const Button: React.FC<ButtonProps> = ({
 
   const content = (
     <>
-      {loading && <ActivityIndicator color={variant === 'default' ? colors.background.primary : colors.brand.primary} style={{ marginRight: spacing.sm }} />}
+      {loading && (
+        <ActivityIndicator
+          color={resolvedVariant === 'primary' ? colors.background.primary : colors.brand.primary}
+          style={{ marginRight: spacing.sm }}
+        />
+      )}
       {!loading && icon && icon}
       <Text style={[...getTextStyle(), textStyle]}>{children}</Text>
     </>
   );
 
-  if (variant === 'default' && !disabled) {
+  if (resolvedVariant === 'primary' && !disabled) {
     return (
       <TouchableOpacity onPress={onPress} disabled={disabled || loading} style={style} activeOpacity={0.8}>
         <LinearGradient
-          colors={[colors.brand.primary, colors.brand.primaryDark]}
+          colors={[colors.action.primary, colors.action.primaryPressed]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[...getButtonStyle(), { borderWidth: 0 }]}
@@ -145,17 +158,22 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   secondary: {
-    backgroundColor: colors.surface.glassLight,
+    backgroundColor: colors.action.ghost,
     borderWidth: 1,
-    borderColor: colors.background.tertiary,
+    borderColor: colors.border.subtle,
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.brand.primary,
+    borderWidth: 1.5,
+    borderColor: colors.border.focus,
   },
   ghost: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.action.ghost,
+  },
+  danger: {
+    backgroundColor: colors.action.danger,
+    borderWidth: 1,
+    borderColor: colors.border.danger + '90',
   },
   disabled: {
     opacity: 0.5,
@@ -175,6 +193,9 @@ const styles = StyleSheet.create({
   },
   textOutline: {
     color: colors.brand.primary,
+  },
+  textDanger: {
+    color: colors.semantic.error,
   },
   textDisabled: {
     color: colors.text.muted,

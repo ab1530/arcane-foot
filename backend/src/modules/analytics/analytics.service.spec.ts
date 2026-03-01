@@ -350,7 +350,7 @@ describe('AnalyticsService', () => {
         totalPlayers: 24,
         totalScouts: 5,
       });
-      expect(result.quickActions).toHaveLength(3);
+      expect(result.quickActions).toHaveLength(4);
     });
   });
 

@@ -87,7 +87,7 @@ export default function ArkaneIndexPage() {
         score: 96,
         max: 100,
         icon: AI_CATEGORY_ICON_MAP.Technique,
-        color: "#E4FF3B",
+        color: "#e6ff3c",
         description: indexCopy.categories.descriptions.technique,
       },
       {

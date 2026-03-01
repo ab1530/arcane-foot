@@ -25,11 +25,12 @@ import { CreateTransferShortlistDto } from './dto/create-transfer-shortlist.dto'
 const DEFAULT_TRANSFER_MARKET_LEAGUES: Record<string, string[]> = {
   FR: ['Ligue 1', 'Ligue 2', 'National'],
   DE: ['Bundesliga', '2. Bundesliga', '3. Liga'],
+  IT: ['Serie A', 'Serie B', 'Serie C'],
   GB: ['Premier League', 'Championship', 'League One', 'League Two'],
   ES: ['La Liga', 'LaLiga 2', 'Primera RFEF'],
 };
 
-const DEFAULT_MARKET_ORDER = ['FR', 'DE', 'GB', 'ES'];
+const DEFAULT_MARKET_ORDER = ['FR', 'DE', 'IT', 'GB', 'ES'];
 
 @Injectable()
 export class TransferMarketService {
@@ -284,6 +285,8 @@ export class TransferMarketService {
       DE: 'DE',
       DEU: 'DE',
       GER: 'DE',
+      IT: 'IT',
+      ITA: 'IT',
       ES: 'ES',
       ESP: 'ES',
       GB: 'GB',
@@ -302,6 +305,8 @@ export class TransferMarketService {
       france: 'FR',
       allemagne: 'DE',
       germany: 'DE',
+      italie: 'IT',
+      italy: 'IT',
       espagne: 'ES',
       spain: 'ES',
       angleterre: 'GB',
@@ -323,6 +328,9 @@ export class TransferMarketService {
     }
     if (normalized === 'DE') {
       return ['DE', 'DEU', 'GER', 'Germany', 'Allemagne'];
+    }
+    if (normalized === 'IT') {
+      return ['IT', 'ITA', 'Italy', 'Italie'];
     }
     if (normalized === 'GB') {
       return [

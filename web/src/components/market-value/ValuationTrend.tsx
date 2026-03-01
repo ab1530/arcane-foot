@@ -163,8 +163,8 @@ export function ValuationTrend({ playerId, className = '' }: ValuationTrendProps
           <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#E4FF3B" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#E4FF3B" stopOpacity={0} />
+                <stop offset="5%" stopColor="#e6ff3c" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#e6ff3c" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis
@@ -183,7 +183,7 @@ export function ValuationTrend({ playerId, className = '' }: ValuationTrendProps
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#E4FF3B"
+              stroke="#e6ff3c"
               strokeWidth={2}
               fill="url(#colorValue)"
             />

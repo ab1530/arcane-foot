@@ -34,6 +34,7 @@ import type {
   CalendarItemStatus,
   CalendarPersonaFilter,
 } from '../../types/calendar';
+import type { RoleColorMap } from '../../types/ui';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { isFeatureEnabled } from '../../constants/features';
@@ -65,7 +66,7 @@ const STATUS_COLORS: Record<CalendarItemStatus, string> = {
   CANCELLED: '#EF4444',
 };
 
-const PERSONA_COLORS: Record<CalendarPersonaFilter, string> = {
+const PERSONA_COLORS: RoleColorMap = {
   ALL: '#94A3B8',
   AGENTS: '#FB7185',
   SCOUTS: '#FACC15',
@@ -1299,6 +1300,120 @@ export const CalendarScreenNew = () => {
     const weekDates = selectedWeekDates;
     const selectedDayMatches = getMatchesForDate(selectedDate);
     const hasAnyWeekMatch = weekScopedMatches.length > 0;
+    const renderWeekMatchCard = (match: CalendarMatch) => {
+      const normalizedStatus = normalizeStatus(match.status);
+      const statusText = (copy.statusLabels ?? {})[normalizedStatus] ?? normalizedStatus;
+      const statusColor = STATUS_COLORS[normalizedStatus];
+      const missionLabel =
+        match.missionType === 'PRIORITY'
+          ? copyAny.priorityMissionLabel ?? 'Mission prioritaire'
+          : match.missionType === 'VOLUNTARY'
+          ? copyAny.voluntaryMissionLabel ?? 'Mission volontaire'
+          : null;
+      const sectionLabel =
+        match.sectionType === 'MY'
+          ? copyAny.myMissionLabel ?? 'Mes missions'
+          : match.sectionType === 'SHARED'
+          ? copyAny.sharedMissionLabel ?? 'Calendrier partagé'
+          : match.sectionType === 'DISCOVER'
+          ? copyAny.discoverMissionLabel ?? 'Découverte'
+          : null;
+      const persona = match.persona ?? 'SCOUTS';
+      const personaColor = PERSONA_COLORS[persona];
+      const personaLabel =
+        persona === 'AGENTS'
+          ? copyAny.agentRoleLabel ?? 'Agent'
+          : persona === 'PLAYERS'
+          ? copyAny.playerRoleLabel ?? 'Joueur'
+          : copyAny.scoutRoleLabel ?? 'Scout';
+      const participants = (match.participants ?? [])
+        .map((participant) => `${participant.firstName ?? ''} ${participant.lastName ?? ''}`.trim())
+        .filter(Boolean);
+      const participantPreview = participants.slice(0, 2).join(', ');
+      const participantOverflow = participants.length > 2 ? ` +${participants.length - 2}` : '';
+      const venueLabel = match.locationLabel ??
+        [match.venue?.name, match.venue?.city].filter(Boolean).join(', ');
+
+      return (
+        <TouchableOpacity
+          key={match.id}
+          activeOpacity={0.92}
+          onPress={() =>
+            navigation.navigate('MatchDetail', {
+              match,
+              matchId: match.id,
+              assignmentId: match.assignmentId,
+            })
+          }
+        >
+          <GlassCard
+            variant="elevated"
+            style={[styles.weekMatchCard, { borderColor: `${personaColor}66` }]}
+          >
+            <View style={styles.weekMatchHeader}>
+              <View style={styles.weekMatchMeta}>
+                <Text style={styles.matchTime}>{formatTimeLabel(match.date, language)}</Text>
+              </View>
+              <View style={[styles.statusPill, { borderColor: statusColor }]}>
+                <Text style={[styles.statusPillText, { color: statusColor }]}>{statusText}</Text>
+              </View>
+            </View>
+
+            <View style={styles.badgesRow}>
+              <View style={[styles.roleBadge, { borderColor: `${personaColor}66`, backgroundColor: `${personaColor}24` }]}>
+                <Text style={styles.roleBadgeText}>{personaLabel}</Text>
+              </View>
+              {sectionLabel ? (
+                <View style={styles.sectionBadge}>
+                  <Text style={styles.sectionBadgeText}>{sectionLabel}</Text>
+                </View>
+              ) : null}
+              {missionLabel ? (
+                <View
+                  style={[
+                    styles.missionBadge,
+                    match.missionType === 'PRIORITY'
+                      ? styles.missionBadgePriority
+                      : styles.missionBadgeVoluntary,
+                  ]}
+                >
+                  <Text style={styles.missionBadgeText}>{missionLabel}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {match.competition?.name ? (
+              <View style={styles.competitionRow}>
+                {renderBadge(match.competition.logo)}
+                <Text style={styles.competitionName}>{match.competition.name}</Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.weekMatchTeams}>
+              {match.homeClub?.name ?? copy.teamsTbd ?? 'TBD'} vs{' '}
+              {match.awayClub?.name ?? copy.teamsTbd ?? 'TBD'}
+            </Text>
+
+            {venueLabel ? (
+              <View style={styles.weekMatchMetaRow}>
+                <Icon name="location" size={14} color={colors.text.secondary} />
+                <Text style={styles.weekMatchVenue}>{venueLabel}</Text>
+              </View>
+            ) : null}
+
+            {participants.length > 0 ? (
+              <View style={styles.weekMatchMetaRow}>
+                <Icon name="people" size={14} color={colors.brand.primary} />
+                <Text style={styles.weekMatchMetaText}>
+                  {participantPreview}
+                  {participantOverflow}
+                </Text>
+              </View>
+            ) : null}
+          </GlassCard>
+        </TouchableOpacity>
+      );
+    };
 
     return (
       <ScrollView
@@ -1315,26 +1430,30 @@ export const CalendarScreenNew = () => {
       >
         {renderWeekNavigator()}
         <View style={styles.weekHeader}>
-          {weekDates.map((date) => {
-            const dayMatches = getMatchesForDate(date);
-            const isSelected = isSameDate(date, selectedDate);
-            return (
-              <TouchableOpacity
-                key={date.toISOString()}
-                testID={`calendar-center-weekday-${date.getDate()}`}
-                style={[styles.weekDay, isSelected && styles.weekDaySelected]}
-                onPress={() => setSelectedDate(date)}
-              >
-                <Text style={[styles.weekDayName, isSelected && styles.weekDayNameSelected]}>
-                  {formatDayLabel(date, language)}
-                </Text>
-                <Text style={[styles.weekDayNumber, isSelected && styles.weekDayNumberSelected]}>
-                  {date.getDate()}
-                </Text>
-                <View style={styles.weekDayDotsRow}>
-                  {dayMatches.slice(0, 2).map((item) => (
-                    <View
-                      key={`${date.toISOString()}-${item.id}`}
+            {weekDates.map((date) => {
+              const dayMatches = getMatchesForDate(date);
+              const isSelected = isSameDate(date, selectedDate);
+              const dayMatchCount = dayMatches.length;
+              return (
+                <TouchableOpacity
+                  key={date.toISOString()}
+                  testID={`calendar-center-weekday-${date.getDate()}`}
+                  style={[styles.weekDay, isSelected && styles.weekDaySelected]}
+                  onPress={() => setSelectedDate(date)}
+                >
+                  <Text style={[styles.weekDayName, isSelected && styles.weekDayNameSelected]}>
+                    {formatDayLabel(date, language)}
+                  </Text>
+                  <Text style={[styles.weekDayNumber, isSelected && styles.weekDayNumberSelected]}>
+                    {date.getDate()}
+                  </Text>
+                  <Text style={[styles.weekDayCount, isSelected && styles.weekDayCountSelected]}>
+                    {dayMatchCount}
+                  </Text>
+                  <View style={styles.weekDayDotsRow}>
+                    {dayMatches.slice(0, 2).map((item) => (
+                      <View
+                        key={`${date.toISOString()}-${item.id}`}
                       style={[
                         styles.weekDayDot,
                         { backgroundColor: STATUS_COLORS[normalizeStatus(item.status)] },
@@ -1371,42 +1490,7 @@ export const CalendarScreenNew = () => {
                 {formatSectionDayLabel(selectedDate, language)}
               </Text>
               {selectedDayMatches.map((match) => (
-                <TouchableOpacity
-                  key={match.id}
-                  activeOpacity={0.9}
-                  onPress={() =>
-                    navigation.navigate('MatchDetail', {
-                      match,
-                      matchId: match.id,
-                      assignmentId: match.assignmentId,
-                    })
-                  }
-                >
-                  <GlassCard variant="elevated" style={styles.weekMatchCard}>
-                    <View style={styles.weekMatchHeader}>
-                      <Text style={styles.weekMatchTime}>{formatTimeLabel(match.date, language)}</Text>
-                      <Text
-                        style={[
-                          styles.weekMatchStatus,
-                          { color: STATUS_COLORS[normalizeStatus(match.status)] },
-                        ]}
-                      >
-                        {(copy.statusLabels ?? {})[normalizeStatus(match.status)] ??
-                          normalizeStatus(match.status)}
-                      </Text>
-                    </View>
-                    <Text style={styles.weekMatchTeams}>
-                      {match.homeClub?.name ?? copy.teamsTbd ?? 'TBD'} vs{' '}
-                      {match.awayClub?.name ?? copy.teamsTbd ?? 'TBD'}
-                    </Text>
-                    {(match.locationLabel || match.venue?.name) ? (
-                      <Text style={styles.weekMatchVenue}>
-                        {match.locationLabel ??
-                          [match.venue?.name, match.venue?.city].filter(Boolean).join(', ')}
-                      </Text>
-                    ) : null}
-                  </GlassCard>
-                </TouchableOpacity>
+                renderWeekMatchCard(match)
               ))}
             </View>
           )}
@@ -1556,10 +1640,27 @@ export const CalendarScreenNew = () => {
   };
 
   const personaLabels = copy.personaLabels ?? {};
+  const renderBackdrop = () => (
+    <View pointerEvents="none" style={styles.backdropLayer}>
+      <LinearGradient
+        colors={['rgba(228, 255, 59, 0.12)', 'rgba(228, 255, 59, 0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backdropGlowTop}
+      />
+      <LinearGradient
+        colors={['rgba(88, 230, 255, 0.10)', 'rgba(88, 230, 255, 0)']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.backdropGlowBottom}
+      />
+    </View>
+  );
 
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        {renderBackdrop()}
         <View style={styles.loadingContainer} testID="calendar-center-loading">
           <ActivityIndicator size="large" color={colors.brand.primary} />
           <Text style={styles.loadingText}>{copy.loading ?? 'Loading calendar...'}</Text>
@@ -1570,9 +1671,16 @@ export const CalendarScreenNew = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {renderBackdrop()}
       <ScreenHeader
         blur={false}
         borderBottom={false}
+        compact
+        title={copy.title ?? 'Match Center'}
+        subtitle={
+          copy.subtitle ??
+          'Suivez vos rencontres et coordonnez les missions scouts.'
+        }
         rightActions={
           canOpenMissionRequestsHub ? (
             <TouchableOpacity
@@ -1588,15 +1696,6 @@ export const CalendarScreenNew = () => {
           ) : undefined
         }
       />
-
-      <View style={styles.heroSection}>
-        <Text style={styles.heroEyebrow}>{copy.eyebrow ?? 'Arcane Calendar'}</Text>
-        <Text style={styles.heroTitle}>{copy.title ?? 'Match Center'}</Text>
-        <Text style={styles.heroSubtitle}>
-          {copy.subtitle ??
-            'Suivez vos rencontres planifiées, répartissez les scouts et visualisez les terrains en un coup d’œil.'}
-        </Text>
-      </View>
 
       <View style={styles.viewModeContainer}>
         {(['list', 'week', 'map'] as ViewMode[]).map((mode) => (
@@ -1732,19 +1831,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  backdropLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  backdropGlowTop: {
+    position: 'absolute',
+    top: -110,
+    left: -50,
+    width: 250,
+    height: 250,
+    borderRadius: 160,
+  },
+  backdropGlowBottom: {
+    position: 'absolute',
+    right: -90,
+    bottom: 120,
+    width: 250,
+    height: 250,
+    borderRadius: 160,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
   },
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.sizes.base,
     color: colors.text.secondary,
-  },
-  heroSection: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
   },
   headerHubButton: {
     borderRadius: 999,
@@ -1760,45 +1876,38 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: '700',
   },
-  heroEyebrow: {
-    fontSize: typography.sizes.xs,
-    color: colors.text.secondary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    fontSize: 36,
-    fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
-    marginTop: spacing.xs,
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    color: colors.text.secondary,
-    marginTop: spacing.xs,
-    lineHeight: 22,
-  },
   viewModeContainer: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
+    backgroundColor: colors.surface.glassLight,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    padding: 4,
+    zIndex: 1,
   },
   viewModeButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: 18,
+    minHeight: 38,
+    borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.surface.border,
-    backgroundColor: colors.surface.glass,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
     gap: spacing.xs,
   },
   viewModeButtonActive: {
     backgroundColor: colors.brand.primary,
     borderColor: colors.brand.primary,
+    shadowColor: colors.brand.primary,
+    shadowOpacity: 0.24,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 3,
   },
   viewModeText: {
     fontSize: typography.sizes.sm,
@@ -1812,6 +1921,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     gap: spacing.xs,
+    zIndex: 1,
   },
   sectionFilterChip: {
     borderRadius: 999,
@@ -2155,17 +2265,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: 3,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: colors.surface.glass,
   },
   weekDay: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,
     flex: 1,
-    borderRadius: 12,
+    marginHorizontal: 2,
+    borderRadius: 14,
   },
   weekDaySelected: {
-    backgroundColor: colors.brand.primary + '20',
+    backgroundColor: `${colors.brand.primary}22`,
+    borderWidth: 1,
+    borderColor: `${colors.brand.primary}66`,
+    shadowColor: colors.brand.primary,
+    shadowOpacity: 0.26,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 10,
+    elevation: 2,
   },
   weekDayName: {
     fontSize: typography.sizes.xs,
@@ -2182,6 +2305,21 @@ const styles = StyleSheet.create({
   },
   weekDayNumberSelected: {
     color: colors.brand.primary,
+  },
+  weekDayCount: {
+    marginTop: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 1,
+    fontSize: typography.sizes.xs,
+    color: colors.text.secondary,
+    overflow: 'hidden',
+  },
+  weekDayCountSelected: {
+    color: colors.brand.primary,
+    borderColor: `${colors.brand.primary}80`,
   },
   weekDayDotsRow: {
     marginTop: spacing.xs,
@@ -2205,17 +2343,24 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     fontWeight: '700',
     color: colors.text.primary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    textTransform: 'capitalize',
   },
   weekMatchCard: {
     padding: spacing.md,
     marginBottom: spacing.sm,
+    borderWidth: 1,
   },
   weekMatchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  weekMatchMeta: {
+    flex: 1,
+    gap: 4,
   },
   weekMatchTime: {
     fontSize: typography.sizes.sm,
@@ -2225,6 +2370,8 @@ const styles = StyleSheet.create({
   weekMatchStatus: {
     fontSize: typography.sizes.xs,
     fontWeight: '700',
+    color: colors.text.secondary,
+    opacity: 0.95,
   },
   weekMatchTeams: {
     fontSize: typography.sizes.base,
@@ -2235,6 +2382,17 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: colors.text.secondary,
     marginTop: spacing.xs,
+  },
+  weekMatchMetaRow: {
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  weekMatchMetaText: {
+    flex: 1,
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
   },
   mapContainer: {
     flex: 1,

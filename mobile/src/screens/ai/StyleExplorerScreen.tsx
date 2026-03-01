@@ -116,7 +116,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
 
           {style.playerCount !== undefined && (
             <View style={styles.playerCount}>
-              <Ionicons name="people" size={14} color="#9FA1A9" />
+              <Ionicons name="people" size={14} color="#b3afb2" />
               <Text style={styles.playerCountText}>{style.playerCount} players</Text>
             </View>
           )}
@@ -132,7 +132,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
   if (loading && styles.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E4FF3B" />
+        <ActivityIndicator size="large" color="#e6ff3c" />
         <Text style={styles.loadingText}>Loading playing styles...</Text>
       </View>
     );
@@ -142,7 +142,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       {/* Header */}
       <LinearGradient
-        colors={['#0A0E1F', '#080C1D']}
+        colors={['#353439', '#01071d']}
         style={styles.header}
       >
         <Text style={styles.headerTitle}>Style Explorer</Text>
@@ -163,7 +163,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#E4FF3B"
+            tintColor="#e6ff3c"
           />
         }
       />
@@ -178,7 +178,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
         {selectedStyleInfo && (
           <View style={styles.modalContainer}>
             <LinearGradient
-              colors={['#0A0E1F', '#080C1D']}
+              colors={['#353439', '#01071d']}
               style={styles.modalContent}
             >
               {/* Modal Header */}
@@ -259,7 +259,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Text style={styles.modalSectionTitle}>Real-World Examples</Text>
                   {selectedStyleInfo.realWorldExamples.map((example, index) => (
                     <View key={index} style={styles.exampleItem}>
-                      <Ionicons name="star" size={16} color="#E4FF3B" />
+                      <Ionicons name="star" size={16} color="#e6ff3c" />
                       <Text style={styles.exampleText}>{example}</Text>
                     </View>
                   ))}
@@ -267,7 +267,7 @@ export const StyleExplorerScreen: React.FC<Props> = ({ navigation, route }) => {
 
                 {selectedStyleInfo.playerCount !== undefined && (
                   <View style={styles.statsCard}>
-                    <Ionicons name="people" size={24} color="#E4FF3B" />
+                    <Ionicons name="people" size={24} color="#e6ff3c" />
                     <View style={styles.statsContent}>
                       <Text style={styles.statsNumber}>{selectedStyleInfo.playerCount}</Text>
                       <Text style={styles.statsLabel}>Players with this style</Text>
@@ -301,18 +301,18 @@ const getMockStyles = (): PlayStyleInfo[] => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
   header: {
     padding: 20,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
   grid: {
     padding: 16,
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   styleDescription: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     lineHeight: 16,
     marginBottom: 12,
   },
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   },
   playerCountText: {
     fontSize: 11,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '500',
   },
   styleCardFooter: {
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#080C1D',
+    backgroundColor: '#01071d',
   },
   modalContent: {
     flex: 1,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   },
   modalText: {
     fontSize: 15,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     lineHeight: 22,
   },
   listItem: {
@@ -485,12 +485,12 @@ const styles = StyleSheet.create({
   statsNumber: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#E4FF3B',
+    color: '#e6ff3c',
     marginBottom: 4,
   },
   statsLabel: {
     fontSize: 14,
-    color: '#9FA1A9',
+    color: '#b3afb2',
   },
 });
 

@@ -12,7 +12,7 @@ interface LoaderProps {
 export function Loader({
   size = "md",
   variant = "spinner",
-  color = "#E4FF3B",
+  color = "#e6ff3c",
   className = ""
 }: LoaderProps) {
   const sizes = {

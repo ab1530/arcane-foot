@@ -16,10 +16,16 @@ export interface MobileHomeDashboardCard {
 }
 
 export interface MobileHomeQuickAction {
-  id: 'newReport' | 'globalSearch' | 'analytics' | 'agentRequests' | 'calendar';
+  id: 'newReport' | 'globalSearch' | 'analytics' | 'agentRequests' | 'calendar' | 'missionRequests';
   label: string;
-  target: 'CreateReport' | 'GlobalSearch' | 'Analytics' | 'AgentRequests' | 'Calendar';
-  icon: 'add' | 'search' | 'analytics' | 'clipboard-outline' | 'calendar';
+  target:
+    | 'CreateReport'
+    | 'GlobalSearch'
+    | 'Analytics'
+    | 'AgentRequests'
+    | 'Calendar'
+    | 'MissionRequests';
+  icon: 'add' | 'add-circle' | 'search' | 'analytics' | 'clipboard-outline' | 'calendar' | 'sparkles' | 'flag';
   variant: 'primary' | 'secondary';
 }
 

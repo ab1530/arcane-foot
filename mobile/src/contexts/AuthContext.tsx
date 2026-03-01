@@ -304,7 +304,7 @@ function transformSignupPayload(data: SignupData): Record<string, any> {
     payload.phone = data.phone;
   }
 
-  const derivedRole = data.role ?? mapAccountTypeToRole(data.accountType);
+  const derivedRole = normalizeSignupRole(data.role) ?? mapAccountTypeToRole(data.accountType);
   if (derivedRole) {
     payload.role = derivedRole;
   } else {
@@ -312,6 +312,19 @@ function transformSignupPayload(data: SignupData): Record<string, any> {
   }
 
   return payload;
+}
+
+function normalizeSignupRole(role?: string): UserRole | undefined {
+  if (!role) {
+    return undefined;
+  }
+
+  const normalizedRole = role.toUpperCase() as UserRole;
+  if (normalizedRole === 'SUPER_ADMIN') {
+    return 'ADMIN';
+  }
+
+  return USER_ROLES.includes(normalizedRole) ? normalizedRole : undefined;
 }
 
 function mapAccountTypeToRole(accountType?: 'player' | 'agent' | 'club'): (typeof USER_ROLES)[number] | undefined {

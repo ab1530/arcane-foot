@@ -35,7 +35,7 @@ interface DNARadarChartProps {
 export function DNARadarChart({
   dnaProfile,
   playerName,
-  color = '#E4FF3B',
+  color = '#e6ff3c',
   className = ''
 }: DNARadarChartProps) {
   const data = useMemo(() => ({
@@ -66,7 +66,7 @@ export function DNARadarChart({
         max: 10,
         ticks: {
           stepSize: 2,
-          color: '#9FA1A9',
+          color: '#b3afb2',
           backdropColor: 'transparent',
           font: {
             size: 11,
@@ -105,10 +105,10 @@ export function DNARadarChart({
         },
       },
       tooltip: {
-        backgroundColor: '#0F1425',
-        titleColor: '#E4FF3B',
+        backgroundColor: '#353439',
+        titleColor: '#e6ff3c',
         bodyColor: '#E5E7EB',
-        borderColor: '#1B2133',
+        borderColor: '#353439',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,

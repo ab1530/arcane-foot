@@ -123,7 +123,7 @@ describe('GlobalSearch Component', () => {
     expect(mockedApi.getPlayers).not.toHaveBeenCalled();
   });
 
-  it('should navigate to PlayerDetail when a player result is pressed', async () => {
+  it('should navigate to Players list when a player result is pressed', async () => {
     mockedApi.getPlayers.mockResolvedValue({
       items: [
         {
@@ -154,8 +154,9 @@ describe('GlobalSearch Component', () => {
     fireEvent.press(result);
 
     await waitFor(() => {
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('PlayerDetail', {
-        playerId: 'player-1',
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Players', {
+        viewMode: 'LIST',
+        initialSearch: 'Test Player',
       });
       expect(onCloseMock).toHaveBeenCalled();
     });

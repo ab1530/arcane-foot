@@ -110,7 +110,7 @@ export function ReportHistoryList({ playerId, onViewReport }: ReportHistoryListP
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block w-8 h-8 border-4 border-[#E4FF3B] border-t-transparent rounded-full animate-spin" />
+        <div className="inline-block w-8 h-8 border-4 border-[#e6ff3c] border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-400 mt-4">{historyCopy.loading}</p>
       </div>
     );
@@ -136,7 +136,7 @@ export function ReportHistoryList({ playerId, onViewReport }: ReportHistoryListP
           <select
             value={filterGrade}
             onChange={(e) => setFilterGrade(e.target.value as GradeFilter)}
-            className="px-4 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-[#E4FF3B]"
+            className="px-4 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e6ff3c]"
           >
             {gradeOptions.map(([value, label]) => (
               <option key={value} value={value}>
@@ -148,7 +148,7 @@ export function ReportHistoryList({ playerId, onViewReport }: ReportHistoryListP
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as TypeFilter)}
-            className="px-4 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-[#E4FF3B]"
+            className="px-4 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e6ff3c]"
           >
             {typeOptions.map(([value, label]) => (
               <option key={value} value={value}>
@@ -172,7 +172,7 @@ export function ReportHistoryList({ playerId, onViewReport }: ReportHistoryListP
           {hasFiltersApplied && (
             <button
               onClick={resetFilters}
-              className="mt-4 text-[#E4FF3B] hover:underline"
+              className="mt-4 text-[#e6ff3c] hover:underline"
             >
               {filtersCopy.reset}
             </button>
@@ -224,7 +224,7 @@ export function ReportHistoryList({ playerId, onViewReport }: ReportHistoryListP
 
                   {/* Report type */}
                   <div className="mb-4">
-                    <span className="inline-block px-3 py-1 rounded-full bg-[#E4FF3B]/20 border border-[#E4FF3B]/30 text-[#E4FF3B] text-xs font-semibold">
+                    <span className="inline-block px-3 py-1 rounded-full bg-[#e6ff3c]/20 border border-[#e6ff3c]/30 text-[#e6ff3c] text-xs font-semibold">
                       {getReportTypeLabel(report.reportType)}
                     </span>
                   </div>
@@ -234,7 +234,7 @@ export function ReportHistoryList({ playerId, onViewReport }: ReportHistoryListP
                     <button
                       onClick={() => onViewReport?.(report)}
                       disabled={!onViewReport}
-                      className="px-4 py-2 rounded-lg bg-[#E4FF3B] text-black font-semibold text-sm hover:bg-[#d4ef2b] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 rounded-lg bg-[#e6ff3c] text-black font-semibold text-sm hover:bg-[#d8f14e] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Eye className="w-4 h-4" />
                       {actionsCopy.view}

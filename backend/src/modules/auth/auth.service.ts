@@ -7,7 +7,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { DEFAULT_ROLE } from '../../common/roles/role.constants';
+import { ALL_ROLES, DEFAULT_ROLE, type Role } from '../../common/roles/role.constants';
 
 @Injectable()
 export class AuthService {
@@ -30,7 +30,8 @@ export class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    // Always enforce default role to prevent self-assigning elevated privileges
+    const signupRole = this.resolveSignupRole(dto.role);
+
     const user = await this.prisma.users.create({
       data: {
         id: randomUUID(),
@@ -39,7 +40,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        role: DEFAULT_ROLE,
+        role: signupRole,
         updatedAt: new Date(),
       },
       select: {
@@ -70,6 +71,15 @@ export class AuthService {
       ...tokens,
       tokenType: 'Bearer',
     };
+  }
+
+  private resolveSignupRole(role?: Role | null) {
+    if (!role) {
+      return DEFAULT_ROLE;
+    }
+
+    const normalizedRole = (role === 'SUPER_ADMIN' ? 'ADMIN' : role) as Role;
+    return ALL_ROLES.includes(normalizedRole) ? normalizedRole : DEFAULT_ROLE;
   }
 
   async login(dto: LoginDto) {

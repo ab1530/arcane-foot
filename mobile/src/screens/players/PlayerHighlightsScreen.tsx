@@ -19,7 +19,7 @@ import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors, spacing, typography, radius } from '../../design/theme';
 import { GlassCard, Icon, GradientText } from '../../components/ui';
-import { DEFAULT_ROLE, isCategoryARole } from '../../lib/roles';
+import { DEFAULT_ROLE } from '../../lib/roles';
 import type { UserRole } from '../../lib/roles';
 import { logError, logInfo, logWarn } from '../../utils/logger';
 
@@ -72,9 +72,8 @@ export default function PlayerHighlightsScreen({ navigation, route }: any) {
 
   const { user, activeRole } = useAuth();
   const effectiveRole = (activeRole ?? user?.role ?? DEFAULT_ROLE) as UserRole;
-  const isAdminRole = isCategoryARole(effectiveRole);
   const isOwner = effectiveRole === 'PLAYER' && user?.playerId && user.playerId === playerId;
-  const canEdit = isAdminRole || isOwner;
+  const canEdit = isOwner;
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);

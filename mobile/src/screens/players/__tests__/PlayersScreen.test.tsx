@@ -10,6 +10,9 @@ jest.mock('@react-navigation/native', () => ({
     goBack: jest.fn(),
   }),
   useFocusEffect: jest.fn(),
+  useRoute: () => ({
+    params: undefined,
+  }),
 }));
 
 jest.mock('../../../contexts/AuthContext', () => ({

@@ -153,7 +153,7 @@ export function PlayerComparison({ playerIds, className = '' }: PlayerComparison
     },
   ];
 
-  const colors = ['#E4FF3B', '#4ade80', '#60a5fa', '#f87171', '#a78bfa'];
+  const colors = ['#e6ff3c', '#4ade80', '#60a5fa', '#f87171', '#a78bfa'];
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {

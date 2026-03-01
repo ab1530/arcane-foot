@@ -135,7 +135,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
         <Ionicons
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color="#9FA1A9"
+          color="#b3afb2"
           style={styles.expandIcon}
         />
       </View>
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   typeLabel: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   detailsText: {
     fontSize: 13,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     lineHeight: 18,
     marginBottom: 12,
   },

@@ -29,21 +29,21 @@ export default function BrandPreview() {
               <div className="h-32 bg-arcane-dark border border-arcane-darkBorder rounded-xl"></div>
               <div className="text-sm">
                 <p className="font-bold">Primary Dark</p>
-                <p className="text-arcane-grey">#080C1D</p>
+                <p className="text-arcane-grey">#01071d</p>
               </div>
             </div>
             <div className="space-y-3">
               <div className="h-32 bg-arcane-accent rounded-xl"></div>
               <div className="text-sm">
                 <p className="font-bold">Accent Fluorescent</p>
-                <p className="text-arcane-grey">#E4FF3B</p>
+                <p className="text-arcane-grey">#e6ff3c</p>
               </div>
             </div>
             <div className="space-y-3">
               <div className="h-32 bg-arcane-grey rounded-xl"></div>
               <div className="text-sm">
                 <p className="font-bold">Neutral Grey</p>
-                <p className="text-arcane-grey">#9FA1A9</p>
+                <p className="text-arcane-grey">#b3afb2</p>
               </div>
             </div>
             <div className="space-y-3">

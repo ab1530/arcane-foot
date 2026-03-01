@@ -239,9 +239,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1B1B1F', // tokens.colors.arcane.anthracite
+    backgroundColor: '#353439', // tokens.colors.arcane.anthracite
     borderTopWidth: 1,
-    borderTopColor: '#3F3F4640', // tokens.colors.arcane.slate + '40'
+    borderTopColor: '#b3afb240', // tokens.colors.arcane.slate + '40'
     paddingTop: 12, // 12
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -267,9 +267,9 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     height: 3,
-    backgroundColor: '#E4FF3B', // tokens.colors.yellow.DEFAULT
+    backgroundColor: '#e6ff3c', // tokens.colors.yellow.DEFAULT
     borderRadius: 6, // 6
-    shadowColor: '#E4FF3B',
+    shadowColor: '#e6ff3c',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#1B1B1F', // tokens.colors.arcane.anthracite
+    borderColor: '#353439', // tokens.colors.arcane.anthracite
   },
   badgeText: {
     fontFamily: 'Inter',
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tabLabelActive: {
-    color: '#E4FF3B', // tokens.colors.yellow.DEFAULT
+    color: '#e6ff3c', // tokens.colors.yellow.DEFAULT
     fontWeight: '600', // tokens.fontWeight.semibold
   },
 });

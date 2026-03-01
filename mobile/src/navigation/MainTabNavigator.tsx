@@ -83,6 +83,7 @@ const TAB_DEFINITIONS: Record<TabName, TabDefinition> = {
     component: MarketplaceScreen,
     title: 'Marketplace',
     icon: 'pricetag',
+    headerShown: false,
     featureFlag: 'marketplaceTab',
   },
   Coaching: {
@@ -104,6 +105,7 @@ const TAB_DEFINITIONS: Record<TabName, TabDefinition> = {
     component: ProfileScreen,
     title: 'Profil',
     icon: 'personCircle',
+    headerShown: false,
     featureFlag: 'profileTab',
   },
   News: {
@@ -111,6 +113,7 @@ const TAB_DEFINITIONS: Record<TabName, TabDefinition> = {
     component: NewsScreen,
     title: 'News',
     icon: 'newspaper',
+    headerShown: false,
   },
 };
 
@@ -398,23 +401,25 @@ export default function MainTabNavigator() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: theme.colors.brand.primary,
-          tabBarInactiveTintColor: theme.colors.text.tertiary,
+          tabBarInactiveTintColor: theme.colors.text.secondary,
           tabBarStyle: {
             position: 'absolute',
-            backgroundColor: theme.colors.surface.glass,
-            borderTopColor: theme.colors.brand.primary + '20',
-            borderTopWidth: 0.5,
-            paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-            paddingTop: 12,
-            height: Platform.OS === 'ios' ? 88 : 68,
-            shadowColor: theme.colors.brand.primary,
+            backgroundColor: 'rgba(16, 22, 47, 0.92)',
+            borderTopColor: theme.colors.border.subtle,
+            borderTopWidth: 1,
+            paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+            paddingTop: 10,
+            paddingHorizontal: 10,
+            height: Platform.OS === 'ios' ? 90 : 72,
+            shadowColor: '#000000',
             shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.15,
+            shadowOpacity: 0.35,
             shadowRadius: 20,
             elevation: 12,
           },
           tabBarItemStyle: {
-            paddingVertical: 4,
+            borderRadius: 14,
+            marginHorizontal: 2,
           },
           tabBarLabelStyle: {
             fontSize: 11,
@@ -501,7 +506,7 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   commandCenterFab: {

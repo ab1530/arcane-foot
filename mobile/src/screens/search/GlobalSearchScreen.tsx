@@ -38,12 +38,14 @@ import {
 import { useGlobalSearch, SearchEntityType, SearchResult, SearchFilters } from '../../hooks/useGlobalSearch';
 import { tokens } from '../../design/tokens';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../../types/navigation';
 import { useLocalization } from '../../contexts/LocalizationContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const GlobalSearchScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { t } = useLocalization();
   const {
     query,
@@ -111,16 +113,19 @@ const GlobalSearchScreen: React.FC = () => {
   const handleResultPress = (result: SearchResult) => {
     switch (result.type) {
       case 'player':
-        navigation.navigate('PlayerDetail' as never, { playerId: result.id } as never);
+        navigation.navigate('Players', {
+          viewMode: 'LIST',
+          initialSearch: result.title,
+        });
         break;
       case 'club':
-        navigation.navigate('ClubDetail' as never, { clubId: result.id } as never);
+        navigation.navigate('ClubDetail', { clubId: result.id });
         break;
       case 'camp':
-        navigation.navigate('CampDetail' as never, { campId: result.id } as never);
+        navigation.navigate('CampDetail', { campId: result.id });
         break;
       case 'report':
-        navigation.navigate('ReportDetail' as never, { reportId: result.id } as never);
+        navigation.navigate('ReportDetail', { reportId: result.id });
         break;
       default:
         break;

@@ -133,7 +133,7 @@ export const StyleCard: React.FC<StyleCardProps> = ({
           <View style={styles.examplesList}>
             {realWorldExamples.slice(0, 3).map((example, index) => (
               <View key={index} style={styles.exampleItem}>
-                <Ionicons name="person" size={14} color="#9FA1A9" />
+                <Ionicons name="person" size={14} color="#b3afb2" />
                 <Text style={styles.exampleText}>{example}</Text>
               </View>
             ))}
@@ -144,7 +144,7 @@ export const StyleCard: React.FC<StyleCardProps> = ({
       {/* Tap hint */}
       {onPress && (
         <View style={styles.tapHint}>
-          <Ionicons name="chevron-forward" size={20} color="#9FA1A9" />
+          <Ionicons name="chevron-forward" size={20} color="#b3afb2" />
           <Text style={styles.tapHintText}>Tap for details</Text>
         </View>
       )}
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   styleLabel: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   confidenceLabel: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     fontWeight: '600',
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   tapHintText: {
     fontSize: 12,
-    color: '#9FA1A9',
+    color: '#b3afb2',
     marginLeft: 4,
   },
 });

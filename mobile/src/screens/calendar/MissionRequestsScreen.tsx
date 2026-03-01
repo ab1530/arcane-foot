@@ -14,14 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Icon } from '../../components/ui';
+import { Button, GlassCard, Icon, SectionHeader, Select, SegmentedControl } from '../../components/ui';
 import { colors, radius, spacing, typography } from '../../design/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { isCategoryARole } from '../../lib/roles';
 import api, { type MatchMissionRequest } from '../../services/api';
 import { logError } from '../../utils/logger';
 import type { AppStackParamList } from '../../types/navigation';
+import type { SegmentOption } from '../../types/ui';
 import type {
   MissionRequestCreateInput,
   MissionRequestFilters,
@@ -46,6 +46,9 @@ type MatchOption = {
   awayClub?: { name?: string | null; logo?: string | null } | null;
 };
 
+type SortMode = 'newest' | 'oldest' | 'status';
+type DatePreset = 'ALL' | '24H' | '7D' | '30D';
+
 const STATUS_ORDER: MissionRequestStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'];
 const STATUS_COLORS: Record<MissionRequestStatus, string> = {
   SUBMITTED: '#FACC15',
@@ -61,9 +64,47 @@ const STATUS_LABELS: Record<MissionRequestStatus, string> = {
   CANCELLED: 'Annulée',
 };
 
+const STATUS_ORDER_FOR_SORT: Record<MissionRequestStatus, number> = {
+  SUBMITTED: 0,
+  APPROVED: 1,
+  REJECTED: 2,
+  CANCELLED: 3,
+};
+
+const SORT_OPTIONS: { key: SortMode; label: string }[] = [
+  { key: 'newest', label: 'Plus récentes' },
+  { key: 'oldest', label: 'Plus anciennes' },
+  { key: 'status', label: 'Par statut' },
+];
+
 const MISSION_TYPE_LABELS: Record<MissionType, string> = {
   PRIORITY: 'PRIORITY',
   VOLUNTARY: 'VOLUNTARY',
+};
+
+const MISSION_TYPE_OPTIONS: SegmentOption<MissionType>[] = [
+  {
+    key: 'PRIORITY',
+    label: `${MISSION_TYPE_LABELS.PRIORITY} (obligatoire)`,
+  },
+  {
+    key: 'VOLUNTARY',
+    label: `${MISSION_TYPE_LABELS.VOLUNTARY} (optionnel)`,
+  },
+];
+
+const DATE_PRESET_OPTIONS: SegmentOption<DatePreset>[] = [
+  { key: 'ALL', label: 'Toutes' },
+  { key: '24H', label: '24h' },
+  { key: '7D', label: '7 jours' },
+  { key: '30D', label: '30 jours' },
+];
+
+const MISSION_SCOPE_LABELS: Record<string, string> = {
+  ADMIN: 'Admin',
+  SUPER_ADMIN: 'Super Admin',
+  AGENT: 'Agent',
+  SCOUT: 'Scout',
 };
 
 const toDisplayName = (entry?: { firstName?: string | null; lastName?: string | null } | null) => {
@@ -113,11 +154,23 @@ export const MissionRequestsScreen = () => {
     scoutId: 'ALL',
     matchId: route.params?.preselectedMatchId ?? 'ALL',
   });
-  const [datePreset, setDatePreset] = useState<'ALL' | '24H' | '7D' | '30D'>('ALL');
+  const [datePreset, setDatePreset] = useState<DatePreset>('ALL');
   const [showMatchMenu, setShowMatchMenu] = useState(false);
   const [showScoutMenu, setShowScoutMenu] = useState(Boolean(route.params?.preopenScoutMenu));
   const [matchSearch, setMatchSearch] = useState('');
   const [scoutSearch, setScoutSearch] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(true);
+
+  const requestScopeLabel =
+    effectiveRole === 'AGENT'
+      ? MISSION_SCOPE_LABELS.AGENT
+      : effectiveRole === 'SCOUT'
+        ? MISSION_SCOPE_LABELS.SCOUT
+        : isAdmin
+          ? MISSION_SCOPE_LABELS[effectiveRole]
+          : 'Mission';
 
   const loadRequests = useCallback(async () => {
     const payload = await api.getMissionRequests();
@@ -340,6 +393,22 @@ export const MissionRequestsScreen = () => {
     [locale],
   );
 
+  const formatMatchTime = useCallback(
+    (value?: string | null) => {
+      if (!value) return null;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      return date.toLocaleString(locale, {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    },
+    [locale],
+  );
+
   const filteredRequests = useMemo(() => {
     const fromDate = filters.fromDate ? new Date(filters.fromDate).getTime() : null;
     const toDate = filters.toDate ? new Date(filters.toDate).getTime() : null;
@@ -357,9 +426,30 @@ export const MissionRequestsScreen = () => {
     });
   }, [filters, requests]);
 
+  const sortedRequests = useMemo(() => {
+    const rows = [...filteredRequests];
+    if (sortMode === 'oldest') {
+      rows.sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+      return rows;
+    }
+
+    if (sortMode === 'status') {
+      return rows.sort((left, right) => {
+        const leftStatusOrder = STATUS_ORDER_FOR_SORT[left.status] ?? 99;
+        const rightStatusOrder = STATUS_ORDER_FOR_SORT[right.status] ?? 99;
+        if (leftStatusOrder !== rightStatusOrder) {
+          return leftStatusOrder - rightStatusOrder;
+        }
+        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+      });
+    }
+
+    return rows.sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+  }, [filteredRequests, sortMode]);
+
   const groupedByDay = useMemo(() => {
     const byDay = new Map<string, { date: Date; rows: MissionRequestListItem[] }>();
-    for (const request of filteredRequests) {
+    for (const request of sortedRequests) {
       const date = new Date(request.createdAt);
       const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
       const existing = byDay.get(key);
@@ -373,19 +463,16 @@ export const MissionRequestsScreen = () => {
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .map((entry) => ({
         ...entry,
-        rows: entry.rows.sort(
-          (left, right) =>
-            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
-        ),
+        rows: entry.rows,
       }));
-  }, [filteredRequests]);
+  }, [sortedRequests]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     refreshAll();
   }, [refreshAll]);
 
-  const applyDatePreset = useCallback((preset: 'ALL' | '24H' | '7D' | '30D') => {
+  const applyDatePreset = useCallback((preset: DatePreset) => {
     setDatePreset(preset);
     if (preset === 'ALL') {
       setFilters((prev) => ({ ...prev, fromDate: undefined, toDate: undefined }));
@@ -406,6 +493,18 @@ export const MissionRequestsScreen = () => {
       toDate: now.toISOString(),
     }));
   }, []);
+
+  const resetFilters = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      status: 'ALL',
+      missionType: 'ALL',
+      scoutId: 'ALL',
+      matchId: route.params?.preselectedMatchId ?? 'ALL',
+    }));
+    setDatePreset('ALL');
+    setSortMode('newest');
+  }, [route.params?.preselectedMatchId]);
 
   const resetForm = useCallback(() => {
     setCreateInput({
@@ -551,348 +650,367 @@ export const MissionRequestsScreen = () => {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <GlassCard variant="elevated" style={styles.card}>
-          <Text style={styles.sectionTitle}>Compteurs statut</Text>
+        <GlassCard variant="featured" style={styles.heroCard}>
+          <SectionHeader
+            title="Mission Requests"
+            subtitle="Hub de coordination terrain"
+            rightAction={
+              <View style={styles.heroMeta}>
+                <Text style={styles.heroMetaText}>Scope</Text>
+                <View style={styles.scopeBadge}>
+                  <Text style={styles.scopeBadgeText}>{requestScopeLabel}</Text>
+                </View>
+              </View>
+            }
+          />
+
+          <View style={styles.countSummaryRow}>
+            <View style={styles.countSummaryCard}>
+              <Text style={styles.countSummaryLabel}>Demandes visibles</Text>
+              <Text style={styles.countSummaryValue}>{sortedRequests.length}</Text>
+            </View>
+            <View style={styles.countSummaryCard}>
+              <Text style={styles.countSummaryLabel}>Demandes actives</Text>
+              <Text style={styles.countSummaryValue}>{statusCounts.SUBMITTED}</Text>
+            </View>
+            <Button
+              variant="outline"
+              size="sm"
+              style={styles.heroActionButton}
+              onPress={() => setShowCreatePanel((prev) => !prev)}
+              icon={<Icon name={showCreatePanel ? 'edit' : 'add'} size={16} color={colors.text.secondary} />}
+            >
+              {showCreatePanel ? 'Modifier' : 'Nouvelle demande'}
+            </Button>
+          </View>
+
           <View style={styles.countRow}>
             {STATUS_ORDER.map((status) => (
-              <View key={status} style={[styles.countChip, { borderColor: `${STATUS_COLORS[status]}99` }]}>
-                <Text style={[styles.countValue, { color: STATUS_COLORS[status] }]}>
+              <View key={status} style={[styles.countChip, { borderColor: `${STATUS_COLORS[status]}80` }]}> 
+                <Text style={styles.countLabel}>{STATUS_LABELS[status]}</Text>
+                <Text style={[styles.countValue, { color: STATUS_COLORS[status] }]}> 
                   {statusCounts[status]}
                 </Text>
-                <Text style={styles.countLabel}>{STATUS_LABELS[status]}</Text>
               </View>
             ))}
           </View>
         </GlassCard>
 
-        {canCreate ? (
-          <GlassCard variant="elevated" style={styles.card}>
-            <Text style={styles.sectionTitle}>Créer une demande</Text>
-
-            <Text style={styles.fieldLabel}>Type de mission</Text>
-            <View style={styles.segmentRow}>
-              {(['PRIORITY', 'VOLUNTARY'] as MissionType[]).map((type) => {
-                const active = createInput.missionType === type;
-                return (
-                  <TouchableOpacity
-                    key={type}
-                    style={[styles.segmentChip, active && styles.segmentChipActive]}
-                    onPress={() => {
-                      setCreateInput((prev) => ({
-                        ...prev,
-                        missionType: type,
-                        targetScoutId: type === 'PRIORITY' ? prev.targetScoutId : '',
-                      }));
-                      if (type === 'VOLUNTARY') {
-                        setShowScoutMenu(false);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.segmentChipText, active && styles.segmentChipTextActive]}>
-                      {MISSION_TYPE_LABELS[type]}
-                    </Text>
-                    <Text style={styles.segmentChipHint}>
-                      {type === 'PRIORITY' ? 'Scout requis' : 'Scout optionnel'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={styles.fieldLabel}>Match</Text>
-            <TouchableOpacity
-              style={[styles.dropdownTrigger, showMatchMenu && styles.dropdownTriggerOpen]}
-              activeOpacity={0.9}
-              onPress={() => {
-                setShowScoutMenu(false);
-                setShowMatchMenu((prev) => !prev);
-              }}
-            >
-              <View style={styles.dropdownTextWrap}>
-                <Text
-                  style={[
-                    styles.dropdownValue,
-                    !selectedCreateMatch && styles.dropdownValuePlaceholder,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {selectedCreateMatch ? matchLabel(selectedCreateMatch) : 'Sélectionner un match'}
-                </Text>
-                {selectedCreateMatch?.scheduledAt ? (
-                  <Text style={styles.dropdownMeta}>
-                    {formatMatchDate(selectedCreateMatch.scheduledAt)}
-                  </Text>
-                ) : null}
-              </View>
-              <Icon
-                name={showMatchMenu ? 'chevronUp' : 'chevronDown'}
-                size={18}
-                color={colors.text.secondary}
+        <GlassCard variant="elevated" style={styles.card}>
+          <SectionHeader
+            title="Créer une demande"
+            subtitle="Assignez une mission à un scout"
+            rightAction={
+              canCreate ? (
+                <Button variant="ghost" size="sm" onPress={() => setShowCreatePanel((prev) => !prev)}>
+                  {showCreatePanel ? 'Masquer' : 'Afficher'}
+                </Button>
+              ) : null
+            }
+          />
+          {canCreate && showCreatePanel ? (
+            <>
+              <Text style={styles.fieldLabel}>Type</Text>
+              <SegmentedControl<MissionType>
+                options={MISSION_TYPE_OPTIONS}
+                value={createInput.missionType}
+                onChange={(missionType: MissionType) =>
+                  setCreateInput((prev) => ({
+                    ...prev,
+                    missionType,
+                    targetScoutId: missionType === 'PRIORITY' ? prev.targetScoutId : '',
+                  }))
+                }
               />
-            </TouchableOpacity>
-            {showMatchMenu ? (
-              <View style={styles.dropdownPanel}>
-                <TextInput
-                  value={matchSearch}
-                  onChangeText={setMatchSearch}
-                  placeholder="Rechercher un match..."
-                  placeholderTextColor={colors.text.secondary}
-                  style={styles.dropdownSearchInput}
-                />
-                <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                  {filteredCreateMatches.length === 0 ? (
-                    <Text style={styles.dropdownEmpty}>Aucun match trouvé.</Text>
-                  ) : (
-                    filteredCreateMatches.map((match) => {
-                      const active = createInput.matchId === match.id;
+
+              <Select
+                value={selectedCreateMatch ? matchLabel(selectedCreateMatch) : ''}
+                label="Match"
+                placeholder="Sélectionner un match"
+                onPress={() => {
+                  setShowScoutMenu(false);
+                  setShowMatchMenu((prev) => !prev);
+                }}
+                style={styles.selectField}
+              />
+              {showMatchMenu ? (
+                <View style={styles.dropdownPanel}>
+                  <TextInput
+                    value={matchSearch}
+                    onChangeText={setMatchSearch}
+                    placeholder="Rechercher un match..."
+                    placeholderTextColor={colors.text.secondary}
+                    style={styles.dropdownSearchInput}
+                  />
+                  <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                    {filteredCreateMatches.length === 0 ? (
+                      <Text style={styles.dropdownEmpty}>Aucun match trouvé.</Text>
+                    ) : (
+                      filteredCreateMatches.map((match) => {
+                        const active = createInput.matchId === match.id;
+                        return (
+                          <TouchableOpacity
+                            key={match.id}
+                            style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+                            onPress={() => {
+                              setCreateInput((prev) => ({ ...prev, matchId: match.id }));
+                              setShowMatchMenu(false);
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.dropdownItemTitle,
+                                active && styles.dropdownItemTitleActive,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {matchLabel(match)}
+                            </Text>
+                            {match.scheduledAt ? (
+                              <Text style={styles.dropdownItemMeta}>
+                                {formatMatchDate(match.scheduledAt)}
+                              </Text>
+                            ) : null}
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </ScrollView>
+                </View>
+              ) : null}
+
+              {createInput.missionType === 'PRIORITY' ? (
+                <>
+                  <Select
+                    value={selectedCreateScout ? toDisplayName(selectedCreateScout) : ''}
+                    label="Scout cible"
+                    placeholder="Sélectionner un scout"
+                    onPress={() => {
+                      setShowMatchMenu(false);
+                      setShowScoutMenu((prev) => !prev);
+                    }}
+                    style={styles.selectField}
+                  />
+                  {showScoutMenu ? (
+                    <View style={styles.dropdownPanel}>
+                      <TextInput
+                        value={scoutSearch}
+                        onChangeText={setScoutSearch}
+                        placeholder="Rechercher un scout..."
+                        placeholderTextColor={colors.text.secondary}
+                        style={styles.dropdownSearchInput}
+                      />
+                      <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                        {filteredCreateScouts.length === 0 ? (
+                          <Text style={styles.dropdownEmpty}>Aucun scout trouvé.</Text>
+                        ) : (
+                          filteredCreateScouts.map((scout) => {
+                            const active = createInput.targetScoutId === scout.id;
+                            return (
+                              <TouchableOpacity
+                                key={scout.id}
+                                style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+                                onPress={() => {
+                                  setCreateInput((prev) => ({
+                                    ...prev,
+                                    targetScoutId: scout.id,
+                                  }));
+                                  setShowScoutMenu(false);
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.dropdownItemTitle,
+                                    active && styles.dropdownItemTitleActive,
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {toDisplayName(scout)}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                        )}
+                      </ScrollView>
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
+
+              <Text style={styles.fieldLabel}>Note (optionnel)</Text>
+              <TextInput
+                value={createInput.note}
+                onChangeText={(value) => setCreateInput((prev) => ({ ...prev, note: value }))}
+                placeholder="Contexte de la mission"
+                placeholderTextColor={colors.text.secondary}
+                style={styles.noteInput}
+                multiline
+              />
+
+              <Button
+                variant="primary"
+                size="md"
+                loading={submitting}
+                onPress={handleCreateRequest}
+                disabled={submitting}
+                icon={<Icon name="add" size={18} color={colors.background.primary} />}
+              >
+                Soumettre la demande
+              </Button>
+            </>
+          ) : null}
+        </GlassCard>
+
+        <GlassCard variant="elevated" style={styles.card}>
+          <SectionHeader
+            title="Filtres"
+            subtitle={`${sortedRequests.length} résultat${sortedRequests.length > 1 ? 's' : ''}`}
+            rightAction={
+              <View style={styles.filterTopActions}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setShowFilterPanel((prev) => !prev)}
+                  icon={
+                    <Icon
+                      name={showFilterPanel ? 'remove' : 'funnel'}
+                      size={16}
+                      color={colors.text.secondary}
+                    />
+                  }
+                >
+                  {showFilterPanel ? 'Masquer' : 'Filtres'}
+                </Button>
+                <Button variant="outline" size="sm" onPress={resetFilters}>
+                  Réinitialiser
+                </Button>
+              </View>
+            }
+          />
+
+          {showFilterPanel ? (
+            <>
+              <View style={styles.filterBlock}>
+                <Text style={styles.fieldLabel}>Statut</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
+                  {(['ALL', ...STATUS_ORDER] as Array<MissionRequestStatus | 'ALL'>).map((status) => {
+                    const active = filters.status === status;
+                    const label = status === 'ALL' ? 'Tous' : STATUS_LABELS[status];
+                    return (
+                      <TouchableOpacity
+                        key={status}
+                        style={[styles.selectorChip, active && styles.selectorChipActive]}
+                        onPress={() => setFilters((prev) => ({ ...prev, status }))}
+                      >
+                        <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={styles.filterBlock}>
+                <Text style={styles.fieldLabel}>Type de mission</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
+                  {(['ALL', 'PRIORITY', 'VOLUNTARY'] as Array<MissionType | 'ALL'>).map((missionType) => {
+                    const active = filters.missionType === missionType;
+                    const label = missionType === 'ALL' ? 'Tous' : MISSION_TYPE_LABELS[missionType];
+                    return (
+                      <TouchableOpacity
+                        key={missionType}
+                        style={[styles.selectorChip, active && styles.selectorChipActive]}
+                        onPress={() => setFilters((prev) => ({ ...prev, missionType }))}
+                      >
+                        <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {filterScoutOptions.length > 0 ? (
+                <View style={styles.filterBlock}>
+                  <Text style={styles.fieldLabel}>Scout</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
+                    <TouchableOpacity
+                      style={[styles.selectorChip, filters.scoutId === 'ALL' && styles.selectorChipActive]}
+                      onPress={() => setFilters((prev) => ({ ...prev, scoutId: 'ALL' }))}
+                    >
+                      <Text style={[styles.selectorChipText, filters.scoutId === 'ALL' && styles.selectorChipTextActive]}>
+                        Tous
+                      </Text>
+                    </TouchableOpacity>
+                    {filterScoutOptions.map((scout) => {
+                      const active = filters.scoutId === scout.id;
+                      return (
+                        <TouchableOpacity
+                          key={scout.id}
+                          style={[styles.selectorChip, active && styles.selectorChipActive]}
+                          onPress={() => setFilters((prev) => ({ ...prev, scoutId: scout.id }))}
+                        >
+                          <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
+                            {toDisplayName(scout)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              ) : null}
+
+              {filterMatchOptions.length > 0 ? (
+                <View style={styles.filterBlock}>
+                  <Text style={styles.fieldLabel}>Match</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
+                    <TouchableOpacity
+                      style={[styles.selectorChip, filters.matchId === 'ALL' && styles.selectorChipActive]}
+                      onPress={() => setFilters((prev) => ({ ...prev, matchId: 'ALL' }))}
+                    >
+                      <Text style={[styles.selectorChipText, filters.matchId === 'ALL' && styles.selectorChipTextActive]}>
+                        Tous
+                      </Text>
+                    </TouchableOpacity>
+                    {filterMatchOptions.map((match) => {
+                      const active = filters.matchId === match.id;
                       return (
                         <TouchableOpacity
                           key={match.id}
-                          style={[styles.dropdownItem, active && styles.dropdownItemActive]}
-                          onPress={() => {
-                            setCreateInput((prev) => ({ ...prev, matchId: match.id }));
-                            setShowMatchMenu(false);
-                          }}
+                          style={[styles.selectorChip, active && styles.selectorChipActive]}
+                          onPress={() => setFilters((prev) => ({ ...prev, matchId: match.id }))}
                         >
-                          <Text
-                            style={[
-                              styles.dropdownItemTitle,
-                              active && styles.dropdownItemTitleActive,
-                            ]}
-                            numberOfLines={1}
-                          >
+                          <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
                             {matchLabel(match)}
                           </Text>
-                          {match.scheduledAt ? (
-                            <Text style={styles.dropdownItemMeta}>
-                              {formatMatchDate(match.scheduledAt)}
-                            </Text>
-                          ) : null}
                         </TouchableOpacity>
                       );
-                    })
-                  )}
-                </ScrollView>
+                    })}
+                  </ScrollView>
+                </View>
+              ) : null}
+
+              <View style={styles.filterBlock}>
+                <Text style={styles.fieldLabel}>Période</Text>
+                <SegmentedControl<DatePreset>
+                  options={DATE_PRESET_OPTIONS}
+                  value={datePreset}
+                  onChange={(value: DatePreset) => applyDatePreset(value)}
+                />
               </View>
-            ) : null}
 
-            {createInput.missionType === 'PRIORITY' ? (
-              <>
-                <Text style={styles.fieldLabel}>Scout cible (obligatoire)</Text>
-                <TouchableOpacity
-                  style={[styles.dropdownTrigger, showScoutMenu && styles.dropdownTriggerOpen]}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    setShowMatchMenu(false);
-                    setShowScoutMenu((prev) => !prev);
-                  }}
-                >
-                  <View style={styles.dropdownTextWrap}>
-                    <Text
-                      style={[
-                        styles.dropdownValue,
-                        !selectedCreateScout && styles.dropdownValuePlaceholder,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {selectedCreateScout
-                        ? toDisplayName(selectedCreateScout)
-                        : 'Sélectionner un scout'}
-                    </Text>
-                  </View>
-                  <Icon
-                    name={showScoutMenu ? 'chevronUp' : 'chevronDown'}
-                    size={18}
-                    color={colors.text.secondary}
-                  />
-                </TouchableOpacity>
-                {showScoutMenu ? (
-                  <View style={styles.dropdownPanel}>
-                    <TextInput
-                      value={scoutSearch}
-                      onChangeText={setScoutSearch}
-                      placeholder="Rechercher un scout..."
-                      placeholderTextColor={colors.text.secondary}
-                      style={styles.dropdownSearchInput}
-                    />
-                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                      {filteredCreateScouts.length === 0 ? (
-                        <Text style={styles.dropdownEmpty}>Aucun scout trouvé.</Text>
-                      ) : (
-                        filteredCreateScouts.map((scout) => {
-                          const active = createInput.targetScoutId === scout.id;
-                          return (
-                            <TouchableOpacity
-                              key={scout.id}
-                              style={[styles.dropdownItem, active && styles.dropdownItemActive]}
-                              onPress={() => {
-                                setCreateInput((prev) => ({
-                                  ...prev,
-                                  targetScoutId: scout.id,
-                                }));
-                                setShowScoutMenu(false);
-                              }}
-                            >
-                              <Text
-                                style={[
-                                  styles.dropdownItemTitle,
-                                  active && styles.dropdownItemTitleActive,
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {toDisplayName(scout)}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })
-                      )}
-                    </ScrollView>
-                  </View>
-                ) : null}
-              </>
-            ) : null}
-
-            <Text style={styles.fieldLabel}>Note (optionnel)</Text>
-            <TextInput
-              value={createInput.note}
-              onChangeText={(value) => setCreateInput((prev) => ({ ...prev, note: value }))}
-              placeholder="Contexte de la mission"
-              placeholderTextColor={colors.text.secondary}
-              style={styles.noteInput}
-              multiline
-            />
-
-            <TouchableOpacity
-              style={[styles.createButton, submitting && styles.disabledButton]}
-              onPress={handleCreateRequest}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color={colors.background.primary} />
-              ) : (
-                <Icon name="add" size={16} color={colors.background.primary} />
-              )}
-              <Text style={styles.createButtonText}>Soumettre</Text>
-            </TouchableOpacity>
-          </GlassCard>
-        ) : null}
-
-        <GlassCard variant="elevated" style={styles.card}>
-          <Text style={styles.sectionTitle}>Filtres</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
-            {(['ALL', ...STATUS_ORDER] as Array<MissionRequestStatus | 'ALL'>).map((status) => {
-              const active = filters.status === status;
-              const label = status === 'ALL' ? 'Tous statuts' : STATUS_LABELS[status];
-              return (
-                <TouchableOpacity
-                  key={status}
-                  style={[styles.selectorChip, active && styles.selectorChipActive]}
-                  onPress={() => setFilters((prev) => ({ ...prev, status }))}
-                >
-                  <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
-            {(['ALL', 'PRIORITY', 'VOLUNTARY'] as Array<MissionType | 'ALL'>).map((missionType) => {
-              const active = filters.missionType === missionType;
-              const label = missionType === 'ALL' ? 'Tous types' : missionType;
-              return (
-                <TouchableOpacity
-                  key={missionType}
-                  style={[styles.selectorChip, active && styles.selectorChipActive]}
-                  onPress={() => setFilters((prev) => ({ ...prev, missionType }))}
-                >
-                  <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {filterScoutOptions.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
-              <TouchableOpacity
-                style={[styles.selectorChip, filters.scoutId === 'ALL' && styles.selectorChipActive]}
-                onPress={() => setFilters((prev) => ({ ...prev, scoutId: 'ALL' }))}
-              >
-                <Text style={[styles.selectorChipText, filters.scoutId === 'ALL' && styles.selectorChipTextActive]}>
-                  Tous scouts
-                </Text>
-              </TouchableOpacity>
-              {filterScoutOptions.map((scout) => {
-                const active = filters.scoutId === scout.id;
-                return (
-                  <TouchableOpacity
-                    key={scout.id}
-                    style={[styles.selectorChip, active && styles.selectorChipActive]}
-                    onPress={() => setFilters((prev) => ({ ...prev, scoutId: scout.id }))}
-                  >
-                    <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
-                      {toDisplayName(scout)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+              <View style={styles.filterBlock}>
+                <Text style={styles.fieldLabel}>Tri</Text>
+                <SegmentedControl<SortMode>
+                  options={SORT_OPTIONS}
+                  value={sortMode}
+                  onChange={(value: SortMode) => setSortMode(value)}
+                />
+              </View>
+            </>
           ) : null}
-
-          {filterMatchOptions.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
-              <TouchableOpacity
-                style={[styles.selectorChip, filters.matchId === 'ALL' && styles.selectorChipActive]}
-                onPress={() => setFilters((prev) => ({ ...prev, matchId: 'ALL' }))}
-              >
-                <Text style={[styles.selectorChipText, filters.matchId === 'ALL' && styles.selectorChipTextActive]}>
-                  Tous matchs
-                </Text>
-              </TouchableOpacity>
-              {filterMatchOptions.map((match) => {
-                const active = filters.matchId === match.id;
-                return (
-                  <TouchableOpacity
-                    key={match.id}
-                    style={[styles.selectorChip, active && styles.selectorChipActive]}
-                    onPress={() => setFilters((prev) => ({ ...prev, matchId: match.id }))}
-                  >
-                    <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
-                      {matchLabel(match)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          ) : null}
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorRow}>
-            {(['ALL', '24H', '7D', '30D'] as const).map((preset) => {
-              const active = datePreset === preset;
-              const label =
-                preset === 'ALL'
-                  ? 'Toutes dates'
-                  : preset === '24H'
-                  ? '24h'
-                  : preset === '7D'
-                  ? '7 jours'
-                  : '30 jours';
-              return (
-                <TouchableOpacity
-                  key={preset}
-                  style={[styles.selectorChip, active && styles.selectorChipActive]}
-                  onPress={() => applyDatePreset(preset)}
-                >
-                  <Text style={[styles.selectorChipText, active && styles.selectorChipTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
         </GlassCard>
 
         {groupedByDay.length === 0 ? (
@@ -913,68 +1031,111 @@ export const MissionRequestsScreen = () => {
               </Text>
               {group.rows.map((row) => {
                 const statusColor = STATUS_COLORS[row.status];
+                const missionTypeColor =
+                  row.missionType === 'PRIORITY' ? colors.brand.primary : colors.accent;
+                const missionTypeLabel =
+                  row.missionType === 'PRIORITY' ? 'Mission prioritaire' : 'Mission volontaire';
+                const matchTime = formatMatchTime(row.match?.scheduledAt);
                 const isSubmitted = row.status === 'SUBMITTED';
                 const isOwner = row.requestedBy?.id === user?.id;
                 const canCancel = isSubmitted && (isAdmin || (isAgent && isOwner));
                 return (
                   <GlassCard key={row.id} variant="elevated" style={styles.requestCard}>
-                    <View style={styles.requestHeader}>
-                      <View style={[styles.statusBadge, { borderColor: `${statusColor}88` }]}>
-                        <Text style={[styles.statusBadgeText, { color: statusColor }]}>
-                          {STATUS_LABELS[row.status]}
-                        </Text>
-                      </View>
-                      <Text style={styles.requestDate}>
-                        {new Date(row.createdAt).toLocaleString(locale)}
-                      </Text>
+                    <View style={styles.requestTone}> 
+                      <View style={[styles.requestToneBar, { backgroundColor: missionTypeColor }]} />
                     </View>
+                    <View style={styles.requestBody}>
+                      <View style={styles.requestHeader}>
+                        <View style={styles.requestTitleBlock}>
+                          <Text style={styles.requestMatchLabel}>{matchLabel(row.match as MatchOption)}</Text>
+                          <View style={styles.requestDateRow}>
+                            <Icon name="calendar" size={12} color={colors.text.secondary} />
+                            <Text style={styles.requestDate}>Créé {new Date(row.createdAt).toLocaleString(locale)}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.badgeStack}>
+                          <View style={[styles.typeBadge, { borderColor: `${missionTypeColor}66` }]}> 
+                            <Text style={[styles.typeBadgeText, { color: missionTypeColor }]}> 
+                              {missionTypeLabel}
+                            </Text>
+                          </View>
+                          <View style={[styles.statusBadge, { borderColor: `${statusColor}88` }]}> 
+                            <Text style={[styles.statusBadgeText, { color: statusColor }]}> 
+                              {STATUS_LABELS[row.status]}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
 
-                    <Text style={styles.requestMatchLabel}>{matchLabel(row.match as MatchOption)}</Text>
-                    <Text style={styles.requestLine}>Type: {row.missionType}</Text>
-                    <Text style={styles.requestLine}>Scout cible: {toDisplayName(row.targetScout)}</Text>
-                    <Text style={styles.requestLine}>Demandeur: {toDisplayName(row.requestedBy)}</Text>
-                    {row.note ? <Text style={styles.requestNote}>{row.note}</Text> : null}
+                      <View style={styles.requestMetaGrid}>
+                        <View style={styles.requestMetaCell}>
+                          <Text style={styles.requestLine}>Scout cible</Text>
+                          <Text style={styles.requestValue}>{toDisplayName(row.targetScout)}</Text>
+                        </View>
+                        <View style={styles.requestMetaCell}>
+                          <Text style={styles.requestLine}>Demandeur</Text>
+                          <Text style={styles.requestValue}>{toDisplayName(row.requestedBy)}</Text>
+                        </View>
+                        <View style={styles.requestMetaCell}>
+                          <Text style={styles.requestLine}>Match</Text>
+                          <Text style={styles.requestValue}>{matchTime ?? 'Non planifié'}</Text>
+                        </View>
+                      </View>
 
-                    <View style={styles.rowActions}>
-                      <TouchableOpacity
-                        style={styles.linkButton}
-                        onPress={() =>
-                          navigation.navigate('MatchDetail', {
-                            matchId: row.matchId,
-                          })
-                        }
-                      >
-                        <Text style={styles.linkButtonText}>Ouvrir match</Text>
-                      </TouchableOpacity>
+                      {row.note ? <Text style={styles.requestNote}>{row.note}</Text> : null}
 
-                      {isSubmitted && canApproveReject ? (
-                        <>
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.approveButton, actingRequestId === row.id && styles.disabledButton]}
-                            onPress={() => handleApprove(row)}
-                            disabled={actingRequestId === row.id}
+                      <View style={styles.rowActions}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onPress={() =>
+                              navigation.navigate('MatchDetail', {
+                                matchId: row.matchId,
+                              })
+                            }
+                            icon={<Icon name="football" size={14} color={colors.text.secondary} />}
                           >
-                            <Text style={styles.actionButtonText}>Approuver</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.rejectButton, actingRequestId === row.id && styles.disabledButton]}
-                            onPress={() => handleReject(row)}
-                            disabled={actingRequestId === row.id}
-                          >
-                            <Text style={styles.actionButtonText}>Rejeter</Text>
-                          </TouchableOpacity>
-                        </>
-                      ) : null}
+                            Voir le match
+                          </Button>
 
-                      {canCancel ? (
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.cancelButton, actingRequestId === row.id && styles.disabledButton]}
-                          onPress={() => handleCancel(row)}
-                          disabled={actingRequestId === row.id}
-                        >
-                          <Text style={styles.actionButtonText}>Annuler</Text>
-                        </TouchableOpacity>
-                      ) : null}
+                        {isSubmitted && canApproveReject ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onPress={() => handleApprove(row)}
+                              disabled={actingRequestId === row.id}
+                              loading={actingRequestId === row.id}
+                              icon={<Icon name="checkmark" size={16} color={colors.text.secondary} />}
+                            >
+                              Approuver
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onPress={() => handleReject(row)}
+                              disabled={actingRequestId === row.id}
+                              loading={actingRequestId === row.id}
+                              icon={<Icon name="close" size={16} color={colors.text.secondary} />}
+                            >
+                              Rejeter
+                            </Button>
+                          </>
+                        ) : null}
+
+                        {canCancel ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onPress={() => handleCancel(row)}
+                            disabled={actingRequestId === row.id}
+                            loading={actingRequestId === row.id}
+                            icon={<Icon name="delete" size={16} color={colors.text.secondary} />}
+                          >
+                            Annuler
+                          </Button>
+                        ) : null}
+                      </View>
                     </View>
                   </GlassCard>
                 );
@@ -1001,6 +1162,62 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
     paddingBottom: spacing['2xl'],
+  },
+  heroCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  heroMeta: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  heroMetaText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xxs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  scopeBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border.focus,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: `${colors.border.focus}1A`,
+  },
+  scopeBadgeText: {
+    color: colors.border.focus,
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+  },
+  heroActionButton: {
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+  },
+  countSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  countSummaryCard: {
+    flex: 1,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.surface.border,
+    backgroundColor: `${colors.surface.glass}`,
+    padding: spacing.sm,
+  },
+  countSummaryLabel: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xs,
+    marginBottom: 2,
+  },
+  countSummaryValue: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.base,
+    fontWeight: '800',
   },
   card: {
     padding: spacing.md,
@@ -1033,11 +1250,23 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: typography.sizes.xs,
   },
+  filterTopActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  filterBlock: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
   fieldLabel: {
     color: colors.text.secondary,
     fontSize: typography.sizes.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+  },
+  selectField: {
+    marginBottom: spacing.sm,
   },
   segmentRow: {
     flexDirection: 'row',
@@ -1217,11 +1446,34 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
+  requestTone: {
+    marginLeft: -spacing.md,
+    marginRight: -spacing.md,
+    marginTop: -spacing.md,
+    marginBottom: spacing.xs,
+  },
+  requestToneBar: {
+    height: 2,
+    width: '100%',
+    borderRadius: 2,
+  },
+  requestBody: {
+    gap: spacing.xs,
+  },
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  requestTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.xs,
+  },
+  badgeStack: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
   },
   statusBadge: {
     borderWidth: 1,
@@ -1233,6 +1485,19 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: '700',
   },
+  typeBadge: {
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  typeBadgeText: {
+    color: colors.text.secondary,
+    fontSize: typography.sizes.xxs,
+    fontWeight: '700',
+  },
   requestDate: {
     color: colors.text.secondary,
     fontSize: typography.sizes.xs,
@@ -1242,9 +1507,35 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     fontWeight: '700',
   },
+  requestMetaRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  requestDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  requestMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  requestMetaCell: {
+    minWidth: '32%',
+    flex: 1,
+    gap: 2,
+  },
   requestLine: {
     color: colors.text.secondary,
     fontSize: typography.sizes.xs,
+  },
+  requestValue: {
+    color: colors.text.primary,
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
   },
   requestNote: {
     color: colors.text.primary,

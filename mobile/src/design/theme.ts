@@ -57,12 +57,37 @@ export const colors = {
 
   // Surface Colors with glass effect
   surface: {
+    base: tokens.colors.arcane.black,
+    card: tokens.colors.arcane.anthracite,
+    cardElevated: tokens.colors.arcane.charcoal,
+    cardFeatured: '#1B2547',
     glass: 'rgba(255, 255, 255, 0.08)',
     glassLight: 'rgba(255, 255, 255, 0.05)',
     glassMedium: 'rgba(255, 255, 255, 0.08)',
     glassHeavy: 'rgba(255, 255, 255, 0.12)',
     border: 'rgba(255, 255, 255, 0.12)',
     borderLight: 'rgba(255, 255, 255, 0.08)',
+  },
+
+  // Semantic interaction layer (Arcane Neo)
+  action: {
+    primary: tokens.colors.yellow.DEFAULT,
+    primaryPressed: tokens.colors.yellow.dark,
+    ghost: 'rgba(255, 255, 255, 0.06)',
+    danger: 'rgba(239, 68, 68, 0.16)',
+  },
+  border: {
+    subtle: 'rgba(255, 255, 255, 0.08)',
+    strong: 'rgba(255, 255, 255, 0.18)',
+    focus: tokens.colors.yellow.DEFAULT,
+    danger: tokens.colors.semantic.error,
+  },
+  focus: {
+    ring: 'rgba(228, 255, 59, 0.38)',
+  },
+  input: {
+    background: 'rgba(255, 255, 255, 0.05)',
+    placeholder: 'rgba(255, 255, 255, 0.42)',
   },
 
   // Text Colors - Arcane 2.0

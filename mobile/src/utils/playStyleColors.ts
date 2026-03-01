@@ -39,7 +39,7 @@ export const STYLE_ICONS: Record<PlayStyleName, string> = {
  * Get color for a playing style
  */
 export const getStyleColor = (style: PlayStyleName | string): string => {
-  return STYLE_COLORS[style as PlayStyleName] || '#E4FF3B';
+  return STYLE_COLORS[style as PlayStyleName] || '#e6ff3c';
 };
 
 /**

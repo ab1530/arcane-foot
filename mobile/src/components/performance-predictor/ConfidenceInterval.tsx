@@ -145,14 +145,14 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#E4FF3B',
+    backgroundColor: '#e6ff3c',
     borderWidth: 3,
     borderColor: '#1F2937',
   },
   markerLine: {
     width: 3,
     flex: 1,
-    backgroundColor: '#E4FF3B',
+    backgroundColor: '#e6ff3c',
     opacity: 0.5,
   },
   endpointMarker: {
@@ -183,6 +183,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   predictedText: {
-    color: '#E4FF3B',
+    color: '#e6ff3c',
   },
 });

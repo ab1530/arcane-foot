@@ -316,7 +316,7 @@ export default function PlayerHardwarePage() {
                       title="Charge GPS (distance & sprints)"
                       data={chartData}
                       bars={[
-                        { dataKey: "distanceKm", color: "#E4FF3B", name: "Distance (km)" },
+                        { dataKey: "distanceKm", color: "#e6ff3c", name: "Distance (km)" },
                         { dataKey: "sprintKm", color: "#38bdf8", name: "Sprint (km)" },
                       ]}
                     />

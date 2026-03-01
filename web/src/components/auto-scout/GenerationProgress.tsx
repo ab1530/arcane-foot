@@ -35,7 +35,7 @@ export function GenerationProgress({ progress }: GenerationProgressProps) {
             initial={{ width: 0 }}
             animate={{ width: `${progress.progress}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-[#E4FF3B] to-[#B8CC2F] rounded-full"
+            className="h-full bg-gradient-to-r from-[#e6ff3c] to-[#d8f14e] rounded-full"
           />
         </div>
         {progress.estimatedTimeRemaining !== undefined && (
@@ -62,7 +62,7 @@ export function GenerationProgress({ progress }: GenerationProgressProps) {
               className={`
                 relative p-4 rounded-xl border-2 transition-all
                 ${isActive
-                  ? 'border-[#E4FF3B] bg-[#E4FF3B]/10'
+                  ? 'border-[#e6ff3c] bg-[#e6ff3c]/10'
                   : isComplete
                   ? 'border-green-500/50 bg-green-500/5'
                   : 'border-white/10 bg-black/30'
@@ -75,7 +75,7 @@ export function GenerationProgress({ progress }: GenerationProgressProps) {
                   className={`
                     w-12 h-12 rounded-xl flex items-center justify-center
                     ${isActive
-                      ? 'bg-[#E4FF3B] text-black'
+                      ? 'bg-[#e6ff3c] text-black'
                       : isComplete
                       ? 'bg-green-500 text-white'
                       : 'bg-white/5 text-gray-500'
@@ -90,7 +90,7 @@ export function GenerationProgress({ progress }: GenerationProgressProps) {
                   className={`
                     text-xs text-center font-medium
                     ${isActive
-                      ? 'text-[#E4FF3B]'
+                      ? 'text-[#e6ff3c]'
                       : isComplete
                       ? 'text-green-400'
                       : 'text-gray-500'
@@ -104,7 +104,7 @@ export function GenerationProgress({ progress }: GenerationProgressProps) {
               {/* Pulse animation for active stage */}
               {isActive && (
                 <motion.div
-                  className="absolute inset-0 rounded-xl border-2 border-[#E4FF3B]"
+                  className="absolute inset-0 rounded-xl border-2 border-[#e6ff3c]"
                   animate={{
                     opacity: [0.5, 0, 0.5],
                     scale: [1, 1.05, 1],
